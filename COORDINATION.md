@@ -18,6 +18,7 @@ Main coordonne le développement global du projet.
 - Main coordonne, mais ne prend pas le travail spécialiste de feature
 - Zeta ne développe pas les features, Zeta valide les PR
 - tout travail doit passer par une pull request
+- faire une PR est obligatoire pour éviter les bugs, les confusions et les problèmes de validation avec Zeta
 - rien n'est considéré comme terminé sans PR
 - quand une PR est prête, l'agent concerné contacte Zeta pour validation
 - si Zeta refuse une PR, Zeta commente la PR et demande explicitement une reprise

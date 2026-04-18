@@ -9,6 +9,7 @@ We work through **pull requests**.
 - Open a PR for review and discussion.
 - Each specialist agent should work on the issues of its own domain.
 - Work is not considered finished without a PR.
+- Creating a PR is mandatory to avoid bugs, confusion, or validation conflicts with **Zeta**.
 - Code reviews and PR validation must be performed by **Zeta**.
 - When an agent has a PR ready, that agent must ask **Zeta** for validation.
 - If Zeta does not validate a PR, Zeta must leave a comment on the PR and explicitly tell the agent to rework the code.
