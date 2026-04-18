@@ -9,9 +9,12 @@ test('AlertLevelBadge builds UI metadata from a numeric alert level', () => {
   assert.deepEqual(badge, {
     text: 'Alerte Renforcé',
     shortText: 'Alerte 2',
+    icon: '◑',
     tone: 'warning',
     color: '#D97706',
     emphasis: 'normal',
+    progressPercent: 55,
+    ariaLabel: 'Alerte Renforcé, niveau 2 sur 4',
     tooltip: 'Niveau 2 sur 4, surveillance 55%',
     level: {
       value: 2,
@@ -28,9 +31,12 @@ test('AlertLevelBadge supports custom prefixes and critical levels', () => {
   assert.deepEqual(badge, {
     text: 'Sécurité Verrouillé',
     shortText: 'Sécurité 4',
+    icon: '●',
     tone: 'critical',
     color: '#7F1D1D',
     emphasis: 'high',
+    progressPercent: 100,
+    ariaLabel: 'Sécurité Verrouillé, niveau 4 sur 4',
     tooltip: 'Niveau 4 sur 4, surveillance 100%',
     level: {
       value: 4,
