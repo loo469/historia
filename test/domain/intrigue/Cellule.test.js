@@ -78,16 +78,40 @@ test('Cellule marks network exposure when heat crosses the compromise threshold'
     status: 'active',
   });
 
+  const thresholdCellule = cellule.withExposure(69);
   const exposedCellule = cellule.withExposure(70);
   const deeplyExposedCellule = exposedCellule.withExposure(92);
 
   assert.equal(cellule.isExposed, false);
+  assert.equal(thresholdCellule.isExposed, false);
+  assert.equal(thresholdCellule.status, 'active');
+  assert.equal(thresholdCellule.operationalReadiness, 64);
   assert.equal(exposedCellule.isExposed, true);
   assert.equal(exposedCellule.status, 'compromised');
   assert.equal(exposedCellule.operationalReadiness, 63);
   assert.equal(deeplyExposedCellule.isExposed, true);
   assert.equal(deeplyExposedCellule.status, 'compromised');
   assert.equal(deeplyExposedCellule.operationalReadiness, 56);
+});
+
+test('Cellule keeps compromised network status explicit even when exposure later drops', () => {
+  const cellule = new Cellule({
+    id: 'cellule-ombre',
+    factionId: 'faction-nocturne',
+    codename: 'Les Lanternes',
+    locationId: 'district-cendre',
+    secrecy: 61,
+    loyalty: 74,
+    exposure: 73,
+    status: 'compromised',
+  });
+
+  const cooledDownCellule = cellule.withExposure(18);
+
+  assert.equal(cooledDownCellule.exposure, 18);
+  assert.equal(cooledDownCellule.status, 'compromised');
+  assert.equal(cooledDownCellule.isExposed, true);
+  assert.equal(cooledDownCellule.operationalReadiness, 72);
 });
 
 test('Cellule keeps a dismantled network dismantled even when exposure changes', () => {
