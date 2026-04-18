@@ -2,6 +2,7 @@
   "name": "historia",
   "version": "0.1.0",
   "private": true,
+  "description": "Historia strategy/simulation prototype",
   "type": "module",
   "scripts": {
     "test": "node --test"
