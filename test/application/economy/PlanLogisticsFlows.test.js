@@ -114,3 +114,156 @@ test('PlanLogisticsFlows rejects malformed cities, routes, and unknown stops', (
     /PlanLogisticsFlows tradeRoute destination city city-b is unknown/,
   );
 });
+
+test('PlanLogisticsFlows splits a source surplus across downstream cities on the same route', () => {
+  const result = planLogisticsFlows({
+    cities: [
+      {
+        id: 'city-forge',
+        stockByResource: { iron: 18 },
+        desiredStockByResource: { iron: 6 },
+      },
+      {
+        id: 'city-port',
+        stockByResource: { iron: 1 },
+        desiredStockByResource: { iron: 5 },
+      },
+      {
+        id: 'city-fort',
+        stockByResource: { iron: 2 },
+        desiredStockByResource: { iron: 7 },
+      },
+    ],
+    tradeRoutes: [
+      {
+        id: 'route-iron-road',
+        stopCityIds: ['city-forge', 'city-port', 'city-fort'],
+        capacityByResource: { iron: 4 },
+        riskLevel: 2,
+      },
+    ],
+  });
+
+  assert.deepEqual(result.plannedFlows, [
+    {
+      tradeRouteId: 'route-iron-road',
+      sourceCityId: 'city-forge',
+      destinationCityId: 'city-port',
+      resourceId: 'iron',
+      quantity: 4,
+      riskLevel: 2,
+    },
+    {
+      tradeRouteId: 'route-iron-road',
+      sourceCityId: 'city-forge',
+      destinationCityId: 'city-fort',
+      resourceId: 'iron',
+      quantity: 4,
+      riskLevel: 2,
+    },
+  ]);
+
+  assert.deepEqual(result.unmetDemandByCityId, {
+    'city-forge': {},
+    'city-fort': { iron: 1 },
+    'city-port': {},
+  });
+  assert.deepEqual(result.remainingSurplusByCityId, {
+    'city-forge': { iron: 4 },
+    'city-fort': {},
+    'city-port': {},
+  });
+});
+
+test('PlanLogisticsFlows keeps remaining demand when route capacity is exhausted city by city', () => {
+  const result = planLogisticsFlows({
+    cities: [
+      {
+        id: 'city-orchard',
+        stockByResource: { fruit: 15 },
+        desiredStockByResource: { fruit: 5 },
+      },
+      {
+        id: 'city-market',
+        stockByResource: { fruit: 2 },
+        desiredStockByResource: { fruit: 8 },
+      },
+      {
+        id: 'city-hill',
+        stockByResource: { fruit: 1 },
+        desiredStockByResource: { fruit: 6 },
+      },
+    ],
+    tradeRoutes: [
+      {
+        id: 'route-harvest',
+        stopCityIds: ['city-orchard', 'city-market', 'city-hill'],
+        capacityByResource: { fruit: 3 },
+      },
+    ],
+  });
+
+  assert.deepEqual(result.plannedFlows, [
+    {
+      tradeRouteId: 'route-harvest',
+      sourceCityId: 'city-orchard',
+      destinationCityId: 'city-market',
+      resourceId: 'fruit',
+      quantity: 3,
+      riskLevel: 0,
+    },
+    {
+      tradeRouteId: 'route-harvest',
+      sourceCityId: 'city-orchard',
+      destinationCityId: 'city-hill',
+      resourceId: 'fruit',
+      quantity: 3,
+      riskLevel: 0,
+    },
+  ]);
+
+  assert.deepEqual(result.unmetDemandByCityId, {
+    'city-hill': { fruit: 2 },
+    'city-market': { fruit: 3 },
+    'city-orchard': {},
+  });
+  assert.deepEqual(result.remainingSurplusByCityId, {
+    'city-hill': {},
+    'city-market': {},
+    'city-orchard': { fruit: 4 },
+  });
+});
+
+test('PlanLogisticsFlows ignores routes with fewer than two stops', () => {
+  const result = planLogisticsFlows({
+    cities: [
+      {
+        id: 'city-granary',
+        stockByResource: { grain: 12 },
+        desiredStockByResource: { grain: 4 },
+      },
+      {
+        id: 'city-harbor',
+        stockByResource: { grain: 1 },
+        desiredStockByResource: { grain: 8 },
+      },
+    ],
+    tradeRoutes: [
+      {
+        id: 'route-stub',
+        stopCityIds: ['city-granary'],
+        capacityByResource: { grain: 10 },
+      },
+    ],
+  });
+
+  assert.deepEqual(result.plannedFlows, []);
+  assert.deepEqual(result.unmetDemandByCityId, {
+    'city-granary': {},
+    'city-harbor': { grain: 7 },
+  });
+  assert.deepEqual(result.remainingSurplusByCityId, {
+    'city-granary': { grain: 8 },
+    'city-harbor': {},
+  });
+});
