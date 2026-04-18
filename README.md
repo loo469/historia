@@ -20,10 +20,13 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 ## Règles Delta, intrigue et opérations clandestines
 - `LancerOperation` vérifie la disponibilité de la cellule, des agents assignés et des assets requis avant tout lancement
 - la `readiness` d'une opération baisse avec la difficulté, le risque de détection, l'alerte courante et l'exposition de la cellule
-- une cellule devient exposée dès qu'elle passe en état `compromised` ou que son exposition franchit le seuil critique métier
+- un lancement d'opération produit des événements d'exposition structurés, avec un socle `intrigue.exposure.assessed` et des cas spécialisés comme `intrigue.exposure.risk-detected` ou `intrigue.exposure.cellule-blocked`
+- `ResoudreSabotage` retourne un résultat structuré pour succès, échec ou absence de cible, et publie des événements dédiés comme `intrigue.sabotage.resolved`, `intrigue.sabotage.damage-inflicted`, `intrigue.sabotage.failed` et `intrigue.sabotage.no-target`
+- une cellule devient exposée dès qu'elle passe en état `compromised` ou que son exposition franchit le seuil critique métier, et ce statut compromis reste explicite dans le modèle même si l'exposition redescend ensuite
 - `NiveauAlerte` suit une échelle stable de `latent` à `verrouille`, avec une intensité de surveillance associée à chaque palier
-- côté UI, le niveau d'alerte peut être transformé en badge lisible avec texte, ton, couleur, emphase et tooltip
-- les tests Delta couvrent explicitement le risque de détection, l'exposition réseau et l'affichage du niveau d'alerte
+- côté UI, le niveau d'alerte peut être transformé en badge lisible avec texte, ton, couleur, emphase, icône, progression et libellé accessible
+- l'adaptateur `InMemoryIntrigueRepository` permet de stocker cellules et opérations clandestines en mémoire avec copies défensives et ordre de listing stable pour les tests et assemblages locaux
+- les tests Delta couvrent explicitement le risque de détection, l'exposition réseau, l'adaptateur mémoire intrigue et l'affichage du niveau d'alerte
 
 ## Règles du projet
 - pas de merge direct de feature sur `main`
