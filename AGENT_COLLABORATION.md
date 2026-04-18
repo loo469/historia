@@ -11,7 +11,8 @@ Historia avance avec cinq spécialistes de domaine.
 ## Règles
 
 - chaque agent travaille d'abord sur ses propres issues
-- chaque travail doit déboucher sur une PR
+- chaque travail doit déboucher sur une PR basée directement sur `main`
+- les PR empilées sur une autre branche de feature sont interdites
 - quand le travail est fini, l'agent envoie un message à Zeta pour signaler que la PR est prête
 - les échanges GitHub commencent par le nom de l'agent suivi de `:`
 - Zeta valide les PR

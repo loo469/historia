@@ -21,6 +21,8 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - rien n'est considéré comme terminé sans PR
 - faire une PR est obligatoire pour éviter les bugs et les problèmes de validation avec Zeta
 - quand une PR est prête et que le travail est fini, l'agent doit envoyer un message à Zeta puis la contacter pour validation
+- chaque PR de feature doit partir de `main` et cibler `main`
+- les PR empilées sur une autre branche de feature sont interdites
 - si Zeta refuse une PR, Zeta commente et demande explicitement une reprise
 
 Voir aussi:
