@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { selectHistoricalEvent, triggerHistoricalEvent } from '../../../src/application/culture/triggerHistoricalEvent.js';
+import {
+  selectHistoricalEvent,
+  triggerHistoricalEvent,
+  triggerHistoricalEventAtCurrentTime,
+} from '../../../src/application/culture/triggerHistoricalEvent.js';
 
 class FixedRandomProvider {
   constructor(value) {
@@ -66,6 +70,67 @@ test('selectHistoricalEvent rejects invalid candidate lists and random providers
         null,
       ),
     /selectHistoricalEvent randomProvider must expose requireNextFloat\(\)/,
+  );
+});
+
+class FixedClock {
+  constructor(value) {
+    this.value = value;
+  }
+
+  async requireNow() {
+    return this.value;
+  }
+}
+
+test('triggerHistoricalEventAtCurrentTime uses Clock integration for trigger timestamps', async () => {
+  const triggeredEvent = await triggerHistoricalEventAtCurrentTime(
+    {
+      id: 'event-court-reckoning',
+      title: 'Court Reckoning',
+      era: 'early-modern',
+      summary: 'The court reorders its chronicles after a public scandal.',
+      affectedCultureIds: ['culture-east'],
+      consequenceIds: ['archive-census'],
+      unlockedResearchIds: ['statecraft'],
+      repeatable: true,
+      triggerCount: 0,
+      lastTriggeredAt: null,
+      divergenceId: null,
+    },
+    {
+      triggeredBy: 'gamma-council',
+      consequenceIds: ['public-ledger'],
+    },
+    new FixedClock('2026-04-18T14:08:00.000Z'),
+  );
+
+  assert.equal(triggeredEvent.lastTriggeredAt, '2026-04-18T14:08:00.000Z');
+  assert.equal(triggeredEvent.lastTriggeredBy, 'gamma-council');
+  assert.deepEqual(triggeredEvent.consequenceIds, ['archive-census', 'public-ledger']);
+});
+
+test('triggerHistoricalEventAtCurrentTime rejects invalid clocks', async () => {
+  await assert.rejects(
+    () =>
+      triggerHistoricalEventAtCurrentTime(
+        {
+          id: 'event-court-reckoning',
+          title: 'Court Reckoning',
+          era: 'early-modern',
+          summary: 'The court reorders its chronicles after a public scandal.',
+          affectedCultureIds: ['culture-east'],
+          consequenceIds: [],
+          unlockedResearchIds: [],
+          repeatable: true,
+          triggerCount: 0,
+          lastTriggeredAt: null,
+          divergenceId: null,
+        },
+        {},
+        null,
+      ),
+    /triggerHistoricalEventAtCurrentTime clock must expose requireNow\(\)/,
   );
 });
 

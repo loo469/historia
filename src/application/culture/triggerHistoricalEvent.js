@@ -111,10 +111,10 @@ function normalizeExecution(execution) {
   }
 
   return {
-    triggeredAt: normalizeDate(
-      execution.triggeredAt ?? new Date(),
-      'triggerHistoricalEvent execution.triggeredAt',
-    ),
+    triggeredAt:
+      execution.triggeredAt === null || execution.triggeredAt === undefined
+        ? null
+        : normalizeDate(execution.triggeredAt, 'triggerHistoricalEvent execution.triggeredAt'),
     triggeredBy: requireText(
       execution.triggeredBy ?? 'system',
       'triggerHistoricalEvent execution.triggeredBy',
@@ -132,6 +132,18 @@ function normalizeExecution(execution) {
         ? null
         : requireText(execution.divergenceId, 'triggerHistoricalEvent execution.divergenceId'),
   };
+}
+
+export async function triggerHistoricalEventAtCurrentTime(historicalEvent, execution = {}, clock) {
+  if (!clock || typeof clock.requireNow !== 'function') {
+    throw new TypeError('triggerHistoricalEventAtCurrentTime clock must expose requireNow().');
+  }
+
+  const triggeredAt = await clock.requireNow();
+  return triggerHistoricalEvent(historicalEvent, {
+    ...execution,
+    triggeredAt,
+  });
 }
 
 export async function selectHistoricalEvent(historicalEvents, randomProvider) {
@@ -190,6 +202,7 @@ export function triggerHistoricalEvent(historicalEvent, execution = {}) {
     'triggerHistoricalEvent merged unlocked research ids',
   );
   const divergenceId = normalizedExecution.divergenceId ?? normalizedHistoricalEvent.divergenceId;
+  const triggeredAt = normalizedExecution.triggeredAt ?? normalizeDate(new Date(), 'triggerHistoricalEvent execution.triggeredAt');
 
   return {
     ...normalizedHistoricalEvent,
@@ -197,7 +210,7 @@ export function triggerHistoricalEvent(historicalEvent, execution = {}) {
     unlockedResearchIds,
     divergenceId,
     triggerCount: normalizedHistoricalEvent.triggerCount + 1,
-    lastTriggeredAt: normalizedExecution.triggeredAt,
+    lastTriggeredAt: triggeredAt,
     lastTriggeredBy: normalizedExecution.triggeredBy,
   };
 }
