@@ -131,6 +131,33 @@ function normalizeExecution(execution) {
   };
 }
 
+export async function selectHistoricalEvent(historicalEvents, randomProvider) {
+  if (!Array.isArray(historicalEvents) || historicalEvents.length === 0) {
+    throw new RangeError('selectHistoricalEvent historicalEvents must be a non-empty array.');
+  }
+
+  if (!randomProvider || typeof randomProvider.requireNextFloat !== 'function') {
+    throw new TypeError('selectHistoricalEvent randomProvider must expose requireNextFloat().');
+  }
+
+  const normalizedEvents = historicalEvents.map((historicalEvent) => normalizeHistoricalEvent(historicalEvent));
+  const randomValue = await randomProvider.requireNextFloat();
+  const selectedIndex = Math.min(
+    normalizedEvents.length - 1,
+    Math.floor(randomValue * normalizedEvents.length),
+  );
+
+  return {
+    selectedEvent: {
+      ...normalizedEvents[selectedIndex],
+      selectionRoll: randomValue,
+      selectionIndex: selectedIndex,
+    },
+    selectionRoll: randomValue,
+    selectionIndex: selectedIndex,
+  };
+}
+
 export function triggerHistoricalEvent(historicalEvent, execution = {}) {
   const normalizedHistoricalEvent = normalizeHistoricalEvent(historicalEvent);
   const normalizedExecution = normalizeExecution(execution);
