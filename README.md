@@ -30,6 +30,19 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - côté UI, `buildCityStockPanel` construit une vue lisible du stock d'une ville avec lignes triées, objectifs désirés, états `shortage` ou `balanced` ou `surplus`, et métriques de synthèse réutilisables
 - les tests Beta couvrent explicitement la production, la rareté, les transferts logistiques, l'émission d'événements économie, les adaptateurs mémoire et l'affichage UI du stock d'une ville
 
+## Règles Gamma, culture, recherche et histoire alternative
+- `Culture`, `ResearchState`, `HistoricalEvent` et `DivergencePoint` servent de modèles canoniques pour la progression culturelle, les découvertes, les bifurcations historiques et les événements associés, avec normalisation stricte des identifiants, listes et dates métier
+- `advanceResearch` fait progresser une recherche, fusionne les découvertes de concepts, préserve les transitions explicites `active`, `blocked` et `completed`, et interdit les transitions impossibles
+- `evaluateResearchUnlocks` débloque de nouveaux projets uniquement quand le seuil de `knowledgePoints` est atteint, sans redébloquer ce qui l’est déjà, et retourne séparément les déblocages nouveaux
+- `evaluateCulturalDrift` combine pressions, contacts et résilience pour produire une dérive déterministe par axe et un impact borné sur la stabilité
+- `evolveCulture` compose la dérive culturelle avec l’évolution des valeurs et traditions, tout en gardant des mises à jour immuables et des scores bornés dans le domaine
+- `registerDivergence` relie proprement un `HistoricalEvent` à un `DivergencePoint`, conserve la date historique par défaut, agrège les découvertes utiles et refuse les liens incohérents
+- `triggerHistoricalEvent`, `selectHistoricalEvent`, `RandomProviderPort` et `ClockPort` rendent le déclenchement d’événements testable, déterministe et injectable pour la sélection aléatoire comme pour l’horodatage
+- `CultureRepositoryPort`, `ResearchRepositoryPort`, `InMemoryCultureRepository` et `InMemoryResearchRepository` fournissent une base hexagonale légère pour stocker cultures et recherches avec copies défensives et ordre stable
+- `loadHistoricalEventsFromJson` et `loadResearchStatesFromJson` chargent des contenus JSON normalisés avec valeurs par défaut utiles et erreurs explicites sur les payloads invalides
+- côté UI, `buildDiscoveriesPanel` expose les concepts découverts, recherches débloquées et événements liés dans une vue structurée réutilisable
+- les tests Gamma couvrent explicitement les use cases de recherche, dérive culturelle, divergence, déclenchement d’événements, ports, adaptateurs mémoire, chargeurs JSON et UI des découvertes
+
 ## Règles Delta, intrigue et opérations clandestines
 - `LancerOperation` vérifie la disponibilité de la cellule, des agents assignés et des assets requis avant tout lancement
 - la `readiness` d'une opération baisse avec la difficulté, le risque de détection, l'alerte courante et l'exposition de la cellule
