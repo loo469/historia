@@ -1,3 +1,5 @@
+import { SupplyLevel } from './SupplyLevel.js';
+
 const DEFAULT_LOYALTY = 50;
 
 function normalizeNeighborIds(neighborIds) {
@@ -34,7 +36,7 @@ export class Province {
       controllingFactionId,
       'Province controllingFactionId',
     );
-    this.supplyLevel = Province.#requireText(supplyLevel, 'Province supplyLevel');
+    this.supplyLevel = SupplyLevel.normalize(supplyLevel);
     this.loyalty = Province.#requireIntegerInRange(loyalty, 'Province loyalty', 0, 100);
     this.strategicValue = Province.#requireIntegerInRange(
       strategicValue,

@@ -52,7 +52,7 @@ test('Province can transition to occupation while preserving immutable semantics
   assert.equal(province.capturedAt, null);
 });
 
-test('Province rejects invalid identifiers and scores', () => {
+test('Province rejects invalid identifiers, scores, and unknown supply states', () => {
   assert.throws(
     () =>
       new Province({
@@ -86,5 +86,16 @@ test('Province rejects invalid identifiers and scores', () => {
         strategicValue: 0,
       }),
     /Province strategicValue must be an integer between 1 and 10/,
+  );
+
+  assert.throws(
+    () =>
+      new Province({
+        id: 'prov-001',
+        name: 'Marches of Dawn',
+        ownerFactionId: 'faction-a',
+        supplyLevel: 'broken',
+      }),
+    /SupplyLevel must be one of/,
   );
 });
