@@ -51,7 +51,32 @@ test('EconomyEventBusPort base publish method fails fast until implemented', asy
   );
 });
 
-test('EconomyEventBusPort rejects invalid shortage payloads', async () => {
+test('EconomyEventBusPort normalizes surplus events before delegation', async () => {
+  const eventBus = new RecordedEconomyEventBus();
+
+  const event = await eventBus.publishSurplus({
+    cityId: ' city-harbor ',
+    resourceId: ' grain ',
+    surplusQuantity: 9,
+    availableQuantity: 14,
+    desiredQuantity: 5,
+    cause: ' export-ready ',
+  });
+
+  assert.deepEqual(event, {
+    eventName: 'economy.surplus.detected',
+    payload: {
+      cityId: 'city-harbor',
+      resourceId: 'grain',
+      surplusQuantity: 9,
+      availableQuantity: 14,
+      desiredQuantity: 5,
+      cause: 'export-ready',
+    },
+  });
+});
+
+test('EconomyEventBusPort rejects invalid shortage and surplus payloads', async () => {
   const eventBus = new RecordedEconomyEventBus();
 
   await assert.rejects(() => eventBus.publishShortage(null), /payload must be an object/);
@@ -60,5 +85,12 @@ test('EconomyEventBusPort rejects invalid shortage payloads', async () => {
   await assert.rejects(
     () => eventBus.publishShortage({ cityId: 'city-harbor', resourceId: 'grain', shortageQuantity: 0 }),
     /shortageQuantity must be an integer between 1 and/,
+  );
+
+  await assert.rejects(() => eventBus.publishSurplus(null), /payload must be an object/);
+  await assert.rejects(() => eventBus.publishSurplus({ resourceId: 'grain', surplusQuantity: 1 }), /cityId is required/);
+  await assert.rejects(
+    () => eventBus.publishSurplus({ cityId: 'city-harbor', resourceId: 'grain', surplusQuantity: 0 }),
+    /surplusQuantity must be an integer between 1 and/,
   );
 });
