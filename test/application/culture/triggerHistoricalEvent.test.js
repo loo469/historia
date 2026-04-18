@@ -1,7 +1,73 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { triggerHistoricalEvent } from '../../../src/application/culture/triggerHistoricalEvent.js';
+import { selectHistoricalEvent, triggerHistoricalEvent } from '../../../src/application/culture/triggerHistoricalEvent.js';
+
+class FixedRandomProvider {
+  constructor(value) {
+    this.value = value;
+  }
+
+  async requireNextFloat() {
+    return this.value;
+  }
+}
+
+
+test('selectHistoricalEvent chooses an event through RandomProvider integration', async () => {
+  const { selectedEvent, selectionIndex, selectionRoll } = await selectHistoricalEvent(
+    [
+      {
+        id: 'event-first',
+        title: 'First Turning',
+        era: 'classical',
+        summary: 'The first branch remains dormant.',
+        affectedCultureIds: ['culture-north'],
+        consequenceIds: [],
+        unlockedResearchIds: [],
+        repeatable: true,
+        triggerCount: 0,
+        lastTriggeredAt: null,
+        divergenceId: null,
+      },
+      {
+        id: 'event-second',
+        title: 'Second Turning',
+        era: 'classical',
+        summary: 'The second branch becomes active.',
+        affectedCultureIds: ['culture-south'],
+        consequenceIds: ['canon-shift'],
+        unlockedResearchIds: ['astronomy'],
+        repeatable: true,
+        triggerCount: 0,
+        lastTriggeredAt: null,
+        divergenceId: null,
+      },
+    ],
+    new FixedRandomProvider(0.75),
+  );
+
+  assert.equal(selectionIndex, 1);
+  assert.equal(selectionRoll, 0.75);
+  assert.equal(selectedEvent.id, 'event-second');
+  assert.equal(selectedEvent.selectionIndex, 1);
+  assert.equal(selectedEvent.selectionRoll, 0.75);
+});
+
+test('selectHistoricalEvent rejects invalid candidate lists and random providers', async () => {
+  await assert.rejects(
+    () => selectHistoricalEvent([], new FixedRandomProvider(0.2)),
+    /selectHistoricalEvent historicalEvents must be a non-empty array/,
+  );
+  await assert.rejects(
+    () =>
+      selectHistoricalEvent(
+        [{ id: 'event', title: 'Event', era: 'classical', summary: 'x', affectedCultureIds: [], consequenceIds: [], unlockedResearchIds: [], repeatable: true, triggerCount: 0, lastTriggeredAt: null, divergenceId: null }],
+        null,
+      ),
+    /selectHistoricalEvent randomProvider must expose requireNextFloat\(\)/,
+  );
+});
 
 test('triggerHistoricalEvent merges consequences and unlocked research immutably', () => {
   const historicalEvent = {
