@@ -52,6 +52,7 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - les PR empilées sur une autre branche de feature sont interdites
 - chaque PR doit rester limitée à une seule issue ou un correctif étroit
 - Zeta vérifie d'abord la conformité du workflow et l'état mergeable, puis le fond
+- quand une PR est merge, l'issue associée doit être fermée immédiatement pour garder le backlog à jour
 - Main audite périodiquement les PR pour détecter les cas cassés ou perdus
 - si Zeta refuse une PR, Zeta commente et demande explicitement une reprise
 

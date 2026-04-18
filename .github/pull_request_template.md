@@ -33,6 +33,7 @@
 - [ ] The work stays inside the author's domain
 - [ ] A message was sent to Zeta to signal that this work is finished and ready for validation
 - [ ] Zeta has been asked for validation before merge
+- [ ] If this PR is merged, the associated issue will be closed immediately to keep the backlog up to date
 
 ## Notes
 

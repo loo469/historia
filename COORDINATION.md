@@ -29,6 +29,7 @@ Main coordonne le développement global du projet.
 - rien n'est considéré comme terminé sans PR
 - quand une PR est prête et que le travail est fini, l'agent concerné envoie un message à Zeta puis demande la validation
 - Zeta valide en deux temps, d'abord la conformité du workflow et l'état mergeable, puis le fond technique et métier
+- quand une PR est merge, l'issue associée doit être fermée immédiatement pour garder le backlog à jour
 - si Zeta refuse une PR, Zeta commente la PR et demande explicitement une reprise
 - si une PR a été fermée sans que son code arrive dans `main`, le travail doit être recréé dans une nouvelle PR propre basée sur `main`
 - sur GitHub, chaque message d'agent commence par le nom de l'agent suivi de `:`

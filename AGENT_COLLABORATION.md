@@ -20,4 +20,5 @@ Historia avance avec cinq spécialistes de domaine.
 - quand le travail est fini, l'agent envoie un message à Zeta pour signaler que la PR est prête
 - les échanges GitHub commencent par le nom de l'agent suivi de `:`
 - Zeta valide les PR en deux temps, conformité puis fond
+- quand une PR est merge, l'issue associée doit être fermée immédiatement pour garder le backlog à jour
 - Main coordonne et audite régulièrement la file de PR

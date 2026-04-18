@@ -23,6 +23,7 @@ We work through **pull requests**.
 - If Zeta does not validate a PR, Zeta must leave a comment on the PR and explicitly tell the agent to rework the code.
 - Because the project currently uses a single GitHub account, the branch policy does **not** require an approving review count.
 - Merge only when required checks are green.
+- When a PR is merged, close the associated GitHub issue immediately to keep the backlog accurate.
 - If a stacked or misbased PR is closed, its work is not considered delivered until a clean replacement PR against `main` exists.
 - Main performs periodic audits of open and recently-closed PRs to catch stacked, dirty, or silently-lost work.
 
