@@ -131,6 +131,18 @@ function normalizeExecution(execution) {
   };
 }
 
+export async function triggerHistoricalEventAtCurrentTime(historicalEvent, execution = {}, clock) {
+  if (!clock || typeof clock.requireNow !== 'function') {
+    throw new TypeError('triggerHistoricalEventAtCurrentTime clock must expose requireNow().');
+  }
+
+  const triggeredAt = await clock.requireNow();
+  return triggerHistoricalEvent(historicalEvent, {
+    ...execution,
+    triggeredAt,
+  });
+}
+
 export function triggerHistoricalEvent(historicalEvent, execution = {}) {
   const normalizedHistoricalEvent = normalizeHistoricalEvent(historicalEvent);
   const normalizedExecution = normalizeExecution(execution);
