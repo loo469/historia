@@ -24,20 +24,41 @@ function requirePayload(payload) {
   return payload;
 }
 
-function normalizeHarvestImpactPayload(payload) {
+function normalizeBasePayload(payload) {
   const normalizedPayload = requirePayload(payload);
 
   return {
     regionId: requireText(normalizedPayload.regionId, 'ClimateEventBusPort regionId'),
     season: requireText(normalizedPayload.season, 'ClimateEventBusPort season'),
-    resourceId: requireText(normalizedPayload.resourceId, 'ClimateEventBusPort resourceId'),
-    impactLevel: requireInteger(normalizedPayload.impactLevel, 'ClimateEventBusPort impactLevel', -100, 100),
     droughtIndex: requireInteger(normalizedPayload.droughtIndex, 'ClimateEventBusPort droughtIndex', 0, 100),
     precipitationLevel: requireInteger(normalizedPayload.precipitationLevel, 'ClimateEventBusPort precipitationLevel', 0, 100),
     anomaly: normalizedPayload.anomaly === null || normalizedPayload.anomaly === undefined
       ? null
       : requireText(normalizedPayload.anomaly, 'ClimateEventBusPort anomaly'),
+  };
+}
+
+function normalizeHarvestImpactPayload(payload) {
+  const normalizedPayload = requirePayload(payload);
+  const basePayload = normalizeBasePayload(normalizedPayload);
+
+  return {
+    ...basePayload,
+    resourceId: requireText(normalizedPayload.resourceId, 'ClimateEventBusPort resourceId'),
+    impactLevel: requireInteger(normalizedPayload.impactLevel, 'ClimateEventBusPort impactLevel', -100, 100),
     cause: requireText(normalizedPayload.cause ?? 'climate-harvest-impact', 'ClimateEventBusPort cause'),
+  };
+}
+
+function normalizeUnrestImpactPayload(payload) {
+  const normalizedPayload = requirePayload(payload);
+  const basePayload = normalizeBasePayload(normalizedPayload);
+
+  return {
+    ...basePayload,
+    unrestDelta: requireInteger(normalizedPayload.unrestDelta, 'ClimateEventBusPort unrestDelta', -100, 100),
+    severity: requireText(normalizedPayload.severity ?? 'moderate', 'ClimateEventBusPort severity'),
+    cause: requireText(normalizedPayload.cause ?? 'climate-unrest-impact', 'ClimateEventBusPort cause'),
   };
 }
 
@@ -48,5 +69,9 @@ export class ClimateEventBusPort {
 
   async publishHarvestImpact(payload) {
     return this.publish('climate.harvest-impact.detected', normalizeHarvestImpactPayload(payload));
+  }
+
+  async publishUnrestImpact(payload) {
+    return this.publish('climate.unrest-impact.detected', normalizeUnrestImpactPayload(payload));
   }
 }
