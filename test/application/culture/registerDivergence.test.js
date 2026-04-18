@@ -40,6 +40,10 @@ test('registerDivergence links a divergence point to a historical event immutabl
   assert.equal(registered.divergencePoint.discovered, true);
   assert.equal(registered.divergencePoint.triggeredEventId, 'event-ashen-harbors');
   assert.equal(registered.historicalEvent.divergencePointId, 'divergence-fork-01');
+  assert.equal(
+    registered.historicalEvent.triggeredAt?.toISOString(),
+    '2026-04-18T12:20:00.000Z',
+  );
   assert.deepEqual(registered.historicalEvent.discoveryIds, [
     'ash-navigation',
     'grain-shortage',

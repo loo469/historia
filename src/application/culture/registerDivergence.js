@@ -44,12 +44,8 @@ function normalizeRegistration(registration) {
   return {
     divergencePoint,
     discoveryIds: registration.discoveryIds ?? [],
-    triggeredAt: registration.triggeredAt ?? historicalEventTriggeredAtFallback(registration),
+    triggeredAt: registration.triggeredAt,
   };
-}
-
-function historicalEventTriggeredAtFallback(registration) {
-  return registration?.historicalEvent?.triggeredAt ?? new Date();
 }
 
 export function registerDivergence(historicalEventState, registration) {
@@ -87,7 +83,7 @@ export function registerDivergence(historicalEventState, registration) {
   const registeredDivergencePoint = divergencePoint.withDiscovery(historicalEvent.id);
   const registeredHistoricalEvent = new HistoricalEvent({
     ...historicalEvent.toJSON(),
-    triggeredAt: normalizedRegistration.triggeredAt,
+    triggeredAt: normalizedRegistration.triggeredAt ?? historicalEvent.triggeredAt,
     divergencePointId: divergencePoint.id,
     discoveryIds: normalizeDiscoveryIds(historicalEvent, normalizedRegistration),
   });
