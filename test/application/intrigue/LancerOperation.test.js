@@ -115,6 +115,66 @@ test('LancerOperation reports blockers for unavailable cellule resources', () =>
   });
 });
 
+test('LancerOperation detection risk lowers readiness without changing launch semantics', () => {
+  const lowRiskResult = lancerOperation({
+    cellule: {
+      status: 'active',
+      exposure: 8,
+      assetIds: ['forged-seals'],
+    },
+    operation: {
+      id: 'op-brume',
+      assignedAgentIds: ['agent-corbeau'],
+      requiredAssetIds: ['forged-seals'],
+      difficulty: 20,
+      detectionRisk: 10,
+      progress: 0,
+      phase: 'planning',
+      heat: 2,
+    },
+    availableAgentIds: ['agent-corbeau'],
+    alertLevel: 10,
+  });
+
+  const highRiskResult = lancerOperation({
+    cellule: {
+      status: 'active',
+      exposure: 8,
+      assetIds: ['forged-seals'],
+    },
+    operation: {
+      id: 'op-brume',
+      assignedAgentIds: ['agent-corbeau'],
+      requiredAssetIds: ['forged-seals'],
+      difficulty: 20,
+      detectionRisk: 45,
+      progress: 0,
+      phase: 'planning',
+      heat: 2,
+    },
+    availableAgentIds: ['agent-corbeau'],
+    alertLevel: 10,
+  });
+
+  assert.equal(lowRiskResult.launched, true);
+  assert.equal(highRiskResult.launched, true);
+  assert.equal(lowRiskResult.reason, 'operation-launched');
+  assert.equal(highRiskResult.reason, 'operation-launched');
+  assert.equal(lowRiskResult.readiness, 52);
+  assert.equal(highRiskResult.readiness, 17);
+  assert.ok(highRiskResult.readiness < lowRiskResult.readiness);
+  assert.deepEqual(highRiskResult.nextOperation, {
+    id: 'op-brume',
+    assignedAgentIds: ['agent-corbeau'],
+    requiredAssetIds: ['forged-seals'],
+    difficulty: 20,
+    detectionRisk: 45,
+    progress: 10,
+    phase: 'infiltration',
+    heat: 3,
+  });
+});
+
 test('LancerOperation rejects invalid inputs and blocks unavailable cellules', () => {
   assert.throws(
     () => lancerOperation({ cellule: null, operation: {} }),
@@ -129,6 +189,17 @@ test('LancerOperation rejects invalid inputs and blocks unavailable cellules', (
         alertLevel: 101,
       }),
     /LancerOperation alertLevel must be an integer between 0 and 100/,
+  );
+
+  assert.throws(
+    () =>
+      lancerOperation({
+        cellule: { status: 'active', exposure: 0, assetIds: ['forged-seals'] },
+        operation: { assignedAgentIds: ['agent-corbeau'], requiredAssetIds: [], difficulty: 10, detectionRisk: -1 },
+        availableAgentIds: ['agent-corbeau'],
+        alertLevel: 10,
+      }),
+    /LancerOperation operation detectionRisk must be an integer between 0 and 100/,
   );
 
   const unavailableCellule = lancerOperation({
