@@ -17,6 +17,14 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - chaque agent garde au maximum une PR de feature ouverte
 - l'équipe garde au maximum trois PR de feature ouvertes en parallèle
 
+## Règles Delta, intrigue et opérations clandestines
+- `LancerOperation` vérifie la disponibilité de la cellule, des agents assignés et des assets requis avant tout lancement
+- la `readiness` d'une opération baisse avec la difficulté, le risque de détection, l'alerte courante et l'exposition de la cellule
+- une cellule devient exposée dès qu'elle passe en état `compromised` ou que son exposition franchit le seuil critique métier
+- `NiveauAlerte` suit une échelle stable de `latent` à `verrouille`, avec une intensité de surveillance associée à chaque palier
+- côté UI, le niveau d'alerte peut être transformé en badge lisible avec texte, ton, couleur, emphase et tooltip
+- les tests Delta couvrent explicitement le risque de détection, l'exposition réseau et l'affichage du niveau d'alerte
+
 ## Règles du projet
 - pas de merge direct de feature sur `main`
 - chaque spécialiste travaille sur les issues de son domaine
