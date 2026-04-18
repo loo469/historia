@@ -13,3 +13,16 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - travail via pull requests
 - messages GitHub préfixés par le nom de l'agent
 - validation des PR par Zeta
+- Main coordonne et Zeta valide
+
+## Règles du projet
+- pas de merge direct de feature sur `main`
+- chaque spécialiste travaille sur les issues de son domaine
+- rien n'est considéré comme terminé sans PR
+- quand une PR est prête, l'agent doit contacter Zeta pour validation
+- si Zeta refuse une PR, Zeta commente et demande explicitement une reprise
+
+Voir aussi:
+- `CONTRIBUTING.md`
+- `COORDINATION.md`
+- `AGENT_COLLABORATION.md`
