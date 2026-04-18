@@ -42,6 +42,53 @@ function deriveOutcomeSeverity({ readiness, targetStability, targetSecurity, ran
   return Math.max(0, readiness + randomFactor - Math.round((targetStability + targetSecurity) / 2));
 }
 
+function buildSabotageEvents({
+  operationId,
+  targetId,
+  outcome,
+  damage,
+}) {
+  const events = [
+    {
+      type: 'intrigue.sabotage.resolved',
+      operationId,
+      targetId,
+      outcome,
+      damage: { ...damage },
+    },
+  ];
+
+  if (outcome === 'sabotage-succeeded') {
+    events.push({
+      type: 'intrigue.sabotage.damage-inflicted',
+      operationId,
+      targetId,
+      industryLoss: damage.industryLoss,
+      stabilityLoss: damage.stabilityLoss,
+      disruptedInfrastructureIds: [...damage.disruptedInfrastructureIds],
+    });
+  }
+
+  if (outcome === 'sabotage-failed') {
+    events.push({
+      type: 'intrigue.sabotage.failed',
+      operationId,
+      targetId,
+      heatIncrease: damage.heatIncrease,
+    });
+  }
+
+  if (outcome === 'no-target-infrastructure') {
+    events.push({
+      type: 'intrigue.sabotage.no-target',
+      operationId,
+      targetId,
+    });
+  }
+
+  return events;
+}
+
 export function resoudreSabotage({
   operation,
   target,
@@ -64,18 +111,26 @@ export function resoudreSabotage({
   const targetIndustry = requireScore(normalizedTarget.industry ?? 0, 'ResoudreSabotage target industry');
 
   if (normalizedInfrastructureIds.length === 0) {
+    const damage = {
+      industryLoss: 0,
+      stabilityLoss: 0,
+      heatIncrease: 0,
+      disruptedInfrastructureIds: [],
+    };
+
     return {
       resolved: false,
       outcome: 'no-target-infrastructure',
       target: { ...normalizedTarget },
       operation: { ...normalizedOperation },
       summary: 'No sabotage target was available.',
-      damage: {
-        industryLoss: 0,
-        stabilityLoss: 0,
-        heatIncrease: 0,
-        disruptedInfrastructureIds: [],
-      },
+      damage,
+      events: buildSabotageEvents({
+        operationId,
+        targetId,
+        outcome: 'no-target-infrastructure',
+        damage,
+      }),
     };
   }
 
@@ -94,9 +149,17 @@ export function resoudreSabotage({
   const heatIncrease = Math.min(100 - heat, success ? Math.max(8, 18 - Math.round(readiness / 10)) : 14);
   const nextHeat = heat + heatIncrease;
 
+  const outcome = success ? 'sabotage-succeeded' : 'sabotage-failed';
+  const damage = {
+    industryLoss,
+    stabilityLoss,
+    heatIncrease,
+    disruptedInfrastructureIds,
+  };
+
   return {
     resolved: true,
-    outcome: success ? 'sabotage-succeeded' : 'sabotage-failed',
+    outcome,
     operation: {
       ...normalizedOperation,
       id: operationId,
@@ -114,11 +177,12 @@ export function resoudreSabotage({
     summary: success
       ? `Sabotage disrupted ${disruptedInfrastructureIds.length} infrastructure target(s).`
       : 'Sabotage failed to create lasting damage.',
-    damage: {
-      industryLoss,
-      stabilityLoss,
-      heatIncrease,
-      disruptedInfrastructureIds,
-    },
+    damage,
+    events: buildSabotageEvents({
+      operationId,
+      targetId,
+      outcome,
+      damage,
+    }),
   };
 }
