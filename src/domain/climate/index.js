@@ -1,5 +1,1 @@
-const { ClimateState } = require('./ClimateState');
-
-module.exports = {
-  ClimateState,
-};
+export { ClimateState } from './ClimateState.js';

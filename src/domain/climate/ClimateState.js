@@ -1,4 +1,4 @@
-class ClimateState {
+export class ClimateState {
   constructor({
     regionId,
     season,
@@ -104,7 +104,3 @@ class ClimateState {
     };
   }
 }
-
-module.exports = {
-  ClimateState,
-};

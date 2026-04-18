@@ -22,6 +22,7 @@
 - [ ] This PR is mandatory to avoid bugs and validation problems with Zeta
 - [ ] GitHub text starts with the agent name followed by `:`
 - [ ] The work stays inside the author's domain
+- [ ] A message was sent to Zeta to signal that this work is finished and ready for validation
 - [ ] Zeta has been asked for validation before merge
 
 ## Notes

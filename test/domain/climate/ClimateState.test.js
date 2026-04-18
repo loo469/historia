@@ -1,7 +1,7 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
-const { ClimateState } = require('../../../src/domain/climate/ClimateState');
+import { ClimateState } from '../../../src/domain/climate/ClimateState.js';
 
 test('creates a climate state for a region', () => {
   const state = new ClimateState({
