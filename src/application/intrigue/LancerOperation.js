@@ -36,6 +36,60 @@ function getMissingEntries(requiredIds, availableIds, key) {
     .map((id) => ({ [key]: id }));
 }
 
+function buildExposureEvents({
+  cellule,
+  operation,
+  launched,
+  reason,
+  readiness,
+  alertLevel,
+  nextOperation,
+}) {
+  const operationId = String(operation.id ?? '').trim() || null;
+  const celluleId = String(cellule.id ?? '').trim() || null;
+  const currentHeat = operation.heat ?? 0;
+  const nextHeat = nextOperation.heat ?? currentHeat;
+  const heatIncrease = Math.max(0, nextHeat - currentHeat);
+  const assessedEvent = {
+    type: 'intrigue.exposure.assessed',
+    operationId,
+    celluleId,
+    launched,
+    reason,
+    readiness,
+    celluleExposure: cellule.exposure ?? 0,
+    detectionRisk: operation.detectionRisk ?? 0,
+    alertLevel,
+    heatIncrease,
+  };
+  const events = [assessedEvent];
+
+  if (launched && (cellule.exposure > 0 || operation.detectionRisk > 0 || alertLevel > 0 || heatIncrease > 0)) {
+    events.push({
+      type: 'intrigue.exposure.risk-detected',
+      operationId,
+      celluleId,
+      readiness,
+      celluleExposure: cellule.exposure ?? 0,
+      detectionRisk: operation.detectionRisk ?? 0,
+      alertLevel,
+      heatIncrease,
+    });
+  }
+
+  if (!launched && reason === 'cellule-unavailable') {
+    events.push({
+      type: 'intrigue.exposure.cellule-blocked',
+      operationId,
+      celluleId,
+      celluleStatus: String(cellule.status ?? '').trim(),
+      celluleExposure: cellule.exposure ?? 0,
+    });
+  }
+
+  return events;
+}
+
 export function lancerOperation({
   cellule,
   operation,
@@ -78,46 +132,90 @@ export function lancerOperation({
   }
 
   if (normalizedAssignedAgentIds.length === 0) {
+    const nextOperation = { ...normalizedOperation };
+
     return {
       launched: false,
       reason: 'no-assigned-agents',
-      nextOperation: { ...normalizedOperation },
+      nextOperation,
       readiness: 0,
       blockers: [],
+      events: buildExposureEvents({
+        cellule: normalizedCellule,
+        operation: normalizedOperation,
+        launched: false,
+        reason: 'no-assigned-agents',
+        readiness: 0,
+        alertLevel: normalizedAlertLevel,
+        nextOperation,
+      }),
     };
   }
 
   if (celluleStatus === 'compromised' || celluleStatus === 'dismantled') {
+    const nextOperation = { ...normalizedOperation };
+
     return {
       launched: false,
       reason: 'cellule-unavailable',
-      nextOperation: { ...normalizedOperation },
+      nextOperation,
       readiness: 0,
       blockers: [{ status: celluleStatus }],
+      events: buildExposureEvents({
+        cellule: normalizedCellule,
+        operation: normalizedOperation,
+        launched: false,
+        reason: 'cellule-unavailable',
+        readiness: 0,
+        alertLevel: normalizedAlertLevel,
+        nextOperation,
+      }),
     };
   }
 
   const missingAgents = getMissingEntries(normalizedAssignedAgentIds, normalizedAvailableAgentIds, 'agentId');
 
   if (missingAgents.length > 0) {
+    const nextOperation = { ...normalizedOperation };
+
     return {
       launched: false,
       reason: 'missing-agents',
-      nextOperation: { ...normalizedOperation },
+      nextOperation,
       readiness: 0,
       blockers: missingAgents,
+      events: buildExposureEvents({
+        cellule: normalizedCellule,
+        operation: normalizedOperation,
+        launched: false,
+        reason: 'missing-agents',
+        readiness: 0,
+        alertLevel: normalizedAlertLevel,
+        nextOperation,
+      }),
     };
   }
 
   const missingAssets = getMissingEntries(normalizedRequiredAssetIds, normalizedAvailableAssetIds, 'assetId');
 
   if (missingAssets.length > 0) {
+    const nextOperation = { ...normalizedOperation };
+
     return {
       launched: false,
       reason: 'missing-assets',
-      nextOperation: { ...normalizedOperation },
+      nextOperation,
       readiness: 0,
       blockers: missingAssets,
+      events: buildExposureEvents({
+        cellule: normalizedCellule,
+        operation: normalizedOperation,
+        launched: false,
+        reason: 'missing-assets',
+        readiness: 0,
+        alertLevel: normalizedAlertLevel,
+        nextOperation,
+      }),
     };
   }
 
@@ -131,16 +229,27 @@ export function lancerOperation({
   const nextPhase = normalizedOperation.phase === 'planning' ? 'infiltration' : normalizedOperation.phase;
   const nextProgress = nextPhase === 'infiltration' ? Math.max(normalizedOperation.progress ?? 0, 10) : normalizedOperation.progress ?? 0;
 
+  const nextOperation = {
+    ...normalizedOperation,
+    phase: nextPhase,
+    progress: nextProgress,
+    heat: Math.min(100, (normalizedOperation.heat ?? 0) + Math.round(normalizedAlertLevel / 10)),
+  };
+
   return {
     launched: true,
     reason: 'operation-launched',
     readiness,
     blockers: [],
-    nextOperation: {
-      ...normalizedOperation,
-      phase: nextPhase,
-      progress: nextProgress,
-      heat: Math.min(100, (normalizedOperation.heat ?? 0) + Math.round(normalizedAlertLevel / 10)),
-    },
+    nextOperation,
+    events: buildExposureEvents({
+      cellule: normalizedCellule,
+      operation: normalizedOperation,
+      launched: true,
+      reason: 'operation-launched',
+      readiness,
+      alertLevel: normalizedAlertLevel,
+      nextOperation,
+    }),
   };
 }

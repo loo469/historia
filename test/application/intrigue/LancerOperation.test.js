@@ -40,6 +40,30 @@ test('LancerOperation moves a prepared operation into infiltration', () => {
       phase: 'infiltration',
       heat: 6,
     },
+    events: [
+      {
+        type: 'intrigue.exposure.assessed',
+        operationId: 'op-cendre',
+        celluleId: 'cellule-ombre',
+        launched: true,
+        reason: 'operation-launched',
+        readiness: 28,
+        celluleExposure: 12,
+        detectionRisk: 17,
+        alertLevel: 15,
+        heatIncrease: 2,
+      },
+      {
+        type: 'intrigue.exposure.risk-detected',
+        operationId: 'op-cendre',
+        celluleId: 'cellule-ombre',
+        readiness: 28,
+        celluleExposure: 12,
+        detectionRisk: 17,
+        alertLevel: 15,
+        heatIncrease: 2,
+      },
+    ],
   });
 });
 
@@ -77,6 +101,20 @@ test('LancerOperation reports blockers for unavailable cellule resources', () =>
       phase: 'planning',
       heat: 0,
     },
+    events: [
+      {
+        type: 'intrigue.exposure.assessed',
+        operationId: null,
+        celluleId: null,
+        launched: false,
+        reason: 'missing-agents',
+        readiness: 0,
+        celluleExposure: 22,
+        detectionRisk: 10,
+        alertLevel: 10,
+        heatIncrease: 0,
+      },
+    ],
   });
 
   const missingAssetsResult = lancerOperation({
@@ -112,6 +150,20 @@ test('LancerOperation reports blockers for unavailable cellule resources', () =>
       phase: 'planning',
       heat: 0,
     },
+    events: [
+      {
+        type: 'intrigue.exposure.assessed',
+        operationId: null,
+        celluleId: null,
+        launched: false,
+        reason: 'missing-assets',
+        readiness: 0,
+        celluleExposure: 22,
+        detectionRisk: 10,
+        alertLevel: 10,
+        heatIncrease: 0,
+      },
+    ],
   });
 });
 
@@ -173,6 +225,30 @@ test('LancerOperation detection risk lowers readiness without changing launch se
     phase: 'infiltration',
     heat: 3,
   });
+  assert.deepEqual(highRiskResult.events, [
+    {
+      type: 'intrigue.exposure.assessed',
+      operationId: 'op-brume',
+      celluleId: null,
+      launched: true,
+      reason: 'operation-launched',
+      readiness: 17,
+      celluleExposure: 8,
+      detectionRisk: 45,
+      alertLevel: 10,
+      heatIncrease: 1,
+    },
+    {
+      type: 'intrigue.exposure.risk-detected',
+      operationId: 'op-brume',
+      celluleId: null,
+      readiness: 17,
+      celluleExposure: 8,
+      detectionRisk: 45,
+      alertLevel: 10,
+      heatIncrease: 1,
+    },
+  ]);
 });
 
 test('LancerOperation rejects invalid inputs and blocks unavailable cellules', () => {
@@ -235,5 +311,26 @@ test('LancerOperation rejects invalid inputs and blocks unavailable cellules', (
       phase: 'planning',
       heat: 0,
     },
+    events: [
+      {
+        type: 'intrigue.exposure.assessed',
+        operationId: null,
+        celluleId: null,
+        launched: false,
+        reason: 'cellule-unavailable',
+        readiness: 0,
+        celluleExposure: 71,
+        detectionRisk: 5,
+        alertLevel: 20,
+        heatIncrease: 0,
+      },
+      {
+        type: 'intrigue.exposure.cellule-blocked',
+        operationId: null,
+        celluleId: null,
+        celluleStatus: 'compromised',
+        celluleExposure: 71,
+      },
+    ],
   });
 });
