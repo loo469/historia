@@ -97,3 +97,110 @@ test('ProduceResources rejects invalid workforce and output definitions', () => 
     /ProduceResources rule outputByResource must define at least one produced resource/,
   );
 });
+
+test('ProduceResources preserves stock state when blocked by insufficient workforce', () => {
+  const result = produceResources({
+    city: {
+      id: 'city-smithy',
+      workforce: 3,
+      stockByResource: {
+        iron: 8,
+        coal: 5,
+      },
+    },
+    rule: {
+      id: 'rule-forge-tools',
+      workforceRequired: 6,
+      inputByResource: {
+        coal: 2,
+        iron: 4,
+      },
+      outputByResource: {
+        tools: 2,
+      },
+    },
+  });
+
+  assert.deepEqual(result, {
+    executed: false,
+    reason: 'insufficient-workforce',
+    nextStockByResource: {
+      coal: 5,
+      iron: 8,
+    },
+    consumedByResource: {},
+    producedByResource: {},
+    workforceUsed: 0,
+  });
+});
+
+test('ProduceResources can run recipes without inputs and accumulates outputs onto existing stock', () => {
+  const result = produceResources({
+    city: {
+      id: 'city-windmill',
+      workforce: 12,
+      stockByResource: {
+        grain: 9,
+        flour: 4,
+      },
+    },
+    rule: {
+      id: 'rule-bake-flour',
+      workforceRequired: 5,
+      outputByResource: {
+        flour: 7,
+      },
+    },
+  });
+
+  assert.deepEqual(result, {
+    executed: true,
+    reason: 'produced',
+    nextStockByResource: {
+      flour: 11,
+      grain: 9,
+    },
+    consumedByResource: {},
+    producedByResource: {
+      flour: 7,
+    },
+    workforceUsed: 5,
+  });
+});
+
+test('ProduceResources reports every missing requirement while leaving stock untouched', () => {
+  const result = produceResources({
+    city: {
+      id: 'city-foundry',
+      workforce: 20,
+      stockByResource: {
+        coal: 1,
+        iron: 2,
+      },
+    },
+    rule: {
+      id: 'rule-cast-cannon',
+      workforceRequired: 10,
+      inputByResource: {
+        coal: 3,
+        iron: 6,
+        wood: 2,
+      },
+      outputByResource: {
+        cannon: 1,
+      },
+    },
+  });
+
+  assert.equal(result.executed, false);
+  assert.equal(result.reason, 'insufficient-inputs');
+  assert.deepEqual(result.nextStockByResource, {
+    coal: 1,
+    iron: 2,
+  });
+  assert.deepEqual(result.missingRequirements, [
+    { resourceId: 'coal', required: 3, available: 1 },
+    { resourceId: 'iron', required: 6, available: 2 },
+    { resourceId: 'wood', required: 2, available: 0 },
+  ]);
+});
