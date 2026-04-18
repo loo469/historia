@@ -95,3 +95,115 @@ test('ConsumeNeeds rejects invalid city state and malformed resource maps', () =
     /ConsumeNeeds stockByResource quantities must be integers greater than or equal to 0/,
   );
 });
+
+test('ConsumeNeeds clamps prosperity and stability when scarcity would drop them below zero', () => {
+  const result = consumeNeeds({
+    city: {
+      prosperity: 4,
+      stability: 6,
+      stockByResource: {
+        grain: 0,
+      },
+    },
+    needsByResource: {
+      grain: 9,
+    },
+  });
+
+  assert.deepEqual(result, {
+    fullySatisfied: false,
+    satisfactionRatio: 0,
+    nextStockByResource: {
+      grain: 0,
+    },
+    consumedByResource: {
+      grain: 0,
+    },
+    shortagesByResource: {
+      grain: 9,
+    },
+    prosperityDelta: -12,
+    stabilityDelta: -18,
+    nextProsperity: 0,
+    nextStability: 0,
+  });
+});
+
+test('ConsumeNeeds treats zero-quantity needs as fully satisfied without penalties', () => {
+  const result = consumeNeeds({
+    city: {
+      prosperity: 58,
+      stability: 63,
+      stockByResource: {
+        grain: 5,
+        water: 2,
+      },
+    },
+    needsByResource: {
+      grain: 0,
+      water: 0,
+    },
+  });
+
+  assert.deepEqual(result, {
+    fullySatisfied: true,
+    satisfactionRatio: 1,
+    nextStockByResource: {
+      grain: 5,
+      water: 2,
+    },
+    consumedByResource: {
+      grain: 0,
+      water: 0,
+    },
+    shortagesByResource: {},
+    prosperityDelta: 0,
+    stabilityDelta: 0,
+    nextProsperity: 58,
+    nextStability: 63,
+  });
+});
+
+test('ConsumeNeeds uses the explicit stock snapshot instead of mutating the city stock reference', () => {
+  const cityStock = {
+    grain: 12,
+    water: 8,
+  };
+  const explicitStock = {
+    grain: 3,
+    water: 6,
+  };
+
+  const result = consumeNeeds({
+    city: {
+      prosperity: 70,
+      stability: 72,
+      stockByResource: cityStock,
+    },
+    stockByResource: explicitStock,
+    needsByResource: {
+      grain: 4,
+      water: 2,
+    },
+  });
+
+  assert.deepEqual(result.nextStockByResource, {
+    grain: 0,
+    water: 4,
+  });
+  assert.deepEqual(result.consumedByResource, {
+    grain: 3,
+    water: 2,
+  });
+  assert.deepEqual(result.shortagesByResource, {
+    grain: 1,
+  });
+  assert.deepEqual(cityStock, {
+    grain: 12,
+    water: 8,
+  });
+  assert.deepEqual(explicitStock, {
+    grain: 3,
+    water: 6,
+  });
+});
