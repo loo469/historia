@@ -17,6 +17,19 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - chaque agent garde au maximum une PR de feature ouverte
 - l'équipe garde au maximum trois PR de feature ouvertes en parallèle
 
+## Règles Beta, villes, économie et logistique
+- `City` garde un état canonique pour une ville avec population, workforce, prospérité, stabilité, stocks, routes commerciales et règles de production, avec normalisation stricte des identifiants et quantités
+- `ResourceStock`, `ProductionRule` et `TradeRoute` servent de briques métier de base pour raisonner sur les stocks, les recettes de production et les routes à capacité limitée
+- `ProduceResources` exécute une règle seulement si elle est activée, que la workforce est suffisante et que tous les intrants sont présents; sinon le résultat reste explicite avec une raison comme `rule-disabled`, `insufficient-workforce` ou `insufficient-inputs`
+- `ConsumeNeeds` retire les besoins depuis le stock disponible, calcule un ratio de satisfaction, suit les pénuries par ressource et applique des pénalités bornées sur prospérité et stabilité
+- `UpdateCityEconomy` compose la production puis la consommation dans cet ordre pour produire un prochain état de ville cohérent sur un tick d'économie
+- `PlanLogisticsFlows` planifie des transferts depuis la première ville d'une route vers les arrêts suivants, en respectant les surplus, les besoins restants, les capacités par ressource et l'état actif ou non des routes
+- `EconomyEventBusPort` publie des événements normalisés pour les pénuries et les surplus via `economy.shortage.detected` et `economy.surplus.detected`
+- `EmitShortageEvents` et `EmitSurplusEvents` transforment des cartes de ressources en événements unitaires stables, triés et validés, sans bruit quand une carte est vide
+- `CityRepositoryPort`, `RouteRepositoryPort` et `MarketRepository` fournissent une base hexagonale légère pour orchestrer villes, routes et prix, avec des adaptateurs mémoire déjà présents pour les villes et les routes
+- côté UI, `buildCityStockPanel` construit une vue lisible du stock d'une ville avec lignes triées, objectifs désirés, états `shortage` ou `balanced` ou `surplus`, et métriques de synthèse réutilisables
+- les tests Beta couvrent explicitement la production, la rareté, les transferts logistiques, l'émission d'événements économie, les adaptateurs mémoire et l'affichage UI du stock d'une ville
+
 ## Règles Delta, intrigue et opérations clandestines
 - `LancerOperation` vérifie la disponibilité de la cellule, des agents assignés et des assets requis avant tout lancement
 - la `readiness` d'une opération baisse avec la difficulté, le risque de détection, l'alerte courante et l'exposition de la cellule
