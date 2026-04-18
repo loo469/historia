@@ -26,7 +26,7 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - `PlanLogisticsFlows` planifie des transferts depuis la première ville d'une route vers les arrêts suivants, en respectant les surplus, les besoins restants, les capacités par ressource et l'état actif ou non des routes
 - `EconomyEventBusPort` publie des événements normalisés pour les pénuries et les surplus via `economy.shortage.detected` et `economy.surplus.detected`
 - `EmitShortageEvents` et `EmitSurplusEvents` transforment des cartes de ressources en événements unitaires stables, triés et validés, sans bruit quand une carte est vide
-- `CityRepositoryPort`, `RouteRepositoryPort`, `MarketRepository` et leurs adaptateurs mémoire fournissent une base hexagonale légère pour charger, sauver et tester villes, routes et prix sans dépendance externe
+- `CityRepositoryPort`, `RouteRepositoryPort` et `MarketRepository` fournissent une base hexagonale légère pour orchestrer villes, routes et prix, avec des adaptateurs mémoire déjà présents pour les villes et les routes
 - côté UI, `buildCityStockPanel` construit une vue lisible du stock d'une ville avec lignes triées, objectifs désirés, états `shortage` ou `balanced` ou `surplus`, et métriques de synthèse réutilisables
 - les tests Beta couvrent explicitement la production, la rareté, les transferts logistiques, l'émission d'événements économie, les adaptateurs mémoire et l'affichage UI du stock d'une ville
 
