@@ -215,6 +215,30 @@ test('LancerOperation detection risk lowers readiness without changing launch se
   assert.equal(lowRiskResult.readiness, 52);
   assert.equal(highRiskResult.readiness, 17);
   assert.ok(highRiskResult.readiness < lowRiskResult.readiness);
+  assert.deepEqual(lowRiskResult.events, [
+    {
+      type: 'intrigue.exposure.assessed',
+      operationId: 'op-brume',
+      celluleId: null,
+      launched: true,
+      reason: 'operation-launched',
+      readiness: 52,
+      celluleExposure: 8,
+      detectionRisk: 10,
+      alertLevel: 10,
+      heatIncrease: 1,
+    },
+    {
+      type: 'intrigue.exposure.risk-detected',
+      operationId: 'op-brume',
+      celluleId: null,
+      readiness: 52,
+      celluleExposure: 8,
+      detectionRisk: 10,
+      alertLevel: 10,
+      heatIncrease: 1,
+    },
+  ]);
   assert.deepEqual(highRiskResult.nextOperation, {
     id: 'op-brume',
     assignedAgentIds: ['agent-corbeau'],
@@ -246,6 +270,66 @@ test('LancerOperation detection risk lowers readiness without changing launch se
       celluleExposure: 8,
       detectionRisk: 45,
       alertLevel: 10,
+      heatIncrease: 1,
+    },
+  ]);
+});
+
+test('LancerOperation detection risk can reduce readiness to zero while still exposing explicit risk events', () => {
+  const result = lancerOperation({
+    cellule: {
+      id: 'cellule-cendre',
+      status: 'active',
+      exposure: 30,
+      assetIds: ['safehouse-port'],
+    },
+    operation: {
+      id: 'op-braise',
+      assignedAgentIds: ['agent-corbeau'],
+      requiredAssetIds: [],
+      difficulty: 35,
+      detectionRisk: 70,
+      progress: 0,
+      phase: 'planning',
+      heat: 9,
+    },
+    availableAgentIds: ['agent-corbeau'],
+    alertLevel: 12,
+  });
+
+  assert.equal(result.launched, true);
+  assert.equal(result.readiness, 0);
+  assert.deepEqual(result.nextOperation, {
+    id: 'op-braise',
+    assignedAgentIds: ['agent-corbeau'],
+    requiredAssetIds: [],
+    difficulty: 35,
+    detectionRisk: 70,
+    progress: 10,
+    phase: 'infiltration',
+    heat: 10,
+  });
+  assert.deepEqual(result.events, [
+    {
+      type: 'intrigue.exposure.assessed',
+      operationId: 'op-braise',
+      celluleId: 'cellule-cendre',
+      launched: true,
+      reason: 'operation-launched',
+      readiness: 0,
+      celluleExposure: 30,
+      detectionRisk: 70,
+      alertLevel: 12,
+      heatIncrease: 1,
+    },
+    {
+      type: 'intrigue.exposure.risk-detected',
+      operationId: 'op-braise',
+      celluleId: 'cellule-cendre',
+      readiness: 0,
+      celluleExposure: 30,
+      detectionRisk: 70,
+      alertLevel: 12,
       heatIncrease: 1,
     },
   ]);
