@@ -46,6 +46,28 @@ test('ResoudreSabotage produces explicit damage on success', () => {
       heatIncrease: 10,
       disruptedInfrastructureIds: ['arsenal', 'rail-hub'],
     },
+    events: [
+      {
+        type: 'intrigue.sabotage.resolved',
+        operationId: 'op-cendre',
+        targetId: 'city-aster-port',
+        outcome: 'sabotage-succeeded',
+        damage: {
+          industryLoss: 16,
+          stabilityLoss: 12,
+          heatIncrease: 10,
+          disruptedInfrastructureIds: ['arsenal', 'rail-hub'],
+        },
+      },
+      {
+        type: 'intrigue.sabotage.damage-inflicted',
+        operationId: 'op-cendre',
+        targetId: 'city-aster-port',
+        industryLoss: 16,
+        stabilityLoss: 12,
+        disruptedInfrastructureIds: ['arsenal', 'rail-hub'],
+      },
+    ],
   });
 });
 
@@ -92,6 +114,26 @@ test('ResoudreSabotage keeps failure outcomes explicit', () => {
       heatIncrease: 14,
       disruptedInfrastructureIds: [],
     },
+    events: [
+      {
+        type: 'intrigue.sabotage.resolved',
+        operationId: 'op-cendre',
+        targetId: 'city-aster-port',
+        outcome: 'sabotage-failed',
+        damage: {
+          industryLoss: 0,
+          stabilityLoss: 0,
+          heatIncrease: 14,
+          disruptedInfrastructureIds: [],
+        },
+      },
+      {
+        type: 'intrigue.sabotage.failed',
+        operationId: 'op-cendre',
+        targetId: 'city-aster-port',
+        heatIncrease: 14,
+      },
+    ],
   });
 });
 
@@ -152,5 +194,24 @@ test('ResoudreSabotage validates inputs and handles missing infrastructure', () 
       heatIncrease: 0,
       disruptedInfrastructureIds: [],
     },
+    events: [
+      {
+        type: 'intrigue.sabotage.resolved',
+        operationId: 'op-cendre',
+        targetId: 'city-aster-port',
+        outcome: 'no-target-infrastructure',
+        damage: {
+          industryLoss: 0,
+          stabilityLoss: 0,
+          heatIncrease: 0,
+          disruptedInfrastructureIds: [],
+        },
+      },
+      {
+        type: 'intrigue.sabotage.no-target',
+        operationId: 'op-cendre',
+        targetId: 'city-aster-port',
+      },
+    ],
   });
 });
