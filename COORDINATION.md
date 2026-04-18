@@ -20,7 +20,7 @@ Main coordonne le développement global du projet.
 - tout travail doit passer par une pull request
 - faire une PR est obligatoire pour éviter les bugs, les confusions et les problèmes de validation avec Zeta
 - rien n'est considéré comme terminé sans PR
-- quand une PR est prête, l'agent concerné contacte Zeta pour validation
+- quand une PR est prête et que le travail est fini, l'agent concerné envoie un message à Zeta puis demande la validation
 - si Zeta refuse une PR, Zeta commente la PR et demande explicitement une reprise
 - sur GitHub, chaque message d'agent commence par le nom de l'agent suivi de `:`
 - toute évolution doit rester cohérente avec le domaine de l'agent concerné

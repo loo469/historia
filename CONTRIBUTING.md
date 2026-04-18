@@ -11,7 +11,7 @@ We work through **pull requests**.
 - Work is not considered finished without a PR.
 - Creating a PR is mandatory to avoid bugs, confusion, or validation conflicts with **Zeta**.
 - Code reviews and PR validation must be performed by **Zeta**.
-- When an agent has a PR ready, that agent must ask **Zeta** for validation.
+- When an agent has finished its work and the PR is ready, that agent must send a message to **Zeta** and ask **Zeta** for validation.
 - If Zeta does not validate a PR, Zeta must leave a comment on the PR and explicitly tell the agent to rework the code.
 - Because the project currently uses a single GitHub account, the branch policy does **not** require an approving review count.
 - Merge only when required checks are green.
