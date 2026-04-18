@@ -45,6 +45,35 @@ test('ClimateEventBusPort normalizes harvest impact events before delegation', a
   });
 });
 
+test('ClimateEventBusPort normalizes unrest impact events before delegation', async () => {
+  const eventBus = new RecordedClimateEventBus();
+
+  const event = await eventBus.publishUnrestImpact({
+    regionId: ' sunreach ',
+    season: ' summer ',
+    unrestDelta: 18,
+    droughtIndex: 71,
+    precipitationLevel: 9,
+    anomaly: ' heatwave ',
+    severity: ' high ',
+    cause: ' harvest-failure ',
+  });
+
+  assert.deepEqual(event, {
+    eventName: 'climate.unrest-impact.detected',
+    payload: {
+      regionId: 'sunreach',
+      season: 'summer',
+      unrestDelta: 18,
+      droughtIndex: 71,
+      precipitationLevel: 9,
+      anomaly: 'heatwave',
+      severity: 'high',
+      cause: 'harvest-failure',
+    },
+  });
+});
+
 test('ClimateEventBusPort base publish method fails fast until implemented', async () => {
   const eventBus = new ClimateEventBusPort();
 
@@ -59,9 +88,20 @@ test('ClimateEventBusPort base publish method fails fast until implemented', asy
     }),
     /publish must be implemented/,
   );
+
+  await assert.rejects(
+    () => eventBus.publishUnrestImpact({
+      regionId: 'north-coast',
+      season: 'summer',
+      unrestDelta: 12,
+      droughtIndex: 40,
+      precipitationLevel: 30,
+    }),
+    /publish must be implemented/,
+  );
 });
 
-test('ClimateEventBusPort rejects invalid harvest impact payloads', async () => {
+test('ClimateEventBusPort rejects invalid climate impact payloads', async () => {
   const eventBus = new RecordedClimateEventBus();
 
   await assert.rejects(
@@ -79,5 +119,16 @@ test('ClimateEventBusPort rejects invalid harvest impact payloads', async () => 
       precipitationLevel: 30,
     }),
     /impactLevel must be an integer between -100 and 100/,
+  );
+
+  await assert.rejects(
+    () => eventBus.publishUnrestImpact({
+      regionId: 'north-coast',
+      season: 'summer',
+      unrestDelta: 101,
+      droughtIndex: 40,
+      precipitationLevel: 30,
+    }),
+    /unrestDelta must be an integer between -100 and 100/,
   );
 });
