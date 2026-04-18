@@ -66,6 +66,51 @@ test('Cellule supports immutable exposure and operation updates', () => {
   assert.equal(cellule.sleeper, true);
 });
 
+test('Cellule marks network exposure when heat crosses the compromise threshold', () => {
+  const cellule = new Cellule({
+    id: 'cellule-ombre',
+    factionId: 'faction-nocturne',
+    codename: 'Les Lanternes',
+    locationId: 'district-cendre',
+    secrecy: 76,
+    loyalty: 84,
+    exposure: 68,
+    status: 'active',
+  });
+
+  const exposedCellule = cellule.withExposure(70);
+  const deeplyExposedCellule = exposedCellule.withExposure(92);
+
+  assert.equal(cellule.isExposed, false);
+  assert.equal(exposedCellule.isExposed, true);
+  assert.equal(exposedCellule.status, 'compromised');
+  assert.equal(exposedCellule.operationalReadiness, 63);
+  assert.equal(deeplyExposedCellule.isExposed, true);
+  assert.equal(deeplyExposedCellule.status, 'compromised');
+  assert.equal(deeplyExposedCellule.operationalReadiness, 56);
+});
+
+test('Cellule keeps a dismantled network dismantled even when exposure changes', () => {
+  const cellule = new Cellule({
+    id: 'cellule-ombre',
+    factionId: 'faction-nocturne',
+    codename: 'Les Lanternes',
+    locationId: 'district-cendre',
+    secrecy: 50,
+    loyalty: 40,
+    exposure: 88,
+    status: 'dismantled',
+  });
+
+  const lessExposedCellule = cellule.withExposure(12);
+  const reassignedCellule = cellule.assignOperation('op-cendre');
+
+  assert.equal(lessExposedCellule.status, 'dismantled');
+  assert.equal(lessExposedCellule.isExposed, false);
+  assert.equal(reassignedCellule.status, 'dismantled');
+  assert.deepEqual(reassignedCellule.operationIds, ['op-cendre']);
+});
+
 test('Cellule rejects invalid intrigue invariants', () => {
   assert.throws(
     () =>
