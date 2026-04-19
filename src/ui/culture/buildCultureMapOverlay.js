@@ -3,11 +3,11 @@ import { HistoricalEvent } from '../../domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../domain/culture/ResearchState.js';
 
 const DEFAULT_STYLE_BY_MARKER_TYPE = Object.freeze({
-  innovation: { color: 'violet', icon: '✦', emphasis: 'high' },
-  balanced: { color: 'teal', icon: '◆', emphasis: 'normal' },
-  traditional: { color: 'amber', icon: '⬢', emphasis: 'normal' },
-  fragmented: { color: 'crimson', icon: '✕', emphasis: 'high' },
-  default: { color: 'slate', icon: '•', emphasis: 'normal' },
+  innovation: { color: 'violet', icon: '✦', emphasis: 'high', accent: 'iris', labelTone: 'visionary' },
+  balanced: { color: 'teal', icon: '◆', emphasis: 'normal', accent: 'seafoam', labelTone: 'measured' },
+  traditional: { color: 'amber', icon: '⬢', emphasis: 'normal', accent: 'ochre', labelTone: 'ancestral' },
+  fragmented: { color: 'crimson', icon: '✕', emphasis: 'high', accent: 'ember', labelTone: 'volatile' },
+  default: { color: 'slate', icon: '•', emphasis: 'normal', accent: 'mist', labelTone: 'neutral' },
 });
 
 function requireObject(value, label) {
@@ -95,6 +95,8 @@ function normalizeStyle(styleByMarkerType, markerType) {
     color: String(style.color ?? DEFAULT_STYLE_BY_MARKER_TYPE[markerType]?.color ?? 'slate').trim() || 'slate',
     icon: String(style.icon ?? DEFAULT_STYLE_BY_MARKER_TYPE[markerType]?.icon ?? '•').trim() || '•',
     emphasis: String(style.emphasis ?? DEFAULT_STYLE_BY_MARKER_TYPE[markerType]?.emphasis ?? 'normal').trim() || 'normal',
+    accent: String(style.accent ?? DEFAULT_STYLE_BY_MARKER_TYPE[markerType]?.accent ?? 'mist').trim() || 'mist',
+    labelTone: String(style.labelTone ?? DEFAULT_STYLE_BY_MARKER_TYPE[markerType]?.labelTone ?? 'neutral').trim() || 'neutral',
   };
 }
 
@@ -160,12 +162,20 @@ function buildZoneStyle(markerType, influenceTier, style, zoneBand) {
     inner: 3,
     outer: 2,
   };
+  const glowByMarkerType = {
+    innovation: 'luminous',
+    balanced: 'soft',
+    traditional: 'matte',
+    fragmented: 'sparking',
+  };
 
   return {
     fill: style.color,
     outline: style.color,
+    accent: style.accent,
     markerIcon: style.icon,
     emphasis: style.emphasis,
+    labelTone: style.labelTone,
     opacity: opacityByTier[influenceTier] ?? 0.35,
     pattern: markerType === 'traditional'
       ? 'woven'
@@ -174,6 +184,14 @@ function buildZoneStyle(markerType, influenceTier, style, zoneBand) {
         : markerType === 'innovation'
           ? 'radiant'
           : 'solid',
+    surface: markerType === 'innovation'
+      ? 'gloss'
+      : markerType === 'traditional'
+        ? 'grain'
+        : markerType === 'fragmented'
+          ? 'shattered'
+          : 'matte',
+    glow: glowByMarkerType[markerType] ?? 'soft',
     blendMode: zoneBand === 'core' ? 'source-over' : 'multiply',
     strokeWidth: strokeWidthByBand[zoneBand] ?? 2,
   };
