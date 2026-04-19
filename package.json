@@ -5,6 +5,8 @@
   "description": "Historia strategy/simulation prototype",
   "type": "module",
   "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "play": "node scripts/dev-server.mjs",
     "test": "node --test"
   }
 }
