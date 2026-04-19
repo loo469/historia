@@ -353,6 +353,24 @@ export function buildCultureMapOverlay(payload, options = {}) {
         const dominantCulture = regionPresence[0] ?? null;
         const zoneBand = buildZoneBand(zoneRank, overlapCount);
 
+        const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
+          const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
+
+          return {
+            linkId: `${regionId}:${culture.id}:${discoveryId}`,
+            regionId,
+            cultureId: culture.id,
+            discoveryId,
+            eventIds: linkedEvents.map((historicalEvent) => historicalEvent.id),
+            eventTitles: linkedEvents.map((historicalEvent) => historicalEvent.title),
+            eventCount: linkedEvents.length,
+            activeResearchCount: cultureState.signals.activeResearchCount,
+            label: linkedEvents.length > 0
+              ? `${discoveryId} · ${regionId} · ${linkedEvents.length} événement${linkedEvents.length > 1 ? 's' : ''}`
+              : `${discoveryId} · ${regionId}`,
+          };
+        });
+
         return {
           overlayId: `${regionId}:${culture.id}`,
           regionId,
@@ -366,6 +384,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           label: `${culture.name} (${cultureState.signals.highlightedDiscoveries.length} découvertes)`,
           summary: `${cultureState.signals.activeResearchCount} recherches actives, ${cultureState.signals.eventCount} événements, ${cultureState.signals.identityTags.length} repères culturels`,
           discoveries: cultureState.signals.highlightedDiscoveries,
+          regionalDiscoveryLinks,
           unlockedResearchIds: cultureState.signals.unlockedResearchIds,
           activeResearchCount: cultureState.signals.activeResearchCount,
           eventIds: cultureState.signals.eventIds,
