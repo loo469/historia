@@ -54,6 +54,29 @@ function buildAnomalySummary(anomaly, activeCatastropheIds) {
   return anomalies;
 }
 
+function buildRiskSummary(climateState) {
+  const logistics = climateState.activeCatastropheIds.length > 0
+    ? 'élevé'
+    : climateState.precipitationLevel < 20 || climateState.droughtIndex >= 55
+      ? 'surveillé'
+      : 'faible';
+
+  const harvest = climateState.precipitationLevel < 25 || climateState.droughtIndex >= 50
+    ? 'fragile'
+    : 'soutenu';
+
+  const vigilance = climateState.hasAnomaly() || climateState.activeCatastropheIds.length > 0
+    ? 'renforcée'
+    : 'normale';
+
+  return {
+    logistics,
+    harvest,
+    vigilance,
+    summary: `logistique ${logistics}, récoltes ${harvest}, vigilance ${vigilance}`,
+  };
+}
+
 export function buildClimateStatusPanel(climateState, options = {}) {
   const normalizedClimateState = normalizeClimateState(climateState);
   const normalizedOptions = requireObject(options, 'ClimateStatusPanel options');
@@ -72,12 +95,13 @@ export function buildClimateStatusPanel(climateState, options = {}) {
   const anomalySummary = anomalies.length === 0
     ? 'Aucune anomalie'
     : anomalies.map((entry) => entry.label).join(', ');
+  const riskSummary = buildRiskSummary(normalizedClimateState);
 
   return {
     regionId: normalizedClimateState.regionId,
     regionName,
     title: `Climat de ${regionName}`,
-    summary: `${seasonLabel}, ${anomalySummary}`,
+    summary: `${seasonLabel}, ${anomalySummary}, ${riskSummary.summary}`,
     season: {
       id: normalizedClimateState.season,
       label: seasonLabel,
@@ -88,11 +112,34 @@ export function buildClimateStatusPanel(climateState, options = {}) {
       droughtIndex: normalizedClimateState.droughtIndex,
       stability: normalizedClimateState.isStable() ? 'stable' : 'volatile',
     },
+    highlights: [
+      {
+        key: 'temperature',
+        label: 'Température',
+        value: `${normalizedClimateState.temperatureC}°C`,
+      },
+      {
+        key: 'precipitation',
+        label: 'Précipitations',
+        value: `${normalizedClimateState.precipitationLevel}/100`,
+      },
+      {
+        key: 'drought',
+        label: 'Sécheresse',
+        value: `${normalizedClimateState.droughtIndex}/100`,
+      },
+    ],
     anomalies,
+    risks: riskSummary,
     metrics: {
       anomalyCount: anomalies.length,
       activeCatastropheCount: normalizedClimateState.activeCatastropheIds.length,
       hasAnomaly: normalizedClimateState.hasAnomaly(),
+      riskLevel: normalizedClimateState.isStable() && !normalizedClimateState.hasAnomaly() && normalizedClimateState.activeCatastropheIds.length === 0
+        ? 'stable'
+        : normalizedClimateState.activeCatastropheIds.length > 0 || normalizedClimateState.droughtIndex >= 60
+          ? 'critical'
+          : 'watched',
     },
   };
 }
