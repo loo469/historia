@@ -224,22 +224,25 @@ function buildProvinceRelations(shell) {
         return;
       }
 
+      const neighbor = shell.provinces.find((candidate) => candidate.provinceId === neighborId);
       const origin = getProvinceCenter(province.provinceId);
       const destination = getProvinceCenter(neighborId);
 
-      if (!origin || !destination) {
+      if (!origin || !destination || !neighbor) {
         return;
       }
 
-      const contested = province.contested || shell.provinces.some(
-        (candidate) => candidate.provinceId === neighborId && candidate.contested,
-      );
+      const contested = province.contested || neighbor.contested;
+      const occupied = province.occupied || neighbor.occupied;
+      const stable = !contested && !occupied && province.controllingFactionId !== neighbor.controllingFactionId;
 
       uniqueRelations.set(relationId, {
         relationId,
         origin,
         destination,
         contested,
+        occupied,
+        stable,
       });
     });
   });
@@ -312,6 +315,16 @@ function renderLegend(shell) {
   `).join('');
 
   const statesMarkup = shell.legend.states.map((entry) => `<li><span class="legend-chip">${entry.code}</span>${entry.label}</li>`).join('');
+  const frontierMarkup = [
+    ['stable', 'Frontière stable'],
+    ['occupied', 'Limite sous occupation'],
+    ['contested', 'Front contesté'],
+  ].map(([tone, label]) => `
+    <li>
+      <span class="frontier-key frontier-key--${tone}"></span>
+      <span>${label}</span>
+    </li>
+  `).join('');
 
   return `
     <section class="panel legend-panel">
@@ -328,6 +341,10 @@ function renderLegend(shell) {
           <h4>États</h4>
           <ul class="legend-list legend-list--states">${statesMarkup}</ul>
         </div>
+      </div>
+      <div class="legend-frontiers">
+        <h4>Frontières</h4>
+        <ul class="legend-list">${frontierMarkup}</ul>
       </div>
     </section>
   `;
@@ -649,13 +666,29 @@ function renderProvincePopup(shell) {
 function renderStrategicRelations(shell) {
   const relationLines = buildProvinceRelations(shell).map((relation) => `
     <line
-      class="front-line ${relation.contested ? 'is-contested' : ''}"
+      class="front-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : relation.stable ? 'is-stable' : ''}"
       x1="${relation.origin.x}%"
       y1="${relation.origin.y}%"
       x2="${relation.destination.x}%"
       y2="${relation.destination.y}%"
     />
   `).join('');
+
+  const frontierRings = shell.provinces.map((province) => {
+    const center = getProvinceCenter(province.provinceId);
+    if (!center) {
+      return '';
+    }
+
+    return `
+      <circle
+        class="province-ring ${province.contested ? 'is-contested' : province.occupied ? 'is-occupied' : 'is-stable'}"
+        cx="${center.x}%"
+        cy="${center.y}%"
+        r="6.4"
+      ></circle>
+    `;
+  }).join('');
 
   const hotspots = shell.provinces
     .filter((province) => province.contested || province.occupied)
@@ -676,6 +709,7 @@ function renderStrategicRelations(shell) {
   return `
     <svg class="strategic-relations-layer" viewBox="0 0 100 100" aria-label="Relations entre provinces et lignes de front">
       ${relationLines}
+      ${frontierRings}
       ${hotspots}
     </svg>
   `;
