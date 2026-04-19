@@ -832,6 +832,14 @@ function getIntrigueViewModel() {
     isSelected: entry.locationId === state.selectedProvinceId,
     isFocused: entry.locationId === state.focusedProvinceId,
     celluleCount: entry.metrics.celluleCount,
+    heatRadius: entry.sabotageRiskLevel === 'high'
+      ? 22
+      : entry.sabotageRiskLevel === 'medium'
+        ? 16
+        : entry.sabotageRiskLevel === 'low'
+          ? 11
+          : 7,
+    heatIntensity: Math.max(0.14, entry.sabotageRiskScore / 100),
   })).filter((entry) => entry.center);
 
   return {
@@ -951,6 +959,13 @@ function renderIntrigueMapOverlay(intrigueView) {
     return '';
   }
 
+  const heatmapMarkup = intrigueView.map.entries.map((entry) => `
+    <g class="intrigue-heat-node intrigue-heat-node--${entry.sabotageRiskLevel} ${entry.isSelected ? 'is-selected' : ''}">
+      <circle class="intrigue-heat-node__outer" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.heatRadius}" style="opacity:${Math.min(0.72, entry.heatIntensity)}"></circle>
+      <circle class="intrigue-heat-node__inner" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${Math.max(5, entry.heatRadius * 0.58)}" style="opacity:${Math.min(0.92, entry.heatIntensity + 0.12)}"></circle>
+    </g>
+  `).join('');
+
   const linkMarkup = intrigueView.map.links.map((link) => `
     <line
       class="intrigue-link intrigue-link--${link.riskLevel}"
@@ -973,7 +988,10 @@ function renderIntrigueMapOverlay(intrigueView) {
   `).join('');
 
   return `
-    <svg class="intrigue-map-layer" viewBox="0 0 100 100" aria-label="Overlay intrigue et réseau clandestin">
+    <svg class="intrigue-map-layer" viewBox="0 0 100 100" aria-label="Overlay intrigue et heatmap de sabotage">
+      <g class="intrigue-heat-layer">
+        ${heatmapMarkup}
+      </g>
       ${linkMarkup}
       ${hotspotMarkup}
     </svg>
@@ -996,6 +1014,15 @@ function renderIntrigueSidePanel(intrigueView) {
         <div class="overlay-anchor"><span>Cellules exposées</span><strong>${intrigueView.metrics.exposedCellCount}</strong></div>
         <div class="overlay-anchor"><span>Sabotages actifs</span><strong>${intrigueView.metrics.activeSabotageCount}</strong></div>
         <div class="overlay-anchor"><span>Alerte</span><strong>${intrigueView.alertBadge.level.label}</strong></div>
+      </div>
+      <div class="intrigue-legend-strip" aria-label="Légende heatmap sabotage">
+        <span>Heatmap sabotage</span>
+        <div class="intrigue-legend-strip__scale">
+          <i class="is-low"></i>
+          <i class="is-medium"></i>
+          <i class="is-high"></i>
+        </div>
+        <small>faible à critique</small>
       </div>
       <div class="intrigue-hotspot-list">
         ${intrigueView.hotspots.slice(0, 4).map((hotspot) => `
