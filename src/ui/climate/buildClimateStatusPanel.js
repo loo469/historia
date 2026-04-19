@@ -80,6 +80,9 @@ function buildRiskSummary(climateState) {
 export function buildClimateStatusPanel(climateState, options = {}) {
   const normalizedClimateState = normalizeClimateState(climateState);
   const normalizedOptions = requireObject(options, 'ClimateStatusPanel options');
+  const turnProgression = normalizedOptions.turnProgression === undefined
+    ? null
+    : requireObject(normalizedOptions.turnProgression, 'ClimateStatusPanel turnProgression');
   const regionName = requireText(
     normalizedOptions.regionName ?? normalizedClimateState.regionId,
     'ClimateStatusPanel regionName',
@@ -129,6 +132,15 @@ export function buildClimateStatusPanel(climateState, options = {}) {
         value: `${normalizedClimateState.droughtIndex}/100`,
       },
     ],
+    turnProgression: turnProgression === null
+      ? null
+      : {
+        seasonChanged: Boolean(turnProgression.seasonChanged),
+        temperatureDelta: Number(turnProgression.temperatureDelta ?? 0),
+        precipitationDelta: Number(turnProgression.precipitationDelta ?? 0),
+        droughtDelta: Number(turnProgression.droughtDelta ?? 0),
+        summary: requireText(turnProgression.summary ?? '', 'ClimateStatusPanel turnProgression summary'),
+      },
     anomalies,
     risks: riskSummary,
     metrics: {

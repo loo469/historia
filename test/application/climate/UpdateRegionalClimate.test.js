@@ -45,6 +45,24 @@ test('UpdateRegionalClimate applies default and regional drift immutably', () =>
   });
 
   assert.equal(result.appliedShiftCount, 2);
+  assert.deepEqual(result.progressionByRegion, {
+    'north-coast': {
+      regionId: 'north-coast',
+      seasonChanged: true,
+      temperatureDelta: 1,
+      precipitationDelta: 2,
+      droughtDelta: 6,
+      summary: 'spring → summer, temp +1°C, précip +2, sécheresse +6',
+    },
+    sunreach: {
+      regionId: 'sunreach',
+      seasonChanged: true,
+      temperatureDelta: 5,
+      precipitationDelta: -4,
+      droughtDelta: 14,
+      summary: 'spring → summer, temp +5°C, précip -4, sécheresse +14',
+    },
+  });
   assert.deepEqual(
     result.updatedRegionalStates.map((state) => state.toJSON()),
     [
@@ -97,6 +115,14 @@ test('UpdateRegionalClimate clamps precipitation and drought indicators', () => 
   assert.equal(result.updatedRegionalStates[0].precipitationLevel, 0);
   assert.equal(result.updatedRegionalStates[0].droughtIndex, 100);
   assert.equal(result.updatedRegionalStates[0].season, 'winter');
+  assert.deepEqual(result.progressionByRegion.frostmarch, {
+    regionId: 'frostmarch',
+    seasonChanged: false,
+    temperatureDelta: 0,
+    precipitationDelta: -2,
+    droughtDelta: 1,
+    summary: 'temp +0°C, précip -2, sécheresse +1',
+  });
 });
 
 test('UpdateRegionalClimate supports season rollover while preserving active climate events', () => {

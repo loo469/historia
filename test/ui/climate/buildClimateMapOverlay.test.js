@@ -37,6 +37,22 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         impact: { harvest: -12 },
       },
     ],
+    progressionByRegion: {
+      'north-coast': {
+        seasonChanged: true,
+        temperatureDelta: 1,
+        precipitationDelta: 2,
+        droughtDelta: 6,
+        summary: 'spring → summer, temp +1°C, précip +2, sécheresse +6',
+      },
+      sunreach: {
+        seasonChanged: true,
+        temperatureDelta: 5,
+        precipitationDelta: -4,
+        droughtDelta: 14,
+        summary: 'spring → summer, temp +5°C, précip -4, sécheresse +14',
+      },
+    },
   });
 
   assert.deepEqual(overlay, {
@@ -133,6 +149,13 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
           harvestRisk: 'high',
           summary: 'logistique severe, stabilité low, récoltes high',
         },
+        turnProgression: {
+          seasonChanged: true,
+          temperatureDelta: 1,
+          precipitationDelta: 2,
+          droughtDelta: 6,
+          summary: 'spring → summer, temp +1°C, précip +2, sécheresse +6',
+        },
         temperatureC: 12,
         precipitationLevel: 63,
         droughtIndex: 18,
@@ -149,6 +172,13 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
           stabilityRisk: 'moderate',
           harvestRisk: 'high',
           summary: 'logistique severe, stabilité moderate, récoltes high',
+        },
+        turnProgression: {
+          seasonChanged: true,
+          temperatureDelta: 5,
+          precipitationDelta: -4,
+          droughtDelta: 14,
+          summary: 'spring → summer, temp +5°C, précip -4, sécheresse +14',
         },
         temperatureC: 33,
         precipitationLevel: 11,
@@ -385,6 +415,7 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
         harvestRisk: 'low',
         summary: 'logistique low, stabilité low, récoltes low',
       },
+      turnProgression: null,
       temperatureC: 18,
       precipitationLevel: 48,
       droughtIndex: 29,
