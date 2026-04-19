@@ -23,6 +23,11 @@ test('buildCultureLayerPanel summarizes regions and exposes a readable focus pan
         highlights: ['assemblies', 'public-catalogue', 'star-maps'],
         markerType: 'innovation',
         primaryLanguage: 'north-tongue',
+        cultureMetrics: {
+          openness: 72,
+          cohesion: 61,
+          researchDrive: 77,
+        },
       },
       {
         overlayId: 'high-steppe:culture-steppe',
@@ -41,6 +46,11 @@ test('buildCultureLayerPanel summarizes regions and exposes a readable focus pan
         highlights: ['honor', 'stirrup-drill'],
         markerType: 'traditional',
         primaryLanguage: 'horse-speech',
+        cultureMetrics: {
+          openness: 35,
+          cohesion: 67,
+          researchDrive: 40,
+        },
       },
     ],
     {
@@ -110,6 +120,34 @@ test('buildCultureLayerPanel summarizes regions and exposes a readable focus pan
   assert.equal(panel.focus.discoveriesPanel.summary, '3 concepts, 1 recherches, 1 événements');
   assert.equal(panel.focus.researchProgressPanel.summary, '1 actives, 0 bloquées, 1 terminées');
   assert.equal(panel.focus.researchProgressPanel.rows[0].progressLabel, '65% en cours');
+  assert.deepEqual(panel.comparison, {
+    title: 'Comparaison régionale',
+    summary: '2 cultures visibles comparées',
+    rows: [
+      {
+        cultureId: 'culture-north',
+        cultureName: 'Northern League',
+        regionId: 'archipelago',
+        influenceScore: 70,
+        influenceTier: 'strong',
+        openness: 72,
+        cohesion: 61,
+        researchDrive: 77,
+        label: 'Northern League · archipelago',
+      },
+      {
+        cultureId: 'culture-steppe',
+        cultureName: 'Steppe Houses',
+        regionId: 'high-steppe',
+        influenceScore: 46,
+        influenceTier: 'emerging',
+        openness: 35,
+        cohesion: 67,
+        researchDrive: 40,
+        label: 'Steppe Houses · high-steppe',
+      },
+    ],
+  });
   assert.deepEqual(panel.metrics, {
     markerCount: 2,
     regionCount: 2,
@@ -137,6 +175,11 @@ test('buildCultureLayerPanel can isolate discoveries, research, or events via ac
       highlights: ['assemblies', 'public-catalogue', 'star-maps'],
       markerType: 'innovation',
       primaryLanguage: 'north-tongue',
+      cultureMetrics: {
+        openness: 72,
+        cohesion: 61,
+        researchDrive: 77,
+      },
     },
   ];
   const options = {
@@ -195,6 +238,7 @@ test('buildCultureLayerPanel falls back to the first marker and validates inputs
       cultureName: 'Delta Scribes',
       label: 'Delta Scribes (0 découvertes)',
       summary: '0 recherches actives, 0 événements, 1 repères culturels',
+      cultureMetrics: {},
     },
   ]);
 
@@ -205,4 +249,5 @@ test('buildCultureLayerPanel falls back to the first marker and validates inputs
   assert.throws(() => buildCultureLayerPanel([], { historicalEventsByCulture: [] }), /historicalEventsByCulture must be an object/);
   assert.throws(() => buildCultureLayerPanel([], { researchStatesByCulture: [] }), /researchStatesByCulture must be an object/);
   assert.throws(() => buildCultureLayerPanel([], { activeFilter: [] }), /activeFilter is required/);
+  assert.throws(() => buildCultureLayerPanel([{ overlayId: 'x', regionId: 'r', cultureId: 'c', cultureName: 'n', label: 'l', cultureMetrics: [] }]), /cultureMetrics must be an object/);
 });

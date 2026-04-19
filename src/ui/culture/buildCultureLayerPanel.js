@@ -44,6 +44,10 @@ function normalizeEntries(entries) {
       highlights: Array.isArray(normalizedEntry.highlights) ? [...normalizedEntry.highlights].sort() : [],
       markerType: String(normalizedEntry.markerType ?? 'balanced').trim() || 'balanced',
       primaryLanguage: String(normalizedEntry.primaryLanguage ?? '').trim() || null,
+      cultureMetrics: requireObject(
+        normalizedEntry.cultureMetrics ?? {},
+        `CultureLayerPanel entries[${index}].cultureMetrics`,
+      ),
     };
   });
 }
@@ -157,6 +161,20 @@ export function buildCultureLayerPanel(entries, options = {}) {
   const title = String(normalizedOptions.title ?? 'Couche culturelle').trim() || 'Couche culturelle';
   const regionRows = buildRegionRows(normalizedEntries);
   const focus = buildFocus(normalizedEntries, normalizedOptions);
+  const comparison = normalizedEntries
+    .slice()
+    .sort((left, right) => right.influenceScore - left.influenceScore || left.cultureName.localeCompare(right.cultureName))
+    .map((entry) => ({
+      cultureId: entry.cultureId,
+      cultureName: entry.cultureName,
+      regionId: entry.regionId,
+      influenceScore: entry.influenceScore,
+      influenceTier: entry.influenceTier,
+      openness: Number.isFinite(entry.cultureMetrics.openness) ? entry.cultureMetrics.openness : 0,
+      cohesion: Number.isFinite(entry.cultureMetrics.cohesion) ? entry.cultureMetrics.cohesion : 0,
+      researchDrive: Number.isFinite(entry.cultureMetrics.researchDrive) ? entry.cultureMetrics.researchDrive : 0,
+      label: `${entry.cultureName} · ${entry.regionId}`,
+    }));
 
   return {
     title,
@@ -166,6 +184,11 @@ export function buildCultureLayerPanel(entries, options = {}) {
       .sort((left, right) => left.regionId.localeCompare(right.regionId) || right.influenceScore - left.influenceScore),
     regions: regionRows,
     focus,
+    comparison: {
+      title: 'Comparaison régionale',
+      summary: `${comparison.length} cultures visibles comparées`,
+      rows: comparison,
+    },
     metrics: {
       markerCount: normalizedEntries.length,
       regionCount: regionRows.length,
