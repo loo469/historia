@@ -75,7 +75,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         kind: 'anomaly',
         label: 'heatwave',
         season: 'summer',
-        tone: 'warning',
+        tone: 'danger',
+        marker: {
+          icon: '☀',
+          tone: 'danger',
+          accent: 'amber',
+        },
       },
       {
         overlayId: 'sunreach:season',
@@ -168,7 +173,9 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
           key: 'anomaly:heatwave',
           kind: 'anomaly',
           label: 'heatwave',
-          tone: 'warning',
+          tone: 'danger',
+          icon: '☀',
+          accent: 'amber',
           description: 'Anomalie climatique active sur la région.',
         },
         {
@@ -239,9 +246,50 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
   ]);
 });
 
+test('buildClimateMapOverlay supports anomaly marker overrides', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+      anomaly: 'frost',
+    },
+  ], {
+    anomalyStyleByType: {
+      frost: { icon: '*', tone: 'alert', accent: 'ice' },
+    },
+  });
+
+  assert.deepEqual(overlay.entries[0], {
+    overlayId: 'delta:anomaly:frost',
+    regionId: 'delta',
+    kind: 'anomaly',
+    label: 'frost',
+    season: 'winter',
+    tone: 'alert',
+    marker: {
+      icon: '*',
+      tone: 'alert',
+      accent: 'ice',
+    },
+  });
+  assert.deepEqual(overlay.legend.items[1], {
+    key: 'anomaly:frost',
+    kind: 'anomaly',
+    label: 'frost',
+    tone: 'alert',
+    icon: '*',
+    accent: 'ice',
+    description: 'Anomalie climatique active sur la région.',
+  });
+});
+
 test('buildClimateMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildClimateMapOverlay(null), /climateStates must be an array/);
   assert.throws(() => buildClimateMapOverlay([null]), /ClimateState instances or plain objects/);
   assert.throws(() => buildClimateMapOverlay([], null), /options must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { seasonLabels: [] }), /seasonLabels must be an object/);
+  assert.throws(() => buildClimateMapOverlay([], { anomalyStyleByType: [] }), /anomalyStyleByType must be an object/);
 });
