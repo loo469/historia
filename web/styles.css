@@ -1235,6 +1235,42 @@ button { font: inherit; }
   margin: 0;
   color: var(--muted);
 }
+.intrigue-status-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.intrigue-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(8, 15, 28, 0.45);
+}
+.intrigue-status-pill--active { color: #bfdbfe; border-color: rgba(96, 165, 250, 0.26); }
+.intrigue-status-pill--exposed { color: #fde68a; border-color: rgba(250, 204, 21, 0.3); }
+.intrigue-status-pill--sleeper { color: #cbd5e1; border-color: rgba(148, 163, 184, 0.24); }
+.intrigue-status-pill--compromised { color: #fecdd3; border-color: rgba(251, 113, 133, 0.34); }
+.intrigue-cell-row--active td:first-child { color: #dbeafe; }
+.intrigue-cell-row--exposed td:first-child { color: #fef3c7; }
+.intrigue-cell-row--sleeper td:first-child { color: #e2e8f0; }
+.intrigue-cell-row--compromised td:first-child { color: #fecdd3; }
+.intrigue-cell-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.intrigue-cell-status-dot--active { background: #60a5fa; }
+.intrigue-cell-status-dot--exposed { background: #facc15; }
+.intrigue-cell-status-dot--sleeper { background: #94a3b8; }
+.intrigue-cell-status-dot--compromised { background: #fb7185; box-shadow: 0 0 8px rgba(251, 113, 133, 0.45); }
 .intrigue-hotspot-card--critical { border-color: rgba(251, 113, 133, 0.4); }
 .intrigue-hotspot-card--warning { border-color: rgba(250, 204, 21, 0.35); }
 .intrigue-operation-card {

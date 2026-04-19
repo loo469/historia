@@ -136,7 +136,10 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
     exposure: 74,
     readiness: 43,
     tone: 'danger',
-    badges: ['exposed', 'sleeper', 'loyalty:55', 'secrecy:49'],
+    statusClass: 'compromised',
+    statusLabel: 'Compromise',
+    statusMarker: '✕',
+    badges: ['compromise', 'loyalty:55', 'secrecy:49'],
   });
   assert.deepEqual(demo.panels.operations[0], {
     operationId: 'op-ash-1',

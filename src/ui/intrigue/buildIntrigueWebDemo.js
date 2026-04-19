@@ -86,23 +86,43 @@ function buildCellulesPanel(cellules, locationNames) {
 
       return left.id.localeCompare(right.id);
     })
-    .map((cellule) => ({
-      celluleId: cellule.id,
-      codename: cellule.codename,
-      locationId: cellule.locationId,
-      locationName: locationNames[cellule.locationId] ?? cellule.locationId,
-      status: cellule.status,
-      sleeper: cellule.sleeper,
-      exposure: cellule.exposure,
-      readiness: cellule.operationalReadiness,
-      tone: cellule.isExposed ? 'danger' : cellule.sleeper ? 'muted' : 'normal',
-      badges: [
-        cellule.isExposed ? 'exposed' : null,
-        cellule.sleeper ? 'sleeper' : null,
-        `loyalty:${cellule.loyalty}`,
-        `secrecy:${cellule.secrecy}`,
-      ].filter(Boolean),
-    }));
+    .map((cellule) => {
+      const compromised = cellule.status === 'compromised' || cellule.exposure >= 70;
+      const statusClass = compromised
+        ? 'compromised'
+        : cellule.sleeper || cellule.status === 'dormant'
+          ? 'sleeper'
+          : cellule.isExposed
+            ? 'exposed'
+            : 'active';
+      const statusLabel = compromised
+        ? 'Compromise'
+        : cellule.sleeper || cellule.status === 'dormant'
+          ? 'Dormante'
+          : cellule.isExposed
+            ? 'Exposee'
+            : 'Active';
+
+      return {
+        celluleId: cellule.id,
+        codename: cellule.codename,
+        locationId: cellule.locationId,
+        locationName: locationNames[cellule.locationId] ?? cellule.locationId,
+        status: cellule.status,
+        sleeper: cellule.sleeper,
+        exposure: cellule.exposure,
+        readiness: cellule.operationalReadiness,
+        tone: compromised ? 'danger' : cellule.sleeper ? 'muted' : cellule.isExposed ? 'warning' : 'normal',
+        statusClass,
+        statusLabel,
+        statusMarker: compromised ? '✕' : statusClass === 'sleeper' ? '◌' : statusClass === 'exposed' ? '◐' : '●',
+        badges: [
+          statusLabel.toLowerCase(),
+          `loyalty:${cellule.loyalty}`,
+          `secrecy:${cellule.secrecy}`,
+        ].filter(Boolean),
+      };
+    });
 }
 
 function buildOperationsPanel(operations, locationNames) {
