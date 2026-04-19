@@ -5,6 +5,9 @@ import { buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
 import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay.js';
 import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
 import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonPanel.js';
+import { Cellule } from '../src/domain/intrigue/Cellule.js';
+import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
+import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
 
 const paletteByFaction = {
   aurora: { fill: '#2F6BFF', border: '#8FB3FF' },
@@ -186,6 +189,110 @@ const routes = [
     transportMode: 'land',
     riskLevel: 42,
     active: false,
+  }),
+];
+
+const intrigueCellules = [
+  new Cellule({
+    id: 'cell-crown-veil',
+    factionId: 'shadow-league',
+    codename: 'Voile',
+    locationId: 'crown-heart',
+    memberIds: ['ag-veil-1'],
+    assetIds: ['asset-ledger'],
+    secrecy: 76,
+    loyalty: 71,
+    exposure: 22,
+  }),
+  new Cellule({
+    id: 'cell-river-ember',
+    factionId: 'shadow-league',
+    codename: 'Braise',
+    locationId: 'river-gate',
+    memberIds: ['ag-braise-1'],
+    assetIds: ['asset-ferry'],
+    secrecy: 58,
+    loyalty: 63,
+    exposure: 41,
+  }),
+  new Cellule({
+    id: 'cell-river-mist',
+    factionId: 'shadow-league',
+    codename: 'Brume',
+    locationId: 'river-gate',
+    memberIds: ['ag-brume-1'],
+    assetIds: ['asset-dockers'],
+    secrecy: 48,
+    loyalty: 56,
+    exposure: 69,
+    sleeper: true,
+  }),
+  new Cellule({
+    id: 'cell-iron-cinder',
+    factionId: 'shadow-league',
+    codename: 'Cendre',
+    locationId: 'iron-plain',
+    memberIds: ['ag-cendre-1'],
+    assetIds: ['asset-foundry'],
+    secrecy: 54,
+    loyalty: 60,
+    exposure: 36,
+  }),
+  new Cellule({
+    id: 'cell-south-reed',
+    factionId: 'shadow-league',
+    codename: 'Roseau',
+    locationId: 'southern-reach',
+    memberIds: ['ag-roseau-1'],
+    assetIds: ['asset-crossing'],
+    secrecy: 71,
+    loyalty: 65,
+    exposure: 18,
+    sleeper: true,
+  }),
+];
+
+const intrigueOperations = [
+  new OperationClandestine({
+    id: 'op-river-locks',
+    celluleId: 'cell-river-ember',
+    targetFactionId: 'ember',
+    type: 'sabotage',
+    objective: 'Façonner les écluses pour bloquer les convois',
+    theaterId: 'river-gate',
+    assignedAgentIds: ['ag-braise-1'],
+    requiredAssetIds: ['asset-ferry'],
+    detectionRisk: 32,
+    progress: 56,
+    heat: 52,
+    phase: 'execution',
+  }),
+  new OperationClandestine({
+    id: 'op-iron-smoke',
+    celluleId: 'cell-iron-cinder',
+    targetFactionId: 'ember',
+    type: 'sabotage',
+    objective: 'Saboter les fours de la plaine',
+    theaterId: 'iron-plain',
+    assignedAgentIds: ['ag-cendre-1'],
+    requiredAssetIds: ['asset-foundry'],
+    detectionRisk: 46,
+    progress: 41,
+    heat: 39,
+    phase: 'infiltration',
+  }),
+  new OperationClandestine({
+    id: 'op-crown-ledgers',
+    celluleId: 'cell-crown-veil',
+    targetFactionId: 'aurora',
+    type: 'rumor',
+    objective: 'Diffuser de faux ordres comptables',
+    theaterId: 'crown-heart',
+    assignedAgentIds: ['ag-veil-1'],
+    requiredAssetIds: ['asset-ledger'],
+    progress: 63,
+    heat: 18,
+    phase: 'execution',
   }),
 ];
 
@@ -646,6 +753,97 @@ function renderCityQuickPanel(economyView) {
   `;
 }
 
+function getIntrigueCelluleStateByTurn(cellule) {
+  const shift = Math.max(0, state.turn - 1);
+  const exposureDeltaByLocation = {
+    'crown-heart': state.seasonIndex === 1 ? 4 : 1,
+    'river-gate': 6 + state.seasonIndex,
+    'iron-plain': 3 + Math.floor(shift / 2),
+    'southern-reach': -1 + shift,
+  };
+
+  return new Cellule({
+    ...cellule.toJSON(),
+    exposure: Math.max(0, Math.min(100, cellule.exposure + (exposureDeltaByLocation[cellule.locationId] ?? shift))),
+  });
+}
+
+function getIntrigueOperationStateByTurn(operation) {
+  const shift = Math.max(0, state.turn - 1);
+
+  return new OperationClandestine({
+    ...operation.toJSON(),
+    progress: Math.max(0, Math.min(100, operation.progress + (operation.type === 'sabotage' ? 6 + shift : 2))),
+    heat: Math.max(0, Math.min(100, operation.heat + (operation.type === 'sabotage' ? 4 + state.seasonIndex : 1))),
+    detectionRisk: Math.max(0, Math.min(100, operation.detectionRisk + (operation.theaterId === 'river-gate' ? 3 : 1))),
+  });
+}
+
+function buildIntrigueLinks(entries) {
+  const entryById = new Map(entries.map((entry) => [entry.locationId, entry]));
+  const links = new Map();
+
+  provinces.forEach((province) => {
+    const source = entryById.get(province.id);
+
+    if (!source) {
+      return;
+    }
+
+    province.neighborIds.forEach((neighborId) => {
+      const target = entryById.get(neighborId);
+      const origin = getProvinceCenter(province.id);
+      const destination = getProvinceCenter(neighborId);
+      const linkId = [province.id, neighborId].sort().join('::');
+
+      if (!target || !origin || !destination || links.has(linkId)) {
+        return;
+      }
+
+      links.set(linkId, {
+        linkId,
+        origin,
+        destination,
+        intensity: Math.max(source.celluleCount, target.celluleCount),
+        riskLevel: source.sabotageRiskLevel === 'high' || target.sabotageRiskLevel === 'high'
+          ? 'high'
+          : source.sabotageRiskLevel === 'medium' || target.sabotageRiskLevel === 'medium'
+            ? 'medium'
+            : 'low',
+      });
+    });
+  });
+
+  return [...links.values()];
+}
+
+function getIntrigueViewModel() {
+  const liveCellules = intrigueCellules.map(getIntrigueCelluleStateByTurn);
+  const liveOperations = intrigueOperations.map(getIntrigueOperationStateByTurn);
+  const locationNames = Object.fromEntries(provinces.map((province) => [province.id, province.name]));
+  const demo = buildIntrigueWebDemo({
+    alertLevel: state.turn >= 4 ? 'eleve' : state.turn >= 2 ? 'renforce' : 'latent',
+    cellules: liveCellules,
+    operations: liveOperations,
+  }, { locationNames });
+  const entries = demo.map.entries.map((entry) => ({
+    ...entry,
+    center: getProvinceCenter(entry.locationId),
+    isSelected: entry.locationId === state.selectedProvinceId,
+    isFocused: entry.locationId === state.focusedProvinceId,
+    celluleCount: entry.metrics.celluleCount,
+  })).filter((entry) => entry.center);
+
+  return {
+    ...demo,
+    map: {
+      ...demo.map,
+      entries,
+      links: buildIntrigueLinks(entries),
+    },
+  };
+}
+
 function renderEconomyMapOverlay(economyView) {
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return '';
@@ -748,6 +946,70 @@ function renderEconomyMapOverlay(economyView) {
   `;
 }
 
+function renderIntrigueMapOverlay(intrigueView) {
+  if (state.activeOverlaySlot !== 'intrigue-overlay') {
+    return '';
+  }
+
+  const linkMarkup = intrigueView.map.links.map((link) => `
+    <line
+      class="intrigue-link intrigue-link--${link.riskLevel}"
+      x1="${link.origin.x}%"
+      y1="${link.origin.y}%"
+      x2="${link.destination.x}%"
+      y2="${link.destination.y}%"
+      stroke-width="${1 + (link.intensity * 0.55)}"
+    />
+  `).join('');
+
+  const hotspotMarkup = intrigueView.map.entries.map((entry) => `
+    <g class="intrigue-hotspot intrigue-hotspot--${entry.presenceLevel} ${entry.isSelected ? 'is-selected' : ''} ${entry.isFocused ? 'is-focused' : ''}" data-intrigue-location="${entry.locationId}">
+      <circle class="intrigue-hotspot__halo intrigue-hotspot__halo--${entry.sabotageRiskLevel}" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${10 + (entry.celluleCount * 4)}"></circle>
+      <circle class="intrigue-hotspot__core" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${4 + (entry.celluleCount * 2.2)}"></circle>
+      <text class="intrigue-hotspot__marker" x="${entry.center.x}%" y="${entry.center.y + 1.5}%" text-anchor="middle">${entry.style.presence.marker}</text>
+      <text class="intrigue-hotspot__label" x="${entry.center.x}%" y="${entry.center.y - (11 + (entry.celluleCount * 1.5))}%" text-anchor="middle">${entry.locationName}</text>
+      <text class="intrigue-hotspot__meta" x="${entry.center.x}%" y="${entry.center.y + (15 + (entry.celluleCount * 1.5))}%" text-anchor="middle">réseau ${entry.presenceLevel} · risque ${entry.sabotageRiskLevel}</text>
+    </g>
+  `).join('');
+
+  return `
+    <svg class="intrigue-map-layer" viewBox="0 0 100 100" aria-label="Overlay intrigue et réseau clandestin">
+      ${linkMarkup}
+      ${hotspotMarkup}
+    </svg>
+  `;
+}
+
+function renderIntrigueSidePanel(intrigueView) {
+  if (state.activeOverlaySlot !== 'intrigue-overlay') {
+    return null;
+  }
+
+  return `
+    <section class="panel overlay-panel overlay-panel--intrigue">
+      <div class="panel-header">
+        <h3>Overlay actif, Intrigue</h3>
+        <p>${intrigueView.summary}</p>
+      </div>
+      <div class="economy-quick-stats intrigue-quick-stats">
+        <div class="overlay-anchor"><span>Foyers</span><strong>${intrigueView.metrics.locationCount}</strong></div>
+        <div class="overlay-anchor"><span>Cellules exposées</span><strong>${intrigueView.metrics.exposedCellCount}</strong></div>
+        <div class="overlay-anchor"><span>Sabotages actifs</span><strong>${intrigueView.metrics.activeSabotageCount}</strong></div>
+        <div class="overlay-anchor"><span>Alerte</span><strong>${intrigueView.alertBadge.level.label}</strong></div>
+      </div>
+      <div class="intrigue-hotspot-list">
+        ${intrigueView.hotspots.slice(0, 4).map((hotspot) => `
+          <article class="intrigue-hotspot-card intrigue-hotspot-card--${hotspot.severity}">
+            <strong>${hotspot.locationName}</strong>
+            <span>${hotspot.visualCue} · ${hotspot.celluleCount} cellules</span>
+            <span>${hotspot.operationCount} opérations, ${hotspot.exposedCellCount} exposées</span>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderEconomySidePanel(economyView) {
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return `
@@ -837,7 +1099,48 @@ function renderEconomySidePanel(economyView) {
   `;
 }
 
-function renderBottomTray(economyView) {
+function renderBottomTray(economyView, intrigueView) {
+  if (state.activeOverlaySlot === 'intrigue-overlay') {
+    return `
+      <section id="bottom-tray" class="overlay-anchor-shell overlay-anchor-shell--bottom overlay-anchor-shell--economy">
+        <div class="bottom-tray-grid">
+          <div class="bottom-tray-table">
+            <h4>Cellules suivies</h4>
+            <p>${intrigueView.summary}</p>
+            <table>
+              <thead>
+                <tr><th>Cellule</th><th>Lieu</th><th>Exposition</th><th>Statut</th></tr>
+              </thead>
+              <tbody>
+                ${intrigueView.panels.cellules.slice(0, 4).map((cellule) => `
+                  <tr>
+                    <td>${cellule.codename}</td>
+                    <td>${cellule.locationName}</td>
+                    <td>${cellule.exposure}</td>
+                    <td>${cellule.sleeper ? 'Dormante' : cellule.status}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="bottom-tray-stocks">
+            ${intrigueView.panels.operations.slice(0, 4).map((operation) => `
+              <article class="stock-mini-card">
+                <h4>${operation.locationName}</h4>
+                <p>${operation.objective}</p>
+                <ul>
+                  <li><span>Phase</span><strong>${operation.phase}</strong></li>
+                  <li><span>Progression</span><strong>${operation.progress}%</strong></li>
+                  <li><span>Chaleur</span><strong>${operation.heat}</strong></li>
+                </ul>
+              </article>
+            `).join('')}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return '<div class="overlay-anchor-shell overlay-anchor-shell--bottom">Bottom tray</div>';
   }
@@ -1177,6 +1480,7 @@ function render() {
   const shell = getShell();
   const economyView = getEconomyViewModel();
   const focusContext = getFocusContext(shell);
+  const intrigueView = getIntrigueViewModel();
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -1222,7 +1526,9 @@ function render() {
             ${renderMapControls()}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
               ${renderMapLayerStack(shell, economyView, focusContext)}
+              ${renderIntrigueMapOverlay(intrigueView)}
             </div>
+            ${renderBottomTray(economyView, intrigueView)}
           </div>
         </section>
 
@@ -1230,7 +1536,7 @@ function render() {
           <div class="mobile-panel-stack ${state.mobilePanelSection === 'legend' ? 'show-legend' : state.mobilePanelSection === 'overlay' ? 'show-overlay' : 'show-details'}">
             ${renderLegend(shell)}
             ${renderActiveProvince(shell)}
-            ${renderEconomySidePanel(economyView)}
+            ${renderIntrigueSidePanel(intrigueView) ?? renderEconomySidePanel(economyView)}
             ${renderMapArchitecturePanel()}
           </div>
         </aside>
@@ -1399,6 +1705,16 @@ function render() {
         state.comparisonProvinceIds = [...new Set([state.selectedProvinceId, provinceId])].filter(Boolean).slice(0, 2);
       }
 
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-intrigue-location]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.intrigueLocation;
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.popupProvinceId = provinceId;
       render();
     });
   });
