@@ -99,10 +99,19 @@ const overlayLabels = {
 };
 
 const cityLayoutsById = {
-  'crown-port': { x: 49.5, y: 28 },
-  'river-gate-city': { x: 34, y: 56 },
-  'iron-plain-city': { x: 62, y: 55 },
-  'southern-crossing': { x: 47, y: 79 },
+  'crown-port': { x: 49.5, y: 28, labelDx: 0, labelDy: -6 },
+  'river-gate-city': { x: 34, y: 56, labelDx: -8, labelDy: 7 },
+  'iron-plain-city': { x: 62, y: 55, labelDx: 8, labelDy: -6 },
+  'southern-crossing': { x: 47, y: 79, labelDx: 0, labelDy: 8 },
+};
+
+const provinceLabelLayouts = {
+  'north-watch': { x: 26, y: 20, align: 'middle', tone: 'standard' },
+  'crown-heart': { x: 49.5, y: 18.5, align: 'middle', tone: 'capital' },
+  'red-ridge': { x: 75, y: 18.5, align: 'middle', tone: 'standard' },
+  'river-gate': { x: 21, y: 45, align: 'start', tone: 'frontier' },
+  'iron-plain': { x: 80, y: 48, align: 'end', tone: 'standard' },
+  'southern-reach': { x: 47, y: 91, align: 'middle', tone: 'frontier' },
 };
 
 const cities = [
@@ -622,8 +631,8 @@ function renderEconomyMapOverlay(economyView) {
       <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''}" data-city-id="${city.cityId}">
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
         <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 11}" />
-        <text class="economy-city-label" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
-        <text class="economy-city-resource" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
+        <text class="economy-city-label economy-city-label--sr" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
+        <text class="economy-city-resource economy-city-resource--sr" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
       </g>
     `;
   }).join('');
@@ -762,6 +771,33 @@ function renderBottomTray(economyView) {
         </div>
       </div>
     </section>
+  `;
+}
+
+function renderProvinceLabels(shell) {
+  return `
+    <svg class="map-label-layer" viewBox="0 0 100 100" aria-label="Labels des provinces et points clés">
+      ${shell.provinces.map((province) => {
+        const label = provinceLabelLayouts[province.provinceId] ?? { ...getProvinceCenter(province.provinceId), align: 'middle', tone: 'standard' };
+        const city = cities.find((candidate) => candidate.regionId === province.provinceId) ?? null;
+        const cityLayout = city ? cityLayoutsById[city.id] : null;
+        const cityLabelX = cityLayout ? cityLayout.x + (cityLayout.labelDx ?? 0) : null;
+        const cityLabelY = cityLayout ? cityLayout.y + (cityLayout.labelDy ?? 0) : null;
+
+        return `
+          <g class="province-map-label province-map-label--${label.tone} ${province.selectionState.selected ? 'is-selected' : province.selectionState.focused ? 'is-focused' : ''}">
+            <text class="province-map-label__title" x="${label.x}%" y="${label.y}%" text-anchor="${label.align}">${province.label}</text>
+            <text class="province-map-label__subtitle" x="${label.x}%" y="${label.y + 3.4}%" text-anchor="${label.align}">${province.contested ? 'Front actif' : province.occupied ? 'Occupation' : `Valeur ${province.strategicValue}`}</text>
+            ${city && cityLayout ? `
+              <g class="city-map-label ${city.capital ? 'is-capital' : 'is-key'} ${state.selectedCityId === city.id ? 'is-selected' : ''}">
+                <line class="city-map-label__leader" x1="${cityLayout.x}%" y1="${cityLayout.y}%" x2="${cityLabelX}%" y2="${cityLabelY}%"></line>
+                <text class="city-map-label__title" x="${cityLabelX}%" y="${cityLabelY}%" text-anchor="middle">${city.name}</text>
+              </g>
+            ` : ''}
+          </g>
+        `;
+      }).join('')}
+    </svg>
   `;
 }
 
@@ -928,6 +964,7 @@ function render() {
             <div class="map-backdrop"></div>
             ${renderTerrainDecor()}
             ${renderStrategicRelations(shell)}
+            ${renderProvinceLabels(shell)}
             <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
             <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
             <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
