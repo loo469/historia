@@ -453,6 +453,27 @@ button { font: inherit; }
   z-index: 2;
   overflow: visible;
 }
+.economy-heat-layer {
+  pointer-events: none;
+  isolation: isolate;
+}
+.economy-heat-node__tension,
+.economy-heat-node__prosperity {
+  stroke: none;
+  opacity: 0.22;
+}
+.economy-heat-node__tension {
+  mix-blend-mode: screen;
+}
+.economy-heat-node__prosperity {
+  opacity: 0.18;
+}
+.economy-heat-node.is-low-tension .economy-heat-node__tension { fill: rgba(74, 222, 128, 0.26); }
+.economy-heat-node.is-medium-tension .economy-heat-node__tension { fill: rgba(245, 158, 11, 0.28); }
+.economy-heat-node.is-high-tension .economy-heat-node__tension { fill: rgba(251, 113, 133, 0.34); }
+.economy-heat-node.is-rich .economy-heat-node__prosperity { fill: rgba(56, 189, 248, 0.28); }
+.economy-heat-node.is-balanced .economy-heat-node__prosperity { fill: rgba(96, 165, 250, 0.18); }
+.economy-heat-node.is-fragile .economy-heat-node__prosperity { fill: rgba(148, 163, 184, 0.12); }
 .economy-route-group {
   isolation: isolate;
 }
@@ -1030,6 +1051,7 @@ button { font: inherit; }
 }
 .economy-legend-city,
 .economy-legend-ring,
+.economy-legend-heat,
 .economy-route-legend i {
   display: inline-block;
   flex: 0 0 auto;
@@ -1057,6 +1079,18 @@ button { font: inherit; }
   border-radius: 999px;
   border: 2px solid rgba(251, 113, 133, 0.95);
   box-shadow: 0 0 8px rgba(251, 113, 133, 0.35);
+}
+.economy-legend-heat {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  opacity: 0.8;
+}
+.economy-legend-heat.is-rich {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.34) 0%, rgba(56, 189, 248, 0.1) 70%, transparent 100%);
+}
+.economy-legend-heat.is-fragile {
+  background: radial-gradient(circle, rgba(251, 113, 133, 0.4) 0%, rgba(251, 113, 133, 0.12) 72%, transparent 100%);
 }
 .economy-route-legend i {
   width: 20px;
