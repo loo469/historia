@@ -193,6 +193,64 @@ button { font: inherit; }
   z-index: 1;
   overflow: visible;
 }
+.map-label-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: visible;
+  pointer-events: none;
+}
+.province-map-label__title,
+.province-map-label__subtitle,
+.city-map-label__title {
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+}
+.province-map-label__title {
+  fill: #f8fafc;
+  stroke: rgba(8, 15, 28, 0.92);
+  stroke-width: 1.8;
+  font-size: 3.2px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-map-label__subtitle {
+  fill: rgba(226, 232, 240, 0.92);
+  stroke: rgba(8, 15, 28, 0.92);
+  stroke-width: 1.4;
+  font-size: 2px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.province-map-label--capital .province-map-label__title {
+  fill: #fde68a;
+}
+.province-map-label--frontier .province-map-label__subtitle {
+  fill: #fda4af;
+}
+.province-map-label.is-selected .province-map-label__title,
+.province-map-label.is-focused .province-map-label__title {
+  fill: #bae6fd;
+}
+.city-map-label__leader {
+  stroke: rgba(226, 232, 240, 0.38);
+  stroke-width: 0.3;
+  stroke-dasharray: 0.8 0.8;
+}
+.city-map-label__title {
+  fill: rgba(226, 232, 240, 0.96);
+  stroke: rgba(8, 15, 28, 0.95);
+  stroke-width: 1.2;
+  font-size: 1.95px;
+  font-weight: 700;
+}
+.city-map-label.is-capital .city-map-label__title {
+  fill: #fde68a;
+}
+.city-map-label.is-selected .city-map-label__title {
+  fill: #bfdbfe;
+}
 .front-line {
   stroke: rgba(148, 163, 184, 0.28);
   stroke-width: 0.45;
@@ -359,6 +417,10 @@ button { font: inherit; }
   font-size: 4px;
   letter-spacing: 0;
   text-transform: none;
+}
+.economy-city-label--sr,
+.economy-city-resource--sr {
+  opacity: 0;
 }
 .economy-city-resource { fill: #bfdbfe; }
 .overlay-anchor-shell--top { left: 18%; top: 3%; width: 64%; height: 9%; }
@@ -824,6 +886,9 @@ button { font: inherit; }
   .turn-toolbar { flex-direction: column; align-items: stretch; }
   .map-stage { min-height: 680px; }
   .province-node { padding: 14px 12px; }
+  .province-map-label__title { font-size: 3.6px; }
+  .province-map-label__subtitle,
+  .city-map-label__title { font-size: 2.4px; }
   .city-quick-panel,
   .province-popup {
     left: 8% !important;
