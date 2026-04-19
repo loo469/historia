@@ -191,6 +191,8 @@ const state = {
   focusedProvinceId: 'crown-heart',
   selectedProvinceId: 'river-gate',
   activeOverlaySlot: 'economy-overlay',
+  popupProvinceId: 'river-gate',
+  comparisonProvinceIds: ['river-gate', 'crown-heart'],
 };
 
 function getProvinceCenter(provinceId) {
@@ -352,6 +354,9 @@ function renderActiveProvince(shell) {
 
   const controller = factionMetaById[province.controllingFactionId]?.label ?? province.controllingFactionId;
   const owner = factionMetaById[province.ownerFactionId]?.label ?? province.ownerFactionId;
+  const comparedProvinceNames = state.comparisonProvinceIds
+    .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId)?.label)
+    .filter(Boolean);
 
   return `
     <section class="panel province-details">
@@ -367,6 +372,10 @@ function renderActiveProvince(shell) {
         <div><dt>Voisins</dt><dd>${province.neighborIds.join(', ')}</dd></div>
       </dl>
       <div class="province-summary-tags">${province.badges.map((badge) => `<span class="legend-chip">${badge}</span>`).join('')}</div>
+      <div class="context-summary">
+        <strong>Comparaison rapide</strong>
+        <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
+      </div>
     </section>
   `;
 }
@@ -528,6 +537,44 @@ function renderBottomTray(economyView) {
   `;
 }
 
+function renderProvincePopup(shell) {
+  const province = shell.provinces.find((candidate) => candidate.provinceId === state.popupProvinceId);
+
+  if (!province) {
+    return '';
+  }
+
+  const layout = provinceLayouts[province.provinceId];
+  const controller = factionMetaById[province.controllingFactionId]?.label ?? province.controllingFactionId;
+  const status = province.contested ? 'Front contesté' : province.occupied ? 'Sous occupation' : 'Contrôle stable';
+
+  return `
+    <aside
+      class="province-popup"
+      style="left:calc(${layout.x + layout.w - 2}%);top:calc(${layout.y - 2}%);"
+      aria-live="polite"
+    >
+      <div class="province-popup__header">
+        <div>
+          <strong>${province.label}</strong>
+          <p>${status}</p>
+        </div>
+        <button type="button" class="province-popup__close" data-popup-close="true" aria-label="Fermer le popup">×</button>
+      </div>
+      <div class="province-popup__facts">
+        <span>${controller}</span>
+        <span>Loyauté ${province.loyalty}%</span>
+        <span>Valeur ${province.strategicValue}</span>
+      </div>
+      <div class="province-popup__actions">
+        <button type="button" data-popup-action="focus" data-province-id="${province.provinceId}">Focus</button>
+        <button type="button" data-popup-action="compare" data-province-id="${province.provinceId}">Comparer</button>
+        <button type="button" data-popup-action="details" data-province-id="${province.provinceId}">Détail</button>
+      </div>
+    </aside>
+  `;
+}
+
 function renderStrategicRelations(shell) {
   const relationLines = buildProvinceRelations(shell).map((relation) => `
     <line
@@ -613,6 +660,7 @@ function render() {
             ${renderEconomyMapOverlay(economyView)}
             ${renderBottomTray(economyView)}
             ${shell.provinces.map(renderProvinceCard).join('')}
+            ${renderProvincePopup(shell)}
           </div>
         </section>
 
@@ -633,6 +681,7 @@ function render() {
 
     element.addEventListener('click', () => {
       state.selectedProvinceId = element.dataset.provinceId;
+      state.popupProvinceId = element.dataset.provinceId;
       render();
     });
   });
@@ -640,6 +689,35 @@ function render() {
   document.querySelectorAll('[data-overlay-slot]').forEach((element) => {
     element.addEventListener('click', () => {
       state.activeOverlaySlot = element.dataset.overlaySlot;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-popup-action]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.provinceId;
+      const action = element.dataset.popupAction;
+
+      if (action === 'focus') {
+        state.focusedProvinceId = provinceId;
+      }
+
+      if (action === 'details') {
+        state.selectedProvinceId = provinceId;
+        state.focusedProvinceId = provinceId;
+      }
+
+      if (action === 'compare') {
+        state.comparisonProvinceIds = [...new Set([state.selectedProvinceId, provinceId])].filter(Boolean).slice(0, 2);
+      }
+
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-popup-close]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.popupProvinceId = null;
       render();
     });
   });
