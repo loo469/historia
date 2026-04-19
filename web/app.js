@@ -931,12 +931,24 @@ function renderStrategicRelations(shell) {
 
 function renderTerrainDecor() {
   return `
+    <div class="map-sea map-sea--west"></div>
+    <div class="map-sea map-sea--south"></div>
+    <div class="terrain-shadow terrain-shadow--north"></div>
+    <div class="terrain-shadow terrain-shadow--central"></div>
+    <div class="terrain-shadow terrain-shadow--south"></div>
     <div class="terrain-mass terrain-mass--north"></div>
     <div class="terrain-mass terrain-mass--east"></div>
     <div class="terrain-mass terrain-mass--south"></div>
+    <div class="terrain-ridge terrain-ridge--north"></div>
+    <div class="terrain-ridge terrain-ridge--central"></div>
+    <div class="terrain-ridge terrain-ridge--south"></div>
+    <div class="terrain-forest terrain-forest--west"></div>
+    <div class="terrain-forest terrain-forest--east"></div>
     <div class="terrain-river"></div>
     <div class="terrain-contours terrain-contours--a"></div>
     <div class="terrain-contours terrain-contours--b"></div>
+    <div class="terrain-contours terrain-contours--c"></div>
+    <div class="terrain-grain"></div>
   `;
 }
 
