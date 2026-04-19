@@ -209,6 +209,9 @@ const state = {
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   mobilePanelSection: 'details',
   mobileMapExpanded: true,
+  mapZoom: 1,
+  mapPanX: 0,
+  mapPanY: 0,
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
 };
 
@@ -984,6 +987,43 @@ function renderTerrainDecor() {
   `;
 }
 
+function clampMapPan() {
+  const limit = Math.round((state.mapZoom - 1) * 180);
+  state.mapPanX = Math.max(-limit, Math.min(limit, state.mapPanX));
+  state.mapPanY = Math.max(-limit, Math.min(limit, state.mapPanY));
+}
+
+function setMapZoom(nextZoom) {
+  state.mapZoom = Math.max(1, Math.min(2.4, Number(nextZoom.toFixed(2))));
+  if (state.mapZoom === 1) {
+    state.mapPanX = 0;
+    state.mapPanY = 0;
+    return;
+  }
+  clampMapPan();
+}
+
+function nudgeMapPan(deltaX, deltaY) {
+  state.mapPanX += deltaX;
+  state.mapPanY += deltaY;
+  clampMapPan();
+}
+
+function getMapViewportTransform() {
+  return `translate(${state.mapPanX}px, ${state.mapPanY}px) scale(${state.mapZoom})`;
+}
+
+function renderMapControls() {
+  return `
+    <div class="map-controls" aria-label="Navigation carte">
+      <button type="button" class="map-control-button" data-map-zoom="out" aria-label="Zoom arrière">−</button>
+      <div class="map-zoom-indicator">${Math.round(state.mapZoom * 100)}%</div>
+      <button type="button" class="map-control-button" data-map-zoom="in" aria-label="Zoom avant">+</button>
+      <button type="button" class="map-control-button ${state.mapZoom === 1 ? 'is-disabled' : ''}" data-map-pan="reset" aria-label="Réinitialiser la vue">Reset</button>
+    </div>
+  `;
+}
+
 function advanceTurn() {
   state.turn += 1;
   state.seasonIndex = (state.seasonIndex + 1) % seasonLabels.length;
@@ -1048,20 +1088,23 @@ function render() {
             </div>
             <div class="overlay-tabs">${renderOverlaySlots(shell)}</div>
           </div>
-          <div class="map-stage">
-            <div class="map-backdrop"></div>
-            ${renderTerrainDecor()}
-            ${renderStrategicRelations(shell)}
-            ${renderProvinceLabels(shell)}
-            <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
-            <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
-            <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
-            ${renderEconomyMapOverlay(economyView)}
-            ${renderCityQuickPanel(economyView)}
-            ${renderBottomTray(economyView)}
-            <div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>
-            ${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}
-            ${renderProvincePopup(shell)}
+          <div class="map-stage" data-map-stage="true">
+            ${renderMapControls()}
+            <div class="map-viewport" style="transform:${getMapViewportTransform()};">
+              <div class="map-backdrop"></div>
+              ${renderTerrainDecor()}
+              ${renderStrategicRelations(shell)}
+              ${renderProvinceLabels(shell)}
+              <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
+              <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
+              <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
+              ${renderEconomyMapOverlay(economyView)}
+              ${renderCityQuickPanel(economyView)}
+              ${renderBottomTray(economyView)}
+              <div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>
+              ${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}
+              ${renderProvincePopup(shell)}
+            </div>
           </div>
         </section>
 
@@ -1159,6 +1202,64 @@ function render() {
       state.mobileMapExpanded = !state.mobileMapExpanded;
       render();
     });
+  });
+
+  document.querySelectorAll('[data-map-zoom]').forEach((element) => {
+    element.addEventListener('click', () => {
+      setMapZoom(state.mapZoom + (element.dataset.mapZoom === 'in' ? 0.2 : -0.2));
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-map-pan]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.mapPanX = 0;
+      state.mapPanY = 0;
+      setMapZoom(1);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-map-stage]').forEach((stage) => {
+    const viewport = stage.querySelector('.map-viewport');
+    let dragState = null;
+
+    stage.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1));
+      render();
+    }, { passive: false });
+
+    stage.addEventListener('mousedown', (event) => {
+      if (state.mapZoom <= 1) {
+        return;
+      }
+      dragState = {
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: state.mapPanX,
+        originY: state.mapPanY,
+      };
+      stage.classList.add('is-dragging');
+    });
+
+    stage.addEventListener('mousemove', (event) => {
+      if (!dragState || !viewport) {
+        return;
+      }
+      state.mapPanX = dragState.originX + (event.clientX - dragState.startX);
+      state.mapPanY = dragState.originY + (event.clientY - dragState.startY);
+      clampMapPan();
+      viewport.style.transform = getMapViewportTransform();
+    });
+
+    const stopDragging = () => {
+      dragState = null;
+      stage.classList.remove('is-dragging');
+    };
+
+    stage.addEventListener('mouseleave', stopDragging);
+    stage.addEventListener('mouseup', stopDragging);
   });
 
   document.querySelectorAll('[data-popup-action]').forEach((element) => {
