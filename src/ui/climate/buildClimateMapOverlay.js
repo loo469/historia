@@ -40,10 +40,39 @@ function buildSeasonEntry(state, seasonLabels) {
   };
 }
 
-function buildAnomalyEntry(state) {
+const DEFAULT_ANOMALY_STYLE_BY_TYPE = Object.freeze({
+  heatwave: { icon: '☀', tone: 'danger', accent: 'amber' },
+  drought: { icon: '♨', tone: 'danger', accent: 'ochre' },
+  storm: { icon: '☈', tone: 'warning', accent: 'blue' },
+  flood: { icon: '≈', tone: 'warning', accent: 'teal' },
+  frost: { icon: '❄', tone: 'warning', accent: 'cyan' },
+  default: { icon: '◌', tone: 'warning', accent: 'slate' },
+});
+
+function normalizeAnomalyType(anomaly) {
+  return String(anomaly ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+}
+
+function normalizeAnomalyStyle(styleByType, anomaly) {
+  const anomalyType = normalizeAnomalyType(anomaly);
+  const style = styleByType[anomalyType] ?? styleByType.default ?? DEFAULT_ANOMALY_STYLE_BY_TYPE.default;
+
+  return {
+    icon: String(style.icon ?? DEFAULT_ANOMALY_STYLE_BY_TYPE[anomalyType]?.icon ?? '◌').trim() || '◌',
+    tone: String(style.tone ?? DEFAULT_ANOMALY_STYLE_BY_TYPE[anomalyType]?.tone ?? 'warning').trim() || 'warning',
+    accent: String(style.accent ?? DEFAULT_ANOMALY_STYLE_BY_TYPE[anomalyType]?.accent ?? 'slate').trim() || 'slate',
+  };
+}
+
+function buildAnomalyEntry(state, anomalyStyleByType) {
   if (!state.hasAnomaly()) {
     return null;
   }
+
+  const marker = normalizeAnomalyStyle(anomalyStyleByType, state.anomaly);
 
   return {
     overlayId: `${state.regionId}:anomaly:${state.anomaly}`,
@@ -51,7 +80,8 @@ function buildAnomalyEntry(state) {
     kind: 'anomaly',
     label: state.anomaly,
     season: state.season,
-    tone: 'warning',
+    tone: marker.tone,
+    marker,
   };
 }
 
@@ -103,17 +133,20 @@ function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
       description: 'Saison dominante affichée pour une région.',
     }));
 
-  const anomalyLegend = [...new Set(stateEntries
+  const anomalyLegend = [...new Map(stateEntries
     .filter((entry) => entry.kind === 'anomaly')
-    .map((entry) => entry.label))]
-    .sort((left, right) => left.localeCompare(right))
-    .map((anomaly) => ({
-      key: `anomaly:${anomaly}`,
+    .map((entry) => [entry.label, {
+      key: `anomaly:${entry.label}`,
       kind: 'anomaly',
-      label: anomaly,
-      tone: 'warning',
+      label: entry.label,
+      tone: entry.tone,
+      icon: entry.marker.icon,
+      accent: entry.marker.accent,
       description: 'Anomalie climatique active sur la région.',
-    }));
+    }]))
+    .entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, legendEntry]) => legendEntry);
 
   const catastropheLegend = [...new Map(catastropheEntries
     .map((entry) => [entry.severity, {
@@ -144,6 +177,10 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   const states = requireArray(climateStates, 'ClimateMapOverlay climateStates').map(normalizeClimateState);
   const normalizedOptions = requireObject(options, 'ClimateMapOverlay options');
   const seasonLabels = requireObject(normalizedOptions.seasonLabels ?? {}, 'ClimateMapOverlay seasonLabels');
+  const anomalyStyleByType = {
+    ...DEFAULT_ANOMALY_STYLE_BY_TYPE,
+    ...requireObject(normalizedOptions.anomalyStyleByType ?? {}, 'ClimateMapOverlay anomalyStyleByType'),
+  };
   const catastropheEntries = buildCatastropheMapOverlay(
     normalizedOptions.catastrophes ?? [],
     { styleBySeverity: normalizedOptions.styleBySeverity ?? {} },
@@ -157,7 +194,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     .sort((left, right) => left.regionId.localeCompare(right.regionId))
     .flatMap((state) => {
       const entries = [buildSeasonEntry(state, seasonLabels)];
-      const anomalyEntry = buildAnomalyEntry(state);
+      const anomalyEntry = buildAnomalyEntry(state, anomalyStyleByType);
 
       if (anomalyEntry) {
         entries.push(anomalyEntry);
