@@ -321,6 +321,11 @@ const state = {
   mapPanY: 0,
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
   selectedIntrigueOperationId: 'op-river-ashes',
+  intrigueFilters: {
+    presence: true,
+    alerts: true,
+    sabotage: true,
+  },
 };
 
 const seasonLabels = ['Printemps', 'Été', 'Automne', 'Hiver'];
@@ -843,13 +848,32 @@ function getIntrigueViewModel() {
     heatIntensity: Math.max(0.14, entry.sabotageRiskScore / 100),
   })).filter((entry) => entry.center);
 
-  const selectedOperation = demo.panels.operations.find((operation) => operation.operationId === state.selectedIntrigueOperationId)
-    ?? demo.panels.operations.find((operation) => operation.locationId === state.selectedProvinceId)
-    ?? demo.panels.operations[0]
+  const filters = state.intrigueFilters;
+  const filteredEntries = entries.filter((entry) => {
+    const matchesPresence = !filters.presence || entry.metrics.celluleCount > 0;
+    const matchesAlerts = !filters.alerts || entry.metrics.exposedCellCount > 0 || entry.sabotageRiskLevel === 'high';
+    const matchesSabotage = !filters.sabotage || entry.metrics.sabotageOperationCount > 0;
+    return matchesPresence && matchesAlerts && matchesSabotage;
+  });
+  const filteredCellules = demo.panels.cellules.filter((cellule) => {
+    const matchesPresence = !filters.presence || true;
+    const matchesAlerts = !filters.alerts || cellule.statusClass === 'exposed' || cellule.statusClass === 'compromised';
+    const matchesSabotage = !filters.sabotage || liveOperations.some((operation) => !operation.isResolved && operation.celluleId === cellule.celluleId && operation.type === 'sabotage');
+    return matchesPresence && matchesAlerts && matchesSabotage;
+  });
+  const filteredOperations = demo.panels.operations.filter((operation) => {
+    const matchesPresence = !filters.presence || true;
+    const matchesAlerts = !filters.alerts || operation.tone === 'danger' || operation.detectionRisk >= 40;
+    const matchesSabotage = !filters.sabotage || operation.type === 'sabotage';
+    return matchesPresence && matchesAlerts && matchesSabotage;
+  });
+  const selectedOperation = filteredOperations.find((operation) => operation.operationId === state.selectedIntrigueOperationId)
+    ?? filteredOperations.find((operation) => operation.locationId === state.selectedProvinceId)
+    ?? filteredOperations[0]
     ?? null;
-  const selectedEntry = entries.find((entry) => entry.locationId === state.selectedProvinceId) ?? entries[0] ?? null;
-  const selectedCellules = demo.panels.cellules.filter((cellule) => cellule.locationId === selectedEntry?.locationId);
-  const selectedOperations = demo.panels.operations.filter((operation) => operation.locationId === selectedEntry?.locationId);
+  const selectedEntry = filteredEntries.find((entry) => entry.locationId === state.selectedProvinceId) ?? filteredEntries[0] ?? null;
+  const selectedCellules = filteredCellules.filter((cellule) => cellule.locationId === selectedEntry?.locationId);
+  const selectedOperations = filteredOperations.filter((operation) => operation.locationId === selectedEntry?.locationId);
   const selectedRiskReasons = [
     selectedEntry ? `Risque sabotage ${selectedEntry.sabotageRiskLevel}` : null,
     selectedEntry?.metrics.exposedCellCount ? `${selectedEntry.metrics.exposedCellCount} cellule${selectedEntry.metrics.exposedCellCount > 1 ? 's' : ''} exposee${selectedEntry.metrics.exposedCellCount > 1 ? 's' : ''}` : null,
@@ -893,6 +917,7 @@ function getIntrigueViewModel() {
 
   return {
     ...demo,
+    filters,
     selectedOperation,
     selectedProvince: selectedEntry ? {
       locationId: selectedEntry.locationId,
@@ -912,10 +937,22 @@ function getIntrigueViewModel() {
           : 'Lecture locale stable, a conserver sous observation.',
     } : null,
     incidents,
+    hotspots: demo.hotspots.filter((hotspot) => filteredEntries.some((entry) => entry.locationId === hotspot.locationId)),
+    panels: {
+      ...demo.panels,
+      cellules: filteredCellules,
+      operations: filteredOperations,
+    },
+    metrics: {
+      ...demo.metrics,
+      locationCount: filteredEntries.length,
+      exposedCellCount: filteredCellules.filter((cellule) => cellule.statusClass === 'exposed' || cellule.statusClass === 'compromised').length,
+      activeSabotageCount: filteredOperations.filter((operation) => operation.type === 'sabotage').length,
+    },
     map: {
       ...demo.map,
-      entries,
-      links: buildIntrigueLinks(entries),
+      entries: filteredEntries,
+      links: buildIntrigueLinks(filteredEntries),
     },
   };
 }
@@ -1083,6 +1120,11 @@ function renderIntrigueSidePanel(intrigueView) {
         <div class="overlay-anchor"><span>Sabotages actifs</span><strong>${intrigueView.metrics.activeSabotageCount}</strong></div>
         <div class="overlay-anchor"><span>Alerte</span><strong>${intrigueView.alertBadge.level.label}</strong></div>
       </div>
+      <section class="intrigue-filter-bar" aria-label="Filtres intrigue">
+        <button type="button" class="intrigue-filter-chip ${intrigueView.filters.presence ? 'is-active' : ''}" data-intrigue-filter="presence">Presence</button>
+        <button type="button" class="intrigue-filter-chip ${intrigueView.filters.alerts ? 'is-active' : ''}" data-intrigue-filter="alerts">Alertes</button>
+        <button type="button" class="intrigue-filter-chip ${intrigueView.filters.sabotage ? 'is-active' : ''}" data-intrigue-filter="sabotage">Sabotage</button>
+      </section>
       <section class="intrigue-alert-panel intrigue-alert-panel--${intrigueView.alertPanel.tone}" aria-label="Lecture du niveau d'alerte">
         <div class="intrigue-alert-panel__header">
           <strong>${intrigueView.alertPanel.icon} ${intrigueView.alertPanel.title}</strong>
@@ -1899,6 +1941,14 @@ function render() {
   document.querySelectorAll('[data-intrigue-operation-id]').forEach((element) => {
     element.addEventListener('click', () => {
       state.selectedIntrigueOperationId = element.dataset.intrigueOperationId;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-intrigue-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const key = element.dataset.intrigueFilter;
+      state.intrigueFilters[key] = !state.intrigueFilters[key];
       render();
     });
   });
