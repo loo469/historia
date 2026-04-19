@@ -311,11 +311,40 @@ button { font: inherit; }
   background-size: 26px 26px, 34px 34px;
   mix-blend-mode: soft-light;
 }
+.province-surface-layer,
 .strategic-relations-layer {
   position: absolute;
   inset: 0;
-  z-index: 1;
   overflow: visible;
+}
+.province-surface-layer {
+  z-index: 1;
+}
+.province-surface polygon {
+  fill: color-mix(in srgb, var(--province-fill) 88%, #0f172a 12%);
+  stroke: color-mix(in srgb, var(--province-border) 92%, white 8%);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 10px 18px rgba(2, 6, 23, 0.22));
+}
+.province-surface.is-muted polygon {
+  opacity: 0.38;
+}
+.province-surface.is-neighbor polygon {
+  stroke-width: 1.5;
+}
+.province-surface.is-focused polygon,
+.province-surface.is-selected polygon {
+  stroke: #e0f2fe;
+  stroke-width: 2;
+}
+.province-surface.is-selected polygon {
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 12px rgba(125, 211, 252, 0.35));
+}
+.province-surface.is-occupied polygon {
+  stroke-dasharray: 3 2;
+}
+.province-surface.is-contested polygon {
+  stroke: rgba(251, 113, 133, 0.92);
 }
 .map-label-layer {
   position: absolute;
@@ -648,8 +677,7 @@ button { font: inherit; }
   z-index: 3;
   clip-path: var(--province-shape);
   border: 0;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--province-fill) 92%, white 8%), color-mix(in srgb, var(--province-fill) 72%, black 28%));
+  background: transparent;
   color: white;
   padding: 18px 16px;
   text-align: left;
@@ -657,31 +685,27 @@ button { font: inherit; }
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
-  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.3);
-  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease, opacity 160ms ease;
+  box-shadow: none;
+  transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease;
 }
 .province-node::before {
   content: '';
   position: absolute;
   inset: 0;
-  border: 2px solid var(--province-border);
+  border: 1px solid rgba(255,255,255,0.04);
   clip-path: var(--province-shape);
   pointer-events: none;
 }
 .province-node:hover, .province-node.is-focused {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.42);
+  transform: translateY(-2px);
 }
 .province-node.is-selected {
   z-index: 6;
-  outline: 3px solid rgba(125, 211, 252, 0.9);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.18), 0 22px 42px rgba(2, 6, 23, 0.5);
+  outline: none;
 }
 .province-node.is-neighbor {
   z-index: 5;
   filter: saturate(1.06);
-  box-shadow: 0 0 0 2px rgba(191, 219, 254, 0.16), 0 14px 32px rgba(2, 6, 23, 0.38);
 }
 .province-node.is-muted {
   opacity: 0.45;

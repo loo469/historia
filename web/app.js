@@ -380,6 +380,38 @@ function renderLegend(shell) {
   `;
 }
 
+const provincePolygonById = {
+  'north-watch': '8,24 24,12 39,10 47,18 46,36 34,42 18,40 8,32',
+  'crown-heart': '24,18 40,12 58,14 64,24 58,40 40,46 26,38 22,28',
+  'red-ridge': '58,16 73,10 88,18 90,34 80,44 64,42 54,32 52,22',
+  'river-gate': '38,38 54,34 66,40 68,54 56,66 40,64 32,52 34,42',
+  'iron-plain': '60,44 78,42 90,52 88,68 72,78 56,72 54,56',
+  'southern-reach': '24,58 42,54 58,58 64,74 48,88 28,86 16,72',
+};
+
+function getProvinceShape(provinceId) {
+  const polygon = provincePolygonById[provinceId] ?? '12,12 88,12 88,88 12,88';
+  return `polygon(${polygon.split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
+}
+
+function renderProvinceSurface(shell, focusContext) {
+  return `
+    <svg class="province-surface-layer" viewBox="0 0 100 100" aria-label="Surface continue des provinces">
+      ${shell.provinces.map((province) => {
+        const isNeighbor = focusContext.neighborIds.has(province.provinceId);
+        const isSelected = province.selectionState.selected;
+        const isFocused = province.selectionState.focused;
+        const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
+        return `
+          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}">
+            <polygon points="${provincePolygonById[province.provinceId]}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};"></polygon>
+          </g>
+        `;
+      }).join('')}
+    </svg>
+  `;
+}
+
 function renderProvinceCard(province, focusContext) {
   const layout = provinceLayouts[province.provinceId];
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
@@ -396,21 +428,13 @@ function renderProvinceCard(province, focusContext) {
     province.contested ? 'is-contested' : '',
     province.occupied ? 'is-occupied' : '',
   ].filter(Boolean).join(' ');
-  const silhouetteByProvinceId = {
-    'north-watch': 'polygon(10% 18%, 66% 6%, 92% 34%, 84% 88%, 28% 94%, 8% 58%)',
-    'crown-heart': 'polygon(8% 20%, 52% 4%, 90% 18%, 92% 74%, 54% 94%, 10% 78%)',
-    'red-ridge': 'polygon(16% 16%, 74% 8%, 94% 38%, 82% 92%, 22% 88%, 6% 44%)',
-    'river-gate': 'polygon(14% 10%, 86% 18%, 92% 54%, 74% 92%, 22% 86%, 6% 40%)',
-    'iron-plain': 'polygon(8% 24%, 48% 6%, 92% 28%, 88% 80%, 44% 96%, 6% 74%)',
-    'southern-reach': 'polygon(16% 14%, 78% 8%, 94% 46%, 74% 90%, 24% 92%, 6% 48%)',
-  };
 
   return `
     <button
       class="${classes}"
       type="button"
       data-province-id="${province.provinceId}"
-      style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${silhouetteByProvinceId[province.provinceId] ?? 'polygon(12% 12%, 88% 12%, 88% 88%, 12% 88%)'};"
+      style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
     >
       <span class="province-node__terrain"></span>
@@ -1116,6 +1140,7 @@ function render() {
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
               <div class="map-backdrop"></div>
               ${renderTerrainDecor()}
+              ${renderProvinceSurface(shell, focusContext)}
               ${renderStrategicRelations(shell)}
               ${renderProvinceLabels(shell)}
               <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
