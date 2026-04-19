@@ -194,6 +194,8 @@ const state = {
   selectedProvinceId: 'river-gate',
   activeOverlaySlot: 'economy-overlay',
   popupProvinceId: 'river-gate',
+  hoveredCityId: 'river-gate-city',
+  selectedCityId: 'river-gate-city',
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
 };
@@ -541,6 +543,44 @@ function buildRouteVisual(route, origin, destination, index) {
   };
 }
 
+function renderCityQuickPanel(economyView) {
+  if (state.activeOverlaySlot !== 'economy-overlay') {
+    return '';
+  }
+
+  const cityId = state.hoveredCityId ?? state.selectedCityId;
+  const city = economyView.overlay.cities.find((candidate) => candidate.cityId === cityId);
+
+  if (!city || !city.marker.position) {
+    return '';
+  }
+
+  const stockPanel = economyView.stockPanels[city.cityId];
+  const topResources = stockPanel.rows.slice(0, 3);
+  const left = Math.min(76, Math.max(8, city.marker.position.x + 3));
+  const top = Math.min(66, Math.max(10, city.marker.position.y - 18));
+
+  return `
+    <aside class="city-quick-panel" style="left:${left}%;top:${top}%;" aria-live="polite">
+      <div class="city-quick-panel__header">
+        <div>
+          <strong>${city.cityName}</strong>
+          <p>${city.capital ? 'Capitale logistique' : 'Ville logistique'} · ${city.regionId}</p>
+        </div>
+        <span class="city-quick-panel__tone city-quick-panel__tone--${city.marker.tone}">${city.marker.tone}</span>
+      </div>
+      <div class="city-quick-panel__stats">
+        <span>Stock ${city.resources.totalStock}</span>
+        <span>Stabilité ${city.stability}</span>
+        <span>Prospérité ${city.prosperity}</span>
+      </div>
+      <ul class="city-quick-panel__stocks">
+        ${topResources.map((row) => `<li class="${row.status}"><span>${row.resourceId}</span><strong>${row.currentQuantity}</strong></li>`).join('')}
+      </ul>
+    </aside>
+  `;
+}
+
 function renderEconomyMapOverlay(economyView) {
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return '';
@@ -578,8 +618,9 @@ function renderEconomyMapOverlay(economyView) {
     }
 
     return `
-      <g class="economy-city-group" data-city-id="${city.cityId}">
+      <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''}" data-city-id="${city.cityId}">
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
+        <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 11}" />
         <text class="economy-city-label" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
         <text class="economy-city-resource" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
       </g>
@@ -866,6 +907,7 @@ function render() {
             <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
             <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
             ${renderEconomyMapOverlay(economyView)}
+            ${renderCityQuickPanel(economyView)}
             ${renderBottomTray(economyView)}
             <div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>
             ${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}
@@ -904,6 +946,19 @@ function render() {
   document.querySelectorAll('[data-overlay-slot]').forEach((element) => {
     element.addEventListener('click', () => {
       state.activeOverlaySlot = element.dataset.overlaySlot;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-city-id]').forEach((element) => {
+    element.addEventListener('mouseenter', () => {
+      state.hoveredCityId = element.dataset.cityId;
+      render();
+    });
+
+    element.addEventListener('click', () => {
+      state.selectedCityId = element.dataset.cityId;
+      state.hoveredCityId = element.dataset.cityId;
       render();
     });
   });
