@@ -847,6 +847,17 @@ function getIntrigueViewModel() {
     ?? demo.panels.operations.find((operation) => operation.locationId === state.selectedProvinceId)
     ?? demo.panels.operations[0]
     ?? null;
+  const selectedEntry = entries.find((entry) => entry.locationId === state.selectedProvinceId) ?? entries[0] ?? null;
+  const selectedCellules = demo.panels.cellules.filter((cellule) => cellule.locationId === selectedEntry?.locationId);
+  const selectedOperations = demo.panels.operations.filter((operation) => operation.locationId === selectedEntry?.locationId);
+  const selectedRiskReasons = [
+    selectedEntry ? `Risque sabotage ${selectedEntry.sabotageRiskLevel}` : null,
+    selectedEntry?.metrics.exposedCellCount ? `${selectedEntry.metrics.exposedCellCount} cellule${selectedEntry.metrics.exposedCellCount > 1 ? 's' : ''} exposee${selectedEntry.metrics.exposedCellCount > 1 ? 's' : ''}` : null,
+    selectedOperations.length ? `${selectedOperations.length} operation${selectedOperations.length > 1 ? 's' : ''} active${selectedOperations.length > 1 ? 's' : ''}` : null,
+    selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length
+      ? `${selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length} cellule${selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length > 1 ? 's' : ''} compromise${selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length > 1 ? 's' : ''}`
+      : null,
+  ].filter(Boolean);
   const incidents = [
     {
       id: 'incident-locks',
@@ -883,6 +894,23 @@ function getIntrigueViewModel() {
   return {
     ...demo,
     selectedOperation,
+    selectedProvince: selectedEntry ? {
+      locationId: selectedEntry.locationId,
+      locationName: selectedEntry.locationName,
+      presenceLevel: selectedEntry.presenceLevel,
+      sabotageRiskLevel: selectedEntry.sabotageRiskLevel,
+      sabotageRiskScore: selectedEntry.sabotageRiskScore,
+      celluleCount: selectedEntry.metrics.celluleCount,
+      exposedCellCount: selectedEntry.metrics.exposedCellCount,
+      sleeperCellCount: selectedEntry.metrics.sleeperCellCount,
+      activeOperationCount: selectedOperations.length,
+      reasons: selectedRiskReasons.length > 0 ? selectedRiskReasons : ['Aucun signal Delta notable'],
+      guidance: selectedEntry.sabotageRiskLevel === 'high'
+        ? 'Priorite a la surveillance locale, les marqueurs rouges concentrent le risque actif.'
+        : selectedOperations.length > 0
+          ? 'Surveillez les operations en cours et l exposition des cellules liees.'
+          : 'Lecture locale stable, a conserver sous observation.',
+    } : null,
     incidents,
     map: {
       ...demo.map,
@@ -1073,6 +1101,24 @@ function renderIntrigueSidePanel(intrigueView) {
           `).join('')}
         </div>
       </section>
+      ${intrigueView.selectedProvince ? `
+        <section class="intrigue-province-focus intrigue-province-focus--${intrigueView.selectedProvince.sabotageRiskLevel}">
+          <div class="intrigue-province-focus__header">
+            <strong>Province suivie, ${intrigueView.selectedProvince.locationName}</strong>
+            <span>presence ${intrigueView.selectedProvince.presenceLevel} · risque ${intrigueView.selectedProvince.sabotageRiskLevel}</span>
+          </div>
+          <p>${intrigueView.selectedProvince.guidance}</p>
+          <div class="intrigue-province-focus__stats">
+            <span>${intrigueView.selectedProvince.celluleCount} cellules</span>
+            <span>${intrigueView.selectedProvince.activeOperationCount} operations</span>
+            <span>${intrigueView.selectedProvince.exposedCellCount} exposees</span>
+            <span>score ${intrigueView.selectedProvince.sabotageRiskScore}</span>
+          </div>
+          <div class="intrigue-status-pill-row">
+            ${intrigueView.selectedProvince.reasons.map((reason) => `<span class="intrigue-status-pill intrigue-status-pill--${intrigueView.selectedProvince.sabotageRiskLevel === 'high' ? 'compromised' : intrigueView.selectedProvince.sabotageRiskLevel === 'medium' ? 'exposed' : 'active'}">${reason}</span>`).join('')}
+          </div>
+        </section>
+      ` : ''}
       <div class="intrigue-legend-strip" aria-label="Légende heatmap sabotage">
         <span>Heatmap sabotage</span>
         <div class="intrigue-legend-strip__scale">
