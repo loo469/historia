@@ -99,6 +99,42 @@ test('UpdateRegionalClimate clamps precipitation and drought indicators', () => 
   assert.equal(result.updatedRegionalStates[0].season, 'winter');
 });
 
+test('UpdateRegionalClimate supports season rollover while preserving active climate events', () => {
+  const useCase = new UpdateRegionalClimate();
+
+  const result = useCase.execute({
+    regionalStates: [
+      {
+        regionId: 'ember-steppe',
+        season: 'winter',
+        temperatureC: 3,
+        precipitationLevel: 35,
+        droughtIndex: 41,
+        anomaly: 'ashfall',
+        activeCatastropheIds: ['locusts'],
+        updatedAt: '2026-04-18T00:00:00.000Z',
+      },
+    ],
+    nextSeason: 'spring',
+    defaultShift: {
+      temperatureDelta: 6,
+      precipitationDelta: 12,
+      droughtDelta: -9,
+    },
+  });
+
+  assert.deepEqual(result.updatedRegionalStates[0].toJSON(), {
+    regionId: 'ember-steppe',
+    season: 'spring',
+    temperatureC: 9,
+    precipitationLevel: 47,
+    droughtIndex: 32,
+    anomaly: 'ashfall',
+    activeCatastropheIds: ['locusts'],
+    updatedAt: result.updatedRegionalStates[0].updatedAt,
+  });
+});
+
 test('UpdateRegionalClimate rejects invalid regional state collections', () => {
   const useCase = new UpdateRegionalClimate();
 
