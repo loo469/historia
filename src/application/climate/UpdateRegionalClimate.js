@@ -26,6 +26,22 @@ function normalizeShift(shift = {}) {
   };
 }
 
+function buildProgression(previousState, nextState) {
+  return {
+    regionId: nextState.regionId,
+    seasonChanged: previousState.season !== nextState.season,
+    temperatureDelta: nextState.temperatureC - previousState.temperatureC,
+    precipitationDelta: nextState.precipitationLevel - previousState.precipitationLevel,
+    droughtDelta: nextState.droughtIndex - previousState.droughtIndex,
+    summary: [
+      previousState.season !== nextState.season ? `${previousState.season} → ${nextState.season}` : null,
+      `temp ${nextState.temperatureC - previousState.temperatureC >= 0 ? '+' : ''}${nextState.temperatureC - previousState.temperatureC}°C`,
+      `précip ${nextState.precipitationLevel - previousState.precipitationLevel >= 0 ? '+' : ''}${nextState.precipitationLevel - previousState.precipitationLevel}`,
+      `sécheresse ${nextState.droughtIndex - previousState.droughtIndex >= 0 ? '+' : ''}${nextState.droughtIndex - previousState.droughtIndex}`,
+    ].filter(Boolean).join(', '),
+  };
+}
+
 export class UpdateRegionalClimate {
   execute({ regionalStates, shiftsByRegionId = {}, defaultShift = {}, nextSeason } = {}) {
     const states = normalizeRegionalStates(regionalStates);
@@ -49,6 +65,10 @@ export class UpdateRegionalClimate {
     return {
       updatedRegionalStates,
       appliedShiftCount: updatedRegionalStates.length,
+      progressionByRegion: Object.fromEntries(updatedRegionalStates.map((state, index) => [
+        state.regionId,
+        buildProgression(states[index], state),
+      ])),
     };
   }
 }

@@ -212,6 +212,22 @@ function buildCatastropheZones(catastropheEntries) {
     });
 }
 
+function buildTurnProgression(state, progressionByRegion) {
+  const progression = progressionByRegion[state.regionId] ?? null;
+
+  if (!progression) {
+    return null;
+  }
+
+  return {
+    seasonChanged: progression.seasonChanged,
+    temperatureDelta: progression.temperatureDelta,
+    precipitationDelta: progression.precipitationDelta,
+    droughtDelta: progression.droughtDelta,
+    summary: progression.summary,
+  };
+}
+
 function buildRegionalRiskMode(regions) {
   return regions.map((region) => ({
     regionId: region.regionId,
@@ -303,6 +319,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     ...DEFAULT_ANOMALY_STYLE_BY_TYPE,
     ...requireObject(normalizedOptions.anomalyStyleByType ?? {}, 'ClimateMapOverlay anomalyStyleByType'),
   };
+  const progressionByRegion = requireObject(normalizedOptions.progressionByRegion ?? {}, 'ClimateMapOverlay progressionByRegion');
   const catastropheEntries = buildCatastropheMapOverlay(
     normalizedOptions.catastrophes ?? [],
     { styleBySeverity: normalizedOptions.styleBySeverity ?? {} },
@@ -341,6 +358,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
         activeCatastropheIds: regionalCatastrophes.map((entry) => entry.catastropheId),
         strategicImpact: buildStrategicImpact(state, regionalCatastrophes),
         strategicSignals,
+        turnProgression: buildTurnProgression(state, progressionByRegion),
         temperatureC: state.temperatureC,
         precipitationLevel: state.precipitationLevel,
         droughtIndex: state.droughtIndex,

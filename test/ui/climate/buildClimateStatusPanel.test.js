@@ -18,6 +18,13 @@ test('buildClimateStatusPanel summarizes season, anomaly, and active catastrophe
     seasonLabels: {
       summer: 'Été',
     },
+    turnProgression: {
+      seasonChanged: true,
+      temperatureDelta: 5,
+      precipitationDelta: -4,
+      droughtDelta: 14,
+      summary: 'spring → summer, temp +5°C, précip -4, sécheresse +14',
+    },
   });
 
   assert.deepEqual(panel, {
@@ -52,6 +59,13 @@ test('buildClimateStatusPanel summarizes season, anomaly, and active catastrophe
         value: '74/100',
       },
     ],
+    turnProgression: {
+      seasonChanged: true,
+      temperatureDelta: 5,
+      precipitationDelta: -4,
+      droughtDelta: 14,
+      summary: 'spring → summer, temp +5°C, précip -4, sécheresse +14',
+    },
     anomalies: [
       {
         type: 'anomaly',
@@ -114,6 +128,7 @@ test('buildClimateStatusPanel supports plain payloads without anomalies', () => 
       value: '18/100',
     },
   ]);
+  assert.equal(panel.turnProgression, null);
   assert.deepEqual(panel.anomalies, []);
   assert.deepEqual(panel.risks, {
     logistics: 'faible',
@@ -158,5 +173,18 @@ test('buildClimateStatusPanel rejects invalid payloads', () => {
       regionName: ' ',
     }),
     /ClimateStatusPanel regionName is required/,
+  );
+
+  assert.throws(
+    () => buildClimateStatusPanel({
+      regionId: 'north-coast',
+      season: 'spring',
+      temperatureC: 12,
+      precipitationLevel: 63,
+      droughtIndex: 18,
+    }, {
+      turnProgression: [],
+    }),
+    /ClimateStatusPanel turnProgression must be an object/,
   );
 });
