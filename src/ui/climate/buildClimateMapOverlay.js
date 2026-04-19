@@ -153,6 +153,38 @@ function buildSeasonSummary(states, seasonLabels, seasonStyleByType) {
   };
 }
 
+function buildCatastropheZones(catastropheEntries) {
+  return [...new Map(catastropheEntries
+    .map((entry) => [entry.catastropheId, entry]))
+    .values()]
+    .sort((left, right) => left.catastropheId.localeCompare(right.catastropheId))
+    .map((entry) => {
+      const regionIds = catastropheEntries
+        .filter((candidate) => candidate.catastropheId === entry.catastropheId)
+        .map((candidate) => candidate.regionId)
+        .sort((left, right) => left.localeCompare(right));
+
+      return {
+        zoneId: `zone:${entry.catastropheId}`,
+        catastropheId: entry.catastropheId,
+        type: entry.type,
+        severity: entry.severity,
+        status: entry.status,
+        label: entry.label,
+        regionIds,
+        outline: {
+          stroke: entry.style.stroke,
+          pattern: 'ring',
+          opacity: Math.min(1, entry.style.opacity + 0.2),
+        },
+        fill: {
+          color: entry.style.fill,
+          opacity: Math.max(0.12, entry.style.opacity - 0.1),
+        },
+      };
+    });
+}
+
 function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
   const seasonLegend = [...new Set(stateEntries
     .filter((entry) => entry.kind === 'season')
@@ -280,6 +312,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     }),
     regions,
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
+    catastropheZones: buildCatastropheZones(catastropheEntries),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
     metrics: {
       regionCount: states.length,

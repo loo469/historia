@@ -179,6 +179,26 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         },
       ],
     },
+    catastropheZones: [
+      {
+        zoneId: 'zone:storm-1',
+        catastropheId: 'storm-1',
+        type: 'great-storm',
+        severity: 'major',
+        status: 'active',
+        label: 'great-storm (major)',
+        regionIds: ['north-coast', 'sunreach'],
+        outline: {
+          stroke: 'orange',
+          pattern: 'ring',
+          opacity: 0.6000000000000001,
+        },
+        fill: {
+          color: 'orange',
+          opacity: 0.30000000000000004,
+        },
+      },
+    ],
     legend: {
       title: 'Légende climat',
       compact: true,
@@ -251,6 +271,7 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
   assert.equal(overlay.metrics.criticalRegionCount, 0);
   assert.equal(overlay.entries[0].overlayId, 'delta:season');
   assert.equal(overlay.seasonalPanel.summary, 'autumn: 1');
+  assert.deepEqual(overlay.catastropheZones, []);
   assert.deepEqual(overlay.legend, {
     title: 'Légende climat',
     compact: true,
