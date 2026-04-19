@@ -579,7 +579,7 @@ function renderCityQuickPanel(economyView) {
       <div class="city-quick-panel__header">
         <div>
           <strong>${city.cityName}</strong>
-          <p>${city.capital ? 'Capitale logistique' : 'Ville logistique'} · ${city.regionId}</p>
+          <p>${city.capital ? 'Capitale logistique' : city.tradeRouteIds.length >= 2 || city.resources.totalStock >= 16 ? 'Hub logistique' : 'Ville logistique'} · ${city.regionId}</p>
         </div>
         <span class="city-quick-panel__tone city-quick-panel__tone--${city.marker.tone}">${city.marker.tone}</span>
       </div>
@@ -645,11 +645,15 @@ function renderEconomyMapOverlay(economyView) {
     }
 
     const tension = tensionByCityId[city.cityId]?.tensionLevel ?? 'low';
+    const isHub = city.tradeRouteIds.length >= 2 || city.resources.totalStock >= 16;
 
     return `
-      <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''} is-${tension}-tension" data-city-id="${city.cityId}">
+      <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension" data-city-id="${city.cityId}">
         <circle class="economy-city-tension-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 10.5}" />
+        ${city.capital ? `<circle class="economy-city-capital-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 12.4}" />` : ''}
+        ${isHub ? `<rect class="economy-city-hub-frame" x="calc(${position.x}% - ${city.marker.size * 9}px)" y="calc(${position.y}% - ${city.marker.size * 9}px)" width="${city.marker.size * 18}" height="${city.marker.size * 18}" rx="${city.marker.size * 4}" ry="${city.marker.size * 4}" />` : ''}
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
+        ${city.capital ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">★</text>` : isHub ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">◆</text>` : ''}
         <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 11}" />
         <text class="economy-city-label economy-city-label--sr" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
         <text class="economy-city-resource economy-city-resource--sr" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
@@ -734,7 +738,8 @@ function renderEconomySidePanel(economyView) {
           <article class="economy-legend-card">
             <strong>Villes</strong>
             <ul>
-              <li><span class="economy-legend-city is-positive"></span>Ville en surplus</li>
+              <li><span class="economy-legend-city is-capital"></span>Capitale logistique</li>
+              <li><span class="economy-legend-city is-hub"></span>Hub majeur</li>
               <li><span class="economy-legend-city is-warning"></span>Ville sous vigilance</li>
               <li><span class="economy-legend-ring"></span>Tension d’approvisionnement</li>
             </ul>
