@@ -608,6 +608,24 @@ function renderEconomyMapOverlay(economyView) {
   }
 
   const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const heatNodes = economyView.overlay.cities.map((city) => {
+    const position = city.marker.position;
+    const tension = tensionByCityId[city.cityId];
+
+    if (!position || !tension) {
+      return '';
+    }
+
+    const tensionRadius = tension.tensionLevel === 'high' ? 18 : tension.tensionLevel === 'medium' ? 13 : 9;
+    const prosperityRadius = city.prosperity >= 70 ? 14 : city.prosperity >= 55 ? 10 : 7;
+
+    return `
+      <g class="economy-heat-node is-${tension.tensionLevel}-tension ${city.prosperity >= 70 ? 'is-rich' : city.prosperity >= 55 ? 'is-balanced' : 'is-fragile'}">
+        <circle class="economy-heat-node__tension" cx="${position.x}%" cy="${position.y}%" r="${tensionRadius}" />
+        <circle class="economy-heat-node__prosperity" cx="${position.x}%" cy="${position.y}%" r="${prosperityRadius}" />
+      </g>
+    `;
+  }).join('');
 
   const routeLines = economyView.overlay.routes.map((route, index) => {
     const origin = cityLayoutsById[route.originCityId];
@@ -677,6 +695,9 @@ function renderEconomyMapOverlay(economyView) {
           <path d="M 0 1 L 10 5 L 0 9 z" fill="#c7d2fe" opacity="0.95" />
         </marker>
       </defs>
+      <g class="economy-heat-layer">
+        ${heatNodes}
+      </g>
       ${routeLines}
       ${cityNodes}
     </svg>
@@ -762,6 +783,8 @@ function renderEconomySidePanel(economyView) {
               <li><span class="tension-pill tension-pill--low">low</span>lecture stable</li>
               <li><span class="tension-pill tension-pill--medium">medium</span>stocks fragiles</li>
               <li><span class="tension-pill tension-pill--high">high</span>pénurie à traiter</li>
+              <li><span class="economy-legend-heat is-rich"></span>zone prospère</li>
+              <li><span class="economy-legend-heat is-fragile"></span>zone en tension</li>
             </ul>
           </article>
         </div>
