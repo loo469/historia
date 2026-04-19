@@ -80,6 +80,26 @@ button { font: inherit; }
   margin: 12px 0 0;
   max-width: 52ch;
 }
+.economy-turn-pulse {
+  margin-top: 12px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+}
+.economy-turn-pulse strong {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #bae6fd;
+}
+.economy-turn-pulse span {
+  color: var(--muted);
+  font-size: 13px;
+}
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1207,6 +1227,12 @@ button { font: inherit; }
 .comparison-card__stats dd {
   margin: 0;
   font-weight: 600;
+}
+.comparison-card__stats dd small {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 11px;
 }
 .comparison-card ul {
   list-style: none;
