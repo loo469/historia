@@ -114,6 +114,64 @@ function buildMarkerType(culture) {
   return 'balanced';
 }
 
+function clampScore(value) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function buildInfluenceScore(culture, signals) {
+  return clampScore(
+    (culture.openness * 0.2)
+    + (culture.cohesion * 0.3)
+    + (culture.researchDrive * 0.3)
+    + (signals.highlightedDiscoveries.length * 6)
+    + (signals.eventCount * 5)
+  );
+}
+
+function buildInfluenceTier(influenceScore) {
+  if (influenceScore >= 85) {
+    return 'dominant';
+  }
+
+  if (influenceScore >= 65) {
+    return 'strong';
+  }
+
+  if (influenceScore >= 40) {
+    return 'emerging';
+  }
+
+  return 'faint';
+}
+
+function buildZoneStyle(markerType, influenceTier, style) {
+  const opacityByTier = {
+    dominant: 0.85,
+    strong: 0.7,
+    emerging: 0.55,
+    faint: 0.35,
+  };
+
+  return {
+    fill: style.color,
+    outline: style.color,
+    markerIcon: style.icon,
+    emphasis: style.emphasis,
+    opacity: opacityByTier[influenceTier] ?? 0.35,
+    pattern: markerType === 'traditional'
+      ? 'woven'
+      : markerType === 'fragmented'
+        ? 'fractured'
+        : markerType === 'innovation'
+          ? 'radiant'
+          : 'solid',
+  };
+}
+
 function summarizeSignals(culture, researchStates, historicalEvents) {
   const discoveredConceptIds = new Set();
   const unlockedResearchIds = new Set();
@@ -185,7 +243,10 @@ export function buildCultureMapOverlay(payload, options = {}) {
       const cultureHistoricalEvents = historicalEvents.filter((historicalEvent) => historicalEvent.affectsCulture(culture.id));
       const signals = summarizeSignals(culture, cultureResearchStates, cultureHistoricalEvents);
       const markerType = buildMarkerType(culture);
+      const influenceScore = buildInfluenceScore(culture, signals);
+      const influenceTier = buildInfluenceTier(influenceScore);
       const regionIds = regionIdsByCulture[culture.id] ?? [];
+      const style = normalizeStyle(styleByMarkerType, markerType);
 
       return regionIds.map((regionId) => ({
         overlayId: `${regionId}:${culture.id}`,
@@ -195,20 +256,28 @@ export function buildCultureMapOverlay(payload, options = {}) {
         archetype: culture.archetype,
         primaryLanguage: culture.primaryLanguage,
         markerType,
+        influenceScore,
+        influenceTier,
         label: `${culture.name} (${signals.highlightedDiscoveries.length} découvertes)`,
         summary: `${signals.activeResearchCount} recherches actives, ${signals.eventCount} événements, ${signals.identityTags.length} repères culturels`,
         discoveries: signals.highlightedDiscoveries,
         unlockedResearchIds: signals.unlockedResearchIds,
         activeResearchCount: signals.activeResearchCount,
         eventIds: signals.eventIds,
+        eventTitles: cultureHistoricalEvents.map((historicalEvent) => historicalEvent.title).sort(),
         eventCount: signals.eventCount,
         identityTags: signals.identityTags,
+        highlights: [
+          ...signals.highlightedDiscoveries.slice(0, 2),
+          ...signals.identityTags.slice(0, Math.max(0, 3 - Math.min(2, signals.highlightedDiscoveries.length))),
+        ],
         cultureMetrics: {
           openness: culture.openness,
           cohesion: culture.cohesion,
           researchDrive: culture.researchDrive,
         },
-        style: normalizeStyle(styleByMarkerType, markerType),
+        style,
+        zoneStyle: buildZoneStyle(markerType, influenceTier, style),
       }));
     })
     .sort((left, right) => {

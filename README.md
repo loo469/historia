@@ -41,8 +41,9 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - `CultureRepositoryPort`, `ResearchRepositoryPort`, `InMemoryCultureRepository` et `InMemoryResearchRepository` fournissent une base hexagonale légère pour stocker cultures et recherches avec copies défensives et ordre stable
 - `loadHistoricalEventsFromJson` et `loadResearchStatesFromJson` chargent des contenus JSON normalisés avec valeurs par défaut utiles et erreurs explicites sur les payloads invalides
 - côté UI, `buildDiscoveriesPanel` expose les concepts découverts, recherches débloquées et événements liés dans une vue structurée réutilisable
-- côté carte, `buildCultureMapOverlay` transforme cultures, recherches et événements historiques en marqueurs régionaux stables pour afficher découvertes et repères culturels sur la carte
-- les tests Gamma couvrent explicitement les use cases de recherche, dérive culturelle, divergence, déclenchement d’événements, ports, adaptateurs mémoire, chargeurs JSON et UI des découvertes
+- côté UI, `buildCultureLayerPanel` assemble un focus lisible par région et culture pour explorer les marqueurs, découvertes et événements historiques depuis la carte
+- côté carte, `buildCultureMapOverlay` transforme cultures, recherches et événements historiques en marqueurs régionaux stables avec score d'influence, tier visuel, highlights et zoneStyle pour mieux distinguer les zones culturelles
+- les tests Gamma couvrent explicitement les use cases de recherche, dérive culturelle, divergence, déclenchement d’événements, ports, adaptateurs mémoire, chargeurs JSON et UI des découvertes et de la couche culturelle
 
 ## Règles Delta, intrigue et opérations clandestines
 - `LancerOperation` vérifie la disponibilité de la cellule, des agents assignés et des assets requis avant tout lancement

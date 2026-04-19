@@ -83,14 +83,18 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
       archetype: 'maritime',
       primaryLanguage: 'north-tongue',
       markerType: 'innovation',
+      influenceScore: 79,
+      influenceTier: 'strong',
       label: 'Northern League (3 découvertes)',
       summary: '1 recherches actives, 1 événements, 3 repères culturels',
       discoveries: ['public-catalogue', 'star-maps', 'tidal-ledgers'],
       unlockedResearchIds: ['astrolabe'],
       activeResearchCount: 1,
       eventIds: ['event-open-archives'],
+      eventTitles: ['Open Archives'],
       eventCount: 1,
       identityTags: ['assemblies', 'navigation', 'trade'],
+      highlights: ['public-catalogue', 'star-maps', 'assemblies'],
       cultureMetrics: {
         openness: 72,
         cohesion: 61,
@@ -100,6 +104,14 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
         color: 'violet',
         icon: '✦',
         emphasis: 'high',
+      },
+      zoneStyle: {
+        fill: 'violet',
+        outline: 'violet',
+        markerIcon: '✦',
+        emphasis: 'high',
+        opacity: 0.7,
+        pattern: 'radiant',
       },
     },
     {
@@ -110,14 +122,18 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
       archetype: 'nomadic',
       primaryLanguage: 'horse-speech',
       markerType: 'traditional',
+      influenceScore: 45,
+      influenceTier: 'emerging',
       label: 'Steppe Houses (1 découvertes)',
       summary: '0 recherches actives, 0 événements, 2 repères culturels',
       discoveries: ['stirrup-drill'],
       unlockedResearchIds: ['composite-saddles'],
       activeResearchCount: 0,
       eventIds: [],
+      eventTitles: [],
       eventCount: 0,
       identityTags: ['clan-oaths', 'honor'],
+      highlights: ['stirrup-drill', 'clan-oaths', 'honor'],
       cultureMetrics: {
         openness: 35,
         cohesion: 67,
@@ -128,6 +144,14 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
         icon: '⬢',
         emphasis: 'normal',
       },
+      zoneStyle: {
+        fill: 'amber',
+        outline: 'amber',
+        markerIcon: '⬢',
+        emphasis: 'normal',
+        opacity: 0.55,
+        pattern: 'woven',
+      },
     },
     {
       overlayId: 'north-coast:culture-north',
@@ -137,14 +161,18 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
       archetype: 'maritime',
       primaryLanguage: 'north-tongue',
       markerType: 'innovation',
+      influenceScore: 79,
+      influenceTier: 'strong',
       label: 'Northern League (3 découvertes)',
       summary: '1 recherches actives, 1 événements, 3 repères culturels',
       discoveries: ['public-catalogue', 'star-maps', 'tidal-ledgers'],
       unlockedResearchIds: ['astrolabe'],
       activeResearchCount: 1,
       eventIds: ['event-open-archives'],
+      eventTitles: ['Open Archives'],
       eventCount: 1,
       identityTags: ['assemblies', 'navigation', 'trade'],
+      highlights: ['public-catalogue', 'star-maps', 'assemblies'],
       cultureMetrics: {
         openness: 72,
         cohesion: 61,
@@ -154,6 +182,14 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
         color: 'violet',
         icon: '✦',
         emphasis: 'high',
+      },
+      zoneStyle: {
+        fill: 'violet',
+        outline: 'violet',
+        markerIcon: '✦',
+        emphasis: 'high',
+        opacity: 0.7,
+        pattern: 'radiant',
       },
     },
   ]);
@@ -192,6 +228,8 @@ test('buildCultureMapOverlay supports plain payloads and style overrides', () =>
     emphasis: 'critical',
   });
   assert.equal(overlay[0].markerType, 'fragmented');
+  assert.equal(overlay[0].influenceTier, 'faint');
+  assert.equal(overlay[0].zoneStyle.pattern, 'fractured');
 });
 
 test('buildCultureMapOverlay rejects invalid inputs', () => {
