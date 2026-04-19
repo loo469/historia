@@ -55,6 +55,40 @@ function buildAnomalyEntry(state) {
   };
 }
 
+function buildStrategicImpact(state, catastropheEntries) {
+  if (catastropheEntries.length > 0 || state.droughtIndex >= 60) {
+    return 'critical';
+  }
+
+  if (state.hasAnomaly() || state.precipitationLevel < 20) {
+    return 'strained';
+  }
+
+  return 'stable';
+}
+
+function buildSeasonSummary(states, seasonLabels) {
+  const countsBySeason = Object.create(null);
+
+  for (const state of states) {
+    countsBySeason[state.season] = (countsBySeason[state.season] ?? 0) + 1;
+  }
+
+  const seasons = Object.entries(countsBySeason)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([season, regionCount]) => ({
+      season,
+      label: seasonLabels[season] ?? season,
+      regionCount,
+    }));
+
+  return {
+    title: 'Situation saisonnière',
+    summary: seasons.map((entry) => `${entry.label}: ${entry.regionCount}`).join(', '),
+    seasons,
+  };
+}
+
 export function buildClimateMapOverlay(climateStates, options = {}) {
   const states = requireArray(climateStates, 'ClimateMapOverlay climateStates').map(normalizeClimateState);
   const normalizedOptions = requireObject(options, 'ClimateMapOverlay options');
@@ -68,6 +102,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   }));
 
   const stateEntries = states
+    .slice()
     .sort((left, right) => left.regionId.localeCompare(right.regionId))
     .flatMap((state) => {
       const entries = [buildSeasonEntry(state, seasonLabels)];
@@ -80,7 +115,28 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       return entries;
     });
 
+  const regions = states
+    .slice()
+    .sort((left, right) => left.regionId.localeCompare(right.regionId))
+    .map((state) => {
+      const regionalCatastrophes = catastropheEntries.filter((entry) => entry.regionId === state.regionId);
+
+      return {
+        regionId: state.regionId,
+        season: state.season,
+        seasonLabel: seasonLabels[state.season] ?? state.season,
+        anomaly: state.anomaly,
+        activeCatastropheIds: regionalCatastrophes.map((entry) => entry.catastropheId),
+        strategicImpact: buildStrategicImpact(state, regionalCatastrophes),
+        temperatureC: state.temperatureC,
+        precipitationLevel: state.precipitationLevel,
+        droughtIndex: state.droughtIndex,
+      };
+    });
+
   return {
+    title: 'Carte climat et catastrophes',
+    summary: `${states.length} régions, ${catastropheEntries.length} catastrophes visibles, ${regions.filter((region) => region.anomaly !== null).length} anomalies`,
     entries: [...stateEntries, ...catastropheEntries].sort((left, right) => {
       const regionComparison = left.regionId.localeCompare(right.regionId);
 
@@ -90,11 +146,14 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
 
       return left.overlayId.localeCompare(right.overlayId);
     }),
+    regions,
+    seasonalPanel: buildSeasonSummary(states, seasonLabels),
     metrics: {
       regionCount: states.length,
       seasonCount: states.length,
       anomalyCount: stateEntries.filter((entry) => entry.kind === 'anomaly').length,
       catastropheCount: catastropheEntries.length,
+      criticalRegionCount: regions.filter((region) => region.strategicImpact === 'critical').length,
     },
   };
 }
