@@ -200,6 +200,19 @@ const state = {
 
 const seasonLabels = ['Printemps', 'Été', 'Automne', 'Hiver'];
 
+function getFocusContext(shell) {
+  const selectedProvince = shell.provinces.find((province) => province.provinceId === state.selectedProvinceId) ?? null;
+  const focusedProvince = shell.provinces.find((province) => province.provinceId === state.focusedProvinceId) ?? selectedProvince ?? null;
+  const anchorProvince = selectedProvince ?? focusedProvince;
+  const neighborIds = new Set(anchorProvince?.neighborIds ?? []);
+
+  return {
+    selectedProvince,
+    focusedProvince,
+    neighborIds,
+  };
+}
+
 function getProvinceCenter(provinceId) {
   const layout = provinceLayouts[provinceId];
 
@@ -350,13 +363,19 @@ function renderLegend(shell) {
   `;
 }
 
-function renderProvinceCard(province) {
+function renderProvinceCard(province, focusContext) {
   const layout = provinceLayouts[province.provinceId];
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
+  const isNeighbor = focusContext.neighborIds.has(province.provinceId);
+  const isSelected = province.selectionState.selected;
+  const isFocused = province.selectionState.focused;
+  const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
   const classes = [
     'province-node',
-    province.selectionState.selected ? 'is-selected' : '',
-    province.selectionState.focused ? 'is-focused' : '',
+    isSelected ? 'is-selected' : '',
+    isFocused ? 'is-focused' : '',
+    isNeighbor ? 'is-neighbor' : '',
+    isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
     province.occupied ? 'is-occupied' : '',
   ].filter(Boolean).join(' ');
@@ -378,9 +397,11 @@ function renderProvinceCard(province) {
       aria-pressed="${province.selectionState.selected}"
     >
       <span class="province-node__terrain"></span>
+      <span class="province-node__focus-rail"></span>
       <span class="province-node__name">${province.label}</span>
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
       <span class="province-node__badges">${badges}</span>
+      ${isNeighbor ? '<span class="province-node__link">Voisine directe</span>' : ''}
     </button>
   `;
 }
@@ -398,6 +419,7 @@ function renderOverlaySlots(shell) {
 }
 
 function renderActiveProvince(shell) {
+  const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
 
   if (!province) {
@@ -407,6 +429,9 @@ function renderActiveProvince(shell) {
   const controller = factionMetaById[province.controllingFactionId]?.label ?? province.controllingFactionId;
   const owner = factionMetaById[province.ownerFactionId]?.label ?? province.ownerFactionId;
   const comparedProvinceNames = state.comparisonProvinceIds
+    .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId)?.label)
+    .filter(Boolean);
+  const neighborNames = [...focusContext.neighborIds]
     .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId)?.label)
     .filter(Boolean);
 
@@ -424,6 +449,16 @@ function renderActiveProvince(shell) {
         <div><dt>Voisins</dt><dd>${province.neighborIds.join(', ')}</dd></div>
       </dl>
       <div class="province-summary-tags">${province.badges.map((badge) => `<span class="legend-chip">${badge}</span>`).join('')}</div>
+      <div class="focus-strip">
+        <div class="focus-strip__item">
+          <span>Voisines mises en avant</span>
+          <strong>${neighborNames.length > 0 ? neighborNames.join(', ') : 'Aucune'}</strong>
+        </div>
+        <div class="focus-strip__item">
+          <span>Transition de focus</span>
+          <strong>${focusContext.focusedProvince?.label ?? province.label}</strong>
+        </div>
+      </div>
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
@@ -703,15 +738,21 @@ function renderProvincePopup(shell) {
 }
 
 function renderStrategicRelations(shell) {
-  const relationLines = buildProvinceRelations(shell).map((relation) => `
+  const focusContext = getFocusContext(shell);
+  const relationLines = buildProvinceRelations(shell).map((relation) => {
+    const linkedToSelection = focusContext.selectedProvince
+      && (relation.relationId.includes(focusContext.selectedProvince.provinceId));
+
+    return `
     <line
-      class="front-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : relation.stable ? 'is-stable' : ''}"
+      class="front-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : relation.stable ? 'is-stable' : ''} ${linkedToSelection ? 'is-emphasized' : ''}"
       x1="${relation.origin.x}%"
       y1="${relation.origin.y}%"
       x2="${relation.destination.x}%"
       y2="${relation.destination.y}%"
     />
-  `).join('');
+  `;
+  }).join('');
 
   const frontierRings = shell.provinces.map((province) => {
     const center = getProvinceCenter(province.provinceId);
@@ -782,6 +823,7 @@ function advanceTurn() {
 function render() {
   const shell = getShell();
   const economyView = getEconomyViewModel();
+  const focusContext = getFocusContext(shell);
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -825,7 +867,8 @@ function render() {
             <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
             ${renderEconomyMapOverlay(economyView)}
             ${renderBottomTray(economyView)}
-            ${shell.provinces.map(renderProvinceCard).join('')}
+            <div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>
+            ${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}
             ${renderProvincePopup(shell)}
           </div>
         </section>
@@ -845,7 +888,13 @@ function render() {
       render();
     });
 
+    element.addEventListener('mouseleave', () => {
+      state.focusedProvinceId = state.selectedProvinceId;
+      render();
+    });
+
     element.addEventListener('click', () => {
+      state.focusedProvinceId = element.dataset.provinceId;
       state.selectedProvinceId = element.dataset.provinceId;
       state.popupProvinceId = element.dataset.provinceId;
       render();

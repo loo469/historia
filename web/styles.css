@@ -213,6 +213,10 @@ button { font: inherit; }
   stroke-dasharray: 1.3 1;
   filter: drop-shadow(0 0 6px rgba(251, 113, 133, 0.55));
 }
+.front-line.is-emphasized {
+  stroke-width: 1;
+  opacity: 1;
+}
 .province-ring {
   fill: none;
   stroke-width: 0.45;
@@ -360,6 +364,19 @@ button { font: inherit; }
   letter-spacing: 0;
   background: rgba(8, 15, 28, 0.72);
 }
+.focus-hint {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  z-index: 4;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(8, 15, 28, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: var(--text);
+  font-size: 12px;
+}
 .province-node {
   position: absolute;
   z-index: 3;
@@ -375,7 +392,7 @@ button { font: inherit; }
   justify-content: space-between;
   cursor: pointer;
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.3);
-  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease, opacity 160ms ease;
 }
 .province-node::before {
   content: '';
@@ -390,8 +407,19 @@ button { font: inherit; }
   box-shadow: 0 16px 36px rgba(2, 6, 23, 0.42);
 }
 .province-node.is-selected {
+  z-index: 6;
   outline: 3px solid rgba(125, 211, 252, 0.9);
   outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.18), 0 22px 42px rgba(2, 6, 23, 0.5);
+}
+.province-node.is-neighbor {
+  z-index: 5;
+  filter: saturate(1.06);
+  box-shadow: 0 0 0 2px rgba(191, 219, 254, 0.16), 0 14px 32px rgba(2, 6, 23, 0.38);
+}
+.province-node.is-muted {
+  opacity: 0.45;
+  filter: saturate(0.76) brightness(0.82);
 }
 .province-node.is-contested { border-style: dashed; }
 .province-node.is-occupied::after {
@@ -412,10 +440,33 @@ button { font: inherit; }
     linear-gradient(135deg, rgba(255,255,255,0.12), transparent 38%, rgba(15,23,42,0.32) 70%);
   mix-blend-mode: screen;
 }
-.province-node__name, .province-node__meta, .province-node__badges { position: relative; z-index: 1; }
+.province-node__focus-rail {
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.9), rgba(255,255,255,0));
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.province-node.is-selected .province-node__focus-rail,
+.province-node.is-neighbor .province-node__focus-rail,
+.province-node.is-focused .province-node__focus-rail {
+  opacity: 1;
+}
+.province-node__name, .province-node__meta, .province-node__badges, .province-node__link { position: relative; z-index: 1; }
 .province-node__name { font-weight: 700; font-size: 18px; }
 .province-node__meta { font-size: 13px; color: rgba(255,255,255,0.82); }
 .province-node__badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.province-node__link {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(191, 219, 254, 0.95);
+}
 .province-badge, .legend-chip {
   display: inline-flex;
   align-items: center;
@@ -545,6 +596,23 @@ button { font: inherit; }
 .province-facts dt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .province-facts dd { margin: 0; }
 .province-summary-tags, .overlay-anchor-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.focus-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.focus-strip__item {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.focus-strip__item span {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
 .context-summary {
   margin-top: 14px;
   padding: 12px;
@@ -688,7 +756,7 @@ button { font: inherit; }
 @media (max-width: 720px) {
   .shell-root { width: min(100vw - 16px, 100%); padding-top: 8px; }
   .hero, .map-panel, .legend-panel, .province-details, .overlay-panel { padding: 14px; }
-  .hero-stats, .legend-columns, .province-facts, .overlay-tabs, .economy-quick-stats, .bottom-tray-grid, .bottom-tray-stocks, .province-popup__actions { grid-template-columns: 1fr; }
+  .hero-stats, .legend-columns, .province-facts, .overlay-tabs, .economy-quick-stats, .bottom-tray-grid, .bottom-tray-stocks, .province-popup__actions, .focus-strip { grid-template-columns: 1fr; }
   .turn-toolbar { flex-direction: column; align-items: stretch; }
   .map-stage { min-height: 680px; }
   .province-node { padding: 14px 12px; }
