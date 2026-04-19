@@ -198,10 +198,13 @@ function summarizeSignals(culture, researchStates, historicalEvents) {
     }
   }
 
-  const eventIds = historicalEvents.map((historicalEvent) => historicalEvent.id).sort();
+  const orderedHistoricalEvents = historicalEvents
+    .slice()
+    .sort((left, right) => left.triggeredAt.getTime() - right.triggeredAt.getTime() || left.title.localeCompare(right.title));
+  const eventIds = orderedHistoricalEvents.map((historicalEvent) => historicalEvent.id);
   const highlightedDiscoveries = [...new Set([
     ...[...discoveredConceptIds],
-    ...historicalEvents.flatMap((historicalEvent) => historicalEvent.discoveryIds),
+    ...orderedHistoricalEvents.flatMap((historicalEvent) => historicalEvent.discoveryIds),
   ])].sort();
 
   return {
@@ -212,6 +215,7 @@ function summarizeSignals(culture, researchStates, historicalEvents) {
     eventIds,
     eventCount: eventIds.length,
     identityTags: [...new Set([...culture.valueIds, ...culture.traditionIds])].sort(),
+    orderedHistoricalEvents,
   };
 }
 
@@ -347,8 +351,20 @@ export function buildCultureMapOverlay(payload, options = {}) {
           unlockedResearchIds: cultureState.signals.unlockedResearchIds,
           activeResearchCount: cultureState.signals.activeResearchCount,
           eventIds: cultureState.signals.eventIds,
-          eventTitles: cultureState.cultureHistoricalEvents.map((historicalEvent) => historicalEvent.title).sort(),
+          eventTitles: cultureState.signals.orderedHistoricalEvents.map((historicalEvent) => historicalEvent.title),
           eventCount: cultureState.signals.eventCount,
+          eventPopups: cultureState.signals.orderedHistoricalEvents.map((historicalEvent, index) => ({
+            popupId: `${regionId}:${culture.id}:${historicalEvent.id}:popup`,
+            eventId: historicalEvent.id,
+            title: historicalEvent.title,
+            summary: historicalEvent.summary,
+            triggeredAt: historicalEvent.triggeredAt.toISOString(),
+            importance: historicalEvent.importance,
+            discoveries: [...historicalEvent.discoveryIds],
+            unlockedResearchIds: [...cultureState.signals.unlockedResearchIds],
+            label: `${historicalEvent.title} · ${historicalEvent.triggeredAt.toISOString().slice(0, 10)}`,
+            order: index + 1,
+          })),
           identityTags: cultureState.signals.identityTags,
           highlights: [
             ...cultureState.signals.highlightedDiscoveries.slice(0, 2),
