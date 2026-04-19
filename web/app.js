@@ -566,12 +566,14 @@ function renderCityQuickPanel(economyView) {
   }
 
   const stockPanel = economyView.stockPanels[city.cityId];
+  const comparisonRow = economyView.comparison.rows.find((candidate) => candidate.cityId === city.cityId);
   const topResources = stockPanel.rows.slice(0, 3);
+  const fragileResources = stockPanel.rows.filter((row) => row.status === 'shortage').length;
   const left = Math.min(76, Math.max(8, city.marker.position.x + 3));
   const top = Math.min(66, Math.max(10, city.marker.position.y - 18));
 
   return `
-    <aside class="city-quick-panel" style="left:${left}%;top:${top}%;" aria-live="polite">
+    <aside class="city-quick-panel city-quick-panel--${comparisonRow?.tensionLevel ?? 'low'}" style="left:${left}%;top:${top}%;" aria-live="polite">
       <div class="city-quick-panel__header">
         <div>
           <strong>${city.cityName}</strong>
@@ -583,6 +585,10 @@ function renderCityQuickPanel(economyView) {
         <span>Stock ${city.resources.totalStock}</span>
         <span>Stabilité ${city.stability}</span>
         <span>Prospérité ${city.prosperity}</span>
+      </div>
+      <div class="city-quick-panel__alert-row">
+        <span class="tension-pill tension-pill--${comparisonRow?.tensionLevel ?? 'low'}">${comparisonRow?.tensionLevel ?? 'low'}</span>
+        <span>${fragileResources} ressource${fragileResources > 1 ? 's' : ''} fragile${fragileResources > 1 ? 's' : ''}</span>
       </div>
       <ul class="city-quick-panel__stocks">
         ${topResources.map((row) => `<li class="${row.status}"><span>${row.resourceId}</span><strong>${row.currentQuantity}</strong></li>`).join('')}
@@ -596,6 +602,8 @@ function renderEconomyMapOverlay(economyView) {
     return '';
   }
 
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+
   const routeLines = economyView.overlay.routes.map((route, index) => {
     const origin = cityLayoutsById[route.originCityId];
     const destination = cityLayoutsById[route.destinationCityId];
@@ -605,9 +613,16 @@ function renderEconomyMapOverlay(economyView) {
     }
 
     const visual = buildRouteVisual(route, origin, destination, index);
+    const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
+    const destinationTension = tensionByCityId[route.destinationCityId]?.tensionLevel ?? 'low';
+    const tensionClass = originTension === 'high' || destinationTension === 'high'
+      ? 'has-high-tension'
+      : originTension === 'medium' || destinationTension === 'medium'
+        ? 'has-medium-tension'
+        : 'has-low-tension';
 
     return `
-      <g class="economy-route-group ${visual.classes}" data-route-id="${route.routeId}">
+      <g class="economy-route-group ${visual.classes} ${tensionClass}" data-route-id="${route.routeId}">
         <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
@@ -627,8 +642,11 @@ function renderEconomyMapOverlay(economyView) {
       return '';
     }
 
+    const tension = tensionByCityId[city.cityId]?.tensionLevel ?? 'low';
+
     return `
-      <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''}" data-city-id="${city.cityId}">
+      <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''} is-${tension}-tension" data-city-id="${city.cityId}">
+        <circle class="economy-city-tension-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 10.5}" />
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
         <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 11}" />
         <text class="economy-city-label economy-city-label--sr" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
@@ -687,18 +705,29 @@ function renderEconomySidePanel(economyView) {
         <div class="overlay-anchor"><span>Capacité</span><strong>${economyView.overlay.metrics.totalRouteCapacity}</strong></div>
       </div>
       <div class="economy-route-list">
-        ${economyView.overlay.routes.map((route) => `
-          <article class="economy-route-card ${route.active ? '' : 'is-inactive'} ${route.transportMode === 'river' ? 'is-river' : route.transportMode === 'sea' ? 'is-sea' : 'is-land'} ${route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'is-critical' : ''}">
-            <strong>${route.routeName}</strong>
-            <span>${route.transportMode}, risque ${route.riskLevel}</span>
-            <span>capacité ${route.totalCapacity}</span>
-          </article>
-        `).join('')}
+        ${economyView.overlay.routes.map((route) => {
+          const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
+          const destinationTension = tensionByCityId[route.destinationCityId]?.tensionLevel ?? 'low';
+          const tensionClass = originTension === 'high' || destinationTension === 'high'
+            ? 'has-high-tension'
+            : originTension === 'medium' || destinationTension === 'medium'
+              ? 'has-medium-tension'
+              : 'has-low-tension';
+
+          return `
+            <article class="economy-route-card ${route.active ? '' : 'is-inactive'} ${route.transportMode === 'river' ? 'is-river' : route.transportMode === 'sea' ? 'is-sea' : 'is-land'} ${route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'is-critical' : ''} ${tensionClass}">
+              <strong>${route.routeName}</strong>
+              <span>${route.transportMode}, risque ${route.riskLevel}</span>
+              <span>capacité ${route.totalCapacity}</span>
+            </article>
+          `;
+        }).join('')}
       </div>
       <div class="economy-route-legend">
         <span><i class="is-land"></i>Terre</span>
         <span><i class="is-river"></i>Fluvial</span>
         <span><i class="is-critical"></i>Liaison critique</span>
+        <span><i class="is-high-tension"></i>Tension forte</span>
       </div>
     </section>
   `;
@@ -758,8 +787,9 @@ function renderBottomTray(economyView) {
         <div class="bottom-tray-stocks">
           ${economyView.overlay.cities.map((city) => {
             const panel = economyView.stockPanels[city.cityId];
+            const comparisonRow = economyView.comparison.rows.find((candidate) => candidate.cityId === city.cityId);
             return `
-              <article class="stock-mini-card ${state.comparedCityIds.includes(city.cityId) ? 'is-compared' : ''}">
+              <article class="stock-mini-card ${state.comparedCityIds.includes(city.cityId) ? 'is-compared' : ''} ${comparisonRow?.tensionLevel === 'high' ? 'is-fragile' : ''}">
                 <h4>${panel.cityName}</h4>
                 <p>${panel.summary}</p>
                 <ul>
