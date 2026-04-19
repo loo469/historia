@@ -193,6 +193,53 @@ const state = {
   activeOverlaySlot: 'economy-overlay',
 };
 
+function getProvinceCenter(provinceId) {
+  const layout = provinceLayouts[provinceId];
+
+  if (!layout) {
+    return null;
+  }
+
+  return {
+    x: layout.x + (layout.w / 2),
+    y: layout.y + (layout.h / 2),
+  };
+}
+
+function buildProvinceRelations(shell) {
+  const uniqueRelations = new Map();
+
+  shell.provinces.forEach((province) => {
+    province.neighborIds.forEach((neighborId) => {
+      const relationId = [province.provinceId, neighborId].sort().join('::');
+
+      if (uniqueRelations.has(relationId)) {
+        return;
+      }
+
+      const origin = getProvinceCenter(province.provinceId);
+      const destination = getProvinceCenter(neighborId);
+
+      if (!origin || !destination) {
+        return;
+      }
+
+      const contested = province.contested || shell.provinces.some(
+        (candidate) => candidate.provinceId === neighborId && candidate.contested,
+      );
+
+      uniqueRelations.set(relationId, {
+        relationId,
+        origin,
+        destination,
+        contested,
+      });
+    });
+  });
+
+  return [...uniqueRelations.values()];
+}
+
 function getShell() {
   return buildStrategicMapShell(provinces, {
     title: 'Écran stratégique, théâtre continental',
@@ -259,15 +306,24 @@ function renderProvinceCard(province) {
     province.contested ? 'is-contested' : '',
     province.occupied ? 'is-occupied' : '',
   ].filter(Boolean).join(' ');
+  const silhouetteByProvinceId = {
+    'north-watch': 'polygon(10% 18%, 66% 6%, 92% 34%, 84% 88%, 28% 94%, 8% 58%)',
+    'crown-heart': 'polygon(8% 20%, 52% 4%, 90% 18%, 92% 74%, 54% 94%, 10% 78%)',
+    'red-ridge': 'polygon(16% 16%, 74% 8%, 94% 38%, 82% 92%, 22% 88%, 6% 44%)',
+    'river-gate': 'polygon(14% 10%, 86% 18%, 92% 54%, 74% 92%, 22% 86%, 6% 40%)',
+    'iron-plain': 'polygon(8% 24%, 48% 6%, 92% 28%, 88% 80%, 44% 96%, 6% 74%)',
+    'southern-reach': 'polygon(16% 14%, 78% 8%, 94% 46%, 74% 90%, 24% 92%, 6% 48%)',
+  };
 
   return `
     <button
       class="${classes}"
       type="button"
       data-province-id="${province.provinceId}"
-      style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};"
+      style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${silhouetteByProvinceId[province.provinceId] ?? 'polygon(12% 12%, 88% 12%, 88% 88%, 12% 88%)'};"
       aria-pressed="${province.selectionState.selected}"
     >
+      <span class="province-node__terrain"></span>
       <span class="province-node__name">${province.label}</span>
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
       <span class="province-node__badges">${badges}</span>
@@ -472,6 +528,52 @@ function renderBottomTray(economyView) {
   `;
 }
 
+function renderStrategicRelations(shell) {
+  const relationLines = buildProvinceRelations(shell).map((relation) => `
+    <line
+      class="front-line ${relation.contested ? 'is-contested' : ''}"
+      x1="${relation.origin.x}%"
+      y1="${relation.origin.y}%"
+      x2="${relation.destination.x}%"
+      y2="${relation.destination.y}%"
+    />
+  `).join('');
+
+  const hotspots = shell.provinces
+    .filter((province) => province.contested || province.occupied)
+    .map((province) => {
+      const center = getProvinceCenter(province.provinceId);
+      if (!center) {
+        return '';
+      }
+
+      return `
+        <g class="front-hotspot ${province.contested ? 'is-contested' : 'is-occupied'}">
+          <circle cx="${center.x}%" cy="${center.y}%" r="2.3"></circle>
+          <text x="${center.x}%" y="${center.y - 4}%" text-anchor="middle">${province.contested ? 'Front' : 'Occupation'}</text>
+        </g>
+      `;
+    }).join('');
+
+  return `
+    <svg class="strategic-relations-layer" viewBox="0 0 100 100" aria-label="Relations entre provinces et lignes de front">
+      ${relationLines}
+      ${hotspots}
+    </svg>
+  `;
+}
+
+function renderTerrainDecor() {
+  return `
+    <div class="terrain-mass terrain-mass--north"></div>
+    <div class="terrain-mass terrain-mass--east"></div>
+    <div class="terrain-mass terrain-mass--south"></div>
+    <div class="terrain-river"></div>
+    <div class="terrain-contours terrain-contours--a"></div>
+    <div class="terrain-contours terrain-contours--b"></div>
+  `;
+}
+
 function render() {
   const shell = getShell();
   const economyView = getEconomyViewModel();
@@ -503,6 +605,8 @@ function render() {
           </div>
           <div class="map-stage">
             <div class="map-backdrop"></div>
+            ${renderTerrainDecor()}
+            ${renderStrategicRelations(shell)}
             <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
             <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
             <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
