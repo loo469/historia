@@ -29,14 +29,36 @@ function normalizeClimateState(climateState) {
   return new ClimateState(climateState);
 }
 
-function buildSeasonEntry(state, seasonLabels) {
+const DEFAULT_SEASON_STYLE_BY_TYPE = Object.freeze({
+  spring: { icon: '✿', tone: 'renewal', accent: 'green' },
+  summer: { icon: '☀', tone: 'bright', accent: 'gold' },
+  autumn: { icon: '❋', tone: 'harvest', accent: 'amber' },
+  winter: { icon: '❄', tone: 'cold', accent: 'cyan' },
+  default: { icon: '◐', tone: 'info', accent: 'slate' },
+});
+
+function normalizeSeasonStyle(styleByType, season) {
+  const seasonType = String(season ?? '').trim().toLowerCase();
+  const style = styleByType[seasonType] ?? styleByType.default ?? DEFAULT_SEASON_STYLE_BY_TYPE.default;
+
+  return {
+    icon: String(style.icon ?? DEFAULT_SEASON_STYLE_BY_TYPE[seasonType]?.icon ?? '◐').trim() || '◐',
+    tone: String(style.tone ?? DEFAULT_SEASON_STYLE_BY_TYPE[seasonType]?.tone ?? 'info').trim() || 'info',
+    accent: String(style.accent ?? DEFAULT_SEASON_STYLE_BY_TYPE[seasonType]?.accent ?? 'slate').trim() || 'slate',
+  };
+}
+
+function buildSeasonEntry(state, seasonLabels, seasonStyleByType) {
+  const badge = normalizeSeasonStyle(seasonStyleByType, state.season);
+
   return {
     overlayId: `${state.regionId}:season`,
     regionId: state.regionId,
     kind: 'season',
     label: seasonLabels[state.season] ?? state.season,
     season: state.season,
-    tone: 'info',
+    tone: badge.tone,
+    badge,
   };
 }
 
@@ -97,7 +119,7 @@ function buildStrategicImpact(state, catastropheEntries) {
   return 'stable';
 }
 
-function buildSeasonSummary(states, seasonLabels) {
+function buildSeasonSummary(states, seasonLabels, seasonStyleByType) {
   const countsBySeason = Object.create(null);
 
   for (const state of states) {
@@ -110,11 +132,23 @@ function buildSeasonSummary(states, seasonLabels) {
       season,
       label: seasonLabels[season] ?? season,
       regionCount,
+      badge: normalizeSeasonStyle(seasonStyleByType, season),
     }));
+
+  const dominantSeason = seasons
+    .slice()
+    .sort((left, right) => {
+      if (right.regionCount !== left.regionCount) {
+        return right.regionCount - left.regionCount;
+      }
+
+      return left.season.localeCompare(right.season);
+    })[0] ?? null;
 
   return {
     title: 'Situation saisonnière',
     summary: seasons.map((entry) => `${entry.label}: ${entry.regionCount}`).join(', '),
+    dominantSeason,
     seasons,
   };
 }
@@ -124,14 +158,20 @@ function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
     .filter((entry) => entry.kind === 'season')
     .map((entry) => entry.season))]
     .sort()
-    .map((season) => ({
-      key: `season:${season}`,
-      kind: 'season',
-      season,
-      label: seasonLabels[season] ?? season,
-      tone: 'info',
-      description: 'Saison dominante affichée pour une région.',
-    }));
+    .map((season) => {
+      const seasonEntry = stateEntries.find((entry) => entry.kind === 'season' && entry.season === season);
+
+      return {
+        key: `season:${season}`,
+        kind: 'season',
+        season,
+        label: seasonLabels[season] ?? season,
+        tone: seasonEntry?.tone ?? 'info',
+        icon: seasonEntry?.badge?.icon ?? '◐',
+        accent: seasonEntry?.badge?.accent ?? 'slate',
+        description: 'Saison dominante affichée pour une région.',
+      };
+    });
 
   const anomalyLegend = [...new Map(stateEntries
     .filter((entry) => entry.kind === 'anomaly')
@@ -177,6 +217,10 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   const states = requireArray(climateStates, 'ClimateMapOverlay climateStates').map(normalizeClimateState);
   const normalizedOptions = requireObject(options, 'ClimateMapOverlay options');
   const seasonLabels = requireObject(normalizedOptions.seasonLabels ?? {}, 'ClimateMapOverlay seasonLabels');
+  const seasonStyleByType = {
+    ...DEFAULT_SEASON_STYLE_BY_TYPE,
+    ...requireObject(normalizedOptions.seasonStyleByType ?? {}, 'ClimateMapOverlay seasonStyleByType'),
+  };
   const anomalyStyleByType = {
     ...DEFAULT_ANOMALY_STYLE_BY_TYPE,
     ...requireObject(normalizedOptions.anomalyStyleByType ?? {}, 'ClimateMapOverlay anomalyStyleByType'),
@@ -193,7 +237,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     .slice()
     .sort((left, right) => left.regionId.localeCompare(right.regionId))
     .flatMap((state) => {
-      const entries = [buildSeasonEntry(state, seasonLabels)];
+      const entries = [buildSeasonEntry(state, seasonLabels, seasonStyleByType)];
       const anomalyEntry = buildAnomalyEntry(state, anomalyStyleByType);
 
       if (anomalyEntry) {
@@ -235,7 +279,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       return left.overlayId.localeCompare(right.overlayId);
     }),
     regions,
-    seasonalPanel: buildSeasonSummary(states, seasonLabels),
+    seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
     metrics: {
       regionCount: states.length,
