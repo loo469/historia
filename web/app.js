@@ -207,6 +207,8 @@ const state = {
   selectedCityId: 'river-gate-city',
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
+  mobilePanelSection: 'details',
+  mobileMapExpanded: true,
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
 };
 
@@ -952,6 +954,17 @@ function advanceTurn() {
   state.lastTurnSummary = summaries[(state.turn - 2) % summaries.length];
 }
 
+function renderMobileToolbar() {
+  return `
+    <div class="mobile-toolbar" aria-label="Navigation mobile de la carte">
+      <button type="button" class="mobile-toolbar__button ${state.mobilePanelSection === 'details' ? 'is-active' : ''}" data-mobile-panel="details">Détails</button>
+      <button type="button" class="mobile-toolbar__button ${state.mobilePanelSection === 'legend' ? 'is-active' : ''}" data-mobile-panel="legend">Légende</button>
+      <button type="button" class="mobile-toolbar__button ${state.mobilePanelSection === 'overlay' ? 'is-active' : ''}" data-mobile-panel="overlay">Overlay</button>
+      <button type="button" class="mobile-toolbar__button ${state.mobileMapExpanded ? 'is-active' : ''}" data-mobile-map-toggle="true">${state.mobileMapExpanded ? 'Réduire carte' : 'Ouvrir carte'}</button>
+    </div>
+  `;
+}
+
 function render() {
   const shell = getShell();
   const economyView = getEconomyViewModel();
@@ -981,7 +994,8 @@ function render() {
         </div>
       </section>
 
-      <section class="layout-grid">
+      ${renderMobileToolbar()}
+      <section class="layout-grid ${state.mobileMapExpanded ? 'is-map-expanded' : 'is-map-collapsed'}">
         <section class="panel map-panel">
           <div class="panel-header panel-header--spread">
             <div>
@@ -1008,9 +1022,11 @@ function render() {
         </section>
 
         <aside class="side-column">
-          ${renderLegend(shell)}
-          ${renderActiveProvince(shell)}
-          ${renderEconomySidePanel(economyView)}
+          <div class="mobile-panel-stack ${state.mobilePanelSection === 'legend' ? 'show-legend' : state.mobilePanelSection === 'overlay' ? 'show-overlay' : 'show-details'}">
+            ${renderLegend(shell)}
+            ${renderActiveProvince(shell)}
+            ${renderEconomySidePanel(economyView)}
+          </div>
         </aside>
       </section>
     </main>
@@ -1083,6 +1099,20 @@ function render() {
   document.querySelectorAll('[data-next-turn]').forEach((element) => {
     element.addEventListener('click', () => {
       advanceTurn();
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-mobile-panel]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.mobilePanelSection = element.dataset.mobilePanel;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-mobile-map-toggle]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.mobileMapExpanded = !state.mobileMapExpanded;
       render();
     });
   });
