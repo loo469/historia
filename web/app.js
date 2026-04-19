@@ -188,12 +188,17 @@ const desiredStockByCityId = {
 };
 
 const state = {
+  turn: 1,
+  seasonIndex: 0,
   focusedProvinceId: 'crown-heart',
   selectedProvinceId: 'river-gate',
   activeOverlaySlot: 'economy-overlay',
   popupProvinceId: 'river-gate',
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
+  lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
 };
+
+const seasonLabels = ['Printemps', 'Été', 'Automne', 'Hiver'];
 
 function getProvinceCenter(provinceId) {
   const layout = provinceLayouts[provinceId];
@@ -242,8 +247,38 @@ function buildProvinceRelations(shell) {
   return [...uniqueRelations.values()];
 }
 
+function getProvinceStateByTurn(province) {
+  const seasonalShift = state.seasonIndex;
+  const turnShift = Math.max(0, state.turn - 1);
+  const loyaltyDelta = province.provinceId === 'river-gate'
+    ? Math.max(-18, -turnShift * 4)
+    : province.provinceId === 'southern-reach'
+      ? Math.min(10, turnShift * 2)
+      : province.provinceId === 'crown-heart'
+        ? Math.min(6, turnShift)
+        : province.provinceId === 'red-ridge'
+          ? Math.max(-8, -turnShift * 2)
+          : 0;
+
+  const supplyByProvinceId = {
+    'north-watch': ['stable', 'stable', 'strained', 'strained'],
+    'crown-heart': ['stable', 'stable', 'stable', 'strained'],
+    'red-ridge': ['strained', 'strained', 'disrupted', 'strained'],
+    'river-gate': ['disrupted', 'strained', 'disrupted', 'collapsed'],
+    'iron-plain': ['strained', 'stable', 'strained', 'disrupted'],
+    'southern-reach': ['collapsed', 'strained', 'strained', 'collapsed'],
+  };
+
+  return new Province({
+    ...province.toJSON(),
+    loyalty: Math.max(0, Math.min(100, province.loyalty + loyaltyDelta)),
+    supplyLevel: supplyByProvinceId[province.id]?.[seasonalShift] ?? province.supplyLevel,
+    contested: province.id === 'river-gate' ? state.turn % 2 === 1 : province.contested,
+  });
+}
+
 function getShell() {
-  return buildStrategicMapShell(provinces, {
+  return buildStrategicMapShell(provinces.map(getProvinceStateByTurn), {
     title: 'Écran stratégique, théâtre continental',
     subtitle: 'Prototype local Alpha prêt à accueillir les overlays inter-domaines',
     paletteByFaction,
@@ -380,14 +415,50 @@ function renderActiveProvince(shell) {
   `;
 }
 
+function getCityStateByTurn(city) {
+  const shift = Math.max(0, state.turn - 1);
+  const stockByResource = { ...city.stockByResource };
+
+  if (city.id === 'river-gate-city') {
+    stockByResource.grain = Math.max(0, stockByResource.grain - shift);
+    stockByResource.tools = Math.max(0, stockByResource.tools - Math.floor(shift / 2));
+  }
+
+  if (city.id === 'crown-port') {
+    stockByResource.grain += shift;
+    stockByResource.fish += Math.ceil(shift / 2);
+  }
+
+  if (city.id === 'southern-crossing') {
+    stockByResource.grain = Math.max(0, stockByResource.grain + (state.seasonIndex === 2 ? 2 : -1 + shift));
+  }
+
+  return new City({
+    ...city.toJSON(),
+    prosperity: Math.max(0, Math.min(100, city.prosperity + (city.id === 'crown-port' ? shift : city.id === 'river-gate-city' ? -shift : 0))),
+    stability: Math.max(0, Math.min(100, city.stability + (city.id === 'river-gate-city' ? -Math.ceil(shift / 2) : city.id === 'southern-crossing' ? 1 : 0))),
+    stockByResource,
+  });
+}
+
+function getRouteStateByTurn(route) {
+  return new TradeRoute({
+    ...route.toJSON(),
+    active: route.id === 'southern-grainway' ? state.seasonIndex !== 3 : route.active,
+    riskLevel: Math.max(0, Math.min(100, route.riskLevel + (route.id === 'ember-foundry-line' ? state.turn * 3 : state.seasonIndex === 3 ? 8 : -2))),
+  });
+}
+
 function getEconomyViewModel() {
-  const overlay = buildEconomyMapOverlay(cities, routes, { cityPositionById: cityLayoutsById });
-  const comparison = buildCityComparisonPanel(cities, { desiredStockByCityId });
+  const liveCities = cities.map(getCityStateByTurn);
+  const liveRoutes = routes.map(getRouteStateByTurn);
+  const overlay = buildEconomyMapOverlay(liveCities, liveRoutes, { cityPositionById: cityLayoutsById });
+  const comparison = buildCityComparisonPanel(liveCities, { desiredStockByCityId });
   const stockPanels = Object.fromEntries(
-    cities.map((city) => [city.id, buildCityStockPanel(city, { desiredStockByResource: desiredStockByCityId[city.id] ?? {} })]),
+    liveCities.map((city) => [city.id, buildCityStockPanel(city, { desiredStockByResource: desiredStockByCityId[city.id] ?? {} })]),
   );
 
-  return { overlay, comparison, stockPanels };
+  return { overlay, comparison, stockPanels, cities: liveCities, routes: liveRoutes };
 }
 
 function renderEconomyMapOverlay(economyView) {
@@ -621,6 +692,20 @@ function renderTerrainDecor() {
   `;
 }
 
+function advanceTurn() {
+  state.turn += 1;
+  state.seasonIndex = (state.seasonIndex + 1) % seasonLabels.length;
+
+  const summaries = [
+    'Les convois remontent depuis Couronne, mais la Porte du Fleuve reste fragile.',
+    'Les lignes se réorganisent, la logistique se tend autour du front central.',
+    'Les récoltes soulagent le sud, tandis que la pression remonte à la frontière est.',
+    'Le froid coupe certains flux, les provinces exposées repassent en posture défensive.',
+  ];
+
+  state.lastTurnSummary = summaries[(state.turn - 2) % summaries.length];
+}
+
 function render() {
   const shell = getShell();
   const economyView = getEconomyViewModel();
@@ -632,6 +717,14 @@ function render() {
           <p class="eyebrow">Alpha war room</p>
           <h1>${shell.title}</h1>
           <p class="hero-copy">${shell.subtitle}</p>
+          <div class="turn-toolbar">
+            <div class="turn-indicator">
+              <strong>Tour ${state.turn}</strong>
+              <span>${seasonLabels[state.seasonIndex]}</span>
+            </div>
+            <button type="button" class="turn-button" data-next-turn="true">Tour suivant</button>
+          </div>
+          <p class="turn-summary">${state.lastTurnSummary}</p>
         </div>
         <div class="hero-stats">
           ${renderStat('Provinces', shell.stats.provinceCount, 'neutral')}
@@ -689,6 +782,13 @@ function render() {
   document.querySelectorAll('[data-overlay-slot]').forEach((element) => {
     element.addEventListener('click', () => {
       state.activeOverlaySlot = element.dataset.overlaySlot;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-next-turn]').forEach((element) => {
+    element.addEventListener('click', () => {
+      advanceTurn();
       render();
     });
   });
