@@ -101,6 +101,24 @@ button { font: inherit; }
   grid-template-columns: minmax(0, 2fr) minmax(320px, 0.9fr);
   gap: 20px;
 }
+.mobile-toolbar {
+  display: none;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mobile-toolbar__button {
+  flex: 1 1 0;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.mobile-toolbar__button.is-active {
+  border-color: rgba(125, 211, 252, 0.42);
+  background: rgba(14, 116, 144, 0.3);
+}
 .map-panel { padding: 20px; }
 .panel-header { margin-bottom: 16px; }
 .panel-header--spread {
@@ -672,6 +690,9 @@ button { font: inherit; }
   cursor: pointer;
 }
 .side-column { display: grid; gap: 16px; }
+.mobile-panel-stack {
+  display: contents;
+}
 .legend-panel, .province-details, .overlay-panel { padding: 18px; }
 .legend-columns {
   display: grid;
@@ -962,14 +983,36 @@ button { font: inherit; }
 }
 @media (max-width: 720px) {
   .shell-root { width: min(100vw - 16px, 100%); padding-top: 8px; }
+  .mobile-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero, .map-panel, .legend-panel, .province-details, .overlay-panel { padding: 14px; }
   .hero-stats, .legend-columns, .province-facts, .overlay-tabs, .economy-quick-stats, .bottom-tray-grid, .bottom-tray-stocks, .province-popup__actions, .focus-strip, .comparison-cards { grid-template-columns: 1fr; }
   .turn-toolbar { flex-direction: column; align-items: stretch; }
-  .map-stage { min-height: 680px; }
+  .layout-grid { gap: 12px; }
+  .layout-grid.is-map-collapsed .map-panel { display: none; }
+  .layout-grid.is-map-expanded .side-column { order: 2; }
+  .layout-grid.is-map-expanded .map-panel { order: 1; }
+  .map-panel { padding: 12px; }
+  .panel-header--spread { gap: 10px; }
+  .overlay-tabs { min-width: 0; grid-template-columns: 1fr 1fr; }
+  .map-stage { min-height: 560px; }
+  .overlay-anchor-shell--top,
+  .overlay-anchor-shell--left,
+  .overlay-anchor-shell--right,
+  .overlay-anchor-shell--bottom { display: none; }
+  .focus-hint { left: 12px; right: 12px; transform: none; text-align: center; }
   .province-node { padding: 14px 12px; }
-  .province-map-label__title { font-size: 3.6px; }
+  .province-node__meta,
+  .province-node__badges,
+  .province-node__link,
   .province-map-label__subtitle,
-  .city-map-label__title { font-size: 2.4px; }
+  .city-map-label { display: none; }
+  .province-map-label__title { font-size: 3.6px; }
+  .mobile-panel-stack > .legend-panel,
+  .mobile-panel-stack > .province-details,
+  .mobile-panel-stack > .overlay-panel { display: none; }
+  .mobile-panel-stack.show-legend > .legend-panel,
+  .mobile-panel-stack.show-details > .province-details,
+  .mobile-panel-stack.show-overlay > .overlay-panel { display: block; }
   .city-quick-panel,
   .province-popup {
     left: 8% !important;
