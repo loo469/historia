@@ -42,7 +42,7 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - `loadHistoricalEventsFromJson` et `loadResearchStatesFromJson` chargent des contenus JSON normalisés avec valeurs par défaut utiles et erreurs explicites sur les payloads invalides
 - côté UI, `buildDiscoveriesPanel` expose les concepts découverts, recherches débloquées, événements liés et une timeline chronologique compacte pour suivre l'ordre des découvertes
 - côté UI, `buildResearchProgressPanel` rend les recherches actives, bloquées et terminées lisibles d'un coup d'œil avec progression, ton visuel et métriques compactes
-- côté UI, `buildCultureLayerPanel` assemble un focus lisible par région et culture pour explorer les marqueurs, découvertes, progression des recherches et événements historiques depuis la carte
+- côté UI, `buildCultureLayerPanel` assemble un focus lisible par région et culture pour explorer les marqueurs, découvertes, progression des recherches et événements historiques depuis la carte, avec des filtres internes simples pour isoler découvertes, recherches ou événements
 - côté carte, `buildCultureMapOverlay` transforme cultures, recherches et événements historiques en marqueurs régionaux stables avec score d'influence, tier visuel, highlights, `eventPopups` et zoneStyle pour mieux distinguer les zones culturelles et ouvrir les événements depuis la carte
 - les tests Gamma couvrent explicitement les use cases de recherche, dérive culturelle, divergence, déclenchement d’événements, ports, adaptateurs mémoire, chargeurs JSON et UI des découvertes, de la progression des recherches et de la couche culturelle
 
