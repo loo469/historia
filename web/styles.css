@@ -1237,6 +1237,50 @@ button { font: inherit; }
 }
 .intrigue-hotspot-card--critical { border-color: rgba(251, 113, 133, 0.4); }
 .intrigue-hotspot-card--warning { border-color: rgba(250, 204, 21, 0.35); }
+.intrigue-operation-card {
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.intrigue-operation-card:hover,
+.intrigue-operation-card.is-selected {
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.18);
+}
+.intrigue-operation-detail {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(8, 15, 28, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.intrigue-operation-detail__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.intrigue-operation-detail__header h4,
+.intrigue-operation-detail__header p {
+  margin: 0;
+}
+.intrigue-operation-detail__header p,
+.intrigue-operation-detail__stats span {
+  color: var(--muted);
+}
+.intrigue-operation-detail__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.intrigue-operation-detail__stats div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.42);
+}
 .economy-route-card {
   display: grid;
   gap: 4px;

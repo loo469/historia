@@ -320,6 +320,7 @@ const state = {
   mapPanX: 0,
   mapPanY: 0,
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
+  selectedIntrigueOperationId: 'op-river-ashes',
 };
 
 const seasonLabels = ['Printemps', 'Été', 'Automne', 'Hiver'];
@@ -842,8 +843,14 @@ function getIntrigueViewModel() {
     heatIntensity: Math.max(0.14, entry.sabotageRiskScore / 100),
   })).filter((entry) => entry.center);
 
+  const selectedOperation = demo.panels.operations.find((operation) => operation.operationId === state.selectedIntrigueOperationId)
+    ?? demo.panels.operations.find((operation) => operation.locationId === state.selectedProvinceId)
+    ?? demo.panels.operations[0]
+    ?? null;
+
   return {
     ...demo,
+    selectedOperation,
     map: {
       ...demo.map,
       entries,
@@ -1170,7 +1177,7 @@ function renderBottomTray(economyView, intrigueView) {
           </div>
           <div class="bottom-tray-stocks">
             ${intrigueView.panels.operations.slice(0, 4).map((operation) => `
-              <article class="stock-mini-card">
+              <article class="stock-mini-card intrigue-operation-card ${intrigueView.selectedOperation?.operationId === operation.operationId ? 'is-selected' : ''}" data-intrigue-operation-id="${operation.operationId}">
                 <h4>${operation.locationName}</h4>
                 <p>${operation.objective}</p>
                 <ul>
@@ -1182,6 +1189,23 @@ function renderBottomTray(economyView, intrigueView) {
             `).join('')}
           </div>
         </div>
+        ${intrigueView.selectedOperation ? `
+          <section class="intrigue-operation-detail" aria-label="Détail d'opération active">
+            <div class="intrigue-operation-detail__header">
+              <div>
+                <h4>Opération active, ${intrigueView.selectedOperation.locationName}</h4>
+                <p>${intrigueView.selectedOperation.objective}</p>
+              </div>
+              <span class="tension-pill tension-pill--${intrigueView.selectedOperation.tone === 'danger' ? 'high' : 'medium'}">${intrigueView.selectedOperation.type}</span>
+            </div>
+            <div class="intrigue-operation-detail__stats">
+              <div><span>Phase</span><strong>${intrigueView.selectedOperation.phase}</strong></div>
+              <div><span>Progression</span><strong>${intrigueView.selectedOperation.progress}%</strong></div>
+              <div><span>Heat</span><strong>${intrigueView.selectedOperation.heat}</strong></div>
+              <div><span>Risque</span><strong>${intrigueView.selectedOperation.detectionRisk}</strong></div>
+            </div>
+          </section>
+        ` : ''}
       </section>
     `;
   }
@@ -1760,6 +1784,17 @@ function render() {
       state.selectedProvinceId = provinceId;
       state.focusedProvinceId = provinceId;
       state.popupProvinceId = provinceId;
+      const provinceOperation = intrigueOperations.find((operation) => operation.theaterId === provinceId && !operation.isResolved);
+      if (provinceOperation) {
+        state.selectedIntrigueOperationId = provinceOperation.id;
+      }
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-intrigue-operation-id]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.selectedIntrigueOperationId = element.dataset.intrigueOperationId;
       render();
     });
   });
