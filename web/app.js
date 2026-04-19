@@ -461,12 +461,40 @@ function getEconomyViewModel() {
   return { overlay, comparison, stockPanels, cities: liveCities, routes: liveRoutes };
 }
 
+function buildRouteVisual(route, origin, destination, index) {
+  const deltaX = destination.x - origin.x;
+  const deltaY = destination.y - origin.y;
+  const length = Math.hypot(deltaX, deltaY) || 1;
+  const normalX = -deltaY / length;
+  const normalY = deltaX / length;
+  const critical = route.riskLevel >= 55 || route.totalCapacity >= 9;
+  const inactive = !route.active;
+  const modeClass = `is-${route.transportMode}`;
+  const emphasisClass = critical ? 'is-critical' : 'is-support';
+  const activeClass = inactive ? 'is-inactive' : 'is-active';
+  const amplitude = route.transportMode === 'river' ? 2.8 : route.transportMode === 'land' ? 1.6 : 2.2;
+  const curveLift = 4 + ((index % 2) * 1.8);
+  const controlX = ((origin.x + destination.x) / 2) + (normalX * curveLift);
+  const controlY = ((origin.y + destination.y) / 2) + (normalY * curveLift);
+  const pathD = `M ${origin.x} ${origin.y} Q ${controlX} ${controlY} ${destination.x} ${destination.y}`;
+  const markerId = `route-arrow-${route.transportMode}`;
+
+  return {
+    pathD,
+    classes: ['economy-route', modeClass, emphasisClass, activeClass].join(' '),
+    markerId,
+    critical,
+    inactive,
+    amplitude,
+  };
+}
+
 function renderEconomyMapOverlay(economyView) {
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return '';
   }
 
-  const routeLines = economyView.overlay.routes.map((route) => {
+  const routeLines = economyView.overlay.routes.map((route, index) => {
     const origin = cityLayoutsById[route.originCityId];
     const destination = cityLayoutsById[route.destinationCityId];
 
@@ -474,24 +502,19 @@ function renderEconomyMapOverlay(economyView) {
       return '';
     }
 
-    const dashArray = route.style.pattern === 'dashed'
-      ? '10 7'
-      : route.style.pattern === 'wave'
-        ? '7 5'
-        : '0';
+    const visual = buildRouteVisual(route, origin, destination, index);
 
     return `
-      <line
-        class="economy-route"
-        x1="${origin.x}%"
-        y1="${origin.y}%"
-        x2="${destination.x}%"
-        y2="${destination.y}%"
-        stroke="${route.style.stroke}"
-        stroke-width="${route.style.width * 3}"
-        stroke-dasharray="${dashArray}"
-        opacity="${route.style.opacity}"
-      />
+      <g class="economy-route-group ${visual.classes}" data-route-id="${route.routeId}">
+        <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
+        <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
+        <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
+        <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
+        <text class="economy-route__label" text-anchor="middle">
+          <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
+        </text>
+        <path id="route-label-${route.routeId}" d="${visual.pathD}" fill="none" stroke="none" />
+      </g>
     `;
   }).join('');
 
@@ -513,6 +536,17 @@ function renderEconomyMapOverlay(economyView) {
 
   return `
     <svg class="economy-map-layer" viewBox="0 0 100 100" aria-label="Overlay économie et logistique">
+      <defs>
+        <marker id="route-arrow-land" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#f8fafc" opacity="0.9" />
+        </marker>
+        <marker id="route-arrow-river" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#bae6fd" opacity="0.95" />
+        </marker>
+        <marker id="route-arrow-sea" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#c7d2fe" opacity="0.95" />
+        </marker>
+      </defs>
       ${routeLines}
       ${cityNodes}
     </svg>
@@ -551,12 +585,17 @@ function renderEconomySidePanel(economyView) {
       </div>
       <div class="economy-route-list">
         ${economyView.overlay.routes.map((route) => `
-          <article class="economy-route-card ${route.active ? '' : 'is-inactive'}">
+          <article class="economy-route-card ${route.active ? '' : 'is-inactive'} ${route.transportMode === 'river' ? 'is-river' : route.transportMode === 'sea' ? 'is-sea' : 'is-land'} ${route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'is-critical' : ''}">
             <strong>${route.routeName}</strong>
             <span>${route.transportMode}, risque ${route.riskLevel}</span>
             <span>capacité ${route.totalCapacity}</span>
           </article>
         `).join('')}
+      </div>
+      <div class="economy-route-legend">
+        <span><i class="is-land"></i>Terre</span>
+        <span><i class="is-river"></i>Fluvial</span>
+        <span><i class="is-critical"></i>Liaison critique</span>
       </div>
     </section>
   `;
