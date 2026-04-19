@@ -689,6 +689,50 @@ button { font: inherit; }
   opacity: 0;
 }
 .economy-city-resource { fill: #bfdbfe; }
+.intrigue-map-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+}
+.intrigue-link {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.58;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.22));
+}
+.intrigue-link--low { stroke: rgba(96, 165, 250, 0.55); }
+.intrigue-link--medium { stroke: rgba(250, 204, 21, 0.72); }
+.intrigue-link--high { stroke: rgba(251, 113, 133, 0.88); }
+.intrigue-hotspot { cursor: pointer; }
+.intrigue-hotspot__halo {
+  fill: rgba(168, 85, 247, 0.12);
+  stroke-width: 0.45;
+}
+.intrigue-hotspot__halo--low { stroke: rgba(96, 165, 250, 0.75); }
+.intrigue-hotspot__halo--medium { stroke: rgba(250, 204, 21, 0.84); }
+.intrigue-hotspot__halo--high { stroke: rgba(251, 113, 133, 0.95); }
+.intrigue-hotspot__core {
+  fill: rgba(15, 23, 42, 0.9);
+  stroke: rgba(226, 232, 240, 0.94);
+  stroke-width: 0.32;
+}
+.intrigue-hotspot.is-selected .intrigue-hotspot__halo {
+  stroke-width: 0.8;
+  filter: drop-shadow(0 0 10px rgba(125, 211, 252, 0.45));
+}
+.intrigue-hotspot.is-focused .intrigue-hotspot__core {
+  fill: rgba(30, 41, 59, 0.98);
+}
+.intrigue-hotspot__marker,
+.intrigue-hotspot__label,
+.intrigue-hotspot__meta {
+  fill: #f8fafc;
+  pointer-events: none;
+}
+.intrigue-hotspot__marker { font-size: 4.2px; }
+.intrigue-hotspot__label { font-size: 3.1px; font-weight: 700; letter-spacing: 0.04em; }
+.intrigue-hotspot__meta { font-size: 2.45px; fill: #cbd5e1; }
 .overlay-anchor-shell--top { left: 18%; top: 3%; width: 64%; height: 9%; }
 .overlay-anchor-shell--left { left: 3%; top: 18%; width: 12%; height: 58%; }
 .overlay-anchor-shell--right { right: 3%; top: 18%; width: 12%; height: 58%; }
@@ -1065,6 +1109,25 @@ button { font: inherit; }
   gap: 10px;
   margin-top: 14px;
 }
+.intrigue-hotspot-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.intrigue-hotspot-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.55);
+}
+.intrigue-hotspot-card span {
+  margin: 0;
+  color: var(--muted);
+}
+.intrigue-hotspot-card--critical { border-color: rgba(251, 113, 133, 0.4); }
+.intrigue-hotspot-card--warning { border-color: rgba(250, 204, 21, 0.35); }
 .economy-route-card {
   display: grid;
   gap: 4px;

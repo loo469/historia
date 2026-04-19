@@ -55,6 +55,7 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - côté UI, le niveau d'alerte peut être transformé en badge lisible avec texte, ton, couleur, emphase, icône, progression et libellé accessible
 - côté UI, `buildIntrigueMapOverlay` agrège par lieu la présence de cellules et la menace de sabotage active dans une vue stable avec métriques, styles et niveaux de risque réutilisables pour la carte
 - côté UI, `buildIntrigueWebDemo` compose la couche intrigue pour la démo web avec badge d'alerte, hotspots triés, panneau simple des cellules et opérations actives, tout en réutilisant les composants intrigue existants
+- dans `web/app.js`, la démo web peut afficher un overlay intrigue dédié avec liens de réseau, foyers cliquables, synthèse latérale et rail bas pour rendre la présence clandestine plus lisible sans surcharger la carte
 - l'adaptateur `InMemoryIntrigueRepository` permet de stocker cellules et opérations clandestines en mémoire avec copies défensives et ordre de listing stable pour les tests et assemblages locaux
 - les tests Delta couvrent explicitement le risque de détection, l'exposition réseau, l'adaptateur mémoire intrigue et l'affichage du niveau d'alerte
 
