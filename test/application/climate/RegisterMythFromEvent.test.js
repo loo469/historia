@@ -54,6 +54,30 @@ test('RegisterMythFromEvent accepts plain event payloads and adapts credibility'
   assert.equal(result.myth.title, 'The River Without Mercy');
 });
 
+test('RegisterMythFromEvent turns non-flood catastrophes into omen myths with sorted metadata', () => {
+  const useCase = new RegisterMythFromEvent();
+
+  const result = useCase.execute({
+    event: {
+      id: 'ashlands-heatwave',
+      type: 'heatwave',
+      severity: 'minor',
+      status: 'warning',
+      regionIds: ['south-ridge', 'ashlands'],
+      startedAt: '2026-04-18T10:00:00.000Z',
+      impact: { harvest: -8 },
+    },
+    createdAt: '2026-04-18T12:10:00.000Z',
+  });
+
+  assert.equal(result.myth.category, 'omen');
+  assert.equal(result.myth.title, 'The Burning Sky');
+  assert.equal(result.myth.credibility, 43);
+  assert.deepEqual(result.myth.regions, ['ashlands', 'south-ridge']);
+  assert.deepEqual(result.myth.tags, ['heatwave', 'minor', 'warning']);
+  assert.match(result.myth.summary, /south-ridge/);
+});
+
 test('RegisterMythFromEvent rejects invalid events', () => {
   const useCase = new RegisterMythFromEvent();
 
