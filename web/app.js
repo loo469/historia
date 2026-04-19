@@ -1015,6 +1015,24 @@ function renderIntrigueSidePanel(intrigueView) {
         <div class="overlay-anchor"><span>Sabotages actifs</span><strong>${intrigueView.metrics.activeSabotageCount}</strong></div>
         <div class="overlay-anchor"><span>Alerte</span><strong>${intrigueView.alertBadge.level.label}</strong></div>
       </div>
+      <section class="intrigue-alert-panel intrigue-alert-panel--${intrigueView.alertPanel.tone}" aria-label="Lecture du niveau d'alerte">
+        <div class="intrigue-alert-panel__header">
+          <strong>${intrigueView.alertPanel.icon} ${intrigueView.alertPanel.title}</strong>
+          <span>${intrigueView.alertPanel.summary}</span>
+        </div>
+        <p>${intrigueView.alertPanel.guidance}</p>
+        <ul class="intrigue-alert-panel__drivers">
+          ${intrigueView.alertPanel.drivers.map((driver) => `<li>${driver}</li>`).join('')}
+        </ul>
+        <div class="intrigue-alert-panel__zones">
+          ${intrigueView.alertPanel.watchZones.map((zone) => `
+            <article class="intrigue-alert-zone intrigue-alert-zone--${zone.severity}">
+              <strong>${zone.locationName}</strong>
+              <span>${zone.reason}</span>
+            </article>
+          `).join('')}
+        </div>
+      </section>
       <div class="intrigue-legend-strip" aria-label="Légende heatmap sabotage">
         <span>Heatmap sabotage</span>
         <div class="intrigue-legend-strip__scale">

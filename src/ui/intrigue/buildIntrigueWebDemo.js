@@ -156,11 +156,42 @@ export function buildIntrigueWebDemo(payload, options = {}) {
   const sleeperCellCount = cellules.filter((cellule) => cellule.sleeper).length;
   const activeSabotageCount = operations.filter((operation) => operation.type === 'sabotage' && !operation.isResolved).length;
   const criticalHotspotCount = hotspots.filter((hotspot) => hotspot.severity === 'critical').length;
+  const topHotspots = hotspots.slice(0, 3);
+  const alertDrivers = [
+    criticalHotspotCount > 0 ? `${criticalHotspotCount} foyer${criticalHotspotCount > 1 ? 's' : ''} critique${criticalHotspotCount > 1 ? 's' : ''}` : null,
+    exposedCellCount > 0 ? `${exposedCellCount} cellule${exposedCellCount > 1 ? 's' : ''} exposée${exposedCellCount > 1 ? 's' : ''}` : null,
+    activeSabotageCount > 0 ? `${activeSabotageCount} sabotage${activeSabotageCount > 1 ? 's' : ''} actif${activeSabotageCount > 1 ? 's' : ''}` : null,
+  ].filter(Boolean);
+  const watchZones = topHotspots.map((hotspot) => ({
+    locationId: hotspot.locationId,
+    locationName: hotspot.locationName,
+    reason: hotspot.sabotageRiskLevel === 'high'
+      ? 'Risque critique de sabotage'
+      : hotspot.exposedCellCount > 0
+        ? 'Cellules exposées à surveiller'
+        : hotspot.operationCount > 0
+          ? 'Opérations actives à suivre'
+          : 'Présence clandestine à observer',
+    severity: hotspot.severity,
+  }));
 
   return {
     title: 'Couches intrigue',
     summary: `${criticalHotspotCount} foyers critiques, ${activeSabotageCount} sabotages actifs, alerte ${alertBadge.level.label.toLowerCase()}`,
     alertBadge,
+    alertPanel: {
+      title: `Niveau ${alertBadge.level.label}`,
+      tone: alertBadge.tone,
+      icon: alertBadge.icon,
+      summary: alertDrivers[0] ?? 'Aucun foyer critique détecté',
+      guidance: alertBadge.level.isCritical
+        ? 'Concentrez la lecture sur les foyers rouges, les cellules exposées et les sabotages en cours.'
+        : alertBadge.level.code === 'renforce'
+          ? 'Surveillez les provinces où le risque monte et anticipez les chaînes de sabotage.'
+          : 'Le réseau reste contenu, mais les foyers actifs doivent rester visibles.',
+      drivers: alertDrivers.length > 0 ? alertDrivers : ['aucun signal fort pour le moment'],
+      watchZones,
+    },
     map: {
       title: 'Couche intrigue',
       entries: mapOverlay,
