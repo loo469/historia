@@ -93,6 +93,20 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
       eventIds: ['event-open-archives'],
       eventTitles: ['Open Archives'],
       eventCount: 1,
+      eventPopups: [
+        {
+          popupId: 'archipelago:culture-north:event-open-archives:popup',
+          eventId: 'event-open-archives',
+          title: 'Open Archives',
+          summary: 'Scholars share navigation routes.',
+          triggeredAt: '2026-04-19T00:00:00.000Z',
+          importance: 3,
+          discoveries: ['public-catalogue'],
+          unlockedResearchIds: ['astrolabe'],
+          label: 'Open Archives · 2026-04-19',
+          order: 1,
+        },
+      ],
       identityTags: ['assemblies', 'navigation', 'trade'],
       highlights: ['public-catalogue', 'star-maps', 'assemblies'],
       cultureMetrics: {
@@ -144,6 +158,7 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
       eventIds: [],
       eventTitles: [],
       eventCount: 0,
+      eventPopups: [],
       identityTags: ['clan-oaths', 'honor'],
       highlights: ['stirrup-drill', 'clan-oaths', 'honor'],
       cultureMetrics: {
@@ -195,6 +210,20 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
       eventIds: ['event-open-archives'],
       eventTitles: ['Open Archives'],
       eventCount: 1,
+      eventPopups: [
+        {
+          popupId: 'north-coast:culture-north:event-open-archives:popup',
+          eventId: 'event-open-archives',
+          title: 'Open Archives',
+          summary: 'Scholars share navigation routes.',
+          triggeredAt: '2026-04-19T00:00:00.000Z',
+          importance: 3,
+          discoveries: ['public-catalogue'],
+          unlockedResearchIds: ['astrolabe'],
+          label: 'Open Archives · 2026-04-19',
+          order: 1,
+        },
+      ],
       identityTags: ['assemblies', 'navigation', 'trade'],
       highlights: ['public-catalogue', 'star-maps', 'assemblies'],
       cultureMetrics: {
@@ -305,6 +334,7 @@ test('buildCultureMapOverlay distinguishes overlapping cultural influences in th
       eventIds: [],
       eventTitles: [],
       eventCount: 0,
+      eventPopups: [],
       identityTags: ['archives', 'memory'],
       highlights: ['ink-network', 'archives', 'memory'],
       cultureMetrics: {
@@ -356,6 +386,7 @@ test('buildCultureMapOverlay distinguishes overlapping cultural influences in th
       eventIds: [],
       eventTitles: [],
       eventCount: 0,
+      eventPopups: [],
       identityTags: ['assemblies', 'navigation', 'trade'],
       highlights: ['star-maps', 'tidal-ledgers', 'assemblies'],
       cultureMetrics: {
