@@ -52,6 +52,7 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - une cellule devient exposée dès qu'elle passe en état `compromised` ou que son exposition franchit le seuil critique métier, et ce statut compromis reste explicite dans le modèle même si l'exposition redescend ensuite
 - `NiveauAlerte` suit une échelle stable de `latent` à `verrouille`, avec une intensité de surveillance associée à chaque palier
 - côté UI, le niveau d'alerte peut être transformé en badge lisible avec texte, ton, couleur, emphase, icône, progression et libellé accessible
+- côté UI, `buildIntrigueMapOverlay` agrège par lieu la présence de cellules et la menace de sabotage active dans une vue stable avec métriques, styles et niveaux de risque réutilisables pour la carte
 - l'adaptateur `InMemoryIntrigueRepository` permet de stocker cellules et opérations clandestines en mémoire avec copies défensives et ordre de listing stable pour les tests et assemblages locaux
 - les tests Delta couvrent explicitement le risque de détection, l'exposition réseau, l'adaptateur mémoire intrigue et l'affichage du niveau d'alerte
 
