@@ -24,7 +24,7 @@ test('buildClimateStatusPanel summarizes season, anomaly, and active catastrophe
     regionId: 'sunreach',
     regionName: 'Sunreach',
     title: 'Climat de Sunreach',
-    summary: 'Été, heatwave, locusts, wildfire',
+    summary: 'Été, heatwave, locusts, wildfire, logistique élevé, récoltes fragile, vigilance renforcée',
     season: {
       id: 'summer',
       label: 'Été',
@@ -35,6 +35,23 @@ test('buildClimateStatusPanel summarizes season, anomaly, and active catastrophe
       droughtIndex: 74,
       stability: 'volatile',
     },
+    highlights: [
+      {
+        key: 'temperature',
+        label: 'Température',
+        value: '33°C',
+      },
+      {
+        key: 'precipitation',
+        label: 'Précipitations',
+        value: '11/100',
+      },
+      {
+        key: 'drought',
+        label: 'Sécheresse',
+        value: '74/100',
+      },
+    ],
     anomalies: [
       {
         type: 'anomaly',
@@ -55,10 +72,17 @@ test('buildClimateStatusPanel summarizes season, anomaly, and active catastrophe
         tone: 'danger',
       },
     ],
+    risks: {
+      logistics: 'élevé',
+      harvest: 'fragile',
+      vigilance: 'renforcée',
+      summary: 'logistique élevé, récoltes fragile, vigilance renforcée',
+    },
     metrics: {
       anomalyCount: 3,
       activeCatastropheCount: 2,
       hasAnomaly: true,
+      riskLevel: 'critical',
     },
   });
 });
@@ -72,12 +96,36 @@ test('buildClimateStatusPanel supports plain payloads without anomalies', () => 
     droughtIndex: 18,
   });
 
-  assert.equal(panel.summary, 'spring, Aucune anomalie');
+  assert.equal(panel.summary, 'spring, Aucune anomalie, logistique faible, récoltes soutenu, vigilance normale');
+  assert.deepEqual(panel.highlights, [
+    {
+      key: 'temperature',
+      label: 'Température',
+      value: '12°C',
+    },
+    {
+      key: 'precipitation',
+      label: 'Précipitations',
+      value: '63/100',
+    },
+    {
+      key: 'drought',
+      label: 'Sécheresse',
+      value: '18/100',
+    },
+  ]);
   assert.deepEqual(panel.anomalies, []);
+  assert.deepEqual(panel.risks, {
+    logistics: 'faible',
+    harvest: 'soutenu',
+    vigilance: 'normale',
+    summary: 'logistique faible, récoltes soutenu, vigilance normale',
+  });
   assert.deepEqual(panel.metrics, {
     anomalyCount: 0,
     activeCatastropheCount: 0,
     hasAnomaly: false,
+    riskLevel: 'stable',
   });
   assert.equal(panel.readings.stability, 'stable');
 });
