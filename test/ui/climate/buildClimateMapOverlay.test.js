@@ -127,6 +127,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         anomaly: null,
         activeCatastropheIds: ['storm-1'],
         strategicImpact: 'critical',
+        strategicSignals: {
+          logisticsRisk: 'severe',
+          stabilityRisk: 'low',
+          harvestRisk: 'high',
+          summary: 'logistique severe, stabilité low, récoltes high',
+        },
         temperatureC: 12,
         precipitationLevel: 63,
         droughtIndex: 18,
@@ -138,6 +144,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         anomaly: 'heatwave',
         activeCatastropheIds: ['storm-1'],
         strategicImpact: 'critical',
+        strategicSignals: {
+          logisticsRisk: 'severe',
+          stabilityRisk: 'moderate',
+          harvestRisk: 'high',
+          summary: 'logistique severe, stabilité moderate, récoltes high',
+        },
         temperatureC: 33,
         precipitationLevel: 11,
         droughtIndex: 74,
@@ -249,6 +261,9 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
       anomalyCount: 1,
       catastropheCount: 2,
       criticalRegionCount: 2,
+      logisticsRiskRegionCount: 2,
+      stabilityRiskRegionCount: 1,
+      harvestRiskRegionCount: 2,
     },
   });
 });
@@ -269,6 +284,9 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
   assert.equal(overlay.entries.length, 1);
   assert.equal(overlay.metrics.catastropheCount, 0);
   assert.equal(overlay.metrics.criticalRegionCount, 0);
+  assert.equal(overlay.metrics.logisticsRiskRegionCount, 0);
+  assert.equal(overlay.metrics.stabilityRiskRegionCount, 0);
+  assert.equal(overlay.metrics.harvestRiskRegionCount, 0);
   assert.equal(overlay.entries[0].overlayId, 'delta:season');
   assert.equal(overlay.seasonalPanel.summary, 'autumn: 1');
   assert.deepEqual(overlay.catastropheZones, []);
@@ -306,6 +324,12 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
       anomaly: null,
       activeCatastropheIds: [],
       strategicImpact: 'stable',
+      strategicSignals: {
+        logisticsRisk: 'low',
+        stabilityRisk: 'low',
+        harvestRisk: 'low',
+        summary: 'logistique low, stabilité low, récoltes low',
+      },
       temperatureC: 18,
       precipitationLevel: 48,
       droughtIndex: 29,

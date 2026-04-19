@@ -119,6 +119,33 @@ function buildStrategicImpact(state, catastropheEntries) {
   return 'stable';
 }
 
+function buildStrategicSignals(state, catastropheEntries) {
+  const logisticsRisk = catastropheEntries.length > 0
+    ? 'severe'
+    : state.precipitationLevel < 20 || state.droughtIndex >= 55
+      ? 'elevated'
+      : 'low';
+
+  const stabilityRisk = catastropheEntries.some((entry) => entry.impact.unrest > 0)
+    ? 'high'
+    : state.hasAnomaly() || state.droughtIndex >= 45
+      ? 'moderate'
+      : 'low';
+
+  const harvestRisk = catastropheEntries.some((entry) => entry.impact.harvest < 0)
+    ? 'high'
+    : state.precipitationLevel < 25 || state.droughtIndex >= 50
+      ? 'moderate'
+      : 'low';
+
+  return {
+    logisticsRisk,
+    stabilityRisk,
+    harvestRisk,
+    summary: `logistique ${logisticsRisk}, stabilité ${stabilityRisk}, récoltes ${harvestRisk}`,
+  };
+}
+
 function buildSeasonSummary(states, seasonLabels, seasonStyleByType) {
   const countsBySeason = Object.create(null);
 
@@ -285,6 +312,8 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     .map((state) => {
       const regionalCatastrophes = catastropheEntries.filter((entry) => entry.regionId === state.regionId);
 
+      const strategicSignals = buildStrategicSignals(state, regionalCatastrophes);
+
       return {
         regionId: state.regionId,
         season: state.season,
@@ -292,6 +321,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
         anomaly: state.anomaly,
         activeCatastropheIds: regionalCatastrophes.map((entry) => entry.catastropheId),
         strategicImpact: buildStrategicImpact(state, regionalCatastrophes),
+        strategicSignals,
         temperatureC: state.temperatureC,
         precipitationLevel: state.precipitationLevel,
         droughtIndex: state.droughtIndex,
@@ -320,6 +350,9 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       anomalyCount: stateEntries.filter((entry) => entry.kind === 'anomaly').length,
       catastropheCount: catastropheEntries.length,
       criticalRegionCount: regions.filter((region) => region.strategicImpact === 'critical').length,
+      logisticsRiskRegionCount: regions.filter((region) => region.strategicSignals.logisticsRisk !== 'low').length,
+      stabilityRiskRegionCount: regions.filter((region) => region.strategicSignals.stabilityRisk !== 'low').length,
+      harvestRiskRegionCount: regions.filter((region) => region.strategicSignals.harvestRisk !== 'low').length,
     },
   };
 }
