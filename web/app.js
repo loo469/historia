@@ -1,5 +1,10 @@
 import { Province } from '../src/domain/war/Province.js';
+import { City } from '../src/domain/economy/City.js';
+import { TradeRoute } from '../src/domain/economy/TradeRoute.js';
 import { buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
+import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay.js';
+import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
+import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonPanel.js';
 
 const paletteByFaction = {
   aurora: { fill: '#2F6BFF', border: '#8FB3FF' },
@@ -91,6 +96,95 @@ const overlayLabels = {
   'culture-overlay': 'Culture',
   'economy-overlay': 'Économie',
   'intrigue-overlay': 'Intrigue',
+};
+
+const cityLayoutsById = {
+  'crown-port': { x: 49.5, y: 28 },
+  'river-gate-city': { x: 34, y: 56 },
+  'iron-plain-city': { x: 62, y: 55 },
+  'southern-crossing': { x: 47, y: 79 },
+};
+
+const cities = [
+  new City({
+    id: 'crown-port',
+    name: 'Port de Couronne',
+    regionId: 'crown-heart',
+    population: 145,
+    prosperity: 78,
+    stability: 72,
+    stockByResource: { grain: 12, fish: 14, timber: 7 },
+    tradeRouteIds: ['aurora-river', 'southern-grainway'],
+    capital: true,
+  }),
+  new City({
+    id: 'river-gate-city',
+    name: 'Porte du Fleuve',
+    regionId: 'river-gate',
+    population: 102,
+    prosperity: 49,
+    stability: 37,
+    stockByResource: { grain: 3, tools: 2, timber: 4 },
+    tradeRouteIds: ['aurora-river', 'ember-foundry-line'],
+  }),
+  new City({
+    id: 'iron-plain-city',
+    name: 'Forge des Plaines',
+    regionId: 'iron-plain',
+    population: 93,
+    prosperity: 57,
+    stability: 52,
+    stockByResource: { ore: 11, tools: 5, grain: 2 },
+    tradeRouteIds: ['ember-foundry-line'],
+  }),
+  new City({
+    id: 'southern-crossing',
+    name: 'Passage du Sud',
+    regionId: 'southern-reach',
+    population: 81,
+    prosperity: 43,
+    stability: 41,
+    stockByResource: { grain: 2, horses: 4, timber: 1 },
+    tradeRouteIds: ['southern-grainway'],
+  }),
+];
+
+const routes = [
+  new TradeRoute({
+    id: 'aurora-river',
+    name: 'Artère fluviale',
+    stopCityIds: ['crown-port', 'river-gate-city'],
+    distance: 5,
+    capacityByResource: { grain: 6, fish: 5, timber: 3 },
+    transportMode: 'river',
+    riskLevel: 24,
+  }),
+  new TradeRoute({
+    id: 'ember-foundry-line',
+    name: 'Ligne des fonderies',
+    stopCityIds: ['river-gate-city', 'iron-plain-city'],
+    distance: 4,
+    capacityByResource: { ore: 5, tools: 3, grain: 2 },
+    transportMode: 'land',
+    riskLevel: 61,
+  }),
+  new TradeRoute({
+    id: 'southern-grainway',
+    name: 'Route des moissons',
+    stopCityIds: ['crown-port', 'southern-crossing'],
+    distance: 6,
+    capacityByResource: { grain: 4, timber: 2, horses: 2 },
+    transportMode: 'land',
+    riskLevel: 42,
+    active: false,
+  }),
+];
+
+const desiredStockByCityId = {
+  'crown-port': { grain: 10, fish: 10, timber: 5 },
+  'river-gate-city': { grain: 9, tools: 4, timber: 5 },
+  'iron-plain-city': { ore: 8, tools: 4, grain: 5 },
+  'southern-crossing': { grain: 7, horses: 3, timber: 3 },
 };
 
 const state = {
@@ -221,18 +315,158 @@ function renderActiveProvince(shell) {
   `;
 }
 
-function renderOverlayPanel() {
+function getEconomyViewModel() {
+  const overlay = buildEconomyMapOverlay(cities, routes, { cityPositionById: cityLayoutsById });
+  const comparison = buildCityComparisonPanel(cities, { desiredStockByCityId });
+  const stockPanels = Object.fromEntries(
+    cities.map((city) => [city.id, buildCityStockPanel(city, { desiredStockByResource: desiredStockByCityId[city.id] ?? {} })]),
+  );
+
+  return { overlay, comparison, stockPanels };
+}
+
+function renderEconomyMapOverlay(economyView) {
+  if (state.activeOverlaySlot !== 'economy-overlay') {
+    return '';
+  }
+
+  const routeLines = economyView.overlay.routes.map((route) => {
+    const origin = cityLayoutsById[route.originCityId];
+    const destination = cityLayoutsById[route.destinationCityId];
+
+    if (!origin || !destination) {
+      return '';
+    }
+
+    const dashArray = route.style.pattern === 'dashed'
+      ? '10 7'
+      : route.style.pattern === 'wave'
+        ? '7 5'
+        : '0';
+
+    return `
+      <line
+        class="economy-route"
+        x1="${origin.x}%"
+        y1="${origin.y}%"
+        x2="${destination.x}%"
+        y2="${destination.y}%"
+        stroke="${route.style.stroke}"
+        stroke-width="${route.style.width * 3}"
+        stroke-dasharray="${dashArray}"
+        opacity="${route.style.opacity}"
+      />
+    `;
+  }).join('');
+
+  const cityNodes = economyView.overlay.cities.map((city) => {
+    const position = city.marker.position;
+
+    if (!position) {
+      return '';
+    }
+
+    return `
+      <g class="economy-city-group" data-city-id="${city.cityId}">
+        <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
+        <text class="economy-city-label" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
+        <text class="economy-city-resource" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
+      </g>
+    `;
+  }).join('');
+
   return `
-    <section class="panel overlay-panel">
+    <svg class="economy-map-layer" viewBox="0 0 100 100" aria-label="Overlay économie et logistique">
+      ${routeLines}
+      ${cityNodes}
+    </svg>
+  `;
+}
+
+function renderEconomySidePanel(economyView) {
+  if (state.activeOverlaySlot !== 'economy-overlay') {
+    return `
+      <section class="panel overlay-panel">
+        <div class="panel-header">
+          <h3>Overlay actif, ${overlayLabels[state.activeOverlaySlot]}</h3>
+          <p>${getOverlayDescription(state.activeOverlaySlot)}</p>
+        </div>
+        <div class="overlay-anchor-grid">
+          <div class="overlay-anchor"><span>HUD haut</span><strong>#top-hud</strong></div>
+          <div class="overlay-anchor"><span>Rail gauche</span><strong>#left-rail</strong></div>
+          <div class="overlay-anchor"><span>Rail droit</span><strong>#right-rail</strong></div>
+          <div class="overlay-anchor"><span>Barre basse</span><strong>#bottom-tray</strong></div>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="panel overlay-panel overlay-panel--economy">
       <div class="panel-header">
-        <h3>Overlay actif, ${overlayLabels[state.activeOverlaySlot]}</h3>
-        <p>${getOverlayDescription(state.activeOverlaySlot)}</p>
+        <h3>Overlay actif, Économie</h3>
+        <p>${economyView.overlay.summary}</p>
       </div>
-      <div class="overlay-anchor-grid">
-        <div class="overlay-anchor"><span>HUD haut</span><strong>#top-hud</strong></div>
-        <div class="overlay-anchor"><span>Rail gauche</span><strong>#left-rail</strong></div>
-        <div class="overlay-anchor"><span>Rail droit</span><strong>#right-rail</strong></div>
-        <div class="overlay-anchor"><span>Barre basse</span><strong>#bottom-tray</strong></div>
+      <div class="economy-quick-stats">
+        <div class="overlay-anchor"><span>Villes</span><strong>${economyView.overlay.metrics.cityCount}</strong></div>
+        <div class="overlay-anchor"><span>Routes actives</span><strong>${economyView.overlay.metrics.activeRouteCount}/${economyView.overlay.metrics.routeCount}</strong></div>
+        <div class="overlay-anchor"><span>Tensions fortes</span><strong>${economyView.comparison.metrics.highTensionCount}</strong></div>
+        <div class="overlay-anchor"><span>Capacité</span><strong>${economyView.overlay.metrics.totalRouteCapacity}</strong></div>
+      </div>
+      <div class="economy-route-list">
+        ${economyView.overlay.routes.map((route) => `
+          <article class="economy-route-card ${route.active ? '' : 'is-inactive'}">
+            <strong>${route.routeName}</strong>
+            <span>${route.transportMode}, risque ${route.riskLevel}</span>
+            <span>capacité ${route.totalCapacity}</span>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderBottomTray(economyView) {
+  if (state.activeOverlaySlot !== 'economy-overlay') {
+    return '<div class="overlay-anchor-shell overlay-anchor-shell--bottom">Bottom tray</div>';
+  }
+
+  return `
+    <section id="bottom-tray" class="overlay-anchor-shell overlay-anchor-shell--bottom overlay-anchor-shell--economy">
+      <div class="bottom-tray-grid">
+        <div class="bottom-tray-table">
+          <h4>${economyView.comparison.title}</h4>
+          <p>${economyView.comparison.summary}</p>
+          <table>
+            <thead>
+              <tr><th>Ville</th><th>Stock</th><th>Ratio</th><th>Tension</th></tr>
+            </thead>
+            <tbody>
+              ${economyView.comparison.rows.map((row) => `
+                <tr>
+                  <td>${row.cityName}</td>
+                  <td>${row.totalStock}</td>
+                  <td>${row.scarcityRatio}</td>
+                  <td><span class="tension-pill tension-pill--${row.tensionLevel}">${row.tensionLevel}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="bottom-tray-stocks">
+          ${economyView.overlay.cities.map((city) => {
+            const panel = economyView.stockPanels[city.cityId];
+            return `
+              <article class="stock-mini-card">
+                <h4>${panel.cityName}</h4>
+                <p>${panel.summary}</p>
+                <ul>
+                  ${panel.rows.slice(0, 3).map((row) => `<li class="${row.status}"><span>${row.resourceId}</span><strong>${row.detail}</strong></li>`).join('')}
+                </ul>
+              </article>
+            `;
+          }).join('')}
+        </div>
       </div>
     </section>
   `;
@@ -240,6 +474,7 @@ function renderOverlayPanel() {
 
 function render() {
   const shell = getShell();
+  const economyView = getEconomyViewModel();
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -271,7 +506,8 @@ function render() {
             <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
             <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
             <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
-            <div id="bottom-tray" class="overlay-anchor-shell overlay-anchor-shell--bottom">Bottom tray</div>
+            ${renderEconomyMapOverlay(economyView)}
+            ${renderBottomTray(economyView)}
             ${shell.provinces.map(renderProvinceCard).join('')}
           </div>
         </section>
@@ -279,7 +515,7 @@ function render() {
         <aside class="side-column">
           ${renderLegend(shell)}
           ${renderActiveProvince(shell)}
-          ${renderOverlayPanel()}
+          ${renderEconomySidePanel(economyView)}
         </aside>
       </section>
     </main>
