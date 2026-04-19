@@ -845,21 +845,77 @@ button { font: inherit; }
 .economy-route-card.is-inactive {
   opacity: 0.68;
 }
-.economy-route-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
+.economy-legend-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.economy-legend-panel__header h4 {
+  margin: 0;
+}
+.economy-legend-panel__header p {
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 12px;
 }
-.economy-route-legend span {
+.economy-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.economy-legend-card {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.economy-legend-card strong {
+  display: block;
+  margin-bottom: 8px;
+}
+.economy-legend-card ul,
+.economy-legend-pill-list,
+.economy-route-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.economy-legend-card li,
+.economy-legend-pill-list li,
+.economy-route-legend li {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
+.economy-legend-city,
+.economy-legend-ring,
 .economy-route-legend i {
   display: inline-block;
+  flex: 0 0 auto;
+}
+.economy-legend-city {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+}
+.economy-legend-city.is-positive { background: #22c55e; }
+.economy-legend-city.is-warning { background: #f97316; }
+.economy-legend-ring {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(251, 113, 133, 0.95);
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.35);
+}
+.economy-route-legend i {
   width: 20px;
   height: 4px;
   border-radius: 999px;
@@ -1032,7 +1088,7 @@ button { font: inherit; }
   .shell-root { width: min(100vw - 16px, 100%); padding-top: 8px; }
   .mobile-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero, .map-panel, .legend-panel, .province-details, .overlay-panel { padding: 14px; }
-  .hero-stats, .legend-columns, .province-facts, .overlay-tabs, .economy-quick-stats, .bottom-tray-grid, .bottom-tray-stocks, .province-popup__actions, .focus-strip, .comparison-cards { grid-template-columns: 1fr; }
+  .hero-stats, .legend-columns, .province-facts, .overlay-tabs, .economy-quick-stats, .bottom-tray-grid, .bottom-tray-stocks, .province-popup__actions, .focus-strip, .comparison-cards, .economy-legend-grid { grid-template-columns: 1fr; }
   .turn-toolbar { flex-direction: column; align-items: stretch; }
   .layout-grid { gap: 12px; }
   .layout-grid.is-map-collapsed .map-panel { display: none; }

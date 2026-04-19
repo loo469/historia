@@ -725,12 +725,39 @@ function renderEconomySidePanel(economyView) {
           `;
         }).join('')}
       </div>
-      <div class="economy-route-legend">
-        <span><i class="is-land"></i>Terre</span>
-        <span><i class="is-river"></i>Fluvial</span>
-        <span><i class="is-critical"></i>Liaison critique</span>
-        <span><i class="is-high-tension"></i>Tension forte</span>
-      </div>
+      <section class="economy-legend-panel" aria-label="Légende économique">
+        <div class="economy-legend-panel__header">
+          <h4>Légende économique</h4>
+          <p>Repères compacts pour lire villes, routes, stocks et tensions sans quitter la carte.</p>
+        </div>
+        <div class="economy-legend-grid">
+          <article class="economy-legend-card">
+            <strong>Villes</strong>
+            <ul>
+              <li><span class="economy-legend-city is-positive"></span>Ville en surplus</li>
+              <li><span class="economy-legend-city is-warning"></span>Ville sous vigilance</li>
+              <li><span class="economy-legend-ring"></span>Tension d’approvisionnement</li>
+            </ul>
+          </article>
+          <article class="economy-legend-card">
+            <strong>Routes</strong>
+            <ul class="economy-route-legend">
+              <li><i class="is-land"></i>Terre</li>
+              <li><i class="is-river"></i>Fluvial</li>
+              <li><i class="is-critical"></i>Liaison critique</li>
+              <li><i class="is-high-tension"></i>Tension forte</li>
+            </ul>
+          </article>
+          <article class="economy-legend-card">
+            <strong>Stocks et tension</strong>
+            <ul class="economy-legend-pill-list">
+              <li><span class="tension-pill tension-pill--low">low</span>lecture stable</li>
+              <li><span class="tension-pill tension-pill--medium">medium</span>stocks fragiles</li>
+              <li><span class="tension-pill tension-pill--high">high</span>pénurie à traiter</li>
+            </ul>
+          </article>
+        </div>
+      </section>
     </section>
   `;
 }
