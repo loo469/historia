@@ -196,6 +196,7 @@ const state = {
   popupProvinceId: 'river-gate',
   hoveredCityId: 'river-gate-city',
   selectedCityId: 'river-gate-city',
+  comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
 };
@@ -699,33 +700,57 @@ function renderBottomTray(economyView) {
     return '<div class="overlay-anchor-shell overlay-anchor-shell--bottom">Bottom tray</div>';
   }
 
+  const comparedIds = state.comparedCityIds.filter((cityId) => economyView.stockPanels[cityId]);
+  const comparedCities = (comparedIds.length > 0 ? comparedIds : economyView.overlay.cities.slice(0, 2).map((city) => city.cityId))
+    .map((cityId) => {
+      const city = economyView.overlay.cities.find((candidate) => candidate.cityId === cityId);
+      const panel = economyView.stockPanels[cityId];
+      const row = economyView.comparison.rows.find((candidate) => candidate.cityId === cityId);
+      return city && panel && row ? { city, panel, row } : null;
+    })
+    .filter(Boolean);
+
   return `
     <section id="bottom-tray" class="overlay-anchor-shell overlay-anchor-shell--bottom overlay-anchor-shell--economy">
       <div class="bottom-tray-grid">
-        <div class="bottom-tray-table">
-          <h4>${economyView.comparison.title}</h4>
-          <p>${economyView.comparison.summary}</p>
-          <table>
-            <thead>
-              <tr><th>Ville</th><th>Stock</th><th>Ratio</th><th>Tension</th></tr>
-            </thead>
-            <tbody>
-              ${economyView.comparison.rows.map((row) => `
-                <tr>
-                  <td>${row.cityName}</td>
-                  <td>${row.totalStock}</td>
-                  <td>${row.scarcityRatio}</td>
-                  <td><span class="tension-pill tension-pill--${row.tensionLevel}">${row.tensionLevel}</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+        <div class="bottom-tray-table bottom-tray-table--comparison">
+          <div class="comparison-toolbar">
+            <div>
+              <h4>Comparaison multi-villes</h4>
+              <p>Sélectionne jusqu’à 3 villes sur la carte pour comparer stock, stabilité et prospérité.</p>
+            </div>
+            <div class="comparison-chip-row">
+              ${economyView.overlay.cities.map((city) => `<button type="button" class="comparison-chip ${state.comparedCityIds.includes(city.cityId) ? 'is-active' : ''}" data-compare-city-id="${city.cityId}">${city.cityName}</button>`).join('')}
+            </div>
+          </div>
+          <div class="comparison-cards">
+            ${comparedCities.map(({ city, panel, row }) => `
+              <article class="comparison-card ${state.selectedCityId === city.cityId ? 'is-selected' : ''}">
+                <div class="comparison-card__header">
+                  <div>
+                    <h5>${city.cityName}</h5>
+                    <p>${panel.summary}</p>
+                  </div>
+                  <span class="tension-pill tension-pill--${row.tensionLevel}">${row.tensionLevel}</span>
+                </div>
+                <dl class="comparison-card__stats">
+                  <div><dt>Stock</dt><dd>${row.totalStock}</dd></div>
+                  <div><dt>Stabilité</dt><dd>${city.stability}</dd></div>
+                  <div><dt>Prospérité</dt><dd>${city.prosperity}</dd></div>
+                  <div><dt>Ratio</dt><dd>${row.scarcityRatio}</dd></div>
+                </dl>
+                <ul>
+                  ${panel.rows.slice(0, 3).map((resource) => `<li class="${resource.status}"><span>${resource.resourceId}</span><strong>${resource.detail}</strong></li>`).join('')}
+                </ul>
+              </article>
+            `).join('')}
+          </div>
         </div>
         <div class="bottom-tray-stocks">
           ${economyView.overlay.cities.map((city) => {
             const panel = economyView.stockPanels[city.cityId];
             return `
-              <article class="stock-mini-card">
+              <article class="stock-mini-card ${state.comparedCityIds.includes(city.cityId) ? 'is-compared' : ''}">
                 <h4>${panel.cityName}</h4>
                 <p>${panel.summary}</p>
                 <ul>
@@ -957,8 +982,33 @@ function render() {
     });
 
     element.addEventListener('click', () => {
-      state.selectedCityId = element.dataset.cityId;
-      state.hoveredCityId = element.dataset.cityId;
+      const cityId = element.dataset.cityId;
+      state.selectedCityId = cityId;
+      state.hoveredCityId = cityId;
+
+      if (state.comparedCityIds.includes(cityId)) {
+        state.comparedCityIds = [cityId, ...state.comparedCityIds.filter((candidate) => candidate !== cityId)].slice(0, 3);
+      } else {
+        state.comparedCityIds = [...state.comparedCityIds, cityId].slice(-3);
+      }
+
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-compare-city-id]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const cityId = element.dataset.compareCityId;
+      const exists = state.comparedCityIds.includes(cityId);
+
+      if (exists) {
+        state.comparedCityIds = state.comparedCityIds.filter((candidate) => candidate !== cityId);
+      } else {
+        state.comparedCityIds = [...state.comparedCityIds, cityId].slice(-3);
+      }
+
+      state.selectedCityId = cityId;
+      state.hoveredCityId = cityId;
       render();
     });
   });
