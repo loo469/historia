@@ -211,6 +211,42 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         },
       },
     ],
+    regionalRiskMode: [
+      {
+        regionId: 'north-coast',
+        riskLevel: 'critical',
+        anomaly: null,
+        activeCatastropheIds: ['storm-1'],
+        signals: {
+          logisticsRisk: 'severe',
+          stabilityRisk: 'low',
+          harvestRisk: 'high',
+          summary: 'logistique severe, stabilité low, récoltes high',
+        },
+        highlight: {
+          tone: 'danger',
+          emphasis: 'strong',
+        },
+        summary: 'Printemps, logistique severe, stabilité low, récoltes high',
+      },
+      {
+        regionId: 'sunreach',
+        riskLevel: 'critical',
+        anomaly: 'heatwave',
+        activeCatastropheIds: ['storm-1'],
+        signals: {
+          logisticsRisk: 'severe',
+          stabilityRisk: 'moderate',
+          harvestRisk: 'high',
+          summary: 'logistique severe, stabilité moderate, récoltes high',
+        },
+        highlight: {
+          tone: 'danger',
+          emphasis: 'strong',
+        },
+        summary: 'Été, logistique severe, stabilité moderate, récoltes high',
+      },
+    ],
     legend: {
       title: 'Légende climat',
       compact: true,
@@ -290,6 +326,25 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
   assert.equal(overlay.entries[0].overlayId, 'delta:season');
   assert.equal(overlay.seasonalPanel.summary, 'autumn: 1');
   assert.deepEqual(overlay.catastropheZones, []);
+  assert.deepEqual(overlay.regionalRiskMode, [
+    {
+      regionId: 'delta',
+      riskLevel: 'stable',
+      anomaly: null,
+      activeCatastropheIds: [],
+      signals: {
+        logisticsRisk: 'low',
+        stabilityRisk: 'low',
+        harvestRisk: 'low',
+        summary: 'logistique low, stabilité low, récoltes low',
+      },
+      highlight: {
+        tone: 'calm',
+        emphasis: 'soft',
+      },
+      summary: 'autumn, logistique low, stabilité low, récoltes low',
+    },
+  ]);
   assert.deepEqual(overlay.legend, {
     title: 'Légende climat',
     compact: true,

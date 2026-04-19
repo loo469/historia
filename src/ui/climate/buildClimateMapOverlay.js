@@ -212,6 +212,25 @@ function buildCatastropheZones(catastropheEntries) {
     });
 }
 
+function buildRegionalRiskMode(regions) {
+  return regions.map((region) => ({
+    regionId: region.regionId,
+    riskLevel: region.strategicImpact,
+    anomaly: region.anomaly,
+    activeCatastropheIds: region.activeCatastropheIds,
+    signals: region.strategicSignals,
+    highlight: {
+      tone: region.strategicImpact === 'critical'
+        ? 'danger'
+        : region.strategicImpact === 'strained'
+          ? 'warning'
+          : 'calm',
+      emphasis: region.strategicImpact === 'critical' ? 'strong' : 'soft',
+    },
+    summary: `${region.seasonLabel}, ${region.strategicSignals.summary}`,
+  }));
+}
+
 function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
   const seasonLegend = [...new Set(stateEntries
     .filter((entry) => entry.kind === 'season')
@@ -343,6 +362,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     regions,
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries),
+    regionalRiskMode: buildRegionalRiskMode(regions),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
     metrics: {
       regionCount: states.length,
