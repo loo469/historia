@@ -55,6 +55,28 @@ test('buildCultureLayerPanel summarizes regions and exposes a readable focus pan
           },
         ],
       },
+      researchStatesByCulture: {
+        'culture-north': [
+          {
+            id: 'research-astrolabe',
+            cultureId: 'culture-north',
+            topicId: 'astrolabe',
+            status: 'active',
+            progress: 65,
+            currentTier: 2,
+            discoveredConceptIds: ['star-maps', 'tidal-ledgers'],
+          },
+          {
+            id: 'research-navigation-codes',
+            cultureId: 'culture-north',
+            topicId: 'navigation-codes',
+            status: 'completed',
+            progress: 100,
+            currentTier: 3,
+            completedAt: '2026-04-18T08:00:00.000Z',
+          },
+        ],
+      },
     },
   );
 
@@ -84,6 +106,8 @@ test('buildCultureLayerPanel summarizes regions and exposes a readable focus pan
   ]);
   assert.equal(panel.focus.cultureId, 'culture-north');
   assert.equal(panel.focus.discoveriesPanel.summary, '3 concepts, 1 recherches, 1 événements');
+  assert.equal(panel.focus.researchProgressPanel.summary, '1 actives, 0 bloquées, 1 terminées');
+  assert.equal(panel.focus.researchProgressPanel.rows[0].progressLabel, '65% en cours');
   assert.deepEqual(panel.metrics, {
     markerCount: 2,
     regionCount: 2,
@@ -109,4 +133,5 @@ test('buildCultureLayerPanel falls back to the first marker and validates inputs
   assert.throws(() => buildCultureLayerPanel([null]), /entries\[0\] must be an object/);
   assert.throws(() => buildCultureLayerPanel([], null), /options must be an object/);
   assert.throws(() => buildCultureLayerPanel([], { historicalEventsByCulture: [] }), /historicalEventsByCulture must be an object/);
+  assert.throws(() => buildCultureLayerPanel([], { researchStatesByCulture: [] }), /researchStatesByCulture must be an object/);
 });

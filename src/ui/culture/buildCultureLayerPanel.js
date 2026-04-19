@@ -1,4 +1,5 @@
 import { buildDiscoveriesPanel } from './buildDiscoveriesPanel.js';
+import { buildResearchProgressPanel } from './buildResearchProgressPanel.js';
 
 function requireObject(value, label) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -76,6 +77,10 @@ function buildFocus(entries, normalizedOptions) {
     normalizedOptions.historicalEventsByCulture ?? {},
     'CultureLayerPanel historicalEventsByCulture',
   );
+  const researchStatesByCulture = requireObject(
+    normalizedOptions.researchStatesByCulture ?? {},
+    'CultureLayerPanel researchStatesByCulture',
+  );
 
   const focusedEntry = entries.find((entry) => (
     (selectedRegionId === null || entry.regionId === selectedRegionId)
@@ -97,6 +102,13 @@ function buildFocus(entries, normalizedOptions) {
     influenceTier: focusedEntry.influenceTier,
     primaryLanguage: focusedEntry.primaryLanguage,
     highlights: focusedEntry.highlights,
+    researchProgressPanel: buildResearchProgressPanel(
+      researchStatesByCulture[focusedEntry.cultureId] ?? [],
+      {
+        cultureId: focusedEntry.cultureId,
+        title: 'Recherches actives',
+      },
+    ),
     discoveriesPanel: buildDiscoveriesPanel(
       {
         cultureId: focusedEntry.cultureId,
