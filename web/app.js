@@ -1050,13 +1050,22 @@ function renderIntrigueSidePanel(intrigueView) {
         <small>faible à critique</small>
       </div>
       <div class="intrigue-hotspot-list">
-        ${intrigueView.hotspots.slice(0, 4).map((hotspot) => `
-          <article class="intrigue-hotspot-card intrigue-hotspot-card--${hotspot.severity}">
-            <strong>${hotspot.locationName}</strong>
-            <span>${hotspot.visualCue} · ${hotspot.celluleCount} cellules</span>
-            <span>${hotspot.operationCount} opérations, ${hotspot.exposedCellCount} exposées</span>
-          </article>
-        `).join('')}
+        ${intrigueView.hotspots.slice(0, 4).map((hotspot) => {
+          const statusPreview = intrigueView.panels.cellules
+            .filter((cellule) => cellule.locationId === hotspot.locationId)
+            .slice(0, 3)
+            .map((cellule) => `<span class="intrigue-status-pill intrigue-status-pill--${cellule.statusClass}">${cellule.statusMarker} ${cellule.statusLabel}</span>`)
+            .join('');
+
+          return `
+            <article class="intrigue-hotspot-card intrigue-hotspot-card--${hotspot.severity}">
+              <strong>${hotspot.locationName}</strong>
+              <span>${hotspot.visualCue} · ${hotspot.celluleCount} cellules</span>
+              <span>${hotspot.operationCount} opérations, ${hotspot.exposedCellCount} exposées</span>
+              <div class="intrigue-status-pill-row">${statusPreview}</div>
+            </article>
+          `;
+        }).join('')}
       </div>
     </section>
   `;
@@ -1165,11 +1174,11 @@ function renderBottomTray(economyView, intrigueView) {
               </thead>
               <tbody>
                 ${intrigueView.panels.cellules.slice(0, 4).map((cellule) => `
-                  <tr>
-                    <td>${cellule.codename}</td>
+                  <tr class="intrigue-cell-row intrigue-cell-row--${cellule.statusClass}">
+                    <td><span class="intrigue-cell-status-dot intrigue-cell-status-dot--${cellule.statusClass}"></span>${cellule.codename}</td>
                     <td>${cellule.locationName}</td>
                     <td>${cellule.exposure}</td>
-                    <td>${cellule.sleeper ? 'Dormante' : cellule.status}</td>
+                    <td><span class="intrigue-status-pill intrigue-status-pill--${cellule.statusClass}">${cellule.statusMarker} ${cellule.statusLabel}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
