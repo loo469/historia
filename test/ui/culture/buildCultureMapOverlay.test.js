@@ -1,0 +1,215 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { Culture } from '../../../src/domain/culture/Culture.js';
+import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
+import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
+import { buildCultureMapOverlay } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+
+test('buildCultureMapOverlay expands cultures into stable regional markers with discoveries', () => {
+  const overlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        new Culture({
+          id: 'culture-north',
+          name: 'Northern League',
+          archetype: 'maritime',
+          primaryLanguage: 'north-tongue',
+          valueIds: ['trade', 'navigation'],
+          traditionIds: ['assemblies'],
+          openness: 72,
+          cohesion: 61,
+          researchDrive: 77,
+        }),
+        new Culture({
+          id: 'culture-steppe',
+          name: 'Steppe Houses',
+          archetype: 'nomadic',
+          primaryLanguage: 'horse-speech',
+          valueIds: ['honor'],
+          traditionIds: ['clan-oaths'],
+          openness: 35,
+          cohesion: 67,
+          researchDrive: 40,
+        }),
+      ],
+      researchStates: [
+        new ResearchState({
+          id: 'research-astrolabe',
+          cultureId: 'culture-north',
+          topicId: 'astrolabe',
+          status: 'active',
+          progress: 65,
+          discoveredConceptIds: ['star-maps', 'tidal-ledgers'],
+        }),
+        new ResearchState({
+          id: 'research-saddles',
+          cultureId: 'culture-steppe',
+          topicId: 'composite-saddles',
+          status: 'completed',
+          progress: 100,
+          completedAt: '2026-04-19T00:00:00.000Z',
+          discoveredConceptIds: ['stirrup-drill'],
+        }),
+      ],
+      historicalEvents: [
+        new HistoricalEvent({
+          id: 'event-open-archives',
+          title: 'Open Archives',
+          category: 'knowledge',
+          summary: 'Scholars share navigation routes.',
+          era: 'age-of-sails',
+          importance: 3,
+          triggeredAt: '2026-04-19T00:00:00.000Z',
+          affectedCultureIds: ['culture-north'],
+          discoveryIds: ['public-catalogue'],
+        }),
+      ],
+    },
+    {
+      regionIdsByCulture: {
+        'culture-north': ['north-coast', 'archipelago'],
+        'culture-steppe': ['high-steppe'],
+      },
+    },
+  );
+
+  assert.deepEqual(overlay, [
+    {
+      overlayId: 'archipelago:culture-north',
+      regionId: 'archipelago',
+      cultureId: 'culture-north',
+      cultureName: 'Northern League',
+      archetype: 'maritime',
+      primaryLanguage: 'north-tongue',
+      markerType: 'innovation',
+      label: 'Northern League (3 découvertes)',
+      summary: '1 recherches actives, 1 événements, 3 repères culturels',
+      discoveries: ['public-catalogue', 'star-maps', 'tidal-ledgers'],
+      unlockedResearchIds: ['astrolabe'],
+      activeResearchCount: 1,
+      eventIds: ['event-open-archives'],
+      eventCount: 1,
+      identityTags: ['assemblies', 'navigation', 'trade'],
+      cultureMetrics: {
+        openness: 72,
+        cohesion: 61,
+        researchDrive: 77,
+      },
+      style: {
+        color: 'violet',
+        icon: '✦',
+        emphasis: 'high',
+      },
+    },
+    {
+      overlayId: 'high-steppe:culture-steppe',
+      regionId: 'high-steppe',
+      cultureId: 'culture-steppe',
+      cultureName: 'Steppe Houses',
+      archetype: 'nomadic',
+      primaryLanguage: 'horse-speech',
+      markerType: 'traditional',
+      label: 'Steppe Houses (1 découvertes)',
+      summary: '0 recherches actives, 0 événements, 2 repères culturels',
+      discoveries: ['stirrup-drill'],
+      unlockedResearchIds: ['composite-saddles'],
+      activeResearchCount: 0,
+      eventIds: [],
+      eventCount: 0,
+      identityTags: ['clan-oaths', 'honor'],
+      cultureMetrics: {
+        openness: 35,
+        cohesion: 67,
+        researchDrive: 40,
+      },
+      style: {
+        color: 'amber',
+        icon: '⬢',
+        emphasis: 'normal',
+      },
+    },
+    {
+      overlayId: 'north-coast:culture-north',
+      regionId: 'north-coast',
+      cultureId: 'culture-north',
+      cultureName: 'Northern League',
+      archetype: 'maritime',
+      primaryLanguage: 'north-tongue',
+      markerType: 'innovation',
+      label: 'Northern League (3 découvertes)',
+      summary: '1 recherches actives, 1 événements, 3 repères culturels',
+      discoveries: ['public-catalogue', 'star-maps', 'tidal-ledgers'],
+      unlockedResearchIds: ['astrolabe'],
+      activeResearchCount: 1,
+      eventIds: ['event-open-archives'],
+      eventCount: 1,
+      identityTags: ['assemblies', 'navigation', 'trade'],
+      cultureMetrics: {
+        openness: 72,
+        cohesion: 61,
+        researchDrive: 77,
+      },
+      style: {
+        color: 'violet',
+        icon: '✦',
+        emphasis: 'high',
+      },
+    },
+  ]);
+});
+
+test('buildCultureMapOverlay supports plain payloads and style overrides', () => {
+  const overlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-fractured',
+          name: 'Broken Courts',
+          archetype: 'courtly',
+          primaryLanguage: 'court-speech',
+          valueIds: ['prestige'],
+          traditionIds: ['duels'],
+          openness: 50,
+          cohesion: 24,
+          researchDrive: 58,
+        },
+      ],
+      researchStates: [],
+      historicalEvents: [],
+    },
+    {
+      regionIdsByCulture: { 'culture-fractured': ['capital-basin'] },
+      styleByMarkerType: {
+        fragmented: { color: 'ruby', icon: '⚑', emphasis: 'critical' },
+      },
+    },
+  );
+
+  assert.deepEqual(overlay[0].style, {
+    color: 'ruby',
+    icon: '⚑',
+    emphasis: 'critical',
+  });
+  assert.equal(overlay[0].markerType, 'fragmented');
+});
+
+test('buildCultureMapOverlay rejects invalid inputs', () => {
+  assert.throws(() => buildCultureMapOverlay(null), /payload must be an object/);
+  assert.throws(
+    () => buildCultureMapOverlay({ cultures: null, researchStates: [], historicalEvents: [] }),
+    /payload\.cultures must be an array/,
+  );
+  assert.throws(
+    () => buildCultureMapOverlay({ cultures: [null], researchStates: [], historicalEvents: [] }),
+    /Culture instances or plain objects/,
+  );
+  assert.throws(
+    () => buildCultureMapOverlay({ cultures: [], researchStates: [null], historicalEvents: [] }),
+    /ResearchState instances or plain objects/,
+  );
+  assert.throws(
+    () => buildCultureMapOverlay({ cultures: [], researchStates: [], historicalEvents: [] }, { regionIdsByCulture: [] }),
+    /regionIdsByCulture must be an object/,
+  );
+});
