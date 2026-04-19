@@ -508,8 +508,8 @@ function renderActiveProvince(shell) {
   `;
 }
 
-function getCityStateByTurn(city) {
-  const shift = Math.max(0, state.turn - 1);
+function getCityStateByTurn(city, explicitTurn = state.turn) {
+  const shift = Math.max(0, explicitTurn - 1);
   const stockByResource = { ...city.stockByResource };
 
   if (city.id === 'river-gate-city') {
@@ -523,7 +523,8 @@ function getCityStateByTurn(city) {
   }
 
   if (city.id === 'southern-crossing') {
-    stockByResource.grain = Math.max(0, stockByResource.grain + (state.seasonIndex === 2 ? 2 : -1 + shift));
+    const simulatedSeasonIndex = explicitTurn === state.turn ? state.seasonIndex : (explicitTurn - 1) % seasonLabels.length;
+    stockByResource.grain = Math.max(0, stockByResource.grain + (simulatedSeasonIndex === 2 ? 2 : -1 + shift));
   }
 
   return new City({
@@ -544,14 +545,33 @@ function getRouteStateByTurn(route) {
 
 function getEconomyViewModel() {
   const liveCities = cities.map(getCityStateByTurn);
+  const previousTurn = Math.max(1, state.turn - 1);
+  const previousCities = cities.map((city) => getCityStateByTurn(city, previousTurn));
   const liveRoutes = routes.map(getRouteStateByTurn);
   const overlay = buildEconomyMapOverlay(liveCities, liveRoutes, { cityPositionById: cityLayoutsById });
   const comparison = buildCityComparisonPanel(liveCities, { desiredStockByCityId });
   const stockPanels = Object.fromEntries(
     liveCities.map((city) => [city.id, buildCityStockPanel(city, { desiredStockByResource: desiredStockByCityId[city.id] ?? {} })]),
   );
+  const deltaByCityId = Object.fromEntries(
+    liveCities.map((city) => {
+      const previousCity = previousCities.find((candidate) => candidate.id === city.id) ?? city;
+      const previousStock = Object.values(previousCity.stockByResource).reduce((total, value) => total + value, 0);
+      const currentStock = Object.values(city.stockByResource).reduce((total, value) => total + value, 0);
 
-  return { overlay, comparison, stockPanels, cities: liveCities, routes: liveRoutes };
+      return [city.id, {
+        stockDelta: currentStock - previousStock,
+        stabilityDelta: city.stability - previousCity.stability,
+        prosperityDelta: city.prosperity - previousCity.prosperity,
+      }];
+    }),
+  );
+
+  const pulse = liveCities
+    .map((city) => ({ city, delta: deltaByCityId[city.id] }))
+    .sort((left, right) => Math.abs(right.delta.stockDelta) - Math.abs(left.delta.stockDelta))[0] ?? null;
+
+  return { overlay, comparison, stockPanels, cities: liveCities, routes: liveRoutes, deltaByCityId, pulse };
 }
 
 function buildRouteVisual(route, origin, destination, index) {
@@ -856,9 +876,9 @@ function renderBottomTray(economyView) {
                   <span class="tension-pill tension-pill--${row.tensionLevel}">${row.tensionLevel}</span>
                 </div>
                 <dl class="comparison-card__stats">
-                  <div><dt>Stock</dt><dd>${row.totalStock}</dd></div>
-                  <div><dt>Stabilité</dt><dd>${city.stability}</dd></div>
-                  <div><dt>Prospérité</dt><dd>${city.prosperity}</dd></div>
+                  <div><dt>Stock</dt><dd>${row.totalStock} <small>${economyView.deltaByCityId[city.cityId].stockDelta > 0 ? '+' : ''}${economyView.deltaByCityId[city.cityId].stockDelta}</small></dd></div>
+                  <div><dt>Stabilité</dt><dd>${city.stability} <small>${economyView.deltaByCityId[city.cityId].stabilityDelta > 0 ? '+' : ''}${economyView.deltaByCityId[city.cityId].stabilityDelta}</small></dd></div>
+                  <div><dt>Prospérité</dt><dd>${city.prosperity} <small>${economyView.deltaByCityId[city.cityId].prosperityDelta > 0 ? '+' : ''}${economyView.deltaByCityId[city.cityId].prosperityDelta}</small></dd></div>
                   <div><dt>Ratio</dt><dd>${row.scarcityRatio}</dd></div>
                 </dl>
                 <ul>
@@ -1116,6 +1136,12 @@ function render() {
             <button type="button" class="turn-button" data-next-turn="true">Tour suivant</button>
           </div>
           <p class="turn-summary">${state.lastTurnSummary}</p>
+          ${economyView.pulse ? `
+            <div class="economy-turn-pulse">
+              <strong>Variation visible</strong>
+              <span>${economyView.pulse.city.name}, stock ${economyView.pulse.delta.stockDelta > 0 ? '+' : ''}${economyView.pulse.delta.stockDelta}, stabilité ${economyView.pulse.delta.stabilityDelta > 0 ? '+' : ''}${economyView.pulse.delta.stabilityDelta}, prospérité ${economyView.pulse.delta.prosperityDelta > 0 ? '+' : ''}${economyView.pulse.delta.prosperityDelta}</span>
+            </div>
+          ` : ''}
         </div>
         <div class="hero-stats">
           ${renderStat('Provinces', shell.stats.provinceCount, 'neutral')}
