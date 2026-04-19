@@ -54,6 +54,27 @@ test('Catastrophe transitions from warning to active to resolved immutably', () 
   assert.equal(resolved.resolvedAt?.toISOString(), '2026-04-19T09:00:00.000Z');
 });
 
+test('Catastrophe keeps expected end dates and sorts triggered regions after activation', () => {
+  const warning = new Catastrophe({
+    id: 'locust-003',
+    type: 'locusts',
+    severity: 'major',
+    regionIds: ['delta', 'ashlands', 'delta'],
+    startedAt: '2026-04-18T05:00:00.000Z',
+    expectedEndAt: '2026-04-22T05:00:00.000Z',
+    impact: { harvest: -33 },
+  });
+
+  const active = warning.activate();
+
+  assert.equal(active.expectedEndAt?.toISOString(), '2026-04-22T05:00:00.000Z');
+  assert.deepEqual(active.regionIds, ['ashlands', 'delta']);
+  assert.equal(active.affectsRegion('ashlands'), true);
+  assert.equal(active.affectsRegion('delta'), true);
+  assert.equal(active.affectsRegion('riverlands'), false);
+  assert.equal(warning.status, 'warning');
+});
+
 test('Catastrophe rejects invalid values and timelines', () => {
   assert.throws(
     () => new Catastrophe({ id: '', type: 'storm', severity: 'major', regionIds: ['north'], startedAt: new Date(), impact: {} }),
@@ -78,5 +99,15 @@ test('Catastrophe rejects invalid values and timelines', () => {
   assert.throws(
     () => new Catastrophe({ id: 'c1', type: 'storm', severity: 'major', regionIds: ['north'], startedAt: '2026-04-18T12:00:00.000Z', resolvedAt: '2026-04-17T12:00:00.000Z', impact: {} }),
     /resolvedAt cannot be earlier than startedAt/,
+  );
+
+  assert.throws(
+    () => new Catastrophe({ id: 'c1', type: 'storm', severity: 'major', regionIds: ['north'], startedAt: 'not-a-date', impact: {} }),
+    /startedAt must be a valid date/,
+  );
+
+  assert.throws(
+    () => new Catastrophe({ id: 'c1', type: 'storm', severity: 'major', regionIds: ['north'], startedAt: '2026-04-18T12:00:00.000Z', impact: { harvest: Number.NaN } }),
+    /impact harvest must be a finite number/,
   );
 });
