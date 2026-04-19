@@ -73,6 +73,9 @@ function buildRegionRows(entries) {
 function buildFocus(entries, normalizedOptions) {
   const selectedRegionId = normalizedOptions.selectedRegionId ? requireText(normalizedOptions.selectedRegionId, 'CultureLayerPanel options.selectedRegionId') : null;
   const selectedCultureId = normalizedOptions.selectedCultureId ? requireText(normalizedOptions.selectedCultureId, 'CultureLayerPanel options.selectedCultureId') : null;
+  const activeFilter = normalizedOptions.activeFilter === undefined
+    ? 'all'
+    : requireText(normalizedOptions.activeFilter, 'CultureLayerPanel options.activeFilter');
   const historicalEventsByCulture = requireObject(
     normalizedOptions.historicalEventsByCulture ?? {},
     'CultureLayerPanel historicalEventsByCulture',
@@ -91,6 +94,29 @@ function buildFocus(entries, normalizedOptions) {
     return null;
   }
 
+  const allHistoricalEvents = historicalEventsByCulture[focusedEntry.cultureId] ?? focusedEntry.eventTitles.map((title, index) => ({
+    id: focusedEntry.eventIds[index] ?? `${focusedEntry.cultureId}:event:${index}`,
+    title,
+    discoveryIds: focusedEntry.discoveries,
+    unlockedResearchIds: focusedEntry.unlockedResearchIds,
+  }));
+  const filteredDiscoveries = activeFilter === 'research'
+    ? []
+    : focusedEntry.discoveries;
+  const filteredResearchIds = activeFilter === 'events'
+    ? []
+    : focusedEntry.unlockedResearchIds;
+  const filteredHistoricalEvents = activeFilter === 'research'
+    ? []
+    : activeFilter === 'discoveries'
+      ? allHistoricalEvents.filter((event) => Array.isArray(event.discoveryIds) && event.discoveryIds.length > 0)
+      : allHistoricalEvents;
+  const researchStatusFilter = activeFilter === 'events' || activeFilter === 'discoveries'
+    ? null
+    : activeFilter === 'research'
+      ? 'active'
+      : null;
+
   return {
     regionId: focusedEntry.regionId,
     cultureId: focusedEntry.cultureId,
@@ -102,26 +128,24 @@ function buildFocus(entries, normalizedOptions) {
     influenceTier: focusedEntry.influenceTier,
     primaryLanguage: focusedEntry.primaryLanguage,
     highlights: focusedEntry.highlights,
+    activeFilter,
+    availableFilters: ['all', 'discoveries', 'research', 'events'],
     researchProgressPanel: buildResearchProgressPanel(
       researchStatesByCulture[focusedEntry.cultureId] ?? [],
       {
         cultureId: focusedEntry.cultureId,
-        title: 'Recherches actives',
+        title: activeFilter === 'research' ? 'Recherches actives' : 'Recherches',
+        statusFilter: researchStatusFilter,
       },
     ),
     discoveriesPanel: buildDiscoveriesPanel(
       {
         cultureId: focusedEntry.cultureId,
-        discoveredConceptIds: focusedEntry.discoveries,
-        unlockedResearchIds: focusedEntry.unlockedResearchIds,
+        discoveredConceptIds: filteredDiscoveries,
+        unlockedResearchIds: filteredResearchIds,
       },
       {
-        historicalEvents: historicalEventsByCulture[focusedEntry.cultureId] ?? focusedEntry.eventTitles.map((title, index) => ({
-          id: focusedEntry.eventIds[index] ?? `${focusedEntry.cultureId}:event:${index}`,
-          title,
-          discoveryIds: focusedEntry.discoveries,
-          unlockedResearchIds: focusedEntry.unlockedResearchIds,
-        })),
+        historicalEvents: filteredHistoricalEvents,
       },
     ),
   };

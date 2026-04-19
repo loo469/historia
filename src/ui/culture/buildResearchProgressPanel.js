@@ -91,9 +91,13 @@ export function buildResearchProgressPanel(researchStates, options = {}) {
   const normalizedOptions = requireObject(options, 'ResearchProgressPanel options');
   const cultureId = requireText(normalizedOptions.cultureId, 'ResearchProgressPanel options.cultureId');
   const title = String(normalizedOptions.title ?? 'Recherches').trim() || 'Recherches';
+  const statusFilter = normalizedOptions.statusFilter === undefined || normalizedOptions.statusFilter === null
+    ? null
+    : requireText(normalizedOptions.statusFilter, 'ResearchProgressPanel options.statusFilter');
 
   const rows = normalizedResearchStates
     .filter((researchState) => researchState.cultureId === cultureId)
+    .filter((researchState) => statusFilter === null || researchState.status === statusFilter)
     .sort((left, right) => {
       const statusRank = {
         active: 0,
@@ -137,6 +141,7 @@ export function buildResearchProgressPanel(researchStates, options = {}) {
   return {
     cultureId,
     title,
+    statusFilter,
     summary: `${activeCount} actives, ${blockedCount} bloquées, ${completedCount} terminées`,
     rows,
     metrics: {
