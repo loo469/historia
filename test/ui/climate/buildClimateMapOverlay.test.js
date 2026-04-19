@@ -144,6 +144,44 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         },
       ],
     },
+    legend: {
+      title: 'Légende climat',
+      compact: true,
+      items: [
+        {
+          key: 'season:spring',
+          kind: 'season',
+          season: 'spring',
+          label: 'Printemps',
+          tone: 'info',
+          description: 'Saison dominante affichée pour une région.',
+        },
+        {
+          key: 'season:summer',
+          kind: 'season',
+          season: 'summer',
+          label: 'Été',
+          tone: 'info',
+          description: 'Saison dominante affichée pour une région.',
+        },
+        {
+          key: 'anomaly:heatwave',
+          kind: 'anomaly',
+          label: 'heatwave',
+          tone: 'warning',
+          description: 'Anomalie climatique active sur la région.',
+        },
+        {
+          key: 'catastrophe:major',
+          kind: 'catastrophe',
+          severity: 'major',
+          label: 'major',
+          icon: '▲',
+          color: 'orange',
+          description: 'Catastrophe active ou imminente visible sur la carte.',
+        },
+      ],
+    },
     metrics: {
       regionCount: 2,
       seasonCount: 2,
@@ -172,6 +210,20 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
   assert.equal(overlay.metrics.criticalRegionCount, 0);
   assert.equal(overlay.entries[0].overlayId, 'delta:season');
   assert.equal(overlay.seasonalPanel.summary, 'autumn: 1');
+  assert.deepEqual(overlay.legend, {
+    title: 'Légende climat',
+    compact: true,
+    items: [
+      {
+        key: 'season:autumn',
+        kind: 'season',
+        season: 'autumn',
+        label: 'autumn',
+        tone: 'info',
+        description: 'Saison dominante affichée pour une région.',
+      },
+    ],
+  });
   assert.deepEqual(overlay.regions, [
     {
       regionId: 'delta',

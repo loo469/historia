@@ -89,6 +89,57 @@ function buildSeasonSummary(states, seasonLabels) {
   };
 }
 
+function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
+  const seasonLegend = [...new Set(stateEntries
+    .filter((entry) => entry.kind === 'season')
+    .map((entry) => entry.season))]
+    .sort()
+    .map((season) => ({
+      key: `season:${season}`,
+      kind: 'season',
+      season,
+      label: seasonLabels[season] ?? season,
+      tone: 'info',
+      description: 'Saison dominante affichée pour une région.',
+    }));
+
+  const anomalyLegend = [...new Set(stateEntries
+    .filter((entry) => entry.kind === 'anomaly')
+    .map((entry) => entry.label))]
+    .sort((left, right) => left.localeCompare(right))
+    .map((anomaly) => ({
+      key: `anomaly:${anomaly}`,
+      kind: 'anomaly',
+      label: anomaly,
+      tone: 'warning',
+      description: 'Anomalie climatique active sur la région.',
+    }));
+
+  const catastropheLegend = [...new Map(catastropheEntries
+    .map((entry) => [entry.severity, {
+      key: `catastrophe:${entry.severity}`,
+      kind: 'catastrophe',
+      severity: entry.severity,
+      label: entry.severity,
+      icon: entry.style.icon,
+      color: entry.style.fill,
+      description: 'Catastrophe active ou imminente visible sur la carte.',
+    }]))
+    .entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, legendEntry]) => legendEntry);
+
+  return {
+    title: 'Légende climat',
+    compact: true,
+    items: [
+      ...seasonLegend,
+      ...anomalyLegend,
+      ...catastropheLegend,
+    ],
+  };
+}
+
 export function buildClimateMapOverlay(climateStates, options = {}) {
   const states = requireArray(climateStates, 'ClimateMapOverlay climateStates').map(normalizeClimateState);
   const normalizedOptions = requireObject(options, 'ClimateMapOverlay options');
@@ -148,6 +199,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     }),
     regions,
     seasonalPanel: buildSeasonSummary(states, seasonLabels),
+    legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
     metrics: {
       regionCount: states.length,
       seasonCount: states.length,
