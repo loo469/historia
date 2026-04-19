@@ -847,10 +847,43 @@ function getIntrigueViewModel() {
     ?? demo.panels.operations.find((operation) => operation.locationId === state.selectedProvinceId)
     ?? demo.panels.operations[0]
     ?? null;
+  const incidents = [
+    {
+      id: 'incident-locks',
+      turnLabel: `T${state.turn}`,
+      severity: selectedOperation?.tone === 'danger' ? 'critical' : 'warning',
+      locationName: selectedOperation?.locationName ?? (entries[0]?.locationName ?? 'Frontieres'),
+      title: selectedOperation
+        ? `${selectedOperation.type} sous surveillance`
+        : 'Activite clandestine detectee',
+      detail: selectedOperation
+        ? `${selectedOperation.objective}, progression ${selectedOperation.progress}% et risque ${selectedOperation.detectionRisk}.`
+        : 'Les relais de terrain signalent un regain d activite a verifier.',
+    },
+    {
+      id: 'incident-cells',
+      turnLabel: `T${Math.max(1, state.turn - 1)}`,
+      severity: demo.metrics.exposedCellCount > 0 ? 'warning' : 'watch',
+      locationName: entries.find((entry) => entry.metrics.exposedCellCount > 0)?.locationName ?? (entries[1]?.locationName ?? 'Province secondaire'),
+      title: demo.metrics.exposedCellCount > 0 ? 'Cellules exposees remontees' : 'Reseau reste discret',
+      detail: demo.metrics.exposedCellCount > 0
+        ? `${demo.metrics.exposedCellCount} cellule${demo.metrics.exposedCellCount > 1 ? 's' : ''} exposee${demo.metrics.exposedCellCount > 1 ? 's' : ''} ont force un repli partiel.`
+        : 'Aucune cellule compromise supplementaire n a ete detectee sur le dernier tour.',
+    },
+    {
+      id: 'incident-summary',
+      turnLabel: `T${Math.max(1, state.turn - 2)}`,
+      severity: 'watch',
+      locationName: 'Synthese theatre',
+      title: 'Resume securite recent',
+      detail: state.lastTurnSummary,
+    },
+  ];
 
   return {
     ...demo,
     selectedOperation,
+    incidents,
     map: {
       ...demo.map,
       entries,
@@ -1049,6 +1082,22 @@ function renderIntrigueSidePanel(intrigueView) {
         </div>
         <small>faible à critique</small>
       </div>
+      <section class="intrigue-incident-log" aria-label="Historique leger des incidents de securite">
+        <div class="intrigue-incident-log__header">
+          <strong>Journal securite</strong>
+          <span>${intrigueView.incidents.length} entrees recentes</span>
+        </div>
+        ${intrigueView.incidents.map((incident) => `
+          <article class="intrigue-incident intrigue-incident--${incident.severity}">
+            <div class="intrigue-incident__meta">
+              <span>${incident.turnLabel}</span>
+              <strong>${incident.locationName}</strong>
+            </div>
+            <h4>${incident.title}</h4>
+            <p>${incident.detail}</p>
+          </article>
+        `).join('')}
+      </section>
       <div class="intrigue-hotspot-list">
         ${intrigueView.hotspots.slice(0, 4).map((hotspot) => {
           const statusPreview = intrigueView.panels.cellules

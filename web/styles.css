@@ -1218,6 +1218,41 @@ button { font: inherit; }
 .intrigue-legend-strip__scale .is-low { background: rgba(96, 165, 250, 0.72); }
 .intrigue-legend-strip__scale .is-medium { background: rgba(250, 204, 21, 0.78); }
 .intrigue-legend-strip__scale .is-high { background: rgba(251, 113, 133, 0.82); }
+.intrigue-incident-log {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.intrigue-incident-log__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  color: var(--muted);
+}
+.intrigue-incident {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.intrigue-incident__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.intrigue-incident h4,
+.intrigue-incident p {
+  margin: 6px 0 0;
+}
+.intrigue-incident p {
+  color: var(--muted);
+}
+.intrigue-incident--watch { border-color: rgba(96, 165, 250, 0.24); }
+.intrigue-incident--warning { border-color: rgba(250, 204, 21, 0.28); }
+.intrigue-incident--critical { border-color: rgba(251, 113, 133, 0.34); }
 .intrigue-hotspot-list {
   display: grid;
   gap: 10px;
