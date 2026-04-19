@@ -49,7 +49,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         kind: 'season',
         label: 'Printemps',
         season: 'spring',
-        tone: 'info',
+        tone: 'renewal',
+        badge: {
+          icon: '✿',
+          tone: 'renewal',
+          accent: 'green',
+        },
       },
       {
         overlayId: 'north-coast:storm-1',
@@ -88,7 +93,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         kind: 'season',
         label: 'Été',
         season: 'summer',
-        tone: 'info',
+        tone: 'bright',
+        badge: {
+          icon: '☀',
+          tone: 'bright',
+          accent: 'gold',
+        },
       },
       {
         overlayId: 'sunreach:storm-1',
@@ -136,16 +146,36 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
     seasonalPanel: {
       title: 'Situation saisonnière',
       summary: 'Printemps: 1, Été: 1',
+      dominantSeason: {
+        season: 'spring',
+        label: 'Printemps',
+        regionCount: 1,
+        badge: {
+          icon: '✿',
+          tone: 'renewal',
+          accent: 'green',
+        },
+      },
       seasons: [
         {
           season: 'spring',
           label: 'Printemps',
           regionCount: 1,
+          badge: {
+            icon: '✿',
+            tone: 'renewal',
+            accent: 'green',
+          },
         },
         {
           season: 'summer',
           label: 'Été',
           regionCount: 1,
+          badge: {
+            icon: '☀',
+            tone: 'bright',
+            accent: 'gold',
+          },
         },
       ],
     },
@@ -158,7 +188,9 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
           kind: 'season',
           season: 'spring',
           label: 'Printemps',
-          tone: 'info',
+          tone: 'renewal',
+          icon: '✿',
+          accent: 'green',
           description: 'Saison dominante affichée pour une région.',
         },
         {
@@ -166,7 +198,9 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
           kind: 'season',
           season: 'summer',
           label: 'Été',
-          tone: 'info',
+          tone: 'bright',
+          icon: '☀',
+          accent: 'gold',
           description: 'Saison dominante affichée pour une région.',
         },
         {
@@ -226,10 +260,22 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
         kind: 'season',
         season: 'autumn',
         label: 'autumn',
-        tone: 'info',
+        tone: 'harvest',
+        icon: '❋',
+        accent: 'amber',
         description: 'Saison dominante affichée pour une région.',
       },
     ],
+  });
+  assert.deepEqual(overlay.seasonalPanel.dominantSeason, {
+    season: 'autumn',
+    label: 'autumn',
+    regionCount: 1,
+    badge: {
+      icon: '❋',
+      tone: 'harvest',
+      accent: 'amber',
+    },
   });
   assert.deepEqual(overlay.regions, [
     {
@@ -244,6 +290,56 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
       droughtIndex: 29,
     },
   ]);
+});
+
+test('buildClimateMapOverlay supports season badge overrides', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+    },
+  ], {
+    seasonStyleByType: {
+      winter: { icon: '*', tone: 'still', accent: 'ice' },
+    },
+  });
+
+  assert.deepEqual(overlay.entries[0], {
+    overlayId: 'delta:season',
+    regionId: 'delta',
+    kind: 'season',
+    label: 'winter',
+    season: 'winter',
+    tone: 'still',
+    badge: {
+      icon: '*',
+      tone: 'still',
+      accent: 'ice',
+    },
+  });
+  assert.deepEqual(overlay.legend.items[0], {
+    key: 'season:winter',
+    kind: 'season',
+    season: 'winter',
+    label: 'winter',
+    tone: 'still',
+    icon: '*',
+    accent: 'ice',
+    description: 'Saison dominante affichée pour une région.',
+  });
+  assert.deepEqual(overlay.seasonalPanel.dominantSeason, {
+    season: 'winter',
+    label: 'winter',
+    regionCount: 1,
+    badge: {
+      icon: '*',
+      tone: 'still',
+      accent: 'ice',
+    },
+  });
 });
 
 test('buildClimateMapOverlay supports anomaly marker overrides', () => {
@@ -291,5 +387,6 @@ test('buildClimateMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildClimateMapOverlay([null]), /ClimateState instances or plain objects/);
   assert.throws(() => buildClimateMapOverlay([], null), /options must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { seasonLabels: [] }), /seasonLabels must be an object/);
+  assert.throws(() => buildClimateMapOverlay([], { seasonStyleByType: [] }), /seasonStyleByType must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { anomalyStyleByType: [] }), /anomalyStyleByType must be an object/);
 });
