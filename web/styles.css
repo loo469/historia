@@ -50,6 +50,36 @@ button { font: inherit; }
 }
 .hero h1, .panel-header h2, .panel-header h3, .legend-panel h4 { margin: 0; }
 .hero-copy, .panel-header p { color: var(--muted); }
+.turn-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.turn-indicator {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.turn-indicator span,
+.turn-summary { color: var(--muted); }
+.turn-button {
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.24), rgba(37, 99, 235, 0.3));
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.turn-summary {
+  margin: 12px 0 0;
+  max-width: 52ch;
+}
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -513,6 +543,7 @@ button { font: inherit; }
   .shell-root { width: min(100vw - 16px, 100%); padding-top: 8px; }
   .hero, .map-panel, .legend-panel, .province-details, .overlay-panel { padding: 14px; }
   .hero-stats, .legend-columns, .province-facts, .overlay-tabs, .economy-quick-stats, .bottom-tray-grid, .bottom-tray-stocks, .province-popup__actions { grid-template-columns: 1fr; }
+  .turn-toolbar { flex-direction: column; align-items: stretch; }
   .map-stage { min-height: 680px; }
   .province-node { padding: 14px 12px; }
   .province-popup {
