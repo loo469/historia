@@ -40,6 +40,8 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
   });
 
   assert.deepEqual(overlay, {
+    title: 'Carte climat et catastrophes',
+    summary: '2 régions, 2 catastrophes visibles, 1 anomalies',
     entries: [
       {
         overlayId: 'north-coast:season',
@@ -102,11 +104,52 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         },
       },
     ],
+    regions: [
+      {
+        regionId: 'north-coast',
+        season: 'spring',
+        seasonLabel: 'Printemps',
+        anomaly: null,
+        activeCatastropheIds: ['storm-1'],
+        strategicImpact: 'critical',
+        temperatureC: 12,
+        precipitationLevel: 63,
+        droughtIndex: 18,
+      },
+      {
+        regionId: 'sunreach',
+        season: 'summer',
+        seasonLabel: 'Été',
+        anomaly: 'heatwave',
+        activeCatastropheIds: ['storm-1'],
+        strategicImpact: 'critical',
+        temperatureC: 33,
+        precipitationLevel: 11,
+        droughtIndex: 74,
+      },
+    ],
+    seasonalPanel: {
+      title: 'Situation saisonnière',
+      summary: 'Printemps: 1, Été: 1',
+      seasons: [
+        {
+          season: 'spring',
+          label: 'Printemps',
+          regionCount: 1,
+        },
+        {
+          season: 'summer',
+          label: 'Été',
+          regionCount: 1,
+        },
+      ],
+    },
     metrics: {
       regionCount: 2,
       seasonCount: 2,
       anomalyCount: 1,
       catastropheCount: 2,
+      criticalRegionCount: 2,
     },
   });
 });
@@ -126,7 +169,22 @@ test('buildClimateMapOverlay supports empty catastrophes and validated options',
 
   assert.equal(overlay.entries.length, 1);
   assert.equal(overlay.metrics.catastropheCount, 0);
+  assert.equal(overlay.metrics.criticalRegionCount, 0);
   assert.equal(overlay.entries[0].overlayId, 'delta:season');
+  assert.equal(overlay.seasonalPanel.summary, 'autumn: 1');
+  assert.deepEqual(overlay.regions, [
+    {
+      regionId: 'delta',
+      season: 'autumn',
+      seasonLabel: 'autumn',
+      anomaly: null,
+      activeCatastropheIds: [],
+      strategicImpact: 'stable',
+      temperatureC: 18,
+      precipitationLevel: 48,
+      droughtIndex: 29,
+    },
+  ]);
 });
 
 test('buildClimateMapOverlay rejects invalid inputs', () => {
