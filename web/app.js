@@ -1071,6 +1071,63 @@ function renderMapControls() {
   `;
 }
 
+function getMapAnchors() {
+  return [
+    { id: 'top-hud', className: 'overlay-anchor-shell overlay-anchor-shell--top', label: 'Top HUD' },
+    { id: 'left-rail', className: 'overlay-anchor-shell overlay-anchor-shell--left', label: 'Left rail' },
+    { id: 'right-rail', className: 'overlay-anchor-shell overlay-anchor-shell--right', label: 'Right rail' },
+  ];
+}
+
+function renderMapAnchorShells() {
+  return getMapAnchors().map((anchor) => `<div id="${anchor.id}" class="${anchor.className}">${anchor.label}</div>`).join('');
+}
+
+function getMapRenderLayers(shell, economyView, focusContext) {
+  return [
+    { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: '<div class="map-backdrop"></div>' },
+    { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
+    { key: 'surface', className: 'map-layer map-layer--surface', content: renderProvinceSurface(shell, focusContext) },
+    { key: 'relations', className: 'map-layer map-layer--relations', content: renderStrategicRelations(shell) },
+    { key: 'labels', className: 'map-layer map-layer--labels', content: renderProvinceLabels(shell) },
+    { key: 'anchors', className: 'map-layer map-layer--anchors', content: renderMapAnchorShells() },
+    { key: 'economy', className: 'map-layer map-layer--economy', content: renderEconomyMapOverlay(economyView) },
+    { key: 'hud', className: 'map-layer map-layer--hud', content: `${renderCityQuickPanel(economyView)}${renderBottomTray(economyView)}<div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>` },
+    { key: 'interactions', className: 'map-layer map-layer--interactions', content: `${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}${renderProvincePopup(shell)}` },
+  ];
+}
+
+function renderMapLayerStack(shell, economyView, focusContext) {
+  return getMapRenderLayers(shell, economyView, focusContext)
+    .map((layer) => `<div class="${layer.className}" data-map-layer="${layer.key}">${layer.content}</div>`)
+    .join('');
+}
+
+function renderMapArchitecturePanel() {
+  return `
+    <section class="panel map-architecture-panel">
+      <div class="panel-header">
+        <h3>Architecture carte</h3>
+        <p>Socle réutilisable pour les futures couches agents et overlays métier.</p>
+      </div>
+      <div class="map-architecture-grid">
+        <article class="map-architecture-card">
+          <strong>Socle visuel</strong>
+          <span>backdrop, terrain, surface, relations, labels</span>
+        </article>
+        <article class="map-architecture-card">
+          <strong>Ancrages</strong>
+          <span>${getMapAnchors().map((anchor) => anchor.id).join(' · ')}, #bottom-tray</span>
+        </article>
+        <article class="map-architecture-card">
+          <strong>Couches métier</strong>
+          <span>economy et HUD isolés, prêts pour extensions culture, climat, intrigue</span>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function advanceTurn() {
   state.turn += 1;
   state.seasonIndex = (state.seasonIndex + 1) % seasonLabels.length;
@@ -1138,20 +1195,7 @@ function render() {
           <div class="map-stage" data-map-stage="true">
             ${renderMapControls()}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
-              <div class="map-backdrop"></div>
-              ${renderTerrainDecor()}
-              ${renderProvinceSurface(shell, focusContext)}
-              ${renderStrategicRelations(shell)}
-              ${renderProvinceLabels(shell)}
-              <div id="top-hud" class="overlay-anchor-shell overlay-anchor-shell--top">Top HUD</div>
-              <div id="left-rail" class="overlay-anchor-shell overlay-anchor-shell--left">Left rail</div>
-              <div id="right-rail" class="overlay-anchor-shell overlay-anchor-shell--right">Right rail</div>
-              ${renderEconomyMapOverlay(economyView)}
-              ${renderCityQuickPanel(economyView)}
-              ${renderBottomTray(economyView)}
-              <div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>
-              ${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}
-              ${renderProvincePopup(shell)}
+              ${renderMapLayerStack(shell, economyView, focusContext)}
             </div>
           </div>
         </section>
@@ -1161,6 +1205,7 @@ function render() {
             ${renderLegend(shell)}
             ${renderActiveProvince(shell)}
             ${renderEconomySidePanel(economyView)}
+            ${renderMapArchitecturePanel()}
           </div>
         </aside>
       </section>
