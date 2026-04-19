@@ -41,6 +41,7 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - `CultureRepositoryPort`, `ResearchRepositoryPort`, `InMemoryCultureRepository` et `InMemoryResearchRepository` fournissent une base hexagonale légère pour stocker cultures et recherches avec copies défensives et ordre stable
 - `loadHistoricalEventsFromJson` et `loadResearchStatesFromJson` chargent des contenus JSON normalisés avec valeurs par défaut utiles et erreurs explicites sur les payloads invalides
 - côté UI, `buildDiscoveriesPanel` expose les concepts découverts, recherches débloquées et événements liés dans une vue structurée réutilisable
+- côté carte, `buildCultureMapOverlay` transforme cultures, recherches et événements historiques en marqueurs régionaux stables pour afficher découvertes et repères culturels sur la carte
 - les tests Gamma couvrent explicitement les use cases de recherche, dérive culturelle, divergence, déclenchement d’événements, ports, adaptateurs mémoire, chargeurs JSON et UI des découvertes
 
 ## Règles Delta, intrigue et opérations clandestines
