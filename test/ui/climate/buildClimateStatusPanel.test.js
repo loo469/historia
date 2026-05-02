@@ -188,3 +188,29 @@ test('buildClimateStatusPanel rejects invalid payloads', () => {
     /ClimateStatusPanel turnProgression must be an object/,
   );
 });
+
+test('buildClimateStatusPanel can expose frosted tactical HUD panel styling', () => {
+  const panel = buildClimateStatusPanel({
+    regionId: 'sunreach',
+    season: 'summer',
+    temperatureC: 33,
+    precipitationLevel: 11,
+    droughtIndex: 74,
+    anomaly: 'heatwave',
+    activeCatastropheIds: ['wildfire'],
+  }, { tacticalHud: true });
+
+  assert.deepEqual(panel.panelStyle, {
+    visualMode: 'tactical-dark',
+    className: 'climate-status-panel climate-status-panel--critical',
+    surface: {
+      background: 'rgba(3, 10, 22, 0.72)',
+      border: 'rgba(251, 191, 36, 0.42)',
+      backdropFilter: 'blur(18px) saturate(1.18)',
+      coordinateGrid: true,
+    },
+    accent: 'amber-danger',
+    readoutMode: 'compact-hud',
+    glyphRail: 'alert-stack',
+  });
+});

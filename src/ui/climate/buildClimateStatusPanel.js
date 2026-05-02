@@ -54,6 +54,28 @@ function buildAnomalySummary(anomaly, activeCatastropheIds) {
   return anomalies;
 }
 
+function buildTacticalPanelStyle(climateState, riskLevel) {
+  const accent = riskLevel === 'critical'
+    ? 'amber-danger'
+    : riskLevel === 'watched'
+      ? 'cyan-warning'
+      : 'cyan-calm';
+
+  return {
+    visualMode: 'tactical-dark',
+    className: `climate-status-panel climate-status-panel--${riskLevel}`,
+    surface: {
+      background: 'rgba(3, 10, 22, 0.72)',
+      border: riskLevel === 'critical' ? 'rgba(251, 191, 36, 0.42)' : 'rgba(125, 211, 252, 0.24)',
+      backdropFilter: 'blur(18px) saturate(1.18)',
+      coordinateGrid: true,
+    },
+    accent,
+    readoutMode: 'compact-hud',
+    glyphRail: climateState.activeCatastropheIds.length > 0 ? 'alert-stack' : climateState.hasAnomaly() ? 'anomaly-watch' : 'season-only',
+  };
+}
+
 function buildRiskSummary(climateState) {
   const logistics = climateState.activeCatastropheIds.length > 0
     ? 'élevé'
@@ -99,6 +121,12 @@ export function buildClimateStatusPanel(climateState, options = {}) {
     ? 'Aucune anomalie'
     : anomalies.map((entry) => entry.label).join(', ');
   const riskSummary = buildRiskSummary(normalizedClimateState);
+  const riskLevel = normalizedClimateState.isStable() && !normalizedClimateState.hasAnomaly() && normalizedClimateState.activeCatastropheIds.length === 0
+    ? 'stable'
+    : normalizedClimateState.activeCatastropheIds.length > 0 || normalizedClimateState.droughtIndex >= 60
+      ? 'critical'
+      : 'watched';
+  const tacticalHud = Boolean(normalizedOptions.tacticalHud);
 
   return {
     regionId: normalizedClimateState.regionId,
@@ -143,15 +171,12 @@ export function buildClimateStatusPanel(climateState, options = {}) {
       },
     anomalies,
     risks: riskSummary,
+    ...(tacticalHud ? { panelStyle: buildTacticalPanelStyle(normalizedClimateState, riskLevel) } : {}),
     metrics: {
       anomalyCount: anomalies.length,
       activeCatastropheCount: normalizedClimateState.activeCatastropheIds.length,
       hasAnomaly: normalizedClimateState.hasAnomaly(),
-      riskLevel: normalizedClimateState.isStable() && !normalizedClimateState.hasAnomaly() && normalizedClimateState.activeCatastropheIds.length === 0
-        ? 'stable'
-        : normalizedClimateState.activeCatastropheIds.length > 0 || normalizedClimateState.droughtIndex >= 60
-          ? 'critical'
-          : 'watched',
+      riskLevel,
     },
   };
 }

@@ -122,3 +122,38 @@ test('buildCatastropheMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildCatastropheMapOverlay([], null), /options must be an object/);
   assert.throws(() => buildCatastropheMapOverlay([], { styleBySeverity: [] }), /styleBySeverity must be an object/);
 });
+
+test('buildCatastropheMapOverlay can expose tactical dark HUD styling for warning cards', () => {
+  const [overlay] = buildCatastropheMapOverlay([
+    {
+      id: 'drought-2',
+      type: 'drought',
+      severity: 'critical',
+      status: 'warning',
+      regionIds: ['ashlands'],
+      startedAt: '2026-04-19T00:00:00.000Z',
+      impact: { harvest: -40 },
+    },
+  ], { tacticalHud: true });
+
+  assert.deepEqual(overlay.hudStyle, {
+    visualMode: 'tactical-dark',
+    panelClassName: 'climate-disaster-card climate-disaster-card--critical',
+    surface: {
+      background: 'rgba(3, 10, 22, 0.74)',
+      border: '1px solid crimson',
+      backdropFilter: 'blur(18px) saturate(1.18)',
+      gridOverlay: 'coordinate-grid',
+    },
+    alertTone: 'critical-red',
+    glyph: {
+      icon: '⚠',
+      frame: 'thin-warning-ring',
+      color: 'crimson',
+    },
+    typography: {
+      family: 'technical-sans',
+      labelTransform: 'uppercase-tracked',
+    },
+  });
+});
