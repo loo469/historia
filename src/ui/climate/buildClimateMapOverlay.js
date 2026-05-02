@@ -256,6 +256,103 @@ function buildTacticalClimateTheme(regions, catastropheEntries) {
   };
 }
 
+
+function buildSeasonVisualEffect(region, stateEntry) {
+  return {
+    effectId: `${region.regionId}:season-wash`,
+    regionId: region.regionId,
+    kind: 'season-wash',
+    layer: 'atmosphere-base',
+    season: region.season,
+    tone: stateEntry?.tone ?? 'info',
+    accent: stateEntry?.badge?.accent ?? 'slate',
+    vector: {
+      primitive: 'soft-gradient-field',
+      blendMode: 'screen',
+      opacity: region.strategicImpact === 'stable' ? 0.18 : 0.26,
+    },
+  };
+}
+
+function buildAnomalyVisualEffect(entry) {
+  return {
+    effectId: `${entry.regionId}:anomaly-glyph:${entry.label}`,
+    regionId: entry.regionId,
+    kind: 'anomaly-glyph',
+    layer: 'atmosphere-alerts',
+    anomaly: entry.label,
+    tone: entry.tone,
+    accent: entry.marker.accent,
+    vector: {
+      primitive: 'minimal-orbital-glyph',
+      icon: entry.marker.icon,
+      stroke: entry.marker.accent,
+      animation: 'slow-scan-pulse',
+    },
+  };
+}
+
+function buildCatastropheVisualEffect(entry) {
+  return {
+    effectId: `${entry.regionId}:catastrophe-ring:${entry.catastropheId}`,
+    regionId: entry.regionId,
+    kind: 'catastrophe-ring',
+    layer: 'atmosphere-alerts',
+    catastropheId: entry.catastropheId,
+    severity: entry.severity,
+    tone: entry.severity === 'critical' ? 'danger' : 'warning',
+    vector: {
+      primitive: entry.status === 'active' ? 'pulsing-contour-ring' : 'dashed-warning-contour',
+      stroke: entry.style.stroke,
+      fill: entry.style.fill,
+      opacity: Math.min(1, entry.style.opacity + 0.18),
+    },
+  };
+}
+
+function buildAtmosphericSignal(region) {
+  const intensity = region.strategicImpact === 'critical'
+    ? 'high'
+    : region.strategicImpact === 'strained'
+      ? 'medium'
+      : 'low';
+
+  return {
+    effectId: `${region.regionId}:atmospheric-signal`,
+    regionId: region.regionId,
+    kind: 'atmospheric-signal',
+    layer: 'coordinate-grid',
+    intensity,
+    vector: {
+      primitive: 'wind-line-field',
+      density: intensity === 'high' ? 'dense' : intensity === 'medium' ? 'measured' : 'sparse',
+      color: intensity === 'high' ? 'amber' : 'cyan',
+    },
+    summary: `${region.seasonLabel}, ${region.strategicImpact}`,
+  };
+}
+
+function buildClimateVisualEffects(regions, stateEntries, catastropheEntries) {
+  const seasonEntriesByRegion = new Map(stateEntries
+    .filter((entry) => entry.kind === 'season')
+    .map((entry) => [entry.regionId, entry]));
+
+  return [
+    ...regions.map((region) => buildSeasonVisualEffect(region, seasonEntriesByRegion.get(region.regionId))),
+    ...stateEntries.filter((entry) => entry.kind === 'anomaly').map(buildAnomalyVisualEffect),
+    ...catastropheEntries.map(buildCatastropheVisualEffect),
+    ...regions.map(buildAtmosphericSignal),
+  ].sort((left, right) => {
+    const regionComparison = left.regionId.localeCompare(right.regionId);
+
+    if (regionComparison !== 0) {
+      return regionComparison;
+    }
+
+    return left.effectId.localeCompare(right.effectId);
+  });
+}
+
 function buildRegionalRiskMode(regions) {
   return regions.map((region) => ({
     regionId: region.regionId,
@@ -349,6 +446,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   };
   const progressionByRegion = requireObject(normalizedOptions.progressionByRegion ?? {}, 'ClimateMapOverlay progressionByRegion');
   const tacticalHud = Boolean(normalizedOptions.tacticalHud);
+  const visualEffects = Boolean(normalizedOptions.visualEffects);
   const catastropheEntries = buildCatastropheMapOverlay(
     normalizedOptions.catastrophes ?? [],
     { styleBySeverity: normalizedOptions.styleBySeverity ?? {}, tacticalHud },
@@ -412,6 +510,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     regionalRiskMode: buildRegionalRiskMode(regions),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
     ...(tacticalHud ? { tacticalTheme: buildTacticalClimateTheme(regions, catastropheEntries) } : {}),
+    ...(visualEffects ? { visualEffects: buildClimateVisualEffects(regions, stateEntries, catastropheEntries) } : {}),
     metrics: {
       regionCount: states.length,
       seasonCount: states.length,

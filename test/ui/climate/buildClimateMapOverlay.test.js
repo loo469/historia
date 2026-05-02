@@ -572,3 +572,90 @@ test('buildClimateMapOverlay can expose Pax Historia tactical dark styling token
   });
   assert.equal(overlay.entries.find((entry) => entry.kind === 'catastrophe').hudStyle.visualMode, 'tactical-dark');
 });
+
+test('buildClimateMapOverlay can emit vector season anomaly and catastrophe visual effects', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 33,
+      precipitationLevel: 11,
+      droughtIndex: 74,
+      anomaly: 'heatwave',
+    },
+  ], {
+    visualEffects: true,
+    seasonLabels: { summer: 'Été' },
+    catastrophes: [
+      {
+        id: 'wildfire-1',
+        type: 'wildfire',
+        severity: 'major',
+        status: 'active',
+        regionIds: ['sunreach'],
+        startedAt: '2026-04-19T00:00:00.000Z',
+        impact: { harvest: -20 },
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.visualEffects, [
+    {
+      effectId: 'sunreach:anomaly-glyph:heatwave',
+      regionId: 'sunreach',
+      kind: 'anomaly-glyph',
+      layer: 'atmosphere-alerts',
+      anomaly: 'heatwave',
+      tone: 'danger',
+      accent: 'amber',
+      vector: {
+        primitive: 'minimal-orbital-glyph',
+        icon: '☀',
+        stroke: 'amber',
+        animation: 'slow-scan-pulse',
+      },
+    },
+    {
+      effectId: 'sunreach:atmospheric-signal',
+      regionId: 'sunreach',
+      kind: 'atmospheric-signal',
+      layer: 'coordinate-grid',
+      intensity: 'high',
+      vector: {
+        primitive: 'wind-line-field',
+        density: 'dense',
+        color: 'amber',
+      },
+      summary: 'Été, critical',
+    },
+    {
+      effectId: 'sunreach:catastrophe-ring:wildfire-1',
+      regionId: 'sunreach',
+      kind: 'catastrophe-ring',
+      layer: 'atmosphere-alerts',
+      catastropheId: 'wildfire-1',
+      severity: 'major',
+      tone: 'warning',
+      vector: {
+        primitive: 'pulsing-contour-ring',
+        stroke: 'orange',
+        fill: 'orange',
+        opacity: 0.5800000000000001,
+      },
+    },
+    {
+      effectId: 'sunreach:season-wash',
+      regionId: 'sunreach',
+      kind: 'season-wash',
+      layer: 'atmosphere-base',
+      season: 'summer',
+      tone: 'bright',
+      accent: 'gold',
+      vector: {
+        primitive: 'soft-gradient-field',
+        blendMode: 'screen',
+        opacity: 0.26,
+      },
+    },
+  ]);
+});
