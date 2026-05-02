@@ -10,7 +10,102 @@ import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
 
-const strategicMap = new GenerateStrategicMap().execute();
+const culturePayload = {
+  cultures: [
+    {
+      id: 'culture-aurora',
+      name: 'Compact d’Aurora',
+      archetype: 'maritime-savante',
+      primaryLanguage: 'haut-côtier',
+      valueIds: ['navigation', 'archives-publiques', 'artisanat'],
+      traditionIds: ['assemblées-portuaires', 'cartes-étoiles'],
+      openness: 74,
+      cohesion: 63,
+      researchDrive: 78,
+      regionIds: ['north-watch', 'crown-heart', 'river-gate'],
+    },
+    {
+      id: 'culture-ember',
+      name: 'Ligues des Forges',
+      archetype: 'industrielle-frontalière',
+      primaryLanguage: 'parler-des-hauts-fourneaux',
+      valueIds: ['discipline', 'maîtrise-du-feu'],
+      traditionIds: ['serments-de-fonderie', 'marques-de-lignée'],
+      openness: 42,
+      cohesion: 71,
+      researchDrive: 58,
+      regionIds: ['red-ridge', 'iron-plain', 'river-gate'],
+    },
+    {
+      id: 'culture-south',
+      name: 'Maisons des Basses Marches',
+      archetype: 'caravanière',
+      primaryLanguage: 'créole-des-pistes',
+      valueIds: ['hospitalité', 'mémoire-des-routes'],
+      traditionIds: ['foires-saisonnières', 'chants-des-bornes'],
+      openness: 61,
+      cohesion: 48,
+      researchDrive: 54,
+      regionIds: ['southern-reach', 'river-gate'],
+    },
+  ],
+  researchStates: [
+    {
+      id: 'research-aurora-celestial-ledgers',
+      cultureId: 'culture-aurora',
+      topicId: 'registres-célestes',
+      status: 'active',
+      progress: 68,
+      currentTier: 2,
+      discoveredConceptIds: ['astrolabes-portuaires', 'catalogues-publics'],
+    },
+    {
+      id: 'research-ember-blast-runes',
+      cultureId: 'culture-ember',
+      topicId: 'runes-de-haut-fourneau',
+      status: 'active',
+      progress: 52,
+      currentTier: 2,
+      discoveredConceptIds: ['alliages-de-siège'],
+    },
+    {
+      id: 'research-south-waystones',
+      cultureId: 'culture-south',
+      topicId: 'bornes-mémorielles',
+      status: 'completed',
+      progress: 100,
+      currentTier: 1,
+      completedAt: '2026-04-20T00:00:00.000Z',
+      discoveredConceptIds: ['cartes-orales', 'relais-de-caravane'],
+    },
+  ],
+  historicalEvents: [
+    {
+      id: 'event-aurora-open-archives',
+      title: 'Ouverture des archives de Couronne',
+      category: 'knowledge',
+      summary: 'Les maîtres-cartographes publient les routes célestes utilisées par la flotte.',
+      era: 'pax-historia-ui',
+      importance: 4,
+      triggeredAt: '2026-05-02T08:00:00.000Z',
+      affectedCultureIds: ['culture-aurora'],
+      discoveryIds: ['routes-célestes'],
+    },
+    {
+      id: 'event-river-gate-synod',
+      title: 'Synode de la Porte du Fleuve',
+      category: 'diplomacy',
+      summary: 'Marchands, forgerons et maisons caravanières fixent des signes communs pour les convois.',
+      era: 'pax-historia-ui',
+      importance: 3,
+      triggeredAt: '2026-05-02T12:00:00.000Z',
+      affectedCultureIds: ['culture-aurora', 'culture-ember', 'culture-south'],
+      discoveryIds: ['glyphes-de-convoi'],
+    },
+  ],
+};
+
+const strategicMap = new GenerateStrategicMap().execute({ culturePayload });
 const paletteByFaction = strategicMap.paletteByFaction;
 const factionMetaById = strategicMap.factionMetaById;
 const provinceLayouts = strategicMap.provinceLayouts;
@@ -251,7 +346,7 @@ const state = {
   seasonIndex: 0,
   focusedProvinceId: 'crown-heart',
   selectedProvinceId: 'river-gate',
-  activeOverlaySlot: 'economy-overlay',
+  activeOverlaySlot: 'culture-overlay',
   popupProvinceId: 'river-gate',
   hoveredCityId: 'river-gate-city',
   selectedCityId: 'river-gate-city',
@@ -985,6 +1080,205 @@ function getIntrigueViewModel() {
   };
 }
 
+
+function getCultureViewModel() {
+  const overlay = strategicMap.overlays.culture;
+  const panel = strategicMap.panels.culture;
+  const seeds = strategicMap.businessData.cultureSeeds;
+  const selectedRegionId = state.selectedProvinceId;
+  const selectedMarkers = overlay.filter((entry) => entry.regionId === selectedRegionId);
+  const selectedMarker = selectedMarkers[0] ?? overlay[0] ?? null;
+
+  return {
+    overlay,
+    panel,
+    seeds,
+    selectedRegionId,
+    selectedMarkers,
+    selectedMarker,
+    metrics: {
+      markerCount: overlay.length,
+      cultureCount: seeds.length,
+      discoveryCount: new Set(seeds.flatMap((seed) => seed.discoveryIds)).size,
+      eventCount: new Set(seeds.flatMap((seed) => seed.historicalEventIds)).size,
+      strongMarkerCount: overlay.filter((entry) => entry.influenceTier === 'dominant' || entry.influenceTier === 'strong').length,
+    },
+  };
+}
+
+function getCultureTone(entry) {
+  if (entry.markerType === 'innovation') {
+    return 'cyan';
+  }
+
+  if (entry.markerType === 'traditional') {
+    return 'amber';
+  }
+
+  if (entry.markerType === 'fragmented') {
+    return 'rose';
+  }
+
+  return 'slate';
+}
+
+function renderCultureMapOverlay(cultureView) {
+  if (state.activeOverlaySlot !== 'culture-overlay') {
+    return '';
+  }
+
+  const markerNodes = cultureView.overlay.map((entry) => {
+    const center = getProvinceCenter(entry.regionId);
+
+    if (!center) {
+      return '';
+    }
+
+    const selected = entry.regionId === state.selectedProvinceId;
+    const tone = getCultureTone(entry);
+    const radius = Math.max(4.8, Math.min(13, entry.zoneContour.radius / 2.2));
+    const eventBadgeY = center.y - radius - 2.8;
+
+    return `
+      <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} ${selected ? 'is-selected' : ''}" data-culture-region="${entry.regionId}">
+        <circle class="culture-marker__aura" cx="${center.x}%" cy="${center.y}%" r="${radius + 2.6}"></circle>
+        <circle class="culture-marker__ring" cx="${center.x}%" cy="${center.y}%" r="${radius}"></circle>
+        <path class="culture-marker__crosshair" d="M ${center.x - radius * 0.62} ${center.y} H ${center.x + radius * 0.62} M ${center.x} ${center.y - radius * 0.62} V ${center.y + radius * 0.62}"></path>
+        <text class="culture-marker__icon" x="${center.x}%" y="${center.y + 1.3}%" text-anchor="middle">${entry.style.markerIcon}</text>
+        <text class="culture-marker__label" x="${center.x}%" y="${center.y + radius + 4}%" text-anchor="middle">${entry.cultureName}</text>
+        ${entry.eventCount > 0 ? `<text class="culture-marker__event" x="${center.x}%" y="${eventBadgeY}%" text-anchor="middle">${entry.eventCount} repère${entry.eventCount > 1 ? 's' : ''}</text>` : ''}
+      </g>
+    `;
+  }).join('');
+
+  const discoveryLinks = cultureView.overlay.flatMap((entry) => entry.regionalDiscoveryLinks.slice(0, 2).map((link, index) => {
+    const center = getProvinceCenter(entry.regionId);
+
+    if (!center) {
+      return '';
+    }
+
+    const offset = (index - 0.5) * 5.4;
+    const tone = getCultureTone(entry);
+
+    return `
+      <g class="culture-discovery-ping culture-discovery-ping--${tone}">
+        <circle cx="${center.x + offset}%" cy="${center.y - 8.4}%" r="1.15"></circle>
+        <text x="${center.x + offset}%" y="${center.y - 10.3}%" text-anchor="middle">${link.discoveryId}</text>
+      </g>
+    `;
+  })).join('');
+
+  return `
+    <svg class="culture-overlay-map" viewBox="0 0 100 100" aria-label="Overlay culture et découvertes">
+      <defs>
+        <filter id="cultureHudGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="1.4" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      ${markerNodes}
+      ${discoveryLinks}
+    </svg>
+  `;
+}
+
+function renderCultureSidePanel(cultureView) {
+  if (state.activeOverlaySlot !== 'culture-overlay') {
+    return null;
+  }
+
+  const focus = cultureView.selectedMarker ?? cultureView.panel.focus;
+  const focusSeed = focus ? cultureView.seeds.find((seed) => seed.cultureId === focus.cultureId) : null;
+
+  return `
+    <section class="panel overlay-panel overlay-panel--culture">
+      <div class="panel-header">
+        <p class="eyebrow">Culture HUD</p>
+        <h3>Overlay actif, Culture</h3>
+        <p>Découvertes, influences et repères historiques en lecture tactique sombre.</p>
+      </div>
+      <div class="culture-hud-stats">
+        <div class="overlay-anchor"><span>Marqueurs</span><strong>${cultureView.metrics.markerCount}</strong></div>
+        <div class="overlay-anchor"><span>Cultures</span><strong>${cultureView.metrics.cultureCount}</strong></div>
+        <div class="overlay-anchor"><span>Découvertes</span><strong>${cultureView.metrics.discoveryCount}</strong></div>
+        <div class="overlay-anchor"><span>Repères</span><strong>${cultureView.metrics.eventCount}</strong></div>
+      </div>
+      ${focus ? `
+        <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
+          <div class="culture-focus-card__header">
+            <span>${focus.markerType}</span>
+            <strong>${focus.cultureName}</strong>
+          </div>
+          <p>${focus.summary}</p>
+          <div class="culture-focus-card__meter" style="--culture-score:${focus.influenceScore}%"><i></i></div>
+          <ul class="culture-hud-tags">
+            ${focus.highlights.slice(0, 5).map((tag) => `<li>${tag}</li>`).join('')}
+          </ul>
+        </article>
+      ` : ''}
+      <div class="culture-marker-list">
+        ${cultureView.overlay.slice(0, 5).map((entry) => `
+          <article class="culture-marker-row culture-marker-row--${getCultureTone(entry)} ${entry.regionId === state.selectedProvinceId ? 'is-selected' : ''}">
+            <span>${entry.style.markerIcon}</span>
+            <div><strong>${entry.cultureName}</strong><small>${entry.regionId} · ${entry.influenceTier}</small></div>
+            <b>${entry.influenceScore}</b>
+          </article>
+        `).join('')}
+      </div>
+      ${focusSeed ? `
+        <div class="culture-event-stack">
+          <strong>Repères historiques</strong>
+          ${focus.eventPopups.slice(0, 3).map((event) => `
+            <article>
+              <span>${event.triggeredAt.slice(0, 10)}</span>
+              <h4>${event.title}</h4>
+              <p>${event.summary}</p>
+            </article>
+          `).join('')}
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+
+function renderCultureBottomTray(cultureView) {
+  if (state.activeOverlaySlot !== 'culture-overlay') {
+    return null;
+  }
+
+  return `
+    <section id="bottom-tray" class="overlay-anchor-shell overlay-anchor-shell--bottom overlay-anchor-shell--culture">
+      <div class="culture-bottom-grid">
+        <div class="culture-timeline-strip">
+          <h4>Timeline culturelle</h4>
+          <p>Repères liés aux découvertes et aux zones d’influence visibles.</p>
+          <div class="culture-timeline-items">
+            ${cultureView.overlay.flatMap((entry) => entry.eventPopups.map((event) => ({ ...event, cultureName: entry.cultureName }))).slice(0, 5).map((event) => `
+              <article>
+                <span>${event.triggeredAt.slice(5, 10)}</span>
+                <strong>${event.title}</strong>
+                <small>${event.cultureName}</small>
+              </article>
+            `).join('')}
+          </div>
+        </div>
+        <div class="culture-discovery-stack">
+          ${cultureView.seeds.map((seed) => `
+            <article class="stock-mini-card culture-seed-card">
+              <h4>${seed.cultureName}</h4>
+              <p>${seed.regionIds.join(' · ')}</p>
+              <ul>
+                ${seed.discoveryIds.slice(0, 3).map((discoveryId) => `<li><span>${discoveryId}</span><strong>catalogué</strong></li>`).join('')}
+              </ul>
+            </article>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderEconomyMapOverlay(economyView) {
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return '';
@@ -1238,7 +1532,13 @@ function renderIntrigueSidePanel(intrigueView) {
   `;
 }
 
-function renderEconomySidePanel(economyView) {
+function renderEconomySidePanel(economyView, cultureView) {
+  const culturePanel = renderCultureSidePanel(cultureView);
+
+  if (culturePanel) {
+    return culturePanel;
+  }
+
   if (state.activeOverlaySlot !== 'economy-overlay') {
     return `
       <section class="panel overlay-panel">
@@ -1335,7 +1635,13 @@ function renderEconomySidePanel(economyView) {
   `;
 }
 
-function renderBottomTray(economyView, intrigueView) {
+function renderBottomTray(economyView, intrigueView, cultureView) {
+  const cultureTray = renderCultureBottomTray(cultureView);
+
+  if (cultureTray) {
+    return cultureTray;
+  }
+
   if (state.activeOverlaySlot === 'intrigue-overlay') {
     return `
       <section id="bottom-tray" class="overlay-anchor-shell overlay-anchor-shell--bottom overlay-anchor-shell--economy">
@@ -1677,7 +1983,7 @@ function renderTacticalCoordinateGrid() {
   `;
 }
 
-function getMapRenderLayers(shell, economyView, focusContext) {
+function getMapRenderLayers(shell, economyView, focusContext, cultureView) {
   return [
     { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
     { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
@@ -1685,14 +1991,14 @@ function getMapRenderLayers(shell, economyView, focusContext) {
     { key: 'relations', className: 'map-layer map-layer--relations', content: renderStrategicRelations(shell) },
     { key: 'labels', className: 'map-layer map-layer--labels', content: renderProvinceLabels(shell) },
     { key: 'anchors', className: 'map-layer map-layer--anchors', content: renderMapAnchorShells() },
-    { key: 'economy', className: 'map-layer map-layer--economy', content: renderEconomyMapOverlay(economyView) },
-    { key: 'hud', className: 'map-layer map-layer--hud', content: `${renderCityQuickPanel(economyView)}${renderBottomTray(economyView)}<div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>` },
+    { key: 'economy', className: 'map-layer map-layer--economy', content: `${renderEconomyMapOverlay(economyView)}${renderCultureMapOverlay(cultureView)}` },
+    { key: 'hud', className: 'map-layer map-layer--hud', content: `${renderCityQuickPanel(economyView)}<div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>` },
     { key: 'interactions', className: 'map-layer map-layer--interactions', content: `${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}${renderProvincePopup(shell)}` },
   ];
 }
 
-function renderMapLayerStack(shell, economyView, focusContext) {
-  return getMapRenderLayers(shell, economyView, focusContext)
+function renderMapLayerStack(shell, economyView, focusContext, cultureView) {
+  return getMapRenderLayers(shell, economyView, focusContext, cultureView)
     .map((layer) => `<div class="${layer.className}" data-map-layer="${layer.key}">${layer.content}</div>`)
     .join('');
 }
@@ -1752,6 +2058,7 @@ function render() {
   const economyView = getEconomyViewModel();
   const focusContext = getFocusContext(shell);
   const intrigueView = getIntrigueViewModel();
+  const cultureView = getCultureViewModel();
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -1796,10 +2103,10 @@ function render() {
           <div class="map-stage" data-map-stage="true">
             ${renderMapControls()}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
-              ${renderMapLayerStack(shell, economyView, focusContext)}
+              ${renderMapLayerStack(shell, economyView, focusContext, cultureView)}
               ${renderIntrigueMapOverlay(intrigueView)}
             </div>
-            ${renderBottomTray(economyView, intrigueView)}
+            ${renderBottomTray(economyView, intrigueView, cultureView)}
           </div>
         </section>
 
@@ -1807,7 +2114,7 @@ function render() {
           <div class="mobile-panel-stack ${state.mobilePanelSection === 'legend' ? 'show-legend' : state.mobilePanelSection === 'overlay' ? 'show-overlay' : 'show-details'}">
             ${renderLegend(shell)}
             ${renderActiveProvince(shell)}
-            ${renderIntrigueSidePanel(intrigueView) ?? renderEconomySidePanel(economyView)}
+            ${renderIntrigueSidePanel(intrigueView) ?? renderEconomySidePanel(economyView, cultureView)}
             ${renderMapArchitecturePanel()}
           </div>
         </aside>
