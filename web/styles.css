@@ -1,11 +1,14 @@
 :root {
   color-scheme: dark;
-  --bg: #08111f;
-  --panel: rgba(10, 20, 35, 0.86);
-  --panel-border: rgba(148, 163, 184, 0.18);
+  --bg: #050b16;
+  --panel: rgba(6, 13, 24, 0.78);
+  --panel-border: rgba(125, 211, 252, 0.18);
   --text: #e2e8f0;
-  --muted: #94a3b8;
-  --accent: #7dd3fc;
+  --muted: #8ea4bb;
+  --accent: #67e8f9;
+  --accent-strong: #22d3ee;
+  --amber: #fbbf24;
+  --blueprint-line: rgba(125, 211, 252, 0.13);
   --danger: #fb7185;
   --warning: #f59e0b;
   --success: #34d399;
@@ -18,8 +21,9 @@ body {
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 30%),
-    linear-gradient(160deg, #030712 0%, #0f172a 55%, #111827 100%);
+    radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.16), transparent 34%),
+    radial-gradient(circle at 82% 12%, rgba(251, 191, 36, 0.08), transparent 28%),
+    linear-gradient(160deg, #020617 0%, #07111f 48%, #111827 100%);
 }
 button { font: inherit; }
 .shell-root {
@@ -28,11 +32,13 @@ button { font: inherit; }
   padding: 24px 0 40px;
 }
 .panel {
-  background: var(--panel);
+  background:
+    linear-gradient(180deg, rgba(14, 25, 43, 0.78), rgba(5, 10, 20, 0.82)),
+    var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
-  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.54), inset 0 1px 0 rgba(226, 232, 240, 0.05);
+  backdrop-filter: blur(18px) saturate(1.18);
 }
 .hero {
   display: grid;
@@ -171,8 +177,11 @@ button { font: inherit; }
   min-height: 760px;
   overflow: hidden;
   border-radius: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: linear-gradient(180deg, rgba(14, 116, 144, 0.12), rgba(14, 165, 233, 0.04));
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(34, 211, 238, 0.08), transparent 36%),
+    linear-gradient(180deg, rgba(8, 47, 73, 0.28), rgba(5, 10, 20, 0.74));
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.88), inset 0 0 70px rgba(34, 211, 238, 0.08);
   isolation: isolate;
   cursor: grab;
 }
@@ -245,24 +254,79 @@ button { font: inherit; }
 .map-backdrop {
   position: absolute; inset: 0;
   background:
-    radial-gradient(circle at 18% 22%, rgba(125, 211, 252, 0.16), transparent 14%),
-    radial-gradient(circle at 74% 24%, rgba(248, 113, 113, 0.14), transparent 18%),
-    radial-gradient(circle at 46% 66%, rgba(74, 222, 128, 0.1), transparent 18%),
-    linear-gradient(180deg, rgba(8, 47, 73, 0.4), rgba(15, 23, 42, 0.2) 24%, rgba(11, 15, 25, 0.14) 60%),
-    linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(12, 74, 110, 0.62));
+    radial-gradient(circle at 18% 22%, rgba(103, 232, 249, 0.18), transparent 14%),
+    radial-gradient(circle at 74% 24%, rgba(251, 191, 36, 0.13), transparent 18%),
+    radial-gradient(circle at 46% 66%, rgba(74, 222, 128, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(8, 47, 73, 0.36), rgba(15, 23, 42, 0.24) 24%, rgba(5, 10, 20, 0.24) 60%),
+    linear-gradient(135deg, rgba(5, 10, 20, 0.96), rgba(12, 74, 110, 0.58));
 }
 .map-backdrop::before,
 .map-backdrop::after {
   content: '';
   position: absolute; inset: 0;
+}
+.map-backdrop::before {
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-  background-size: 70px 70px;
+    linear-gradient(var(--blueprint-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--blueprint-line) 1px, transparent 1px),
+    linear-gradient(rgba(103, 232, 249, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.05) 1px, transparent 1px);
+  background-size: 70px 70px, 70px 70px, 14px 14px, 14px 14px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.95), rgba(0,0,0,0.54));
 }
 .map-backdrop::after {
-  background: linear-gradient(transparent 0%, rgba(8, 15, 28, 0.46) 100%);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(251, 191, 36, 0.055) 32px, transparent 33px),
+    linear-gradient(transparent 0%, rgba(5, 10, 20, 0.58) 100%);
+  mix-blend-mode: screen;
 }
+.tactical-coordinate-grid {
+  position: absolute;
+  inset: 18px;
+  z-index: 1;
+  pointer-events: none;
+  border: 1px solid rgba(103, 232, 249, 0.08);
+  box-shadow: inset 0 0 30px rgba(34, 211, 238, 0.035);
+}
+.coordinate-axis {
+  position: absolute;
+  display: flex;
+  color: rgba(186, 230, 253, 0.42);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.coordinate-axis--top {
+  left: 8%;
+  right: 8%;
+  top: -2px;
+  justify-content: space-between;
+}
+.coordinate-axis--left {
+  top: 12%;
+  bottom: 12%;
+  left: -2px;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.blueprint-crosshair {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border: 1px solid rgba(251, 191, 36, 0.12);
+  border-radius: 50%;
+}
+.blueprint-crosshair::before,
+.blueprint-crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(251, 191, 36, 0.14);
+}
+.blueprint-crosshair::before { left: 50%; top: -18px; bottom: -18px; width: 1px; }
+.blueprint-crosshair::after { top: 50%; left: -18px; right: -18px; height: 1px; }
+.blueprint-crosshair--north { left: 27%; top: 18%; }
+.blueprint-crosshair--south { right: 24%; bottom: 17%; }
 .map-sea,
 .terrain-shadow,
 .terrain-mass,
@@ -364,24 +428,27 @@ button { font: inherit; }
   z-index: 1;
 }
 .province-surface polygon {
-  fill: color-mix(in srgb, var(--province-fill) 88%, #0f172a 12%);
-  stroke: color-mix(in srgb, var(--province-border) 92%, white 8%);
-  stroke-width: 1.2;
-  filter: drop-shadow(0 10px 18px rgba(2, 6, 23, 0.22));
+  fill: color-mix(in srgb, var(--province-fill) 70%, #08111f 30%);
+  stroke: color-mix(in srgb, var(--province-border) 72%, #67e8f9 28%);
+  stroke-width: 0.95;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 10px 18px rgba(2, 6, 23, 0.28)) drop-shadow(0 0 5px rgba(103, 232, 249, 0.16));
 }
 .province-surface.is-muted polygon {
   opacity: 0.38;
 }
 .province-surface.is-neighbor polygon {
-  stroke-width: 1.5;
+  stroke: rgba(251, 191, 36, 0.86);
+  stroke-width: 1.25;
+  filter: drop-shadow(0 0 9px rgba(251, 191, 36, 0.24));
 }
 .province-surface.is-focused polygon,
 .province-surface.is-selected polygon {
-  stroke: #e0f2fe;
-  stroke-width: 2;
+  stroke: #67e8f9;
+  stroke-width: 1.65;
 }
 .province-surface.is-selected polygon {
-  filter: drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 12px rgba(125, 211, 252, 0.35));
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 16px rgba(34, 211, 238, 0.48)) drop-shadow(0 0 28px rgba(251, 191, 36, 0.18));
 }
 .province-surface.is-occupied polygon {
   stroke-dasharray: 3 2;
@@ -404,30 +471,30 @@ button { font: inherit; }
 }
 .province-map-label__title {
   fill: #f8fafc;
-  stroke: rgba(8, 15, 28, 0.92);
+  stroke: rgba(5, 10, 20, 0.94);
   stroke-width: 1.8;
   font-size: 3.2px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 .province-map-label__subtitle {
-  fill: rgba(226, 232, 240, 0.92);
-  stroke: rgba(8, 15, 28, 0.92);
+  fill: rgba(186, 230, 253, 0.86);
+  stroke: rgba(5, 10, 20, 0.94);
   stroke-width: 1.4;
   font-size: 2px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 .province-map-label--capital .province-map-label__title {
-  fill: #fde68a;
+  fill: var(--amber);
 }
 .province-map-label--frontier .province-map-label__subtitle {
   fill: #fda4af;
 }
 .province-map-label.is-selected .province-map-label__title,
 .province-map-label.is-focused .province-map-label__title {
-  fill: #bae6fd;
+  fill: #67e8f9;
 }
 .city-map-label__leader {
   stroke: rgba(226, 232, 240, 0.38);
@@ -821,16 +888,19 @@ button { font: inherit; }
   content: '';
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(103, 232, 249, 0.1);
+  background: linear-gradient(135deg, rgba(103, 232, 249, 0.05), transparent 38%, rgba(251, 191, 36, 0.045));
   clip-path: var(--province-shape);
   pointer-events: none;
 }
 .province-node:hover, .province-node.is-focused {
   transform: translateY(-2px);
+  filter: drop-shadow(0 0 14px rgba(103, 232, 249, 0.24));
 }
 .province-node.is-selected {
   z-index: 6;
   outline: none;
+  filter: drop-shadow(0 0 18px rgba(34, 211, 238, 0.38)) drop-shadow(0 0 24px rgba(251, 191, 36, 0.16));
 }
 .province-node.is-neighbor {
   z-index: 5;
@@ -866,7 +936,8 @@ button { font: inherit; }
   bottom: 10%;
   width: 5px;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.9), rgba(255,255,255,0));
+  background: linear-gradient(180deg, rgba(103,232,249,0), rgba(103,232,249,0.95), rgba(251,191,36,0.82), rgba(103,232,249,0));
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.58);
   opacity: 0;
   transition: opacity 160ms ease;
 }
@@ -876,8 +947,19 @@ button { font: inherit; }
   opacity: 1;
 }
 .province-node__name, .province-node__meta, .province-node__badges, .province-node__link { position: relative; z-index: 1; }
-.province-node__name { font-weight: 700; font-size: 18px; }
-.province-node__meta { font-size: 13px; color: rgba(255,255,255,0.82); }
+.province-node__name {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(2, 6, 23, 0.88);
+}
+.province-node__meta {
+  font-size: 12px;
+  color: rgba(186, 230, 253, 0.86);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .province-node__badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .province-node__link {
   margin-top: 8px;
@@ -892,9 +974,12 @@ button { font: inherit; }
   justify-content: center;
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 12px;
-  background: rgba(15, 23, 42, 0.58);
-  border: 1px solid rgba(226, 232, 240, 0.14);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(6, 13, 24, 0.66);
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  box-shadow: inset 0 1px 0 rgba(226, 232, 240, 0.04);
 }
 .city-quick-panel,
 .province-popup {
