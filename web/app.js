@@ -1,4 +1,5 @@
 import { Province } from '../src/domain/war/Province.js';
+import { GenerateStrategicMap } from '../src/application/war/GenerateStrategicMap.js';
 import { City } from '../src/domain/economy/City.js';
 import { TradeRoute } from '../src/domain/economy/TradeRoute.js';
 import { buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
@@ -9,90 +10,12 @@ import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
 
-const paletteByFaction = {
-  aurora: { fill: '#2F6BFF', border: '#8FB3FF' },
-  ember: { fill: '#E8572A', border: '#FFB394' },
-  neutral: { fill: '#64748B', border: '#CBD5E1' },
-};
-
-const factionMetaById = {
-  aurora: { label: 'Alliance d’Aurora' },
-  ember: { label: 'Ligue d’Ember' },
-  neutral: { label: 'Marches neutres' },
-};
-
-const provinceLayouts = {
-  'north-watch': { x: 15, y: 18, w: 20, h: 18 },
-  'crown-heart': { x: 38, y: 18, w: 23, h: 20 },
-  'red-ridge': { x: 64, y: 16, w: 21, h: 22 },
-  'river-gate': { x: 22, y: 46, w: 24, h: 20 },
-  'iron-plain': { x: 50, y: 46, w: 26, h: 22 },
-  'southern-reach': { x: 33, y: 72, w: 28, h: 18 },
-};
-
-const provinces = [
-  new Province({
-    id: 'north-watch',
-    name: 'Veille du Nord',
-    ownerFactionId: 'aurora',
-    controllingFactionId: 'aurora',
-    supplyLevel: 'stable',
-    loyalty: 84,
-    strategicValue: 5,
-    neighborIds: ['crown-heart', 'river-gate'],
-  }),
-  new Province({
-    id: 'crown-heart',
-    name: 'Coeur de Couronne',
-    ownerFactionId: 'aurora',
-    controllingFactionId: 'aurora',
-    supplyLevel: 'stable',
-    loyalty: 78,
-    strategicValue: 8,
-    neighborIds: ['north-watch', 'red-ridge', 'river-gate', 'iron-plain'],
-  }),
-  new Province({
-    id: 'red-ridge',
-    name: 'Crête Rouge',
-    ownerFactionId: 'ember',
-    controllingFactionId: 'ember',
-    supplyLevel: 'strained',
-    loyalty: 58,
-    strategicValue: 6,
-    neighborIds: ['crown-heart', 'iron-plain'],
-  }),
-  new Province({
-    id: 'river-gate',
-    name: 'Porte du Fleuve',
-    ownerFactionId: 'aurora',
-    controllingFactionId: 'ember',
-    supplyLevel: 'disrupted',
-    loyalty: 39,
-    strategicValue: 7,
-    contested: true,
-    neighborIds: ['north-watch', 'crown-heart', 'iron-plain', 'southern-reach'],
-  }),
-  new Province({
-    id: 'iron-plain',
-    name: 'Plaine de Fer',
-    ownerFactionId: 'ember',
-    controllingFactionId: 'ember',
-    supplyLevel: 'strained',
-    loyalty: 61,
-    strategicValue: 4,
-    neighborIds: ['crown-heart', 'red-ridge', 'river-gate', 'southern-reach'],
-  }),
-  new Province({
-    id: 'southern-reach',
-    name: 'Basses Marches',
-    ownerFactionId: 'neutral',
-    controllingFactionId: 'aurora',
-    supplyLevel: 'collapsed',
-    loyalty: 44,
-    strategicValue: 3,
-    neighborIds: ['river-gate', 'iron-plain'],
-  }),
-];
+const strategicMap = new GenerateStrategicMap().execute();
+const paletteByFaction = strategicMap.paletteByFaction;
+const factionMetaById = strategicMap.factionMetaById;
+const provinceLayouts = strategicMap.provinceLayouts;
+const provincePolygonById = strategicMap.provincePolygons;
+const provinces = strategicMap.provinces;
 
 const overlayLabels = {
   'climate-overlay': 'Climat',
@@ -492,15 +415,6 @@ function renderLegend(shell) {
     </section>
   `;
 }
-
-const provincePolygonById = {
-  'north-watch': '8,24 24,12 39,10 47,18 46,36 34,42 18,40 8,32',
-  'crown-heart': '24,18 40,12 58,14 64,24 58,40 40,46 26,38 22,28',
-  'red-ridge': '58,16 73,10 88,18 90,34 80,44 64,42 54,32 52,22',
-  'river-gate': '38,38 54,34 66,40 68,54 56,66 40,64 32,52 34,42',
-  'iron-plain': '60,44 78,42 90,52 88,68 72,78 56,72 54,56',
-  'southern-reach': '24,58 42,54 58,58 64,74 48,88 28,86 16,72',
-};
 
 function getProvinceShape(provinceId) {
   const polygon = provincePolygonById[provinceId] ?? '12,12 88,12 88,88 12,88';

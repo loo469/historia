@@ -77,6 +77,16 @@ Ensuite:
 - l'adaptateur mémoire garde l'ordre d'insertion
 - l'adaptateur peut être initialisé avec un historique d'événements déjà normalisés
 
+## Génération de carte stratégique
+
+`GenerateStrategicMap` construit un socle procédural déterministe pour la carte stratégique.
+
+- le générateur produit des `Province` métier à partir de blueprints, factions et liens de voisinage
+- le voisinage est déduit depuis des liens non orientés et reste trié par province
+- les métadonnées UI (`provinceLayouts`, `provincePolygons`, `paletteByFaction`, `factionMetaById`) sont retournées avec les provinces pour brancher la démo web sans dupliquer les données métier
+- un `seed` stable garantit une sortie reproductible; les options de jitter permettent de varier loyauté et valeur stratégique de façon bornée
+- les liens invalides ou les factions et blueprints incomplets échouent explicitement avant de produire une carte incohérente
+
 ## Rendu UI Alpha
 
 Les helpers UI actuels restent déterministes et pilotés par le domaine.
@@ -103,6 +113,7 @@ Les helpers UI actuels restent déterministes et pilotés par le domaine.
 
 ## Références de code
 
+- `src/application/war/GenerateStrategicMap.js`
 - `src/application/war/DetectFronts.js`
 - `src/application/war/ExpandTerritory.js`
 - `src/application/war/ResolveBorderPressure.js`
