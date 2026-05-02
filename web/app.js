@@ -913,6 +913,71 @@ function getIntrigueOperationStateByTurn(operation) {
   });
 }
 
+
+const sabotageGlyphLanguage = {
+  high: {
+    code: 'S3',
+    label: 'Sabotage critique',
+    glyph: 'M 0 -1.15 L 1 0.58 L -1 0.58 Z M -0.38 0.16 H 0.38 M 0 -0.58 V 0.3',
+    tickCount: 6,
+  },
+  medium: {
+    code: 'S2',
+    label: 'Menace active',
+    glyph: 'M -0.92 -0.68 H 0.92 L 0.5 0.72 H -0.5 Z M -0.45 0 H 0.45',
+    tickCount: 4,
+  },
+  low: {
+    code: 'S1',
+    label: 'Signal discret',
+    glyph: 'M 0 -0.9 A 0.9 0.9 0 1 1 -0.01 -0.9 M -0.48 0 H 0.48',
+    tickCount: 3,
+  },
+  none: {
+    code: 'S0',
+    label: 'Aucune menace',
+    glyph: 'M -0.72 0 H 0.72 M 0 -0.72 V 0.72',
+    tickCount: 2,
+  },
+};
+
+function getSabotageGlyphLanguage(entry) {
+  return sabotageGlyphLanguage[entry.sabotageRiskLevel] ?? sabotageGlyphLanguage.none;
+}
+
+function renderSabotageGlyphTicks(entry, radius, tickCount) {
+  return Array.from({ length: tickCount }, (_, index) => {
+    const angle = ((Math.PI * 2) / tickCount) * index - (Math.PI / 2);
+    const innerRadius = radius + 0.95;
+    const outerRadius = radius + 1.95;
+    const x1 = entry.center.x + Math.cos(angle) * innerRadius;
+    const y1 = entry.center.y + Math.sin(angle) * innerRadius;
+    const x2 = entry.center.x + Math.cos(angle) * outerRadius;
+    const y2 = entry.center.y + Math.sin(angle) * outerRadius;
+
+    return `<line class="intrigue-threat-glyph__tick" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%"></line>`;
+  }).join('');
+}
+
+function buildIntrigueLinkVisual(link, index) {
+  const deltaX = link.destination.x - link.origin.x;
+  const deltaY = link.destination.y - link.origin.y;
+  const length = Math.hypot(deltaX, deltaY) || 1;
+  const normalX = -deltaY / length;
+  const normalY = deltaX / length;
+  const curveLift = (link.riskLevel === 'high' ? 5.4 : link.riskLevel === 'medium' ? 4.2 : 3) + ((index % 2) * 1.1);
+  const control = {
+    x: ((link.origin.x + link.destination.x) / 2) + (normalX * curveLift),
+    y: ((link.origin.y + link.destination.y) / 2) + (normalY * curveLift),
+  };
+
+  return {
+    ...link,
+    pathD: `M ${link.origin.x} ${link.origin.y} Q ${control.x} ${control.y} ${link.destination.x} ${link.destination.y}`,
+    control,
+  };
+}
+
 function buildIntrigueLinks(entries) {
   const entryById = new Map(entries.map((entry) => [entry.locationId, entry]));
   const links = new Map();
@@ -974,6 +1039,12 @@ function getIntrigueViewModel() {
           ? 11
           : 7,
     heatIntensity: Math.max(0.14, entry.sabotageRiskScore / 100),
+    threatGlyph: getSabotageGlyphLanguage(entry),
+    glyphRadius: entry.sabotageRiskLevel === 'high'
+      ? 7.2
+      : entry.sabotageRiskLevel === 'medium'
+        ? 6
+        : 4.9,
   })).filter((entry) => entry.center);
 
   const filters = state.intrigueFilters;
@@ -1080,7 +1151,7 @@ function getIntrigueViewModel() {
     map: {
       ...demo.map,
       entries: filteredEntries,
-      links: buildIntrigueLinks(filteredEntries),
+      links: buildIntrigueLinks(filteredEntries).map(buildIntrigueLinkVisual),
     },
   };
 }
@@ -1527,14 +1598,24 @@ function renderIntrigueMapOverlay(intrigueView) {
   `).join('');
 
   const linkMarkup = intrigueView.map.links.map((link) => `
-    <line
-      class="intrigue-link intrigue-link--${link.riskLevel}"
-      x1="${link.origin.x}%"
-      y1="${link.origin.y}%"
-      x2="${link.destination.x}%"
-      y2="${link.destination.y}%"
-      stroke-width="${1 + (link.intensity * 0.55)}"
-    />
+    <g class="intrigue-link-node intrigue-link-node--${link.riskLevel}">
+      <path
+        class="intrigue-link intrigue-link--${link.riskLevel}"
+        d="${link.pathD}"
+        stroke-width="${1 + (link.intensity * 0.55)}"
+      />
+      <circle class="intrigue-link-node__relay" cx="${link.control.x}%" cy="${link.control.y}%" r="${1.2 + (link.intensity * 0.35)}"></circle>
+    </g>
+  `).join('');
+
+  const threatGlyphMarkup = intrigueView.map.entries.map((entry) => `
+    <g class="intrigue-threat-glyph intrigue-threat-glyph--${entry.sabotageRiskLevel} ${entry.isSelected ? 'is-selected' : ''}" data-intrigue-location="${entry.locationId}" aria-label="${entry.threatGlyph.label}">
+      <circle class="intrigue-threat-glyph__backplate" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.glyphRadius}"></circle>
+      <circle class="intrigue-threat-glyph__ring" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.glyphRadius - 1.15}"></circle>
+      ${renderSabotageGlyphTicks(entry, entry.glyphRadius, entry.threatGlyph.tickCount)}
+      <path class="intrigue-threat-glyph__sigil" d="${entry.threatGlyph.glyph}" transform="translate(${entry.center.x} ${entry.center.y}) scale(${Math.max(2.3, entry.glyphRadius * 0.38)})"></path>
+      <text class="intrigue-threat-glyph__code" x="${entry.center.x + entry.glyphRadius + 2.2}%" y="${entry.center.y - 0.7}%" text-anchor="start">${entry.threatGlyph.code}</text>
+    </g>
   `).join('');
 
   const hotspotMarkup = intrigueView.map.entries.map((entry) => `
@@ -1543,7 +1624,7 @@ function renderIntrigueMapOverlay(intrigueView) {
       <circle class="intrigue-hotspot__core" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${4 + (entry.celluleCount * 2.2)}"></circle>
       <text class="intrigue-hotspot__marker" x="${entry.center.x}%" y="${entry.center.y + 1.5}%" text-anchor="middle">${entry.style.presence.marker}</text>
       <text class="intrigue-hotspot__label" x="${entry.center.x}%" y="${entry.center.y - (11 + (entry.celluleCount * 1.5))}%" text-anchor="middle">${entry.locationName}</text>
-      <text class="intrigue-hotspot__meta" x="${entry.center.x}%" y="${entry.center.y + (15 + (entry.celluleCount * 1.5))}%" text-anchor="middle">réseau ${entry.presenceLevel} · risque ${entry.sabotageRiskLevel}</text>
+      <text class="intrigue-hotspot__meta" x="${entry.center.x}%" y="${entry.center.y + (15 + (entry.celluleCount * 1.5))}%" text-anchor="middle">réseau ${entry.presenceLevel} · ${entry.threatGlyph.code} ${entry.sabotageRiskScore}</text>
     </g>
   `).join('');
 
@@ -1552,7 +1633,12 @@ function renderIntrigueMapOverlay(intrigueView) {
       <g class="intrigue-heat-layer">
         ${heatmapMarkup}
       </g>
-      ${linkMarkup}
+      <g class="intrigue-network-layer">
+        ${linkMarkup}
+      </g>
+      <g class="intrigue-threat-layer">
+        ${threatGlyphMarkup}
+      </g>
       ${hotspotMarkup}
     </svg>
   `;

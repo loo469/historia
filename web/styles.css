@@ -2795,3 +2795,74 @@ button { font: inherit; }
   .culture-event-card__rail { min-height: 38px; border-right: 0; border-bottom: 1px solid rgba(125, 211, 252, 0.14); }
   .culture-event-card__rail span { writing-mode: horizontal-tb; }
 }
+
+.intrigue-network-layer,
+.intrigue-threat-layer {
+  pointer-events: none;
+}
+.intrigue-link-node__relay {
+  fill: rgba(103, 232, 249, 0.5);
+  stroke: rgba(2, 6, 23, 0.78);
+  stroke-width: 0.24;
+  filter: drop-shadow(0 0 5px rgba(103, 232, 249, 0.32));
+}
+.intrigue-link-node--medium .intrigue-link-node__relay {
+  fill: rgba(251, 191, 36, 0.58);
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.34));
+}
+.intrigue-link-node--high .intrigue-link-node__relay {
+  fill: rgba(251, 113, 133, 0.68);
+  filter: drop-shadow(0 0 7px rgba(251, 113, 133, 0.46));
+}
+.intrigue-threat-glyph {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.intrigue-threat-glyph__backplate {
+  fill: rgba(2, 6, 23, 0.56);
+  stroke: rgba(103, 232, 249, 0.18);
+  stroke-width: 0.3;
+  filter: drop-shadow(0 0 8px rgba(103, 232, 249, 0.16));
+}
+.intrigue-threat-glyph__ring,
+.intrigue-threat-glyph__tick,
+.intrigue-threat-glyph__sigil {
+  fill: none;
+  stroke: rgba(103, 232, 249, 0.78);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.intrigue-threat-glyph__ring { stroke-width: 0.42; }
+.intrigue-threat-glyph__tick { stroke-width: 0.36; }
+.intrigue-threat-glyph__sigil { stroke-width: 0.18; }
+.intrigue-threat-glyph__code {
+  fill: #cffafe;
+  font-size: 2.55px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+.intrigue-threat-glyph--medium .intrigue-threat-glyph__backplate {
+  stroke: rgba(251, 191, 36, 0.28);
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.2));
+}
+.intrigue-threat-glyph--medium .intrigue-threat-glyph__ring,
+.intrigue-threat-glyph--medium .intrigue-threat-glyph__tick,
+.intrigue-threat-glyph--medium .intrigue-threat-glyph__sigil {
+  stroke: rgba(251, 191, 36, 0.86);
+}
+.intrigue-threat-glyph--medium .intrigue-threat-glyph__code { fill: #fde68a; }
+.intrigue-threat-glyph--high .intrigue-threat-glyph__backplate {
+  stroke: rgba(251, 113, 133, 0.36);
+  filter: drop-shadow(0 0 10px rgba(251, 113, 133, 0.28));
+}
+.intrigue-threat-glyph--high .intrigue-threat-glyph__ring,
+.intrigue-threat-glyph--high .intrigue-threat-glyph__tick,
+.intrigue-threat-glyph--high .intrigue-threat-glyph__sigil {
+  stroke: rgba(251, 113, 133, 0.92);
+}
+.intrigue-threat-glyph--high .intrigue-threat-glyph__code { fill: #fecdd3; }
+.intrigue-threat-glyph.is-selected .intrigue-threat-glyph__backplate {
+  stroke-width: 0.54;
+  filter: drop-shadow(0 0 14px rgba(103, 232, 249, 0.38));
+}
