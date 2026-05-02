@@ -1969,3 +1969,238 @@ button { font: inherit; }
   }
   .province-popup::before { display: none; }
 }
+
+/* Gamma UI-G1: culture and discoveries dark HUD */
+.culture-overlay-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: saturate(1.08);
+}
+.culture-marker {
+  filter: url(#cultureHudGlow);
+  opacity: 0.88;
+}
+.culture-marker__aura {
+  fill: rgba(8, 47, 73, 0.18);
+  stroke: rgba(125, 211, 252, 0.2);
+  stroke-width: 0.36;
+  stroke-dasharray: 1.2 1.1;
+}
+.culture-marker__ring {
+  fill: rgba(2, 6, 23, 0.34);
+  stroke: rgba(125, 211, 252, 0.82);
+  stroke-width: 0.52;
+}
+.culture-marker__crosshair {
+  fill: none;
+  stroke: rgba(226, 232, 240, 0.6);
+  stroke-width: 0.2;
+  stroke-linecap: round;
+}
+.culture-marker__icon {
+  fill: #e0f2fe;
+  font-size: 3.8px;
+  font-weight: 800;
+}
+.culture-marker__label,
+.culture-marker__event,
+.culture-discovery-ping text {
+  font-size: 2.1px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.42px;
+}
+.culture-marker__label { fill: #e2e8f0; }
+.culture-marker__event { fill: #fbbf24; }
+.culture-discovery-ping circle {
+  fill: #fbbf24;
+  stroke: rgba(2, 6, 23, 0.85);
+  stroke-width: 0.26;
+}
+.culture-discovery-ping text {
+  fill: #fde68a;
+  font-size: 1.6px;
+}
+.culture-marker--amber .culture-marker__ring,
+.culture-discovery-ping--amber circle { stroke: rgba(251, 191, 36, 0.88); }
+.culture-marker--amber .culture-marker__aura { fill: rgba(120, 53, 15, 0.22); }
+.culture-marker--amber .culture-marker__icon { fill: #fde68a; }
+.culture-marker--slate .culture-marker__ring,
+.culture-discovery-ping--slate circle { stroke: rgba(148, 163, 184, 0.88); }
+.culture-marker--slate .culture-marker__aura { fill: rgba(51, 65, 85, 0.24); }
+.culture-marker--rose .culture-marker__ring,
+.culture-discovery-ping--rose circle { stroke: rgba(251, 113, 133, 0.88); }
+.culture-marker--rose .culture-marker__aura { fill: rgba(136, 19, 55, 0.24); }
+.culture-marker.is-selected .culture-marker__ring {
+  stroke-width: 0.86;
+  stroke: #fbbf24;
+}
+.culture-marker.is-selected .culture-marker__aura {
+  stroke: rgba(251, 191, 36, 0.72);
+  stroke-dasharray: 0.8 0.7;
+}
+.overlay-panel--culture {
+  border-color: rgba(125, 211, 252, 0.26);
+  background:
+    linear-gradient(160deg, rgba(8, 47, 73, 0.42), rgba(15, 23, 42, 0.86)),
+    rgba(2, 6, 23, 0.72);
+}
+.culture-hud-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.culture-focus-card,
+.culture-marker-row,
+.culture-event-stack,
+.overlay-anchor-shell--culture {
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  background: rgba(2, 6, 23, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.culture-focus-card {
+  padding: 14px;
+  border-radius: 18px;
+  margin-bottom: 12px;
+}
+.culture-focus-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.culture-focus-card__header span {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.culture-focus-card p,
+.culture-marker-row small,
+.culture-event-stack p,
+.culture-timeline-strip p,
+.culture-timeline-items small,
+.culture-seed-card p {
+  color: var(--muted);
+}
+.culture-focus-card__meter {
+  height: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  margin: 10px 0;
+}
+.culture-focus-card__meter i {
+  display: block;
+  width: var(--culture-score);
+  height: 100%;
+  background: linear-gradient(90deg, #22d3ee, #fbbf24);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
+}
+.culture-hud-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.culture-hud-tags li,
+.culture-timeline-items span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  color: #bae6fd;
+  font-size: 11px;
+}
+.culture-marker-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.culture-marker-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-radius: 14px;
+  padding: 10px;
+}
+.culture-marker-row > span {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.13);
+  color: #bae6fd;
+}
+.culture-marker-row b { color: #f8fafc; }
+.culture-marker-row.is-selected {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: rgba(120, 53, 15, 0.2);
+}
+.culture-event-stack {
+  padding: 12px;
+  border-radius: 16px;
+}
+.culture-event-stack article + article { margin-top: 10px; }
+.culture-event-stack span {
+  color: #fbbf24;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-event-stack h4,
+.culture-timeline-strip h4 { margin: 4px 0; }
+.culture-event-stack p { margin: 0; font-size: 13px; }
+.overlay-anchor-shell--culture {
+  padding: 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(14px);
+}
+.culture-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 14px;
+}
+.culture-timeline-items,
+.culture-discovery-stack {
+  display: grid;
+  gap: 8px;
+}
+.culture-timeline-items {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.culture-timeline-items article {
+  border-top: 1px solid rgba(125, 211, 252, 0.24);
+  padding-top: 8px;
+}
+.culture-timeline-items strong,
+.culture-timeline-items small {
+  display: block;
+}
+.culture-discovery-stack {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.culture-seed-card {
+  border-color: rgba(125, 211, 252, 0.18);
+}
+@media (max-width: 980px) {
+  .culture-bottom-grid,
+  .culture-discovery-stack,
+  .culture-timeline-items {
+    grid-template-columns: 1fr;
+  }
+}
