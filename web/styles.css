@@ -995,10 +995,14 @@ button { font: inherit; }
   transform: translateX(-50%);
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(8, 15, 28, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(6, 13, 24, 0.88), rgba(8, 15, 28, 0.74));
+  border: 1px solid rgba(103, 232, 249, 0.22);
   color: var(--text);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.12), inset 0 1px 0 rgba(226, 232, 240, 0.06);
 }
 .province-node {
   position: absolute;
@@ -1025,14 +1029,52 @@ button { font: inherit; }
   clip-path: var(--province-shape);
   pointer-events: none;
 }
+.province-node::after {
+  content: attr(data-tactical-state);
+  position: absolute;
+  right: 13px;
+  top: 11px;
+  z-index: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  background: rgba(5, 10, 20, 0.68);
+  color: rgba(186, 230, 253, 0.78);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.province-node:hover::after,
+.province-node.is-focused::after,
+.province-node.is-selected::after {
+  opacity: 1;
+  transform: translateY(0);
+}
 .province-node:hover, .province-node.is-focused {
   transform: translateY(-2px);
   filter: drop-shadow(0 0 14px rgba(103, 232, 249, 0.24));
+}
+.province-node:hover::before,
+.province-node.is-focused::before {
+  border-color: rgba(103, 232, 249, 0.34);
+  background: linear-gradient(135deg, rgba(103, 232, 249, 0.1), transparent 36%, rgba(251, 191, 36, 0.07));
 }
 .province-node.is-selected {
   z-index: 6;
   outline: none;
   filter: drop-shadow(0 0 18px rgba(34, 211, 238, 0.38)) drop-shadow(0 0 24px rgba(251, 191, 36, 0.16));
+}
+.province-node.is-selected::before {
+  border-color: rgba(103, 232, 249, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.18), inset 0 0 34px rgba(34, 211, 238, 0.1);
+}
+.province-node.is-selected::after {
+  border-color: rgba(251, 191, 36, 0.42);
+  color: #fde68a;
 }
 .province-node.is-neighbor {
   z-index: 5;
@@ -1043,7 +1085,7 @@ button { font: inherit; }
   filter: saturate(0.76) brightness(0.82);
 }
 .province-node.is-contested { border-style: dashed; }
-.province-node.is-occupied::after {
+.province-node.is-occupied .province-node__terrain::after {
   content: '';
   position: absolute; inset: 0;
   background: repeating-linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.14) 10px, transparent 10px, transparent 20px);
@@ -1060,6 +1102,20 @@ button { font: inherit; }
     radial-gradient(circle at 72% 62%, rgba(15,23,42,0.55), transparent 24%),
     linear-gradient(135deg, rgba(255,255,255,0.12), transparent 38%, rgba(15,23,42,0.32) 70%);
   mix-blend-mode: screen;
+}
+.province-node__terrain::before {
+  content: '';
+  position: absolute;
+  inset: 12% 8%;
+  border-top: 1px solid rgba(103, 232, 249, 0.14);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.08);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.province-node:hover .province-node__terrain::before,
+.province-node.is-focused .province-node__terrain::before,
+.province-node.is-selected .province-node__terrain::before {
+  opacity: 1;
 }
 .province-node__focus-rail {
   position: absolute;
@@ -1078,11 +1134,35 @@ button { font: inherit; }
 .province-node.is-focused .province-node__focus-rail {
   opacity: 1;
 }
+.province-node__signal,
 .province-node__name, .province-node__meta, .province-node__badges, .province-node__link { position: relative; z-index: 1; }
+.province-node__signal {
+  align-self: flex-start;
+  margin-bottom: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  background: rgba(5, 10, 20, 0.58);
+  color: rgba(186, 230, 253, 0.8);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.province-node.is-selected .province-node__signal {
+  border-color: rgba(251, 191, 36, 0.48);
+  color: #fde68a;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+}
+.province-node.is-focused .province-node__signal,
+.province-node:hover .province-node__signal {
+  border-color: rgba(103, 232, 249, 0.42);
+  color: #cffafe;
+}
 .province-node__name {
   font-weight: 800;
   font-size: 18px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   text-shadow: 0 2px 10px rgba(2, 6, 23, 0.88);
 }

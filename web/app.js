@@ -563,6 +563,8 @@ function renderProvinceCard(province, focusContext) {
   const isSelected = province.selectionState.selected;
   const isFocused = province.selectionState.focused;
   const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
+  const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
+  const selectionSignal = isSelected ? 'ACTIF' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
@@ -578,11 +580,14 @@ function renderProvinceCard(province, focusContext) {
       class="${classes}"
       type="button"
       data-province-id="${province.provinceId}"
+      data-tactical-state="${tacticalState}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
+      aria-label="${province.label}, ${tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
     >
       <span class="province-node__terrain"></span>
       <span class="province-node__focus-rail"></span>
+      <span class="province-node__signal">${selectionSignal}</span>
       <span class="province-node__name">${province.label}</span>
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
       <span class="province-node__badges">${badges}</span>
