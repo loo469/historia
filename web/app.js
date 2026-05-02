@@ -1127,6 +1127,74 @@ function getCultureTone(entry) {
   return 'slate';
 }
 
+const cultureMarkerLanguage = {
+  innovation: {
+    code: 'INN',
+    label: 'Découverte active',
+    glyph: 'M 0 -1.15 L 0.34 -0.34 L 1.15 0 L 0.34 0.34 L 0 1.15 L -0.34 0.34 L -1.15 0 L -0.34 -0.34 Z',
+    ticks: 8,
+  },
+  balanced: {
+    code: 'BAL',
+    label: 'Synthèse culturelle',
+    glyph: 'M -0.82 -0.82 H 0.82 V 0.82 H -0.82 Z M -0.38 -0.38 H 0.38 V 0.38 H -0.38 Z',
+    ticks: 4,
+  },
+  traditional: {
+    code: 'TRD',
+    label: 'Tradition établie',
+    glyph: 'M 0 -1 L 0.86 -0.5 L 0.86 0.5 L 0 1 L -0.86 0.5 L -0.86 -0.5 Z M -0.5 0 H 0.5',
+    ticks: 6,
+  },
+  fragmented: {
+    code: 'FRG',
+    label: 'Mémoire fracturée',
+    glyph: 'M -0.95 -0.82 L 0.12 -0.28 L -0.5 0.05 L 0.82 0.78 M 0.62 -0.9 L 0.1 0.16 L 0.92 0.28 M -0.84 0.82 L -0.2 0.24',
+    ticks: 5,
+  },
+  default: {
+    code: 'CUL',
+    label: 'Présence culturelle',
+    glyph: 'M 0 -0.95 A 0.95 0.95 0 1 1 -0.01 -0.95 M -0.55 0 H 0.55',
+    ticks: 4,
+  },
+};
+
+function getCultureMarkerLanguage(entry) {
+  return cultureMarkerLanguage[entry.markerType] ?? cultureMarkerLanguage.default;
+}
+
+function renderCultureMarkerTicks(center, radius, markerLanguage) {
+  return Array.from({ length: markerLanguage.ticks }, (_, index) => {
+    const angle = ((Math.PI * 2) / markerLanguage.ticks) * index - (Math.PI / 2);
+    const innerRadius = radius + 1.05;
+    const outerRadius = radius + 2.05;
+    const x1 = center.x + Math.cos(angle) * innerRadius;
+    const y1 = center.y + Math.sin(angle) * innerRadius;
+    const x2 = center.x + Math.cos(angle) * outerRadius;
+    const y2 = center.y + Math.sin(angle) * outerRadius;
+
+    return `<line class="culture-marker__tick" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%"></line>`;
+  }).join('');
+}
+
+function renderCultureLegendKey(cultureView) {
+  const entriesByType = [...new Map(cultureView.overlay.map((entry) => [entry.markerType, entry])).values()];
+
+  return `
+    <div class="culture-symbol-key" aria-label="Langage visuel culture et découvertes">
+      ${entriesByType.map((entry) => {
+        const language = getCultureMarkerLanguage(entry);
+        return `
+          <span class="culture-symbol-key__item culture-symbol-key__item--${getCultureTone(entry)}">
+            <i>${language.code}</i>${language.label}
+          </span>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderCultureMapOverlay(cultureView) {
   if (state.activeOverlaySlot !== 'culture-overlay') {
     return '';
@@ -1143,15 +1211,20 @@ function renderCultureMapOverlay(cultureView) {
     const tone = getCultureTone(entry);
     const radius = Math.max(4.8, Math.min(13, entry.zoneContour.radius / 2.2));
     const eventBadgeY = center.y - radius - 2.8;
+    const language = getCultureMarkerLanguage(entry);
+    const glyphScale = Math.max(2.2, radius * 0.36);
+    const selectedClass = selected ? 'is-selected' : '';
 
     return `
-      <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} ${selected ? 'is-selected' : ''}" data-culture-region="${entry.regionId}">
+      <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} culture-marker--${entry.markerType} ${selectedClass}" data-culture-region="${entry.regionId}">
         <circle class="culture-marker__aura" cx="${center.x}%" cy="${center.y}%" r="${radius + 2.6}"></circle>
         <circle class="culture-marker__ring" cx="${center.x}%" cy="${center.y}%" r="${radius}"></circle>
+        ${renderCultureMarkerTicks(center, radius, language)}
         <path class="culture-marker__crosshair" d="M ${center.x - radius * 0.62} ${center.y} H ${center.x + radius * 0.62} M ${center.x} ${center.y - radius * 0.62} V ${center.y + radius * 0.62}"></path>
-        <text class="culture-marker__icon" x="${center.x}%" y="${center.y + 1.3}%" text-anchor="middle">${entry.style.markerIcon}</text>
+        <path class="culture-marker__sigil" d="${language.glyph}" transform="translate(${center.x} ${center.y}) scale(${glyphScale})"></path>
+        <text class="culture-marker__code" x="${center.x + radius + 2.6}%" y="${center.y - 1.2}%" text-anchor="start">${language.code}</text>
         <text class="culture-marker__label" x="${center.x}%" y="${center.y + radius + 4}%" text-anchor="middle">${entry.cultureName}</text>
-        ${entry.eventCount > 0 ? `<text class="culture-marker__event" x="${center.x}%" y="${eventBadgeY}%" text-anchor="middle">${entry.eventCount} repère${entry.eventCount > 1 ? 's' : ''}</text>` : ''}
+        ${entry.eventCount > 0 ? `<g class="culture-event-flag"><path d="M ${center.x - 3.8} ${eventBadgeY - 2.1} H ${center.x + 3.8} L ${center.x + 2.8} ${eventBadgeY + 1.4} H ${center.x - 3.8} Z"></path><text x="${center.x}%" y="${eventBadgeY + 0.15}%" text-anchor="middle">H-${entry.eventCount}</text></g>` : ''}
       </g>
     `;
   }).join('');
@@ -1166,10 +1239,14 @@ function renderCultureMapOverlay(cultureView) {
     const offset = (index - 0.5) * 5.4;
     const tone = getCultureTone(entry);
 
+    const x = center.x + offset;
+    const y = center.y - 8.4;
+
     return `
       <g class="culture-discovery-ping culture-discovery-ping--${tone}">
-        <circle cx="${center.x + offset}%" cy="${center.y - 8.4}%" r="1.15"></circle>
-        <text x="${center.x + offset}%" y="${center.y - 10.3}%" text-anchor="middle">${link.discoveryId}</text>
+        <line class="culture-discovery-ping__leader" x1="${center.x}%" y1="${center.y}%" x2="${x}%" y2="${y}%"></line>
+        <path class="culture-discovery-ping__glyph" d="M ${x} ${y - 1.45} L ${x + 1.45} ${y} L ${x} ${y + 1.45} L ${x - 1.45} ${y} Z M ${x - 0.55} ${y} H ${x + 0.55}"></path>
+        <text x="${x}%" y="${y - 2.15}%" text-anchor="middle">D:${link.discoveryId}</text>
       </g>
     `;
   })).join('');
@@ -1209,6 +1286,7 @@ function renderCultureSidePanel(cultureView) {
         <div class="overlay-anchor"><span>Découvertes</span><strong>${cultureView.metrics.discoveryCount}</strong></div>
         <div class="overlay-anchor"><span>Repères</span><strong>${cultureView.metrics.eventCount}</strong></div>
       </div>
+      ${renderCultureLegendKey(cultureView)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
           <div class="culture-focus-card__header">

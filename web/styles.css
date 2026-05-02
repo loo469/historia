@@ -2512,3 +2512,96 @@ button { font: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Gamma UI-G2: technical culture marker language */
+.culture-marker__tick {
+  stroke: rgba(226, 232, 240, 0.56);
+  stroke-width: 0.22;
+  stroke-linecap: round;
+}
+.culture-marker__sigil {
+  fill: none;
+  stroke: #e0f2fe;
+  stroke-width: 0.28;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.culture-marker__code {
+  fill: #bae6fd;
+  font-size: 1.65px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.38px;
+}
+.culture-marker--traditional .culture-marker__sigil,
+.culture-marker--traditional .culture-marker__code { stroke: #fde68a; fill: #fde68a; }
+.culture-marker--fragmented .culture-marker__sigil,
+.culture-marker--fragmented .culture-marker__code { stroke: #fecdd3; fill: #fecdd3; }
+.culture-marker--balanced .culture-marker__sigil,
+.culture-marker--balanced .culture-marker__code { stroke: #a7f3d0; fill: #a7f3d0; }
+.culture-marker--innovation .culture-marker__sigil,
+.culture-marker--innovation .culture-marker__code { stroke: #bae6fd; fill: #bae6fd; }
+.culture-event-flag path {
+  fill: rgba(120, 53, 15, 0.82);
+  stroke: rgba(251, 191, 36, 0.86);
+  stroke-width: 0.28;
+}
+.culture-event-flag text {
+  fill: #fef3c7;
+  font-size: 1.55px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.culture-discovery-ping__leader {
+  stroke: rgba(125, 211, 252, 0.28);
+  stroke-width: 0.18;
+  stroke-dasharray: 0.7 0.8;
+}
+.culture-discovery-ping__glyph {
+  fill: rgba(8, 47, 73, 0.72);
+  stroke: #67e8f9;
+  stroke-width: 0.26;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.culture-discovery-ping--amber .culture-discovery-ping__leader { stroke: rgba(251, 191, 36, 0.3); }
+.culture-discovery-ping--amber .culture-discovery-ping__glyph { stroke: #fcd34d; fill: rgba(120, 53, 15, 0.72); }
+.culture-discovery-ping--rose .culture-discovery-ping__leader { stroke: rgba(251, 113, 133, 0.3); }
+.culture-discovery-ping--rose .culture-discovery-ping__glyph { stroke: #fda4af; fill: rgba(136, 19, 55, 0.66); }
+.culture-symbol-key {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.culture-symbol-key__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  color: var(--muted);
+  font-size: 12px;
+}
+.culture-symbol-key__item i {
+  min-width: 34px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.14);
+  color: #bae6fd;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+.culture-symbol-key__item--amber i { background: rgba(120, 53, 15, 0.35); color: #fde68a; }
+.culture-symbol-key__item--rose i { background: rgba(136, 19, 55, 0.35); color: #fecdd3; }
+.culture-symbol-key__item--slate i { background: rgba(51, 65, 85, 0.42); color: #cbd5e1; }
+@media (max-width: 980px) {
+  .culture-symbol-key { grid-template-columns: 1fr; }
+}
