@@ -1178,6 +1178,49 @@ function renderCultureMarkerTicks(center, radius, markerLanguage) {
   }).join('');
 }
 
+function formatCultureDate(isoDate) {
+  const date = new Date(isoDate);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(isoDate ?? '').slice(0, 10);
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(date).replace('.', '');
+}
+
+function getCultureEventTone(event) {
+  if (event.importance >= 4) {
+    return 'major';
+  }
+
+  if (event.discoveries.length > 0) {
+    return 'discovery';
+  }
+
+  return 'standard';
+}
+
+function renderCultureEventCard(event, cultureName) {
+  const tone = getCultureEventTone(event);
+  const discoveryCount = event.discoveries.length;
+
+  return `
+    <article class="culture-event-card culture-event-card--${tone}">
+      <div class="culture-event-card__rail"><span>${formatCultureDate(event.triggeredAt)}</span></div>
+      <div class="culture-event-card__body">
+        <div class="culture-event-card__meta">
+          <span>${cultureName}</span>
+          <b>IMP-${event.importance}</b>
+          ${discoveryCount > 0 ? `<b>D-${discoveryCount}</b>` : ''}
+        </div>
+        <h4>${event.title}</h4>
+        <p>${event.summary}</p>
+        ${discoveryCount > 0 ? `<div class="culture-event-card__chips">${event.discoveries.slice(0, 3).map((discoveryId) => `<i>${discoveryId}</i>`).join('')}</div>` : ''}
+      </div>
+    </article>
+  `;
+}
+
 function renderCultureLegendKey(cultureView) {
   const entriesByType = [...new Map(cultureView.overlay.map((entry) => [entry.markerType, entry])).values()];
 
@@ -1294,6 +1337,11 @@ function renderCultureSidePanel(cultureView) {
             <strong>${focus.cultureName}</strong>
           </div>
           <p>${focus.summary}</p>
+          <div class="culture-focus-card__microgrid">
+            <span><b>${focus.influenceTier}</b> influence</span>
+            <span><b>${focus.discoveries.length}</b> découvertes</span>
+            <span><b>${focus.eventCount}</b> repères</span>
+          </div>
           <div class="culture-focus-card__meter" style="--culture-score:${focus.influenceScore}%"><i></i></div>
           <ul class="culture-hud-tags">
             ${focus.highlights.slice(0, 5).map((tag) => `<li>${tag}</li>`).join('')}
@@ -1311,14 +1359,11 @@ function renderCultureSidePanel(cultureView) {
       </div>
       ${focusSeed ? `
         <div class="culture-event-stack">
-          <strong>Repères historiques</strong>
-          ${focus.eventPopups.slice(0, 3).map((event) => `
-            <article>
-              <span>${event.triggeredAt.slice(0, 10)}</span>
-              <h4>${event.title}</h4>
-              <p>${event.summary}</p>
-            </article>
-          `).join('')}
+          <div class="culture-event-stack__header">
+            <strong>Repères historiques</strong>
+            <span>${focus.eventPopups.length} entrées liées</span>
+          </div>
+          ${focus.eventPopups.slice(0, 3).map((event) => renderCultureEventCard(event, focus.cultureName)).join('')}
         </div>
       ` : ''}
     </section>
@@ -1337,11 +1382,11 @@ function renderCultureBottomTray(cultureView) {
           <h4>Timeline culturelle</h4>
           <p>Repères liés aux découvertes et aux zones d’influence visibles.</p>
           <div class="culture-timeline-items">
-            ${cultureView.overlay.flatMap((entry) => entry.eventPopups.map((event) => ({ ...event, cultureName: entry.cultureName }))).slice(0, 5).map((event) => `
-              <article>
-                <span>${event.triggeredAt.slice(5, 10)}</span>
+            ${cultureView.overlay.flatMap((entry) => entry.eventPopups.map((event) => ({ ...event, cultureName: entry.cultureName }))).slice(0, 5).map((event, index) => `
+              <article class="culture-timeline-node culture-timeline-node--${getCultureEventTone(event)}" style="--timeline-index:${index}">
+                <span>${formatCultureDate(event.triggeredAt)}</span>
                 <strong>${event.title}</strong>
-                <small>${event.cultureName}</small>
+                <small>${event.cultureName} · IMP-${event.importance}</small>
               </article>
             `).join('')}
           </div>
@@ -1349,7 +1394,10 @@ function renderCultureBottomTray(cultureView) {
         <div class="culture-discovery-stack">
           ${cultureView.seeds.map((seed) => `
             <article class="stock-mini-card culture-seed-card">
-              <h4>${seed.cultureName}</h4>
+              <div class="culture-seed-card__header">
+                <h4>${seed.cultureName}</h4>
+                <span>${seed.regionIds.length} zones</span>
+              </div>
               <p>${seed.regionIds.join(' · ')}</p>
               <ul>
                 ${seed.discoveryIds.slice(0, 3).map((discoveryId) => `<li><span>${discoveryId}</span><strong>catalogué</strong></li>`).join('')}
