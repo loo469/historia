@@ -238,6 +238,14 @@ const resourceHudById = {
 
 const defaultResourceHud = { glyph: '•', label: 'Ressource', tone: 'slate' };
 
+const routeHudByMode = {
+  land: { glyph: '⇄', label: 'Convoi terrestre', tone: 'amber' },
+  river: { glyph: '≈', label: 'Barge fluviale', tone: 'cyan' },
+  sea: { glyph: '⟐', label: 'Ligne maritime', tone: 'violet' },
+};
+
+const defaultRouteHud = { glyph: '—', label: 'Route logistique', tone: 'slate' };
+
 const state = {
   turn: 1,
   seasonIndex: 0,
@@ -585,6 +593,45 @@ function getRouteStateByTurn(route) {
 }
 
 
+
+function getRouteHud(route) {
+  return routeHudByMode[route.transportMode] ?? defaultRouteHud;
+}
+
+function getQuadraticPoint(origin, control, destination, t) {
+  const inverse = 1 - t;
+
+  return {
+    x: (inverse * inverse * origin.x) + (2 * inverse * t * control.x) + (t * t * destination.x),
+    y: (inverse * inverse * origin.y) + (2 * inverse * t * control.y) + (t * t * destination.y),
+  };
+}
+
+function renderRouteHudMarkers(route, visual) {
+  const routeHud = getRouteHud(route);
+  const midpoint = getQuadraticPoint(visual.origin, visual.control, visual.destination, 0.5);
+  const packetCount = Math.max(1, Math.min(4, Math.ceil(route.totalCapacity / 4)));
+  const packetMarkup = Array.from({ length: packetCount }, (_, index) => {
+    const t = 0.22 + (index * (0.56 / Math.max(1, packetCount - 1)));
+    const point = getQuadraticPoint(visual.origin, visual.control, visual.destination, t);
+
+    return `<circle class="economy-route-packet economy-route-packet--${routeHud.tone}" cx="${point.x}" cy="${point.y}" r="${0.72 + (index % 2) * 0.12}" />`;
+  }).join('');
+  const riskTicks = Math.max(0, Math.min(3, Math.floor(route.riskLevel / 25)));
+  const riskMarkup = Array.from({ length: riskTicks }, (_, index) => `
+    <rect class="economy-route-risk-tick" x="${midpoint.x + 3.2 + (index * 1.35)}" y="${midpoint.y - 4.6}" width="0.82" height="2.2" rx="0.35" />
+  `).join('');
+
+  return `
+    <g class="economy-route-hud economy-route-hud--${routeHud.tone}" aria-label="${routeHud.label}, capacité ${route.totalCapacity}, risque ${route.riskLevel}">
+      ${packetMarkup}
+      <circle class="economy-route-hud__plate" cx="${midpoint.x}" cy="${midpoint.y}" r="3.25" />
+      <text class="economy-route-hud__glyph" x="${midpoint.x}" y="calc(${midpoint.y} + 1px)" text-anchor="middle">${routeHud.glyph}</text>
+      ${riskMarkup}
+    </g>
+  `;
+}
+
 function getResourceHud(resourceId) {
   return resourceHudById[resourceId] ?? { ...defaultResourceHud, label: resourceId };
 }
@@ -679,7 +726,8 @@ function buildRouteVisual(route, origin, destination, index) {
   const curveLift = 4 + ((index % 2) * 1.8);
   const controlX = ((origin.x + destination.x) / 2) + (normalX * curveLift);
   const controlY = ((origin.y + destination.y) / 2) + (normalY * curveLift);
-  const pathD = `M ${origin.x} ${origin.y} Q ${controlX} ${controlY} ${destination.x} ${destination.y}`;
+  const control = { x: controlX, y: controlY };
+  const pathD = `M ${origin.x} ${origin.y} Q ${control.x} ${control.y} ${destination.x} ${destination.y}`;
   const markerId = `route-arrow-${route.transportMode}`;
 
   return {
@@ -689,6 +737,9 @@ function buildRouteVisual(route, origin, destination, index) {
     critical,
     inactive,
     amplitude,
+    origin,
+    control,
+    destination,
   };
 }
 
@@ -982,6 +1033,7 @@ function renderEconomyMapOverlay(economyView) {
         <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
         <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
+        ${renderRouteHudMarkers(route, visual)}
         <text class="economy-route__label" text-anchor="middle">
           <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
         </text>
@@ -1262,6 +1314,7 @@ function renderEconomySidePanel(economyView) {
             <ul class="economy-route-legend">
               <li><i class="is-land"></i>Terre</li>
               <li><i class="is-river"></i>Fluvial</li>
+              <li><i class="is-sea"></i>Maritime</li>
               <li><i class="is-critical"></i>Liaison critique</li>
               <li><i class="is-high-tension"></i>Tension forte</li>
             </ul>

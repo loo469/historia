@@ -732,6 +732,40 @@ button { font: inherit; }
 .economy-route.has-high-tension .economy-route__halo {
   stroke: rgba(251, 113, 133, 0.78);
 }
+.economy-route-hud {
+  pointer-events: none;
+  filter: drop-shadow(0 0 7px rgba(8, 15, 28, 0.7));
+}
+.economy-route-hud__plate {
+  fill: rgba(8, 15, 28, 0.82);
+  stroke: rgba(226, 232, 240, 0.34);
+  stroke-width: 0.72;
+}
+.economy-route-hud__glyph {
+  fill: #e2e8f0;
+  font-size: 3.7px;
+  font-weight: 900;
+  dominant-baseline: middle;
+}
+.economy-route-packet {
+  fill: rgba(226, 232, 240, 0.88);
+  stroke: rgba(8, 15, 28, 0.72);
+  stroke-width: 0.28;
+}
+.economy-route-risk-tick {
+  fill: rgba(251, 113, 133, 0.9);
+  filter: drop-shadow(0 0 4px rgba(251, 113, 133, 0.4));
+}
+.economy-route-hud--cyan .economy-route-hud__plate { stroke: rgba(56, 189, 248, 0.74); }
+.economy-route-hud--cyan .economy-route-hud__glyph,
+.economy-route-packet--cyan { fill: #7dd3fc; }
+.economy-route-hud--amber .economy-route-hud__plate { stroke: rgba(245, 158, 11, 0.78); }
+.economy-route-hud--amber .economy-route-hud__glyph,
+.economy-route-packet--amber { fill: #fcd34d; }
+.economy-route-hud--violet .economy-route-hud__plate { stroke: rgba(129, 140, 248, 0.76); }
+.economy-route-hud--violet .economy-route-hud__glyph,
+.economy-route-packet--violet { fill: #c4b5fd; }
+.economy-route-hud--slate .economy-route-hud__plate { stroke: rgba(148, 163, 184, 0.7); }
 .economy-city-tension-ring {
   fill: none;
   stroke-width: 1.6;
@@ -1789,6 +1823,7 @@ button { font: inherit; }
 }
 .economy-route-legend i.is-land { background: #f59e0b; }
 .economy-route-legend i.is-river { background: #38bdf8; }
+.economy-route-legend i.is-sea { background: #818cf8; }
 .economy-route-legend i.is-critical { background: #fb7185; }
 .economy-route-legend i.is-high-tension { background: linear-gradient(90deg, #fb7185, #fecdd3); }
 .bottom-tray-grid {
