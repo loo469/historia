@@ -1535,9 +1535,27 @@ function renderMapAnchorShells() {
   return getMapAnchors().map((anchor) => `<div id="${anchor.id}" class="${anchor.className}">${anchor.label}</div>`).join('');
 }
 
+function renderTacticalCoordinateGrid() {
+  const columns = ['A', 'B', 'C', 'D', 'E'];
+  const rows = ['01', '02', '03', '04'];
+
+  return `
+    <div class="tactical-coordinate-grid" aria-hidden="true">
+      <div class="coordinate-axis coordinate-axis--top">
+        ${columns.map((column) => `<span>${column}</span>`).join('')}
+      </div>
+      <div class="coordinate-axis coordinate-axis--left">
+        ${rows.map((row) => `<span>${row}</span>`).join('')}
+      </div>
+      <div class="blueprint-crosshair blueprint-crosshair--north"></div>
+      <div class="blueprint-crosshair blueprint-crosshair--south"></div>
+    </div>
+  `;
+}
+
 function getMapRenderLayers(shell, economyView, focusContext) {
   return [
-    { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: '<div class="map-backdrop"></div>' },
+    { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
     { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
     { key: 'surface', className: 'map-layer map-layer--surface', content: renderProvinceSurface(shell, focusContext) },
     { key: 'relations', className: 'map-layer map-layer--relations', content: renderStrategicRelations(shell) },
