@@ -33,6 +33,73 @@ test('GenerateStrategicMap returns deterministic strategic provinces and UI busi
   assert.deepEqual(map.paletteByFaction.ember, { fill: '#E8572A', border: '#FFB394' });
   assert.deepEqual(map.provinceLayouts['crown-heart'], { x: 38, y: 18, w: 23, h: 20 });
   assert.equal(map.provincePolygons['red-ridge'], '58,16 73,10 88,18 90,34 80,44 64,42 54,32 52,22');
+  assert.deepEqual(map.overlays.culture, []);
+  assert.equal(map.panels.culture.focus, null);
+  assert.deepEqual(map.businessData.cultureSeeds, []);
+});
+
+test('GenerateStrategicMap composes culture overlays and seed data from the generated map contract', () => {
+  const generator = new GenerateStrategicMap();
+  const map = generator.execute({
+    selectedRegionId: 'crown-heart',
+    culturePayload: {
+      cultures: [
+        {
+          id: 'culture-aurora',
+          name: 'Aurora Compact',
+          archetype: 'mercantile',
+          primaryLanguage: 'trade-speech',
+          valueIds: ['craft', 'navigation'],
+          traditionIds: ['harbor-moot'],
+          openness: 72,
+          cohesion: 61,
+          researchDrive: 77,
+          regionIds: ['crown-heart', 'north-watch'],
+        },
+      ],
+      researchStates: [
+        {
+          id: 'research-star-ledgers',
+          cultureId: 'culture-aurora',
+          topicId: 'star-ledgers',
+          status: 'active',
+          progress: 65,
+          discoveredConceptIds: ['tidal-ledgers'],
+        },
+      ],
+      historicalEvents: [
+        {
+          id: 'event-harbor-archives',
+          title: 'Harbor Archives',
+          category: 'knowledge',
+          summary: 'Dock scribes standardize voyage records.',
+          era: 'early-sails',
+          importance: 3,
+          triggeredAt: '2026-04-19T00:00:00.000Z',
+          affectedCultureIds: ['culture-aurora'],
+          discoveryIds: ['public-catalogue'],
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(map.businessData.regionIdsByCulture, {
+    'culture-aurora': ['crown-heart', 'north-watch'],
+  });
+  assert.deepEqual(map.businessData.cultureSeeds, [
+    {
+      cultureId: 'culture-aurora',
+      cultureName: 'Aurora Compact',
+      regionIds: ['crown-heart', 'north-watch'],
+      discoveryIds: ['public-catalogue', 'tidal-ledgers'],
+      researchStateIds: ['research-star-ledgers'],
+      historicalEventIds: ['event-harbor-archives'],
+    },
+  ]);
+  assert.deepEqual(map.overlays.culture.map((entry) => entry.regionId), ['crown-heart', 'north-watch']);
+  assert.deepEqual(map.overlays.culture[0].discoveries, ['public-catalogue', 'tidal-ledgers']);
+  assert.equal(map.panels.culture.focus.cultureId, 'culture-aurora');
+  assert.equal(map.panels.culture.focus.discoveriesPanel.summary, '2 concepts, 1 recherches, 1 événements');
 });
 
 test('GenerateStrategicMap can derive province ownership from faction home columns and seeded jitter', () => {
