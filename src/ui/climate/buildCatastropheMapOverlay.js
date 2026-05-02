@@ -38,6 +38,35 @@ function normalizeStyle(styleBySeverity, severity) {
   };
 }
 
+function buildTacticalHudStyle(catastrophe, style) {
+  const alertTone = catastrophe.severity === 'critical'
+    ? 'critical-red'
+    : catastrophe.severity === 'major'
+      ? 'amber-warning'
+      : 'cyan-watch';
+
+  return {
+    visualMode: 'tactical-dark',
+    panelClassName: `climate-disaster-card climate-disaster-card--${catastrophe.severity}`,
+    surface: {
+      background: 'rgba(3, 10, 22, 0.74)',
+      border: `1px solid ${style.stroke}`,
+      backdropFilter: 'blur(18px) saturate(1.18)',
+      gridOverlay: 'coordinate-grid',
+    },
+    alertTone,
+    glyph: {
+      icon: style.icon,
+      frame: catastrophe.status === 'active' ? 'pulsing-ring' : 'thin-warning-ring',
+      color: style.fill,
+    },
+    typography: {
+      family: 'technical-sans',
+      labelTransform: 'uppercase-tracked',
+    },
+  };
+}
+
 export function buildCatastropheMapOverlay(catastrophes, options = {}) {
   if (!Array.isArray(catastrophes)) {
     throw new TypeError('CatastropheMapOverlay catastrophes must be an array.');
@@ -48,6 +77,7 @@ export function buildCatastropheMapOverlay(catastrophes, options = {}) {
     ...DEFAULT_STYLE_BY_SEVERITY,
     ...requireObject(normalizedOptions.styleBySeverity ?? {}, 'CatastropheMapOverlay styleBySeverity'),
   };
+  const tacticalHud = Boolean(normalizedOptions.tacticalHud);
 
   return catastrophes
     .map(normalizeCatastrophe)
@@ -62,16 +92,21 @@ export function buildCatastropheMapOverlay(catastrophes, options = {}) {
 
       return left.catastrophe.id.localeCompare(right.catastrophe.id);
     })
-    .map(({ catastrophe, regionId }) => ({
-      overlayId: `${regionId}:${catastrophe.id}`,
-      regionId,
-      catastropheId: catastrophe.id,
-      type: catastrophe.type,
-      severity: catastrophe.severity,
-      status: catastrophe.status,
-      label: `${catastrophe.type} (${catastrophe.severity})`,
-      description: catastrophe.description,
-      impact: { ...catastrophe.impact },
-      style: normalizeStyle(styleBySeverity, catastrophe.severity),
-    }));
+    .map(({ catastrophe, regionId }) => {
+      const style = normalizeStyle(styleBySeverity, catastrophe.severity);
+
+      return {
+        overlayId: `${regionId}:${catastrophe.id}`,
+        regionId,
+        catastropheId: catastrophe.id,
+        type: catastrophe.type,
+        severity: catastrophe.severity,
+        status: catastrophe.status,
+        label: `${catastrophe.type} (${catastrophe.severity})`,
+        description: catastrophe.description,
+        impact: { ...catastrophe.impact },
+        style,
+        ...(tacticalHud ? { hudStyle: buildTacticalHudStyle(catastrophe, style) } : {}),
+      };
+    });
 }

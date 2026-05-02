@@ -521,3 +521,54 @@ test('buildClimateMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildClimateMapOverlay([], { seasonStyleByType: [] }), /seasonStyleByType must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { anomalyStyleByType: [] }), /anomalyStyleByType must be an object/);
 });
+
+test('buildClimateMapOverlay can expose Pax Historia tactical dark styling tokens', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 33,
+      precipitationLevel: 11,
+      droughtIndex: 74,
+      anomaly: 'heatwave',
+    },
+  ], {
+    tacticalHud: true,
+    catastrophes: [
+      {
+        id: 'wildfire-1',
+        type: 'wildfire',
+        severity: 'major',
+        status: 'active',
+        regionIds: ['sunreach'],
+        startedAt: '2026-04-19T00:00:00.000Z',
+        impact: { harvest: -20 },
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.tacticalTheme, {
+    visualMode: 'tactical-dark',
+    className: 'climate-hud climate-hud--pax-dark',
+    palette: {
+      background: '#020817',
+      glass: 'rgba(3, 10, 22, 0.72)',
+      border: 'rgba(125, 211, 252, 0.24)',
+      accent: '#f59e0b',
+      danger: '#fb7185',
+      text: '#e2e8f0',
+    },
+    layers: {
+      regionFill: 'low-opacity-season-wash',
+      anomalyGlyphs: 'minimal-cyan-amber-markers',
+      catastropheRings: 'thin-glowing-alert-rings',
+      coordinateGrid: true,
+    },
+    panel: {
+      surface: 'frosted-glass',
+      density: 'compact',
+      typography: 'technical-sans',
+    },
+  });
+  assert.equal(overlay.entries.find((entry) => entry.kind === 'catastrophe').hudStyle.visualMode, 'tactical-dark');
+});

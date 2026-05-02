@@ -228,6 +228,34 @@ function buildTurnProgression(state, progressionByRegion) {
   };
 }
 
+function buildTacticalClimateTheme(regions, catastropheEntries) {
+  const criticalCount = regions.filter((region) => region.strategicImpact === 'critical').length;
+
+  return {
+    visualMode: 'tactical-dark',
+    className: 'climate-hud climate-hud--pax-dark',
+    palette: {
+      background: '#020817',
+      glass: 'rgba(3, 10, 22, 0.72)',
+      border: 'rgba(125, 211, 252, 0.24)',
+      accent: criticalCount > 0 ? '#f59e0b' : '#67e8f9',
+      danger: '#fb7185',
+      text: '#e2e8f0',
+    },
+    layers: {
+      regionFill: 'low-opacity-season-wash',
+      anomalyGlyphs: 'minimal-cyan-amber-markers',
+      catastropheRings: catastropheEntries.length > 0 ? 'thin-glowing-alert-rings' : 'standby-grid',
+      coordinateGrid: true,
+    },
+    panel: {
+      surface: 'frosted-glass',
+      density: 'compact',
+      typography: 'technical-sans',
+    },
+  };
+}
+
 function buildRegionalRiskMode(regions) {
   return regions.map((region) => ({
     regionId: region.regionId,
@@ -320,9 +348,10 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     ...requireObject(normalizedOptions.anomalyStyleByType ?? {}, 'ClimateMapOverlay anomalyStyleByType'),
   };
   const progressionByRegion = requireObject(normalizedOptions.progressionByRegion ?? {}, 'ClimateMapOverlay progressionByRegion');
+  const tacticalHud = Boolean(normalizedOptions.tacticalHud);
   const catastropheEntries = buildCatastropheMapOverlay(
     normalizedOptions.catastrophes ?? [],
-    { styleBySeverity: normalizedOptions.styleBySeverity ?? {} },
+    { styleBySeverity: normalizedOptions.styleBySeverity ?? {}, tacticalHud },
   ).map((entry) => ({
     ...entry,
     kind: 'catastrophe',
@@ -382,6 +411,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     catastropheZones: buildCatastropheZones(catastropheEntries),
     regionalRiskMode: buildRegionalRiskMode(regions),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
+    ...(tacticalHud ? { tacticalTheme: buildTacticalClimateTheme(regions, catastropheEntries) } : {}),
     metrics: {
       regionCount: states.length,
       seasonCount: states.length,
