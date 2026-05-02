@@ -1,4 +1,6 @@
 import { Province } from '../../domain/war/Province.js';
+import { buildCultureLayerPanel } from '../../ui/culture/buildCultureLayerPanel.js';
+import { buildCultureMapOverlay } from '../../ui/culture/buildCultureMapOverlay.js';
 
 const DEFAULT_SEED = 'historia-alpha-strategic-map-v1';
 const DEFAULT_WIDTH = 100;
@@ -126,6 +128,142 @@ function normalizeCollection(value, fallback, label) {
   }
 
   return value;
+}
+
+
+function normalizeTextArray(values, label) {
+  if (!Array.isArray(values)) {
+    throw new TypeError(`${label} must be an array.`);
+  }
+
+  return [...new Set(values.map((value) => requireText(value, label)))].sort();
+}
+
+function normalizeCulturePayload(culturePayload = {}) {
+  const payload = requireOptions(culturePayload);
+
+  return {
+    cultures: normalizeCollection(payload.cultures, [], 'GenerateStrategicMap culturePayload.cultures'),
+    researchStates: normalizeCollection(payload.researchStates, [], 'GenerateStrategicMap culturePayload.researchStates'),
+    historicalEvents: normalizeCollection(payload.historicalEvents, [], 'GenerateStrategicMap culturePayload.historicalEvents'),
+  };
+}
+
+function normalizeRegionIdsByCulture(cultures, explicitRegionIdsByCulture) {
+  const regionIdsByCulture = {};
+  const rawRegionIdsByCulture = requireOptions(explicitRegionIdsByCulture ?? {});
+
+  for (const [cultureId, regionIds] of Object.entries(rawRegionIdsByCulture)) {
+    regionIdsByCulture[requireText(cultureId, 'GenerateStrategicMap regionIdsByCulture cultureId')] = normalizeTextArray(
+      regionIds,
+      `GenerateStrategicMap regionIdsByCulture.${cultureId}`,
+    );
+  }
+
+  for (const culture of cultures) {
+    const cultureId = requireText(culture.id, 'GenerateStrategicMap culture id');
+
+    if (regionIdsByCulture[cultureId]) {
+      continue;
+    }
+
+    const inferredRegionIds = culture.regionIds ?? culture.provinceIds ?? (culture.homeRegionId ? [culture.homeRegionId] : []);
+    regionIdsByCulture[cultureId] = normalizeTextArray(
+      inferredRegionIds,
+      `GenerateStrategicMap ${cultureId} regionIds`,
+    );
+  }
+
+  return Object.fromEntries(
+    Object.entries(regionIdsByCulture)
+      .filter(([, regionIds]) => regionIds.length > 0)
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
+function groupByCultureId(items, label) {
+  return items.reduce((groups, item) => {
+    const normalizedItem = requireOptions(item);
+    const affectedCultureIds = normalizedItem.affectedCultureIds;
+
+    if (affectedCultureIds !== undefined) {
+      for (const cultureId of normalizeTextArray(affectedCultureIds, `GenerateStrategicMap ${label}.affectedCultureIds`)) {
+        groups[cultureId] = [...(groups[cultureId] ?? []), normalizedItem];
+      }
+
+      return groups;
+    }
+
+    if (normalizedItem.cultureId !== undefined) {
+      const cultureId = requireText(normalizedItem.cultureId, `GenerateStrategicMap ${label}.cultureId`);
+      groups[cultureId] = [...(groups[cultureId] ?? []), normalizedItem];
+    }
+
+    return groups;
+  }, {});
+}
+
+function buildCultureSeeds(cultures, regionIdsByCulture, researchStatesByCulture, historicalEventsByCulture) {
+  return cultures
+    .map((culture) => {
+      const cultureId = requireText(culture.id, 'GenerateStrategicMap culture id');
+      const cultureResearchStates = researchStatesByCulture[cultureId] ?? [];
+      const cultureHistoricalEvents = historicalEventsByCulture[cultureId] ?? [];
+
+      return {
+        cultureId,
+        cultureName: String(culture.name ?? cultureId).trim() || cultureId,
+        regionIds: regionIdsByCulture[cultureId] ?? [],
+        discoveryIds: [...new Set([
+          ...cultureResearchStates.flatMap((researchState) => researchState.discoveredConceptIds ?? []),
+          ...cultureHistoricalEvents.flatMap((historicalEvent) => historicalEvent.discoveryIds ?? []),
+        ].map((discoveryId) => requireText(discoveryId, `GenerateStrategicMap ${cultureId} discoveryId`)))].sort(),
+        researchStateIds: cultureResearchStates.map((researchState) => requireText(
+          researchState.id,
+          `GenerateStrategicMap ${cultureId} researchState id`,
+        )).sort(),
+        historicalEventIds: cultureHistoricalEvents.map((historicalEvent) => requireText(
+          historicalEvent.id,
+          `GenerateStrategicMap ${cultureId} historicalEvent id`,
+        )).sort(),
+      };
+    })
+    .filter((seed) => seed.regionIds.length > 0)
+    .sort((left, right) => left.cultureId.localeCompare(right.cultureId));
+}
+
+function buildCultureMapBusinessData(culturePayload, options) {
+  const normalizedCulturePayload = normalizeCulturePayload(culturePayload);
+  const regionIdsByCulture = normalizeRegionIdsByCulture(
+    normalizedCulturePayload.cultures,
+    options.regionIdsByCulture,
+  );
+  const overlay = buildCultureMapOverlay(normalizedCulturePayload, {
+    ...(options.cultureOverlay ?? {}),
+    regionIdsByCulture,
+  });
+  const researchStatesByCulture = groupByCultureId(normalizedCulturePayload.researchStates, 'researchStates');
+  const historicalEventsByCulture = groupByCultureId(normalizedCulturePayload.historicalEvents, 'historicalEvents');
+  const panel = buildCultureLayerPanel(overlay, {
+    ...(options.cultureLayerPanel ?? {}),
+    selectedRegionId: options.selectedRegionId,
+    selectedCultureId: options.selectedCultureId,
+    activeFilter: options.activeFilter,
+    researchStatesByCulture,
+    historicalEventsByCulture,
+  });
+
+  return {
+    regionIdsByCulture,
+    overlay,
+    panel,
+    seeds: buildCultureSeeds(
+      normalizedCulturePayload.cultures,
+      regionIdsByCulture,
+      researchStatesByCulture,
+      historicalEventsByCulture,
+    ),
+  };
 }
 
 function hashSeed(seed) {
@@ -262,6 +400,8 @@ export class GenerateStrategicMap {
       });
     }).sort((left, right) => left.id.localeCompare(right.id));
 
+    const culture = buildCultureMapBusinessData(normalizedOptions.culturePayload, normalizedOptions);
+
     return {
       seed,
       width: normalizedOptions.width ?? DEFAULT_WIDTH,
@@ -276,6 +416,16 @@ export class GenerateStrategicMap {
       factionMetaById: Object.fromEntries(factions.map((faction) => [faction.id, {
         label: faction.label,
       }])),
+      overlays: {
+        culture: culture.overlay,
+      },
+      panels: {
+        culture: culture.panel,
+      },
+      businessData: {
+        regionIdsByCulture: culture.regionIdsByCulture,
+        cultureSeeds: culture.seeds,
+      },
     };
   }
 }
