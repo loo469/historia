@@ -1532,6 +1532,69 @@ function renderIntrigueSidePanel(intrigueView) {
   `;
 }
 
+
+function getEconomyPanelTone(row) {
+  if (!row) {
+    return 'neutral';
+  }
+
+  return row.tensionLevel === 'high' ? 'danger' : row.tensionLevel === 'medium' ? 'warning' : 'stable';
+}
+
+function renderEconomyKpiStrip(economyView) {
+  const routeEfficiency = economyView.overlay.metrics.routeCount === 0
+    ? 0
+    : Math.round((economyView.overlay.metrics.activeRouteCount / economyView.overlay.metrics.routeCount) * 100);
+  const averageStock = economyView.overlay.metrics.cityCount === 0
+    ? 0
+    : Math.round(economyView.overlay.metrics.totalStock / economyView.overlay.metrics.cityCount);
+
+  return `
+    <div class="economy-kpi-strip" aria-label="Indicateurs économie">
+      <div class="economy-kpi economy-kpi--cyan"><span>Villes</span><strong>${economyView.overlay.metrics.cityCount}</strong><small>nœuds suivis</small></div>
+      <div class="economy-kpi economy-kpi--amber"><span>Réseau actif</span><strong>${routeEfficiency}%</strong><small>${economyView.overlay.metrics.activeRouteCount}/${economyView.overlay.metrics.routeCount} routes</small></div>
+      <div class="economy-kpi economy-kpi--red"><span>Tensions fortes</span><strong>${economyView.comparison.metrics.highTensionCount}</strong><small>alertes stock</small></div>
+      <div class="economy-kpi economy-kpi--slate"><span>Stock moyen</span><strong>${averageStock}</strong><small>unités/ville</small></div>
+    </div>
+  `;
+}
+
+function renderEconomyFocusPanel(economyView) {
+  const selectedCity = economyView.overlay.cities.find((city) => city.cityId === state.selectedCityId) ?? economyView.overlay.cities[0];
+
+  if (!selectedCity) {
+    return '';
+  }
+
+  const stockPanel = economyView.stockPanels[selectedCity.cityId];
+  const comparisonRow = economyView.comparison.rows.find((row) => row.cityId === selectedCity.cityId);
+  const delta = economyView.deltaByCityId[selectedCity.cityId] ?? { stockDelta: 0, stabilityDelta: 0, prosperityDelta: 0 };
+  const tone = getEconomyPanelTone(comparisonRow);
+
+  return `
+    <article class="economy-focus-panel economy-focus-panel--${tone}">
+      <div class="economy-focus-panel__header">
+        <div>
+          <span>Ville sélectionnée</span>
+          <strong>${selectedCity.cityName}</strong>
+        </div>
+        <b>${comparisonRow?.tensionLevel ?? 'low'}</b>
+      </div>
+      <div class="economy-focus-panel__grid">
+        <div><span>Stock</span><strong>${selectedCity.resources.totalStock}</strong><small>${delta.stockDelta > 0 ? '+' : ''}${delta.stockDelta}</small></div>
+        <div><span>Stabilité</span><strong>${selectedCity.stability}</strong><small>${delta.stabilityDelta > 0 ? '+' : ''}${delta.stabilityDelta}</small></div>
+        <div><span>Prospérité</span><strong>${selectedCity.prosperity}</strong><small>${delta.prosperityDelta > 0 ? '+' : ''}${delta.prosperityDelta}</small></div>
+      </div>
+      <div class="economy-focus-panel__resources">
+        ${(stockPanel?.rows ?? []).slice(0, 4).map((resource) => {
+          const hud = getResourceHud(resource.resourceId);
+          return `<span class="economy-resource-chip economy-resource-chip--${hud.tone}">${hud.glyph} ${resource.resourceId} · ${resource.currentQuantity}</span>`;
+        }).join('')}
+      </div>
+    </article>
+  `;
+}
+
 function renderEconomySidePanel(economyView, cultureView) {
   const culturePanel = renderCultureSidePanel(cultureView);
 
@@ -1558,16 +1621,13 @@ function renderEconomySidePanel(economyView, cultureView) {
 
   return `
     <section class="panel overlay-panel overlay-panel--economy">
-      <div class="panel-header">
+      <div class="panel-header economy-panel-header">
+        <p class="eyebrow">Economy HUD</p>
         <h3>Overlay actif, Économie</h3>
-        <p>${economyView.overlay.summary}</p>
+        <p>${economyView.overlay.summary} · lecture verre dépoli haute densité</p>
       </div>
-      <div class="economy-quick-stats">
-        <div class="overlay-anchor"><span>Villes</span><strong>${economyView.overlay.metrics.cityCount}</strong></div>
-        <div class="overlay-anchor"><span>Routes actives</span><strong>${economyView.overlay.metrics.activeRouteCount}/${economyView.overlay.metrics.routeCount}</strong></div>
-        <div class="overlay-anchor"><span>Tensions fortes</span><strong>${economyView.comparison.metrics.highTensionCount}</strong></div>
-        <div class="overlay-anchor"><span>Capacité</span><strong>${economyView.overlay.metrics.totalRouteCapacity}</strong></div>
-      </div>
+      ${renderEconomyKpiStrip(economyView)}
+      ${renderEconomyFocusPanel(economyView)}
       <div class="economy-route-list">
         ${economyView.overlay.routes.map((route) => {
           const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
@@ -1580,9 +1640,12 @@ function renderEconomySidePanel(economyView, cultureView) {
 
           return `
             <article class="economy-route-card ${route.active ? '' : 'is-inactive'} ${route.transportMode === 'river' ? 'is-river' : route.transportMode === 'sea' ? 'is-sea' : 'is-land'} ${route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'is-critical' : ''} ${tensionClass}">
-              <strong>${route.routeName}</strong>
-              <span>${route.transportMode}, risque ${route.riskLevel}</span>
-              <span>capacité ${route.totalCapacity}</span>
+              <div class="economy-route-card__header"><strong>${route.routeName}</strong><span>${getRouteHud(route).glyph}</span></div>
+              <div class="economy-route-card__stats">
+                <span>${route.transportMode}</span>
+                <span>risque ${route.riskLevel}</span>
+                <span>capacité ${route.totalCapacity}</span>
+              </div>
               ${renderRouteManifest(route)}
             </article>
           `;
@@ -1737,7 +1800,7 @@ function renderBottomTray(economyView, intrigueView, cultureView) {
                   </div>
                   <span class="tension-pill tension-pill--${row.tensionLevel}">${row.tensionLevel}</span>
                 </div>
-                <dl class="comparison-card__stats">
+                <dl class="comparison-card__stats economy-dense-stats">
                   <div><dt>Stock</dt><dd>${row.totalStock} <small>${economyView.deltaByCityId[city.cityId].stockDelta > 0 ? '+' : ''}${economyView.deltaByCityId[city.cityId].stockDelta}</small></dd></div>
                   <div><dt>Stabilité</dt><dd>${city.stability} <small>${economyView.deltaByCityId[city.cityId].stabilityDelta > 0 ? '+' : ''}${economyView.deltaByCityId[city.cityId].stabilityDelta}</small></dd></div>
                   <div><dt>Prospérité</dt><dd>${city.prosperity} <small>${economyView.deltaByCityId[city.cityId].prosperityDelta > 0 ? '+' : ''}${economyView.deltaByCityId[city.cityId].prosperityDelta}</small></dd></div>
@@ -1759,7 +1822,7 @@ function renderBottomTray(economyView, intrigueView, cultureView) {
                 <h4>${panel.cityName}</h4>
                 <p>${panel.summary}</p>
                 <ul>
-                  ${panel.rows.slice(0, 3).map((row) => `<li class="${row.status}"><span>${row.resourceId}</span><strong>${row.detail}</strong></li>`).join('')}
+                  ${panel.rows.slice(0, 3).map((row) => { const hud = getResourceHud(row.resourceId); return `<li class="${row.status}"><span>${hud.glyph} ${row.resourceId}</span><strong>${row.detail}</strong></li>`; }).join('')}
                 </ul>
               </article>
             `;
