@@ -226,6 +226,18 @@ const desiredStockByCityId = {
   'southern-crossing': { grain: 7, horses: 3, timber: 3 },
 };
 
+
+const resourceHudById = {
+  fish: { glyph: '◒', label: 'Vivres maritimes', tone: 'cyan' },
+  grain: { glyph: '▦', label: 'Grain', tone: 'amber' },
+  horses: { glyph: '♞', label: 'Remonte', tone: 'green' },
+  ore: { glyph: '◆', label: 'Minerai', tone: 'slate' },
+  timber: { glyph: '▰', label: 'Bois', tone: 'green' },
+  tools: { glyph: '⚙', label: 'Outillage', tone: 'cyan' },
+};
+
+const defaultResourceHud = { glyph: '•', label: 'Ressource', tone: 'slate' };
+
 const state = {
   turn: 1,
   seasonIndex: 0,
@@ -568,6 +580,55 @@ function getRouteStateByTurn(route) {
     active: route.id === 'southern-grainway' ? state.seasonIndex !== 3 : route.active,
     riskLevel: Math.max(0, Math.min(100, route.riskLevel + (route.id === 'ember-foundry-line' ? state.turn * 3 : state.seasonIndex === 3 ? 8 : -2))),
   });
+}
+
+
+function getResourceHud(resourceId) {
+  return resourceHudById[resourceId] ?? { ...defaultResourceHud, label: resourceId };
+}
+
+function getCityResourceHudItems(city, limit = 3) {
+  return city.resources.entries
+    .slice()
+    .sort((left, right) => right.quantity - left.quantity || left.resourceId.localeCompare(right.resourceId))
+    .slice(0, limit)
+    .map((resource) => ({
+      ...resource,
+      ...getResourceHud(resource.resourceId),
+    }));
+}
+
+function renderResourceHudBadges(city, position) {
+  const resources = getCityResourceHudItems(city);
+  const startX = position.x - ((resources.length - 1) * 3.4);
+  const y = position.y + (city.marker.size * 12.5);
+
+  return resources.map((resource, index) => {
+    const x = startX + (index * 6.8);
+    return `
+      <g class="economy-resource-glyph economy-resource-glyph--${resource.tone}" aria-label="${resource.label}: ${resource.quantity}">
+        <circle class="economy-resource-glyph__backplate" cx="${x}%" cy="${y}%" r="2.55" />
+        <text class="economy-resource-glyph__icon" x="${x}%" y="calc(${y}% + 1px)" text-anchor="middle">${resource.glyph}</text>
+      </g>
+    `;
+  }).join('');
+}
+
+function renderRouteManifest(route) {
+  const resources = route.resources.slice(0, 3).map((resource) => ({
+    ...resource,
+    ...getResourceHud(resource.resourceId),
+  }));
+
+  if (resources.length === 0) {
+    return '<div class="economy-route-card__manifest"><span class="economy-resource-chip economy-resource-chip--slate">• capacité réservée</span></div>';
+  }
+
+  return `
+    <div class="economy-route-card__manifest">
+      ${resources.map((resource) => `<span class="economy-resource-chip economy-resource-chip--${resource.tone}" title="${resource.label}">${resource.glyph} ${resource.resourceId} ${resource.capacity}</span>`).join('')}
+    </div>
+  `;
 }
 
 function getEconomyViewModel() {
@@ -944,7 +1005,8 @@ function renderEconomyMapOverlay(economyView) {
         ${isHub ? `<rect class="economy-city-hub-frame" x="calc(${position.x}% - ${city.marker.size * 9}px)" y="calc(${position.y}% - ${city.marker.size * 9}px)" width="${city.marker.size * 18}" height="${city.marker.size * 18}" rx="${city.marker.size * 4}" ry="${city.marker.size * 4}" />` : ''}
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
         ${city.capital ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">★</text>` : isHub ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">◆</text>` : ''}
-        <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 11}" />
+        ${renderResourceHudBadges(city, position)}
+        <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 12}" />
         <text class="economy-city-label economy-city-label--sr" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
         <text class="economy-city-resource economy-city-resource--sr" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
       </g>
@@ -1167,6 +1229,7 @@ function renderEconomySidePanel(economyView) {
               <strong>${route.routeName}</strong>
               <span>${route.transportMode}, risque ${route.riskLevel}</span>
               <span>capacité ${route.totalCapacity}</span>
+              ${renderRouteManifest(route)}
             </article>
           `;
         }).join('')}
@@ -1184,6 +1247,12 @@ function renderEconomySidePanel(economyView) {
               <li><span class="economy-legend-city is-hub"></span>Hub majeur</li>
               <li><span class="economy-legend-city is-warning"></span>Ville sous vigilance</li>
               <li><span class="economy-legend-ring"></span>Tension d’approvisionnement</li>
+            </ul>
+          </article>
+          <article class="economy-legend-card">
+            <strong>Glyphes ressources</strong>
+            <ul class="economy-resource-legend">
+              ${Object.entries(resourceHudById).map(([resourceId, hud]) => `<li><span class="economy-resource-chip economy-resource-chip--${hud.tone}">${hud.glyph}</span>${resourceId}</li>`).join('')}
             </ul>
           </article>
           <article class="economy-legend-card">

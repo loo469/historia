@@ -756,6 +756,52 @@ button { font: inherit; }
   opacity: 0;
 }
 .economy-city-resource { fill: #bfdbfe; }
+.economy-resource-glyph {
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(8, 15, 28, 0.65));
+}
+.economy-resource-glyph__backplate {
+  fill: rgba(8, 15, 28, 0.78);
+  stroke: rgba(226, 232, 240, 0.28);
+  stroke-width: 0.7;
+}
+.economy-resource-glyph__icon {
+  fill: #e2e8f0;
+  font-size: 3.2px;
+  font-weight: 800;
+  dominant-baseline: middle;
+}
+.economy-resource-glyph--cyan .economy-resource-glyph__backplate { stroke: rgba(56, 189, 248, 0.72); }
+.economy-resource-glyph--cyan .economy-resource-glyph__icon { fill: #7dd3fc; }
+.economy-resource-glyph--amber .economy-resource-glyph__backplate { stroke: rgba(245, 158, 11, 0.78); }
+.economy-resource-glyph--amber .economy-resource-glyph__icon { fill: #fcd34d; }
+.economy-resource-glyph--green .economy-resource-glyph__backplate { stroke: rgba(74, 222, 128, 0.72); }
+.economy-resource-glyph--green .economy-resource-glyph__icon { fill: #86efac; }
+.economy-resource-glyph--slate .economy-resource-glyph__backplate { stroke: rgba(148, 163, 184, 0.7); }
+.economy-route-card__manifest,
+.economy-resource-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.economy-resource-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(8, 15, 28, 0.62);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.economy-resource-chip--cyan { color: #7dd3fc; border-color: rgba(56, 189, 248, 0.34); }
+.economy-resource-chip--amber { color: #fcd34d; border-color: rgba(245, 158, 11, 0.36); }
+.economy-resource-chip--green { color: #86efac; border-color: rgba(74, 222, 128, 0.32); }
+.economy-resource-chip--slate { color: #cbd5e1; border-color: rgba(148, 163, 184, 0.26); }
 .intrigue-map-layer {
   position: absolute;
   inset: 0;
@@ -1549,7 +1595,8 @@ button { font: inherit; }
 }
 .economy-legend-card ul,
 .economy-legend-pill-list,
-.economy-route-legend {
+.economy-route-legend,
+.economy-resource-legend {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -1560,7 +1607,8 @@ button { font: inherit; }
 }
 .economy-legend-card li,
 .economy-legend-pill-list li,
-.economy-route-legend li {
+.economy-route-legend li,
+.economy-resource-legend li {
   display: inline-flex;
   align-items: center;
   gap: 8px;
