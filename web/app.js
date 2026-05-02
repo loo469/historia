@@ -442,8 +442,10 @@ function renderProvinceSurface(shell, focusContext) {
         const isFocused = province.selectionState.focused;
         const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
         return `
-          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}">
-            <polygon points="${provincePolygonById[province.provinceId]}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};"></polygon>
+          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
+            <polygon class="province-surface__glow" points="${provincePolygonById[province.provinceId]}"></polygon>
+            <polygon class="province-surface__core" points="${provincePolygonById[province.provinceId]}"></polygon>
+            <polygon class="province-surface__hairline" points="${provincePolygonById[province.provinceId]}"></polygon>
           </g>
         `;
       }).join('')}
