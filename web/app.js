@@ -9,6 +9,7 @@ import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonP
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
+import { buildMapLauncherViewModel } from '../src/ui/launcher/buildMapLauncherViewModel.js';
 
 const culturePayload = {
   cultures: [
@@ -111,6 +112,74 @@ const factionMetaById = strategicMap.factionMetaById;
 const provinceLayouts = strategicMap.provinceLayouts;
 const provincePolygonById = strategicMap.provincePolygons;
 const provinces = strategicMap.provinces;
+
+const cultureDiscoveryCount = new Set([
+  ...culturePayload.researchStates.flatMap((researchState) => researchState.discoveredConceptIds),
+  ...culturePayload.historicalEvents.flatMap((event) => event.discoveryIds),
+]).size;
+
+const mapSelections = [
+  {
+    id: 'continental-theater',
+    title: 'Théâtre continental prototype',
+    eyebrow: 'Carte jouable visible',
+    summary: 'Six provinces, fronts contestés et overlays déjà raccordés pour entrer vite en partie.',
+    status: 'Prête à jouer',
+    cultureCount: culturePayload.cultures.length,
+    discoveryCount: cultureDiscoveryCount,
+    provinceCount: provinces.length,
+    recommendedOverlay: 'culture-overlay',
+    initialProvinceId: 'river-gate',
+    previewTags: ['Culture', 'Découvertes', 'Économie', 'Intrigue'],
+    detailLines: ['Carte stratégique visible immédiatement', 'Focus initial sur la Porte du Fleuve', 'Économie visible: villes, stocks et routes dès le launcher'],
+    economy: {
+      cityCount: 4,
+      routeCount: 3,
+      activeRouteCount: 2,
+      totalStock: 67,
+      totalCapacity: 32,
+      pressureLabel: 'Ligne des fonderies · risque 61',
+      resources: [
+        { resourceId: 'grain', label: 'Grain', quantity: 31 },
+        { resourceId: 'fish', label: 'Vivres maritimes', quantity: 19 },
+        { resourceId: 'timber', label: 'Bois', quantity: 17 },
+        { resourceId: 'ore', label: 'Minerai', quantity: 16 },
+        { resourceId: 'tools', label: 'Outillage', quantity: 10 },
+      ],
+      visibleCities: ['Port de Couronne', 'Porte du Fleuve', 'Forge des Plaines', 'Passage du Sud'],
+      routeNames: ['Artère fluviale', 'Ligne des fonderies', 'Route des moissons'],
+    },
+  },
+  {
+    id: 'aurora-archives',
+    title: 'Archives d’Aurora',
+    eyebrow: 'Focus culturel',
+    summary: 'Même prototype, cadré sur Couronne pour tester la lecture des cultures et découvertes.',
+    status: 'Prototype lisible',
+    cultureCount: culturePayload.cultures.length,
+    discoveryCount: cultureDiscoveryCount,
+    provinceCount: provinces.length,
+    recommendedOverlay: 'culture-overlay',
+    initialProvinceId: 'crown-heart',
+    previewTags: ['Archives', 'Recherche active', 'Routes célestes', 'Port capital'],
+    detailLines: ['Démarre sur Coeur de Couronne', 'Met en avant les découvertes savantes', 'Stocks portuaires visibles avant entrée en jeu'],
+    economy: {
+      cityCount: 4,
+      routeCount: 3,
+      activeRouteCount: 2,
+      totalStock: 67,
+      totalCapacity: 32,
+      pressureLabel: 'Artère fluviale · risque 24',
+      resources: [
+        { resourceId: 'fish', label: 'Vivres maritimes', quantity: 19 },
+        { resourceId: 'grain', label: 'Grain', quantity: 31 },
+        { resourceId: 'timber', label: 'Bois', quantity: 17 },
+      ],
+      visibleCities: ['Port de Couronne', 'Porte du Fleuve'],
+      routeNames: ['Artère fluviale', 'Route des moissons'],
+    },
+  },
+];
 
 const overlayLabels = {
   'climate-overlay': 'Climat',
@@ -342,6 +411,8 @@ const routeHudByMode = {
 const defaultRouteHud = { glyph: '—', label: 'Route logistique', tone: 'slate' };
 
 const state = {
+  screen: 'launcher',
+  selectedMapId: 'continental-theater',
   turn: 1,
   seasonIndex: 0,
   focusedProvinceId: 'crown-heart',
@@ -2356,8 +2427,108 @@ function renderMobileToolbar() {
   `;
 }
 
+function getMapSelection(mapId = state.selectedMapId) {
+  return mapSelections.find((mapSelection) => mapSelection.id === mapId) ?? mapSelections[0];
+}
+
+function applyMapSelection(mapId) {
+  const mapSelection = getMapSelection(mapId);
+
+  state.selectedMapId = mapSelection.id;
+  state.screen = 'game';
+  state.activeOverlaySlot = mapSelection.recommendedOverlay;
+  state.focusedProvinceId = mapSelection.initialProvinceId;
+  state.selectedProvinceId = mapSelection.initialProvinceId;
+  state.popupProvinceId = mapSelection.initialProvinceId;
+  state.activeOverlaySlot = mapSelection.id === 'continental-theater' ? 'economy-overlay' : mapSelection.recommendedOverlay;
+  state.selectedCityId = mapSelection.id === 'aurora-archives' ? 'crown-port' : 'river-gate-city';
+  state.hoveredCityId = state.selectedCityId;
+  state.comparedCityIds = [state.selectedCityId, ...state.comparedCityIds.filter((cityId) => cityId !== state.selectedCityId)].slice(0, 3);
+  state.mapZoom = 1;
+  state.mapPanX = 0;
+  state.mapPanY = 0;
+}
+
+function renderLauncher() {
+  const launcher = buildMapLauncherViewModel(mapSelections, state.selectedMapId);
+  const selectedOption = launcher.selectedOption;
+
+  document.querySelector('#app').innerHTML = `
+    <main class="launcher-root" aria-labelledby="launcher-title">
+      <section class="launcher-hero panel">
+        <div>
+          <p class="eyebrow">Historia launcher</p>
+          <h1 id="launcher-title">${launcher.title}</h1>
+          <p class="hero-copy">${launcher.subtitle}</p>
+        </div>
+        <div class="launcher-selected-card" aria-live="polite">
+          <span>${selectedOption.status}</span>
+          <strong>${selectedOption.title}</strong>
+          <small>${selectedOption.signalLabel}</small>
+        </div>
+      </section>
+
+      <section class="launcher-grid" aria-label="Cartes disponibles">
+        ${launcher.options.map((option) => `
+          <article class="launcher-card panel ${option.selected ? 'is-selected' : ''}">
+            <p class="eyebrow">${option.eyebrow}</p>
+            <h2>${option.title}</h2>
+            <p>${option.summary}</p>
+            <div class="launcher-card__stats">
+              <span><strong>${option.provinceCount}</strong> provinces</span>
+              <span><strong>${option.cultureCount}</strong> cultures</span>
+              <span><strong>${option.discoveryCount}</strong> découvertes</span>
+              <span><strong>${option.economy.cityCount}</strong> villes</span>
+              <span><strong>${option.economy.routeCount}</strong> routes</span>
+              <span><strong>${option.economy.totalStock}</strong> stocks</span>
+            </div>
+            <div class="launcher-card__economy" aria-label="Données économie disponibles">
+              <strong>Économie visible après sélection</strong>
+              <p>${option.economy.pressureLabel} · capacité ${option.economy.totalCapacity}</p>
+              <div class="launcher-card__resources">
+                ${option.economy.resources.map((resource) => `<span title="${resource.label}">${resource.resourceId} ${resource.quantity}</span>`).join('')}
+              </div>
+              <small>${option.economy.visibleCities.join(' · ')}</small>
+            </div>
+            <ul class="launcher-card__details">
+              ${option.detailLines.map((line) => `<li>${line}</li>`).join('')}
+            </ul>
+            <div class="launcher-card__tags">
+              ${option.previewTags.map((tag) => `<span>${tag}</span>`).join('')}
+            </div>
+            <div class="launcher-card__actions">
+              <button type="button" class="launcher-select-button" data-select-map="${option.id}">${option.selected ? 'Sélectionnée' : 'Sélectionner'}</button>
+              <button type="button" class="turn-button" data-start-map="${option.id}">Entrer en jeu</button>
+            </div>
+          </article>
+        `).join('')}
+      </section>
+    </main>
+  `;
+
+  document.querySelectorAll('[data-select-map]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.selectedMapId = element.dataset.selectMap;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-start-map]').forEach((element) => {
+    element.addEventListener('click', () => {
+      applyMapSelection(element.dataset.startMap);
+      render();
+    });
+  });
+}
+
 function render() {
+  if (state.screen === 'launcher') {
+    renderLauncher();
+    return;
+  }
+
   const shell = getShell();
+  const selectedMap = getMapSelection();
   const economyView = getEconomyViewModel();
   const focusContext = getFocusContext(shell);
   const intrigueView = getIntrigueViewModel();
@@ -2367,9 +2538,10 @@ function render() {
     <main class="shell-root">
       <section class="hero panel">
         <div>
-          <p class="eyebrow">Alpha war room</p>
+          <p class="eyebrow">Alpha war room · ${selectedMap.title}</p>
           <h1>${shell.title}</h1>
           <p class="hero-copy">${shell.subtitle}</p>
+          <button type="button" class="launcher-return-button" data-open-launcher="true">Changer de carte</button>
           <div class="turn-toolbar">
             <div class="turn-indicator">
               <strong>Tour ${state.turn}</strong>
@@ -2424,6 +2596,13 @@ function render() {
       </section>
     </main>
   `;
+
+  document.querySelectorAll('[data-open-launcher]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.screen = 'launcher';
+      render();
+    });
+  });
 
   document.querySelectorAll('[data-province-id]').forEach((element) => {
     element.addEventListener('mouseenter', () => {
