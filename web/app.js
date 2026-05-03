@@ -1668,8 +1668,17 @@ function renderIntrigueSidePanel(intrigueView) {
       </section>
       <section class="intrigue-alert-panel intrigue-alert-panel--${intrigueView.alertPanel.tone}" aria-label="Lecture du niveau d'alerte">
         <div class="intrigue-alert-panel__header">
-          <strong>${intrigueView.alertPanel.icon} ${intrigueView.alertPanel.title}</strong>
-          <span>${intrigueView.alertPanel.summary}</span>
+          <div>
+            <span class="intrigue-alert-panel__eyebrow">Niveau d'alerte Delta</span>
+            <strong>${intrigueView.alertPanel.icon} ${intrigueView.alertPanel.title}</strong>
+          </div>
+          <span class="intrigue-alert-panel__summary">${intrigueView.alertPanel.summary}</span>
+        </div>
+        <div class="intrigue-risk-meter" aria-label="Hiérarchie de risque">
+          <span class="intrigue-risk-meter__segment is-watch"></span>
+          <span class="intrigue-risk-meter__segment is-warning"></span>
+          <span class="intrigue-risk-meter__segment is-danger"></span>
+          <small>${intrigueView.metrics.exposedCellCount} cellules exposées · ${intrigueView.metrics.activeSabotageCount} sabotages</small>
         </div>
         <p>${intrigueView.alertPanel.guidance}</p>
         <ul class="intrigue-alert-panel__drivers">
@@ -1678,8 +1687,11 @@ function renderIntrigueSidePanel(intrigueView) {
         <div class="intrigue-alert-panel__zones">
           ${intrigueView.alertPanel.watchZones.map((zone) => `
             <article class="intrigue-alert-zone intrigue-alert-zone--${zone.severity}">
-              <strong>${zone.locationName}</strong>
-              <span>${zone.reason}</span>
+              <i aria-hidden="true"></i>
+              <div>
+                <strong>${zone.locationName}</strong>
+                <span>${zone.reason}</span>
+              </div>
             </article>
           `).join('')}
         </div>
@@ -1947,9 +1959,16 @@ function renderBottomTray(economyView, intrigueView, cultureView) {
           </div>
           <div class="bottom-tray-stocks">
             ${intrigueView.panels.operations.slice(0, 4).map((operation) => `
-              <article class="stock-mini-card intrigue-operation-card ${intrigueView.selectedOperation?.operationId === operation.operationId ? 'is-selected' : ''}" data-intrigue-operation-id="${operation.operationId}">
+              <article class="stock-mini-card intrigue-operation-card intrigue-operation-card--${operation.tone} ${intrigueView.selectedOperation?.operationId === operation.operationId ? 'is-selected' : ''}" data-intrigue-operation-id="${operation.operationId}">
+                <div class="intrigue-operation-card__header">
+                  <span>${operation.type}</span>
+                  <strong>R${Math.ceil(operation.detectionRisk / 25)}</strong>
+                </div>
                 <h4>${operation.locationName}</h4>
                 <p>${operation.objective}</p>
+                <div class="intrigue-operation-card__progress" aria-label="Progression ${operation.progress}%">
+                  <i style="width:${operation.progress}%"></i>
+                </div>
                 <ul>
                   <li><span>Phase</span><strong>${operation.phase}</strong></li>
                   <li><span>Progression</span><strong>${operation.progress}%</strong></li>
@@ -1973,6 +1992,10 @@ function renderBottomTray(economyView, intrigueView, cultureView) {
               <div><span>Progression</span><strong>${intrigueView.selectedOperation.progress}%</strong></div>
               <div><span>Heat</span><strong>${intrigueView.selectedOperation.heat}</strong></div>
               <div><span>Risque</span><strong>${intrigueView.selectedOperation.detectionRisk}</strong></div>
+            </div>
+            <div class="intrigue-operation-detail__directive">
+              <span>Directive covert-op</span>
+              <strong>${intrigueView.selectedOperation.tone === 'danger' ? 'Réduire signature terrain' : 'Maintenir couverture et cadence'}</strong>
             </div>
           </section>
         ` : ''}
