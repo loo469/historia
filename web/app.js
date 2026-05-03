@@ -131,7 +131,24 @@ const mapSelections = [
     recommendedOverlay: 'culture-overlay',
     initialProvinceId: 'river-gate',
     previewTags: ['Culture', 'Découvertes', 'Économie', 'Intrigue'],
-    detailLines: ['Carte stratégique visible immédiatement', 'Focus initial sur la Porte du Fleuve', 'Couches culture/découvertes activées par défaut'],
+    detailLines: ['Carte stratégique visible immédiatement', 'Focus initial sur la Porte du Fleuve', 'Économie visible: villes, stocks et routes dès le launcher'],
+    economy: {
+      cityCount: 4,
+      routeCount: 3,
+      activeRouteCount: 2,
+      totalStock: 67,
+      totalCapacity: 32,
+      pressureLabel: 'Ligne des fonderies · risque 61',
+      resources: [
+        { resourceId: 'grain', label: 'Grain', quantity: 31 },
+        { resourceId: 'fish', label: 'Vivres maritimes', quantity: 19 },
+        { resourceId: 'timber', label: 'Bois', quantity: 17 },
+        { resourceId: 'ore', label: 'Minerai', quantity: 16 },
+        { resourceId: 'tools', label: 'Outillage', quantity: 10 },
+      ],
+      visibleCities: ['Port de Couronne', 'Porte du Fleuve', 'Forge des Plaines', 'Passage du Sud'],
+      routeNames: ['Artère fluviale', 'Ligne des fonderies', 'Route des moissons'],
+    },
   },
   {
     id: 'aurora-archives',
@@ -144,8 +161,23 @@ const mapSelections = [
     provinceCount: provinces.length,
     recommendedOverlay: 'culture-overlay',
     initialProvinceId: 'crown-heart',
-    previewTags: ['Archives', 'Recherche active', 'Routes célestes'],
-    detailLines: ['Démarre sur Coeur de Couronne', 'Met en avant les découvertes savantes', 'Compatible avec le launcher Alpha'],
+    previewTags: ['Archives', 'Recherche active', 'Routes célestes', 'Port capital'],
+    detailLines: ['Démarre sur Coeur de Couronne', 'Met en avant les découvertes savantes', 'Stocks portuaires visibles avant entrée en jeu'],
+    economy: {
+      cityCount: 4,
+      routeCount: 3,
+      activeRouteCount: 2,
+      totalStock: 67,
+      totalCapacity: 32,
+      pressureLabel: 'Artère fluviale · risque 24',
+      resources: [
+        { resourceId: 'fish', label: 'Vivres maritimes', quantity: 19 },
+        { resourceId: 'grain', label: 'Grain', quantity: 31 },
+        { resourceId: 'timber', label: 'Bois', quantity: 17 },
+      ],
+      visibleCities: ['Port de Couronne', 'Porte du Fleuve'],
+      routeNames: ['Artère fluviale', 'Route des moissons'],
+    },
   },
 ];
 
@@ -2408,6 +2440,10 @@ function applyMapSelection(mapId) {
   state.focusedProvinceId = mapSelection.initialProvinceId;
   state.selectedProvinceId = mapSelection.initialProvinceId;
   state.popupProvinceId = mapSelection.initialProvinceId;
+  state.activeOverlaySlot = mapSelection.id === 'continental-theater' ? 'economy-overlay' : mapSelection.recommendedOverlay;
+  state.selectedCityId = mapSelection.id === 'aurora-archives' ? 'crown-port' : 'river-gate-city';
+  state.hoveredCityId = state.selectedCityId;
+  state.comparedCityIds = [state.selectedCityId, ...state.comparedCityIds.filter((cityId) => cityId !== state.selectedCityId)].slice(0, 3);
   state.mapZoom = 1;
   state.mapPanX = 0;
   state.mapPanY = 0;
@@ -2442,6 +2478,17 @@ function renderLauncher() {
               <span><strong>${option.provinceCount}</strong> provinces</span>
               <span><strong>${option.cultureCount}</strong> cultures</span>
               <span><strong>${option.discoveryCount}</strong> découvertes</span>
+              <span><strong>${option.economy.cityCount}</strong> villes</span>
+              <span><strong>${option.economy.routeCount}</strong> routes</span>
+              <span><strong>${option.economy.totalStock}</strong> stocks</span>
+            </div>
+            <div class="launcher-card__economy" aria-label="Données économie disponibles">
+              <strong>Économie visible après sélection</strong>
+              <p>${option.economy.pressureLabel} · capacité ${option.economy.totalCapacity}</p>
+              <div class="launcher-card__resources">
+                ${option.economy.resources.map((resource) => `<span title="${resource.label}">${resource.resourceId} ${resource.quantity}</span>`).join('')}
+              </div>
+              <small>${option.economy.visibleCities.join(' · ')}</small>
             </div>
             <ul class="launcher-card__details">
               ${option.detailLines.map((line) => `<li>${line}</li>`).join('')}

@@ -3039,6 +3039,31 @@ button { font: inherit; }
   color: var(--muted);
 }
 .launcher-card__stats strong { display: block; color: var(--text); font-size: 24px; }
+.launcher-card__economy {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(251, 191, 36, 0.16);
+}
+.launcher-card__economy strong { color: #fde68a; }
+.launcher-card__economy p,
+.launcher-card__economy small { color: var(--muted); margin: 0; }
+.launcher-card__resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.launcher-card__resources span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #cffafe;
+  background: rgba(8, 145, 178, 0.2);
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  font-size: 12px;
+  font-weight: 800;
+}
 .launcher-card__details {
   padding-left: 18px;
   line-height: 1.6;

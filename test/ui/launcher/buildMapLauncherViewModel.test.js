@@ -22,11 +22,40 @@ describe('buildMapLauncherViewModel', () => {
         cultureCount: 2,
         discoveryCount: 4,
         provinceCount: 3,
+        economy: {
+          cityCount: 2,
+          routeCount: 1,
+          activeRouteCount: 1,
+          totalStock: 18,
+          totalCapacity: 7,
+          pressureLabel: 'Route des gués · risque 31',
+          resources: [
+            { resourceId: 'grain', label: 'Grain', quantity: 12 },
+            { resourceId: 'tools', quantity: 6 },
+          ],
+          visibleCities: ['Gué du Sud', 'Marché des Bornes'],
+          routeNames: ['Route des gués'],
+        },
       },
     ], 'marches');
 
     assert.equal(viewModel.selectedMapId, 'marches');
-    assert.equal(viewModel.selectedOption.signalLabel, '2 cultures · 4 découvertes');
+    assert.equal(viewModel.selectedOption.signalLabel, '2 cultures · 4 découvertes · 2 villes · 1 route · 18 stocks');
+    assert.deepEqual(viewModel.selectedOption.economy, {
+      cityCount: 2,
+      routeCount: 1,
+      activeRouteCount: 1,
+      totalStock: 18,
+      totalCapacity: 7,
+      pressureLabel: 'Route des gués · risque 31',
+      resources: [
+        { resourceId: 'grain', label: 'Grain', quantity: 12 },
+        { resourceId: 'tools', label: 'tools', quantity: 6 },
+      ],
+      visibleCities: ['Gué du Sud', 'Marché des Bornes'],
+      routeNames: ['Route des gués'],
+      signalLabel: '2 villes · 1 route · 18 stocks',
+    });
     assert.deepEqual(viewModel.options.map((option) => option.selected), [false, true]);
   });
 
