@@ -2729,6 +2729,10 @@ function renderIntrigueSidePanel(intrigueView) {
                   </article>
                 `).join('')}
               </div>
+              <div class="intrigue-response-aftermath" aria-label="Résumé aftermath intrigue">
+                <strong>Après-coup probable</strong>
+                <p>${intrigueView.selectedProvince.drillDown.responseAftermath.summary}</p>
+              </div>
               <div class="intrigue-quick-responses" aria-label="Réponses rapides intrigue">
                 ${intrigueView.selectedProvince.drillDown.quickResponses.map((response) => `
                   <article class="intrigue-quick-response ${response.recommended ? 'is-recommended' : ''}">
@@ -2737,6 +2741,9 @@ function renderIntrigueSidePanel(intrigueView) {
                       ${response.recommended ? '<b>recommandée</b>' : ''}
                     </div>
                     <span>${response.summary}</span>
+                    <small>${response.aftermathSummary}</small>
+                    <em>${response.effect}</em>
+                    <em>${response.countermeasure}</em>
                   </article>
                 `).join('')}
               </div>

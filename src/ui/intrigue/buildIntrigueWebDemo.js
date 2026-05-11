@@ -133,7 +133,87 @@ function buildHotspotActionHints(entry, hotspot, activeOperations) {
 }
 
 
-function buildHotspotQuickResponses(entry, hotspot, activeOperations) {
+function getIntrigueCelluleState(cellule) {
+  if (!cellule) {
+    return 'aucune cellule locale';
+  }
+
+  if (cellule.status === 'compromised' || cellule.exposure >= 70) {
+    return 'cellule compromise';
+  }
+
+  if (cellule.exposure >= 45) {
+    return 'cellule exposée';
+  }
+
+  if (cellule.sleeper || cellule.status === 'dormant') {
+    return 'cellule dormante';
+  }
+
+  return 'cellule active';
+}
+
+function getEscalationProbabilityLabel(score) {
+  if (score >= 65) {
+    return 'élevée';
+  }
+
+  if (score >= 35) {
+    return 'moyenne';
+  }
+
+  return 'faible';
+}
+
+function buildResponseAftermath(response, entry, activeOperations, primaryCellule) {
+  const activeOperation = activeOperations[0] ?? null;
+  const celluleState = getIntrigueCelluleState(primaryCellule);
+  const baseHeat = Math.round(entry.sabotageRiskScore / 10) + (activeOperations.length * 3);
+  const activeOperationSuffix = activeOperation ? `; opération ${activeOperation.phase} ralentie` : '';
+  const aftermathByCode = {
+    contenir: {
+      cooldownTurns: 2,
+      heatGenerated: baseHeat + 8,
+      escalationScore: 44 + (entry.metrics.exposedCellCount * 12) + (entry.sabotageRiskLevel === 'high' ? 18 : 0),
+      effect: `${celluleState}: pression sécuritaire immédiate${activeOperationSuffix}`,
+      countermeasure: 'Préparer rotation de patrouilles et couverture discrète au tour suivant.',
+    },
+    infiltrer: {
+      cooldownTurns: activeOperation ? 3 : 2,
+      heatGenerated: baseHeat + 5,
+      escalationScore: 30 + (activeOperation ? 12 : 0) + (primaryCellule?.sleeper ? 6 : 0),
+      effect: `${celluleState}: réseau cartographié sans résolution automatique${activeOperationSuffix}`,
+      countermeasure: 'Limiter l’exposition des agents et vérifier les relais compromis.',
+    },
+    exposer: {
+      cooldownTurns: 1,
+      heatGenerated: baseHeat + 14,
+      escalationScore: 58 + (entry.metrics.exposedCellCount * 10),
+      effect: `${celluleState}: preuve rendue exploitable, réseau adverse alerté`,
+      countermeasure: 'Coordonner message public et sécuriser témoins avant représailles.',
+    },
+    surveiller: {
+      cooldownTurns: entry.sabotageRiskLevel === 'low' ? 1 : 0,
+      heatGenerated: Math.max(1, Math.round(baseHeat / 2)),
+      escalationScore: 12 + (entry.metrics.sabotageOperationCount * 8),
+      effect: `${celluleState}: aucun changement direct, signal maintenu visible`,
+      countermeasure: 'Recontrôler le hotspot après le prochain tour ou si la chaleur monte.',
+    },
+  };
+  const aftermath = aftermathByCode[response.code] ?? aftermathByCode.surveiller;
+  const escalationProbability = getEscalationProbabilityLabel(aftermath.escalationScore);
+
+  return {
+    cooldownTurns: aftermath.cooldownTurns,
+    heatGenerated: aftermath.heatGenerated,
+    escalationProbability,
+    celluleState,
+    effect: aftermath.effect,
+    countermeasure: aftermath.countermeasure,
+  };
+}
+
+function buildHotspotQuickResponses(entry, hotspot, activeOperations, primaryCellule = null) {
   const responses = [];
   const riskLabel = entry.sabotageRiskLevel === 'high' ? 'élevé' : entry.sabotageRiskLevel === 'medium' ? 'moyen' : 'faible';
   const hasImmediateThreat = hotspot.severity === 'critical' || entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0;
@@ -180,10 +260,53 @@ function buildHotspotQuickResponses(entry, hotspot, activeOperations) {
     benefit: 'Maintient le signal visible sans encombrer la carte',
   });
 
-  return responses.slice(0, 3).map((response) => ({
-    ...response,
-    summary: `${response.cost} · ${response.risk} · ${response.benefit}`,
-  }));
+  return responses.slice(0, 3).map((response) => {
+    const aftermath = buildResponseAftermath(response, entry, activeOperations, primaryCellule);
+
+    return {
+      ...response,
+      cooldownTurns: aftermath.cooldownTurns,
+      heatGenerated: aftermath.heatGenerated,
+      escalationProbability: aftermath.escalationProbability,
+      effect: aftermath.effect,
+      countermeasure: aftermath.countermeasure,
+      summary: `${response.cost} · ${response.risk} · ${response.benefit}`,
+      aftermathSummary: `Cooldown ${aftermath.cooldownTurns} tour${aftermath.cooldownTurns > 1 ? 's' : ''} · chaleur +${aftermath.heatGenerated} · escalade ${aftermath.escalationProbability}`,
+    };
+  });
+}
+
+function buildResponseAftermathSummary(quickResponses) {
+  const escalationRank = { faible: 1, moyenne: 2, élevée: 3 };
+  const effectivenessRank = { contenir: 4, exposer: 3, infiltrer: 2, surveiller: 1 };
+  const safest = quickResponses.slice().sort((left, right) => {
+    const leftEscalation = escalationRank[left.escalationProbability] ?? 0;
+    const rightEscalation = escalationRank[right.escalationProbability] ?? 0;
+
+    return leftEscalation - rightEscalation
+      || left.heatGenerated - right.heatGenerated
+      || left.cooldownTurns - right.cooldownTurns
+      || left.code.localeCompare(right.code);
+  })[0] ?? null;
+  const mostEffective = quickResponses.slice().sort((left, right) => {
+    const leftEffectiveness = effectivenessRank[left.code] ?? 0;
+    const rightEffectiveness = effectivenessRank[right.code] ?? 0;
+
+    return rightEffectiveness - leftEffectiveness
+      || left.cooldownTurns - right.cooldownTurns
+      || left.code.localeCompare(right.code);
+  })[0] ?? null;
+  const retaliationRank = Math.max(0, ...quickResponses.map((response) => escalationRank[response.escalationProbability] ?? 0));
+  const retaliationRisk = retaliationRank >= 3 ? 'élevé' : retaliationRank >= 2 ? 'modéré' : 'faible';
+
+  return {
+    safestResponseCode: safest?.code ?? null,
+    mostEffectiveResponseCode: mostEffective?.code ?? null,
+    retaliationRisk,
+    summary: safest && mostEffective
+      ? `Plus sûre: ${safest.label}; plus efficace: ${mostEffective.label}; représailles ${retaliationRisk}.`
+      : 'Aucune réponse rapide disponible pour ce hotspot.',
+  };
 }
 
 function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
@@ -220,7 +343,9 @@ function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
     activeOperations.length > 0 ? `${activeOperations.length} opération${activeOperations.length > 1 ? 's' : ''} active${activeOperations.length > 1 ? 's' : ''}` : null,
   ].filter(Boolean);
   const actionHints = buildHotspotActionHints(entry, hotspot, activeOperations);
-  const quickResponses = buildHotspotQuickResponses(entry, hotspot, activeOperations);
+  const primaryCellule = locationCellules[0] ?? null;
+  const quickResponses = buildHotspotQuickResponses(entry, hotspot, activeOperations, primaryCellule);
+  const responseAftermath = buildResponseAftermathSummary(quickResponses);
 
   return {
     locationId: entry.locationId,
@@ -239,6 +364,7 @@ function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
     actionHints,
     recommendedResponseCode: quickResponses.find((response) => response.recommended)?.code ?? quickResponses[0]?.code ?? null,
     quickResponses,
+    responseAftermath,
   };
 }
 
