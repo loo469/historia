@@ -282,6 +282,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
       compact: true,
       copy: 'Sélectionnez une province pour comparer son climat.',
     },
+    selectedClimateTimingRecommendation: {
+      state: 'no-selection',
+      compact: true,
+      relevant: false,
+      copy: 'Sélectionnez une province pour afficher le timing climat.',
+    },
     legend: {
       title: 'Légende climat',
       compact: true,
@@ -857,5 +863,94 @@ test('buildClimateMapOverlay reports compact selected climate comparison empty s
       summary: 'logistique low, stabilité low, récoltes low',
     },
     copy: 'winter: stable',
+  });
+});
+
+test('buildClimateMapOverlay recommends climate timing from selected preview risk changes', () => {
+  const saferOverlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 33,
+      precipitationLevel: 11,
+      droughtIndex: 74,
+      anomaly: 'heatwave',
+    },
+  ], {
+    selectedRegionId: 'sunreach',
+    seasonLabels: { summer: 'Été', autumn: 'Automne' },
+    seasonPreview: {
+      season: 'autumn',
+      impactsByRegion: {
+        sunreach: { strategicImpact: 'strained', anomaly: null },
+      },
+    },
+  });
+
+  assert.deepEqual(saferOverlay.selectedClimateTimingRecommendation, {
+    state: 'ready',
+    compact: true,
+    relevant: true,
+    regionId: 'sunreach',
+    currentSeason: 'summer',
+    previewSeason: 'autumn',
+    currentRiskLevel: 'critical',
+    previewRiskLevel: 'strained',
+    direction: 'safer',
+    urgency: 'wait-for-preview',
+    tone: 'positive',
+    copy: 'Automne rend l’action plus sûre: risque critical → strained.',
+  });
+
+  const riskierOverlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'spring',
+      temperatureC: 18,
+      precipitationLevel: 42,
+      droughtIndex: 12,
+    },
+  ], {
+    selectedRegionId: 'delta',
+    seasonLabels: { spring: 'Printemps', summer: 'Été' },
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        delta: { riskLevel: 'critical', anomaly: 'drought' },
+      },
+    },
+  });
+
+  assert.equal(riskierOverlay.selectedClimateTimingRecommendation.direction, 'riskier');
+  assert.equal(riskierOverlay.selectedClimateTimingRecommendation.urgency, 'act-before-preview');
+  assert.equal(riskierOverlay.selectedClimateTimingRecommendation.copy, 'Été augmente le risque: agir avant la bascule saisonnière si possible.');
+});
+
+test('buildClimateMapOverlay provides climate timing fallback recommendations', () => {
+  assert.deepEqual(buildClimateMapOverlay([], { selectedRegionId: 'missing' }).selectedClimateTimingRecommendation, {
+    state: 'missing-climate-data',
+    compact: true,
+    relevant: false,
+    regionId: 'missing',
+    copy: 'Pas de recommandation climat: données indisponibles pour cette province.',
+  });
+
+  assert.deepEqual(buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+    },
+  ], { selectedRegionId: 'delta' }).selectedClimateTimingRecommendation, {
+    state: 'current-only',
+    compact: true,
+    relevant: false,
+    regionId: 'delta',
+    direction: 'steady',
+    urgency: 'normal',
+    tone: 'neutral',
+    copy: 'Timing climat normal: aucune contrainte notable pour cette province.',
   });
 });
