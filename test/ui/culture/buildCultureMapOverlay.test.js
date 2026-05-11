@@ -614,6 +614,92 @@ test('buildCultureMapOverlay supports plain payloads and style overrides', () =>
   assert.equal(overlay[0].zoneStyle.glow, 'sparking');
 });
 
+test('buildCultureMapOverlay can summarize overlapping culture clusters', () => {
+  const overlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-harbor',
+          name: 'Harbor Compact',
+          archetype: 'maritime',
+          primaryLanguage: 'harbor-cant',
+          valueIds: ['trade'],
+          traditionIds: ['pilots'],
+          openness: 70,
+          cohesion: 62,
+          researchDrive: 76,
+        },
+        {
+          id: 'culture-delta',
+          name: 'Delta Scribes',
+          archetype: 'scholarly',
+          primaryLanguage: 'delta-script',
+          valueIds: ['archives'],
+          traditionIds: ['flood-books'],
+          openness: 64,
+          cohesion: 58,
+          researchDrive: 72,
+        },
+      ],
+      researchStates: [
+        {
+          id: 'research-harbor',
+          cultureId: 'culture-harbor',
+          topicId: 'tidal-ledgers',
+          status: 'active',
+          progress: 50,
+          discoveredConceptIds: ['tidal-ledgers'],
+        },
+        {
+          id: 'research-delta',
+          cultureId: 'culture-delta',
+          topicId: 'flood-archives',
+          status: 'completed',
+          progress: 100,
+          completedAt: '2026-04-19T00:00:00.000Z',
+          discoveredConceptIds: ['flood-archives'],
+        },
+      ],
+      historicalEvents: [],
+    },
+    {
+      clusterSummaries: true,
+      regionIdsByCulture: {
+        'culture-harbor': ['shared-bay'],
+        'culture-delta': ['shared-bay'],
+      },
+    },
+  );
+
+  assert.equal(overlay.length, 2);
+  assert.deepEqual(overlay.map((entry) => entry.clusterSummary), [
+    {
+      clusterId: 'shared-bay:culture-cluster',
+      regionId: 'shared-bay',
+      cultureIds: ['culture-delta', 'culture-harbor'],
+      cultureNames: ['Delta Scribes', 'Harbor Compact'],
+      cultureCount: 2,
+      discoveryIds: ['flood-archives', 'tidal-ledgers'],
+      discoveryCount: 2,
+      eventCount: 0,
+      label: '2 cultures · 2 découvertes',
+      summary: 'Delta Scribes, Harbor Compact',
+    },
+    {
+      clusterId: 'shared-bay:culture-cluster',
+      regionId: 'shared-bay',
+      cultureIds: ['culture-delta', 'culture-harbor'],
+      cultureNames: ['Delta Scribes', 'Harbor Compact'],
+      cultureCount: 2,
+      discoveryIds: ['flood-archives', 'tidal-ledgers'],
+      discoveryCount: 2,
+      eventCount: 0,
+      label: '2 cultures · 2 découvertes',
+      summary: 'Delta Scribes, Harbor Compact',
+    },
+  ]);
+});
+
 test('buildCultureMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildCultureMapOverlay(null), /payload must be an object/);
   assert.throws(
