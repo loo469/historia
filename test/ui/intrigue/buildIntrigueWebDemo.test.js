@@ -133,7 +133,13 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
         cost: '2 ordres sécurité',
         risk: 'Escalade moyen',
         benefit: 'Réduit la fenêtre de sabotage immédiate',
+        cooldownTurns: 2,
+        heatGenerated: 17,
+        escalationProbability: 'moyenne',
+        effect: 'cellule compromise: pression sécuritaire immédiate; opération execution ralentie',
+        countermeasure: 'Préparer rotation de patrouilles et couverture discrète au tour suivant.',
         summary: '2 ordres sécurité · Escalade moyen · Réduit la fenêtre de sabotage immédiate',
+        aftermathSummary: 'Cooldown 2 tours · chaleur +17 · escalade moyenne',
       },
       {
         code: 'infiltrer',
@@ -142,7 +148,13 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
         cost: '1 agent disponible',
         risk: 'Chaleur opérationnelle accrue',
         benefit: 'Identifie cellule, cible ou commanditaire prioritaire',
+        cooldownTurns: 3,
+        heatGenerated: 14,
+        escalationProbability: 'moyenne',
+        effect: 'cellule compromise: réseau cartographié sans résolution automatique; opération execution ralentie',
+        countermeasure: 'Limiter l’exposition des agents et vérifier les relais compromis.',
         summary: '1 agent disponible · Chaleur opérationnelle accrue · Identifie cellule, cible ou commanditaire prioritaire',
+        aftermathSummary: 'Cooldown 3 tours · chaleur +14 · escalade moyenne',
       },
       {
         code: 'exposer',
@@ -151,9 +163,21 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
         cost: '1 preuve exploitable',
         risk: 'Réseau adverse alerté',
         benefit: 'Convertit une cellule exposée en avantage public',
+        cooldownTurns: 1,
+        heatGenerated: 23,
+        escalationProbability: 'élevée',
+        effect: 'cellule compromise: preuve rendue exploitable, réseau adverse alerté',
+        countermeasure: 'Coordonner message public et sécuriser témoins avant représailles.',
         summary: '1 preuve exploitable · Réseau adverse alerté · Convertit une cellule exposée en avantage public',
+        aftermathSummary: 'Cooldown 1 tour · chaleur +23 · escalade élevée',
       },
     ],
+    responseAftermath: {
+      safestResponseCode: 'infiltrer',
+      mostEffectiveResponseCode: 'contenir',
+      retaliationRisk: 'élevé',
+      summary: 'Plus sûre: Infiltrer; plus efficace: Contenir; représailles élevé.',
+    },
   });
   assert.deepEqual(demo.hotspots, [
     {
@@ -206,7 +230,13 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
             cost: '2 ordres sécurité',
             risk: 'Escalade moyen',
             benefit: 'Réduit la fenêtre de sabotage immédiate',
+            cooldownTurns: 2,
+            heatGenerated: 17,
+            escalationProbability: 'moyenne',
+            effect: 'cellule compromise: pression sécuritaire immédiate; opération execution ralentie',
+            countermeasure: 'Préparer rotation de patrouilles et couverture discrète au tour suivant.',
             summary: '2 ordres sécurité · Escalade moyen · Réduit la fenêtre de sabotage immédiate',
+            aftermathSummary: 'Cooldown 2 tours · chaleur +17 · escalade moyenne',
           },
           {
             code: 'infiltrer',
@@ -215,7 +245,13 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
             cost: '1 agent disponible',
             risk: 'Chaleur opérationnelle accrue',
             benefit: 'Identifie cellule, cible ou commanditaire prioritaire',
+            cooldownTurns: 3,
+            heatGenerated: 14,
+            escalationProbability: 'moyenne',
+            effect: 'cellule compromise: réseau cartographié sans résolution automatique; opération execution ralentie',
+            countermeasure: 'Limiter l’exposition des agents et vérifier les relais compromis.',
             summary: '1 agent disponible · Chaleur opérationnelle accrue · Identifie cellule, cible ou commanditaire prioritaire',
+            aftermathSummary: 'Cooldown 3 tours · chaleur +14 · escalade moyenne',
           },
           {
             code: 'exposer',
@@ -224,9 +260,21 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
             cost: '1 preuve exploitable',
             risk: 'Réseau adverse alerté',
             benefit: 'Convertit une cellule exposée en avantage public',
+            cooldownTurns: 1,
+            heatGenerated: 23,
+            escalationProbability: 'élevée',
+            effect: 'cellule compromise: preuve rendue exploitable, réseau adverse alerté',
+            countermeasure: 'Coordonner message public et sécuriser témoins avant représailles.',
             summary: '1 preuve exploitable · Réseau adverse alerté · Convertit une cellule exposée en avantage public',
+            aftermathSummary: 'Cooldown 1 tour · chaleur +23 · escalade élevée',
           },
         ],
+        responseAftermath: {
+          safestResponseCode: 'infiltrer',
+          mostEffectiveResponseCode: 'contenir',
+          retaliationRisk: 'élevé',
+          summary: 'Plus sûre: Infiltrer; plus efficace: Contenir; représailles élevé.',
+        },
       },
     },
     {
@@ -273,7 +321,13 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
             cost: '1 agent disponible',
             risk: 'Chaleur opérationnelle accrue',
             benefit: 'Identifie cellule, cible ou commanditaire prioritaire',
+            cooldownTurns: 3,
+            heatGenerated: 10,
+            escalationProbability: 'moyenne',
+            effect: 'cellule active: réseau cartographié sans résolution automatique; opération infiltration ralentie',
+            countermeasure: 'Limiter l’exposition des agents et vérifier les relais compromis.',
             summary: '1 agent disponible · Chaleur opérationnelle accrue · Identifie cellule, cible ou commanditaire prioritaire',
+            aftermathSummary: 'Cooldown 3 tours · chaleur +10 · escalade moyenne',
           },
           {
             code: 'surveiller',
@@ -282,9 +336,21 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
             cost: '0 ordre lourd',
             risk: 'Menace différée possible',
             benefit: 'Maintient le signal visible sans encombrer la carte',
+            cooldownTurns: 1,
+            heatGenerated: 3,
+            escalationProbability: 'faible',
+            effect: 'cellule active: aucun changement direct, signal maintenu visible',
+            countermeasure: 'Recontrôler le hotspot après le prochain tour ou si la chaleur monte.',
             summary: '0 ordre lourd · Menace différée possible · Maintient le signal visible sans encombrer la carte',
+            aftermathSummary: 'Cooldown 1 tour · chaleur +3 · escalade faible',
           },
         ],
+        responseAftermath: {
+          safestResponseCode: 'surveiller',
+          mostEffectiveResponseCode: 'infiltrer',
+          retaliationRisk: 'modéré',
+          summary: 'Plus sûre: Surveiller; plus efficace: Infiltrer; représailles modéré.',
+        },
       },
     },
   ]);
@@ -388,4 +454,56 @@ test('buildIntrigueWebDemo rejects invalid inputs', () => {
   assert.throws(() => buildIntrigueWebDemo({ cellules: [], operations: [null] }), /OperationClandestine instances or plain objects/);
   assert.throws(() => buildIntrigueWebDemo({ cellules: [], operations: [] }, null), /options must be an object/);
   assert.throws(() => buildIntrigueWebDemo({ cellules: [], operations: [] }, { locationNames: [] }), /locationNames must be an object/);
+});
+
+test('buildIntrigueWebDemo projects quick response aftermath, cooldowns, and fallback states', () => {
+  const demo = buildIntrigueWebDemo({
+    alertLevel: 'surveille',
+    cellules: [
+      new Cellule({
+        id: 'cell-dormant',
+        factionId: 'shadow-league',
+        codename: 'Lantern',
+        locationId: 'harbor',
+        memberIds: ['ag-4'],
+        assetIds: ['asset-4'],
+        secrecy: 80,
+        loyalty: 58,
+        exposure: 18,
+        sleeper: true,
+      }),
+      new Cellule({
+        id: 'cell-exposed',
+        factionId: 'shadow-league',
+        codename: 'Torch',
+        locationId: 'market',
+        memberIds: ['ag-5'],
+        assetIds: ['asset-5'],
+        secrecy: 35,
+        loyalty: 52,
+        exposure: 74,
+      }),
+    ],
+    operations: [],
+  }, {
+    locationNames: {
+      harbor: 'Harbor',
+      market: 'Market',
+    },
+  });
+
+  const harborDrillDown = demo.map.entries.find((entry) => entry.locationId === 'harbor').drillDown;
+  const marketDrillDown = demo.map.entries.find((entry) => entry.locationId === 'market').drillDown;
+
+  assert.equal(harborDrillDown.recommendedResponseCode, 'infiltrer');
+  assert.equal(harborDrillDown.quickResponses[0].effect, 'cellule dormante: réseau cartographié sans résolution automatique');
+  assert.equal(harborDrillDown.quickResponses[0].cooldownTurns, 2);
+  assert.equal(harborDrillDown.responseAftermath.safestResponseCode, 'surveiller');
+  assert.equal(harborDrillDown.responseAftermath.mostEffectiveResponseCode, 'infiltrer');
+
+  assert.equal(marketDrillDown.recommendedResponseCode, 'contenir');
+  assert.equal(marketDrillDown.quickResponses[0].escalationProbability, 'moyenne');
+  assert.equal(marketDrillDown.quickResponses[1].code, 'exposer');
+  assert.match(marketDrillDown.quickResponses[1].countermeasure, /témoins/);
+  assert.equal(marketDrillDown.responseAftermath.retaliationRisk, 'élevé');
 });
