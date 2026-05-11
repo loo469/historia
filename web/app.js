@@ -12,6 +12,7 @@ import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
+import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
 
 const culturePayload = {
   cultures: [
@@ -2055,6 +2056,31 @@ function renderCultureRecommendationPanel(recommendationView) {
   `;
 }
 
+function renderCultureLocalTimeline(timelineView) {
+  return `
+    <article class="culture-local-timeline culture-local-timeline--${timelineView.state}">
+      <div class="culture-local-timeline__header">
+        <span>${timelineView.heading}</span>
+        <strong>${timelineView.summary}</strong>
+      </div>
+      ${timelineView.items.length > 0 ? `
+        <ol>
+          ${timelineView.items.map((item) => `
+            <li class="culture-local-timeline__item culture-local-timeline__item--${item.signal}">
+              <span>${item.signal}</span>
+              <div>
+                <b>${item.title}</b>
+                <p>${item.summary}</p>
+                <small>${item.cultureName} · ${item.regionId}${item.importance ? ` · IMP-${item.importance}` : ''}${item.date ? ` · ${item.date}` : ''}</small>
+              </div>
+            </li>
+          `).join('')}
+        </ol>
+      ` : '<p>Aucun signal local; sélectionnez un cluster ou une province culturelle dense.</p>'}
+    </article>
+  `;
+}
+
 function renderCultureClusterPinList(cluster) {
   if (!cluster) {
     return '';
@@ -2155,6 +2181,11 @@ function renderCultureSidePanel(cultureView) {
     selectedMarker: focus,
     selectedCluster,
   });
+  const localTimelineView = buildCultureLocalTimeline({
+    selectedRegionId: state.selectedProvinceId,
+    selectedMarker: focus,
+    selectedCluster,
+  });
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -2171,6 +2202,7 @@ function renderCultureSidePanel(cultureView) {
       </div>
       ${renderCultureLegendKey(cultureView)}
       ${renderCultureRecommendationPanel(recommendationView)}
+      ${renderCultureLocalTimeline(localTimelineView)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
