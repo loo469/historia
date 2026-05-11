@@ -193,6 +193,10 @@ button { font: inherit; }
 .map-stage.is-dragging {
   cursor: grabbing;
 }
+.map-stage:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.72);
+  outline-offset: 4px;
+}
 .map-viewport {
   position: absolute;
   inset: 0;
@@ -246,6 +250,12 @@ button { font: inherit; }
   padding: 0 12px;
   cursor: pointer;
   font-weight: 700;
+}
+.map-control-button:hover,
+.map-control-button:focus-visible {
+  border-color: rgba(125, 211, 252, 0.56);
+  background: rgba(14, 116, 144, 0.32);
+  outline: none;
 }
 .map-control-button.is-disabled {
   opacity: 0.65;

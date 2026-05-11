@@ -2667,6 +2667,28 @@ function nudgeMapPan(deltaX, deltaY) {
   clampMapPan();
 }
 
+function centerMapOnProvince(provinceId, viewportElement) {
+  const center = getProvinceCenter(provinceId);
+
+  if (!center || !viewportElement) {
+    return false;
+  }
+
+  setMapZoom(Math.max(state.mapZoom, 1.55));
+
+  const bounds = viewportElement.getBoundingClientRect();
+  state.mapPanX = ((50 - center.x) / 100) * bounds.width * state.mapZoom;
+  state.mapPanY = ((50 - center.y) / 100) * bounds.height * state.mapZoom;
+  clampMapPan();
+  return true;
+}
+
+function resetMapViewport() {
+  state.mapPanX = 0;
+  state.mapPanY = 0;
+  setMapZoom(1);
+}
+
 function getMapViewportTransform() {
   return `translate(${state.mapPanX}px, ${state.mapPanY}px) scale(${state.mapZoom})`;
 }
@@ -2677,6 +2699,7 @@ function renderMapControls() {
       <button type="button" class="map-control-button" data-map-zoom="out" aria-label="Zoom arrière">−</button>
       <div class="map-zoom-indicator">${Math.round(state.mapZoom * 100)}%</div>
       <button type="button" class="map-control-button" data-map-zoom="in" aria-label="Zoom avant">+</button>
+      <button type="button" class="map-control-button" data-map-pan="selection" aria-label="Recentrer sur la province sélectionnée">Cible</button>
       <button type="button" class="map-control-button ${state.mapZoom === 1 ? 'is-disabled' : ''}" data-map-pan="reset" aria-label="Réinitialiser la vue">Reset</button>
     </div>
   `;
@@ -2984,7 +3007,7 @@ function render() {
             </div>
             <div class="overlay-tabs">${renderOverlaySlots(shell)}</div>
           </div>
-          <div class="map-stage" data-map-stage="true">
+          <div class="map-stage" data-map-stage="true" tabindex="0" aria-label="Carte opérationnelle zoomable. Utilisez plus, moins, zéro ou C pour naviguer.">
             ${renderMapControls()}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
               ${renderMapLayerStack(shell, economyView, focusContext, cultureView)}
@@ -3110,9 +3133,14 @@ function render() {
 
   document.querySelectorAll('[data-map-pan]').forEach((element) => {
     element.addEventListener('click', () => {
-      state.mapPanX = 0;
-      state.mapPanY = 0;
-      setMapZoom(1);
+      const viewport = document.querySelector('.map-viewport');
+
+      if (element.dataset.mapPan === 'selection') {
+        centerMapOnProvince(state.selectedProvinceId, viewport);
+      } else {
+        resetMapViewport();
+      }
+
       render();
     });
   });
@@ -3126,6 +3154,32 @@ function render() {
       setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1));
       render();
     }, { passive: false });
+
+    stage.addEventListener('keydown', (event) => {
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        setMapZoom(state.mapZoom + 0.2);
+        render();
+      }
+
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        setMapZoom(state.mapZoom - 0.2);
+        render();
+      }
+
+      if (event.key === '0' || event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        resetMapViewport();
+        render();
+      }
+
+      if (event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        centerMapOnProvince(state.selectedProvinceId, viewport);
+        render();
+      }
+    });
 
     stage.addEventListener('mousedown', (event) => {
       if (state.mapZoom <= 1) {
