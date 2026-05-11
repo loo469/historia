@@ -15,6 +15,9 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /GenerateStrategicMap/);
   assert.match(html, /buildStrategicMapShell/);
   assert.match(html, /points="38,38 54,34 66,40 68,54 56,66 40,64 32,52 34,42"/);
+  assert.match(html, /class="relation-line-casing"/);
+  assert.match(html, /class="province-label-plate"/);
+  assert.match(html, /class="province-label-leader"/);
   assert.match(html, /Porte du Fleuve/);
   assert.match(html, /historia-alpha-strategic-map-v1/);
   assert.equal((html.match(/class="province /g) ?? []).length, generatedMap.provinces.length);
