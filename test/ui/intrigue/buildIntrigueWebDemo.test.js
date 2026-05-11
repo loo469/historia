@@ -153,20 +153,6 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
         summary: 'Risque sabotage medium (61)',
         reasons: ['Risque sabotage medium (61)', '1 cellule exposée', '1 cellule dormante', '1 opération active'],
         actionHint: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
-    actionHints: [
-      {
-        code: 'renforcer-securite',
-        label: 'Renforcer sécurité',
-        priority: 'high',
-        description: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
-      },
-      {
-        code: 'enqueter',
-        label: 'Enquêter',
-        priority: 'high',
-        description: 'Identifier les cellules exposées et relier les opérations actives au foyer.',
-      },
-    ],
         actionHints: [
           {
             code: 'renforcer-securite',
