@@ -76,6 +76,60 @@ function buildHotspotEntry(entry) {
   };
 }
 
+function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
+  const locationCellules = cellules
+    .filter((cellule) => cellule.locationId === entry.locationId && cellule.status !== 'dismantled')
+    .sort((left, right) => {
+      if (right.exposure !== left.exposure) {
+        return right.exposure - left.exposure;
+      }
+
+      return left.id.localeCompare(right.id);
+    });
+  const activeOperations = operations
+    .filter((operation) => operation.theaterId === entry.locationId && operation.type === 'sabotage' && !operation.isResolved)
+    .sort((left, right) => {
+      if (right.heat !== left.heat) {
+        return right.heat - left.heat;
+      }
+
+      return left.id.localeCompare(right.id);
+    });
+  const hotspot = buildHotspotEntry(entry);
+  const signalType = entry.sabotageRiskLevel === 'high' || entry.metrics.sabotageOperationCount > 0
+    ? 'sabotage'
+    : entry.metrics.exposedCellCount > 0
+      ? 'exposure'
+      : 'presence';
+  const factionIds = [...new Set(locationCellules.map((cellule) => cellule.factionId))].sort();
+  const targetFactionIds = [...new Set(activeOperations.map((operation) => operation.targetFactionId))].sort();
+  const reasons = [
+    entry.sabotageRiskLevel !== 'none' ? `Risque sabotage ${entry.sabotageRiskLevel} (${entry.sabotageRiskScore})` : null,
+    entry.metrics.exposedCellCount > 0 ? `${entry.metrics.exposedCellCount} cellule${entry.metrics.exposedCellCount > 1 ? 's' : ''} exposée${entry.metrics.exposedCellCount > 1 ? 's' : ''}` : null,
+    entry.metrics.sleeperCellCount > 0 ? `${entry.metrics.sleeperCellCount} cellule${entry.metrics.sleeperCellCount > 1 ? 's' : ''} dormante${entry.metrics.sleeperCellCount > 1 ? 's' : ''}` : null,
+    activeOperations.length > 0 ? `${activeOperations.length} opération${activeOperations.length > 1 ? 's' : ''} active${activeOperations.length > 1 ? 's' : ''}` : null,
+  ].filter(Boolean);
+
+  return {
+    locationId: entry.locationId,
+    locationName: locationNames[entry.locationId] ?? entry.locationName,
+    signalType,
+    severity: hotspot.severity,
+    criticality: hotspot.severity === 'critical' ? 'critical' : hotspot.severity === 'warning' ? 'elevated' : 'watch',
+    affectedFactionIds: factionIds,
+    targetFactionIds,
+    primaryCelluleId: locationCellules[0]?.id ?? null,
+    primaryOperationId: activeOperations[0]?.id ?? null,
+    summary: reasons[0] ?? `Présence clandestine ${entry.presenceLevel}`,
+    reasons: reasons.length > 0 ? reasons : [`Présence clandestine ${entry.presenceLevel}`],
+    actionHint: hotspot.severity === 'critical'
+      ? 'Inspecter les cellules exposées et interrompre les sabotages en cours.'
+      : activeOperations.length > 0
+        ? 'Suivre les opérations actives et vérifier la chaleur opérationnelle.'
+        : 'Garder le foyer en observation sans surcharger la carte.',
+  };
+}
+
 function buildCellulesPanel(cellules, locationNames) {
   return cellules
     .slice()
@@ -171,7 +225,18 @@ export function buildIntrigueWebDemo(payload, options = {}) {
   const alertBadge = buildAlertLevelBadge(normalizedPayload.alertLevel ?? 0, {
     prefix: normalizedOptions.alertPrefix ?? 'Alerte',
   });
-  const hotspots = mapOverlay.map(buildHotspotEntry).sort(compareHotspots);
+  const drillDownByLocation = new Map(mapOverlay.map((entry) => [
+    entry.locationId,
+    buildHotspotDrillDown(entry, cellules, operations, locationNames),
+  ]));
+  const mapEntries = mapOverlay.map((entry) => ({
+    ...entry,
+    drillDown: drillDownByLocation.get(entry.locationId),
+  }));
+  const hotspots = mapEntries.map((entry) => ({
+    ...buildHotspotEntry(entry),
+    drillDown: drillDownByLocation.get(entry.locationId),
+  })).sort(compareHotspots);
   const exposedCellCount = cellules.filter((cellule) => cellule.isExposed).length;
   const sleeperCellCount = cellules.filter((cellule) => cellule.sleeper).length;
   const activeSabotageCount = operations.filter((operation) => operation.type === 'sabotage' && !operation.isResolved).length;
@@ -214,7 +279,7 @@ export function buildIntrigueWebDemo(payload, options = {}) {
     },
     map: {
       title: 'Couche intrigue',
-      entries: mapOverlay,
+      entries: mapEntries,
       legend: {
         presenceLevels: [
           { code: 'low', label: 'Présence faible', marker: '◔' },

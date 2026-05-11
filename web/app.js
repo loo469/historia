@@ -1272,6 +1272,7 @@ function getIntrigueViewModel() {
       exposedCellCount: selectedEntry.metrics.exposedCellCount,
       sleeperCellCount: selectedEntry.metrics.sleeperCellCount,
       activeOperationCount: selectedOperations.length,
+      drillDown: selectedEntry.drillDown,
       reasons: selectedRiskReasons.length > 0 ? selectedRiskReasons : ['Aucun signal Delta notable'],
       guidance: selectedEntry.sabotageRiskLevel === 'high'
         ? 'Priorite a la surveillance locale, les marqueurs rouges concentrent le risque actif.'
@@ -1888,6 +1889,24 @@ function renderIntrigueSidePanel(intrigueView) {
           <div class="intrigue-status-pill-row">
             ${intrigueView.selectedProvince.reasons.map((reason) => `<span class="intrigue-status-pill intrigue-status-pill--${intrigueView.selectedProvince.sabotageRiskLevel === 'high' ? 'compromised' : intrigueView.selectedProvince.sabotageRiskLevel === 'medium' ? 'exposed' : 'active'}">${reason}</span>`).join('')}
           </div>
+          ${intrigueView.selectedProvince.drillDown ? `
+            <div class="intrigue-drilldown intrigue-drilldown--${intrigueView.selectedProvince.drillDown.criticality}">
+              <div class="intrigue-drilldown__header">
+                <span>Signal ${intrigueView.selectedProvince.drillDown.signalType}</span>
+                <strong>${intrigueView.selectedProvince.drillDown.criticality}</strong>
+              </div>
+              <p>${intrigueView.selectedProvince.drillDown.summary}</p>
+              <div class="intrigue-drilldown__context">
+                <span>Province: ${intrigueView.selectedProvince.drillDown.locationName}</span>
+                <span>Faction: ${intrigueView.selectedProvince.drillDown.affectedFactionIds.join(', ') || 'inconnue'}</span>
+                <span>Cible: ${intrigueView.selectedProvince.drillDown.targetFactionIds.join(', ') || 'aucune'}</span>
+              </div>
+              <ul>
+                ${intrigueView.selectedProvince.drillDown.reasons.map((reason) => `<li>${reason}</li>`).join('')}
+              </ul>
+              <small>${intrigueView.selectedProvince.drillDown.actionHint}</small>
+            </div>
+          ` : ''}
         </section>
       ` : ''}
       <div class="intrigue-legend-strip" aria-label="Légende heatmap sabotage">

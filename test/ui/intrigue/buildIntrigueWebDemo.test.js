@@ -96,6 +96,20 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
   assert.equal(demo.summary, '1 foyers critiques, 2 sabotages actifs, alerte critique');
   assert.equal(demo.alertBadge.level.code, 'critique');
   assert.equal(demo.map.entries.length, 2);
+  assert.deepEqual(demo.map.entries[0].drillDown, {
+    locationId: 'ashlands',
+    locationName: 'Ashlands',
+    signalType: 'sabotage',
+    severity: 'critical',
+    criticality: 'critical',
+    affectedFactionIds: ['shadow-league'],
+    targetFactionIds: ['sun-empire'],
+    primaryCelluleId: 'cell-ash-2',
+    primaryOperationId: 'op-ash-1',
+    summary: 'Risque sabotage medium (61)',
+    reasons: ['Risque sabotage medium (61)', '1 cellule exposée', '1 cellule dormante', '1 opération active'],
+    actionHint: 'Inspecter les cellules exposées et interrompre les sabotages en cours.',
+  });
   assert.deepEqual(demo.hotspots, [
     {
       locationId: 'ashlands',
@@ -110,6 +124,20 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
       celluleCount: 2,
       operationCount: 1,
       visualCue: '◑ elevated',
+      drillDown: {
+        locationId: 'ashlands',
+        locationName: 'Ashlands',
+        signalType: 'sabotage',
+        severity: 'critical',
+        criticality: 'critical',
+        affectedFactionIds: ['shadow-league'],
+        targetFactionIds: ['sun-empire'],
+        primaryCelluleId: 'cell-ash-2',
+        primaryOperationId: 'op-ash-1',
+        summary: 'Risque sabotage medium (61)',
+        reasons: ['Risque sabotage medium (61)', '1 cellule exposée', '1 cellule dormante', '1 opération active'],
+        actionHint: 'Inspecter les cellules exposées et interrompre les sabotages en cours.',
+      },
     },
     {
       locationId: 'riverlands',
@@ -124,6 +152,20 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
       celluleCount: 1,
       operationCount: 1,
       visualCue: '◔ normal',
+      drillDown: {
+        locationId: 'riverlands',
+        locationName: 'Riverlands',
+        signalType: 'sabotage',
+        severity: 'watch',
+        criticality: 'watch',
+        affectedFactionIds: ['shadow-league'],
+        targetFactionIds: ['sun-empire'],
+        primaryCelluleId: 'cell-river-1',
+        primaryOperationId: 'op-river-1',
+        summary: 'Risque sabotage low (20)',
+        reasons: ['Risque sabotage low (20)', '1 opération active'],
+        actionHint: 'Suivre les opérations actives et vérifier la chaleur opérationnelle.',
+      },
     },
   ]);
   assert.deepEqual(demo.panels.cellules[0], {
