@@ -709,27 +709,30 @@ button { font: inherit; }
   stroke-linejoin: round;
 }
 .economy-route__halo {
-  stroke: rgba(15, 23, 42, 0.78);
-  stroke-width: 4.6;
-  opacity: 0.95;
+  stroke: rgba(15, 23, 42, 0.62);
+  stroke-width: 3.7;
+  opacity: 0.78;
 }
 .economy-route__casing {
-  stroke: rgba(226, 232, 240, 0.22);
-  stroke-width: 3.4;
+  stroke: rgba(226, 232, 240, 0.16);
+  stroke-width: 2.55;
 }
 .economy-route__line {
-  stroke-width: 2.1;
+  stroke-width: 1.45;
 }
 .economy-route__flow {
-  stroke: rgba(255, 255, 255, 0.95);
-  stroke-width: 0.55;
-  stroke-dasharray: 7 12;
-  animation: economy-route-flow 10s linear infinite;
+  stroke: rgba(255, 255, 255, 0.62);
+  stroke-width: 0.4;
+  stroke-dasharray: 7 15;
+  animation: economy-route-flow 12s linear infinite;
 }
 .economy-route__label {
-  fill: rgba(241, 245, 249, 0.92);
-  font-size: 2.6px;
-  letter-spacing: 0.12em;
+  fill: rgba(241, 245, 249, 0.76);
+  paint-order: stroke;
+  stroke: rgba(8, 15, 28, 0.72);
+  stroke-width: 0.9px;
+  font-size: 2.05px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 .economy-route.is-land .economy-route__line {
@@ -745,13 +748,24 @@ button { font: inherit; }
   stroke-dasharray: 2 9;
   animation-duration: 7s;
 }
+.economy-route.is-muted .economy-route__halo,
+.economy-route.is-muted .economy-route__casing {
+  opacity: 0.22;
+}
+.economy-route.is-muted .economy-route__line {
+  opacity: 0.58;
+  stroke-width: 1.05;
+}
+.economy-route.is-muted .economy-route__flow {
+  opacity: 0.22;
+}
 .economy-route.is-inactive .economy-route__line,
 .economy-route.is-inactive .economy-route__flow,
 .economy-route.is-inactive .economy-route__label {
-  opacity: 0.4;
+  opacity: 0.34;
 }
 .economy-route.is-inactive .economy-route__line {
-  stroke-dasharray: 4 5;
+  stroke-dasharray: 4 6;
 }
 .economy-route.is-critical .economy-route__halo {
   stroke: rgba(127, 29, 29, 0.88);
@@ -770,23 +784,26 @@ button { font: inherit; }
 }
 .economy-route-hud {
   pointer-events: none;
-  filter: drop-shadow(0 0 7px rgba(8, 15, 28, 0.7));
+  filter: drop-shadow(0 0 5px rgba(8, 15, 28, 0.58));
+}
+.economy-route-hud.is-compact {
+  opacity: 0.58;
 }
 .economy-route-hud__plate {
-  fill: rgba(8, 15, 28, 0.82);
-  stroke: rgba(226, 232, 240, 0.34);
-  stroke-width: 0.72;
+  fill: rgba(8, 15, 28, 0.78);
+  stroke: rgba(226, 232, 240, 0.28);
+  stroke-width: 0.58;
 }
 .economy-route-hud__glyph {
   fill: #e2e8f0;
-  font-size: 3.7px;
+  font-size: 3.05px;
   font-weight: 900;
   dominant-baseline: middle;
 }
 .economy-route-packet {
-  fill: rgba(226, 232, 240, 0.88);
-  stroke: rgba(8, 15, 28, 0.72);
-  stroke-width: 0.28;
+  fill: rgba(226, 232, 240, 0.74);
+  stroke: rgba(8, 15, 28, 0.62);
+  stroke-width: 0.22;
 }
 .economy-route-risk-tick {
   fill: rgba(251, 113, 133, 0.9);
@@ -804,8 +821,8 @@ button { font: inherit; }
 .economy-route-hud--slate .economy-route-hud__plate { stroke: rgba(148, 163, 184, 0.7); }
 .economy-city-tension-ring {
   fill: none;
-  stroke-width: 1.6;
-  opacity: 0.9;
+  stroke-width: 1.15;
+  opacity: 0.72;
 }
 .economy-city-group.is-medium-tension .economy-city-tension-ring {
   stroke: rgba(245, 158, 11, 0.85);
@@ -818,8 +835,8 @@ button { font: inherit; }
   stroke: rgba(34, 197, 94, 0.35);
 }
 .economy-city {
-  stroke: rgba(255, 255, 255, 0.88);
-  stroke-width: 1.6;
+  stroke: rgba(255, 255, 255, 0.84);
+  stroke-width: 1.25;
 }
 .economy-city-capital-ring,
 .economy-city-hub-frame {
@@ -827,18 +844,18 @@ button { font: inherit; }
   pointer-events: none;
 }
 .economy-city-capital-ring {
-  stroke: rgba(250, 204, 21, 0.92);
-  stroke-width: 1.4;
+  stroke: rgba(250, 204, 21, 0.82);
+  stroke-width: 1.05;
   stroke-dasharray: 2.5 2;
-  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.35));
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.28));
 }
 .economy-city-hub-frame {
-  stroke: rgba(191, 219, 254, 0.88);
-  stroke-width: 1.3;
+  stroke: rgba(191, 219, 254, 0.72);
+  stroke-width: 1;
 }
 .economy-city-glyph {
   fill: #f8fafc;
-  font-size: 5px;
+  font-size: 4.1px;
   font-weight: 700;
   pointer-events: none;
 }
@@ -856,7 +873,7 @@ button { font: inherit; }
 .economy-city-group { cursor: pointer; }
 .economy-city-group.is-selected .economy-city {
   stroke: #f8fafc;
-  stroke-width: 2.4;
+  stroke-width: 2.05;
   filter: drop-shadow(0 0 8px rgba(255,255,255,0.35));
 }
 .economy-city--positive { fill: #22c55e; }
@@ -876,18 +893,24 @@ button { font: inherit; }
 .economy-city-resource { fill: #bfdbfe; }
 .economy-resource-glyph {
   pointer-events: none;
-  filter: drop-shadow(0 0 6px rgba(8, 15, 28, 0.65));
+  filter: drop-shadow(0 0 4px rgba(8, 15, 28, 0.58));
+}
+.economy-resource-glyph.is-compact {
+  opacity: 0.72;
 }
 .economy-resource-glyph__backplate {
-  fill: rgba(8, 15, 28, 0.78);
-  stroke: rgba(226, 232, 240, 0.28);
-  stroke-width: 0.7;
+  fill: rgba(8, 15, 28, 0.72);
+  stroke: rgba(226, 232, 240, 0.24);
+  stroke-width: 0.5;
 }
 .economy-resource-glyph__icon {
   fill: #e2e8f0;
-  font-size: 3.2px;
+  font-size: 2.55px;
   font-weight: 800;
   dominant-baseline: middle;
+}
+.economy-resource-glyph.is-expanded .economy-resource-glyph__icon {
+  font-size: 2.9px;
 }
 .economy-resource-glyph--cyan .economy-resource-glyph__backplate { stroke: rgba(56, 189, 248, 0.72); }
 .economy-resource-glyph--cyan .economy-resource-glyph__icon { fill: #7dd3fc; }

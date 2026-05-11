@@ -784,26 +784,26 @@ function getQuadraticPoint(origin, control, destination, t) {
   };
 }
 
-function renderRouteHudMarkers(route, visual) {
+function renderRouteHudMarkers(route, visual, { compact = false } = {}) {
   const routeHud = getRouteHud(route);
   const midpoint = getQuadraticPoint(visual.origin, visual.control, visual.destination, 0.5);
-  const packetCount = Math.max(1, Math.min(4, Math.ceil(route.totalCapacity / 4)));
+  const packetCount = compact ? 1 : Math.max(1, Math.min(3, Math.ceil(route.totalCapacity / 5)));
   const packetMarkup = Array.from({ length: packetCount }, (_, index) => {
-    const t = 0.22 + (index * (0.56 / Math.max(1, packetCount - 1)));
+    const t = compact ? 0.5 : 0.28 + (index * (0.44 / Math.max(1, packetCount - 1)));
     const point = getQuadraticPoint(visual.origin, visual.control, visual.destination, t);
 
-    return `<circle class="economy-route-packet economy-route-packet--${routeHud.tone}" cx="${point.x}" cy="${point.y}" r="${0.72 + (index % 2) * 0.12}" />`;
+    return `<circle class="economy-route-packet economy-route-packet--${routeHud.tone}" cx="${point.x}" cy="${point.y}" r="${compact ? 0.58 : 0.68 + (index % 2) * 0.1}" />`;
   }).join('');
-  const riskTicks = Math.max(0, Math.min(3, Math.floor(route.riskLevel / 25)));
+  const riskTicks = compact ? 0 : Math.max(0, Math.min(2, Math.floor(route.riskLevel / 32)));
   const riskMarkup = Array.from({ length: riskTicks }, (_, index) => `
-    <rect class="economy-route-risk-tick" x="${midpoint.x + 3.2 + (index * 1.35)}" y="${midpoint.y - 4.6}" width="0.82" height="2.2" rx="0.35" />
+    <rect class="economy-route-risk-tick" x="${midpoint.x + 2.7 + (index * 1.15)}" y="${midpoint.y - 4.05}" width="0.72" height="1.85" rx="0.32" />
   `).join('');
 
   return `
-    <g class="economy-route-hud economy-route-hud--${routeHud.tone}" aria-label="${routeHud.label}, capacité ${route.totalCapacity}, risque ${route.riskLevel}">
+    <g class="economy-route-hud economy-route-hud--${routeHud.tone} ${compact ? 'is-compact' : 'is-emphasized'}" aria-label="${routeHud.label}, capacité ${route.totalCapacity}, risque ${route.riskLevel}">
       ${packetMarkup}
-      <circle class="economy-route-hud__plate" cx="${midpoint.x}" cy="${midpoint.y}" r="3.25" />
-      <text class="economy-route-hud__glyph" x="${midpoint.x}" y="calc(${midpoint.y} + 1px)" text-anchor="middle">${routeHud.glyph}</text>
+      ${compact ? '' : `<circle class="economy-route-hud__plate" cx="${midpoint.x}" cy="${midpoint.y}" r="2.7" />`}
+      ${compact ? '' : `<text class="economy-route-hud__glyph" x="${midpoint.x}" y="calc(${midpoint.y} + 1px)" text-anchor="middle">${routeHud.glyph}</text>`}
       ${riskMarkup}
     </g>
   `;
@@ -824,16 +824,19 @@ function getCityResourceHudItems(city, limit = 3) {
     }));
 }
 
-function renderResourceHudBadges(city, position) {
-  const resources = getCityResourceHudItems(city);
-  const startX = position.x - ((resources.length - 1) * 3.4);
-  const y = position.y + (city.marker.size * 12.5);
+function renderResourceHudBadges(city, position, { expanded = false } = {}) {
+  const resources = getCityResourceHudItems(city, expanded ? 3 : 1);
+  const labelDx = Number.isFinite(position.labelDx) ? position.labelDx / 5 : 0;
+  const labelDy = Number.isFinite(position.labelDy) ? position.labelDy / 5 : 0;
+  const gap = expanded ? 5.4 : 0;
+  const startX = position.x + labelDx - ((resources.length - 1) * (gap / 2));
+  const y = position.y + labelDy + (city.marker.size * (expanded ? 10.2 : 8.8));
 
   return resources.map((resource, index) => {
-    const x = startX + (index * 6.8);
+    const x = startX + (index * gap);
     return `
-      <g class="economy-resource-glyph economy-resource-glyph--${resource.tone}" aria-label="${resource.label}: ${resource.quantity}">
-        <circle class="economy-resource-glyph__backplate" cx="${x}%" cy="${y}%" r="2.55" />
+      <g class="economy-resource-glyph ${expanded ? 'is-expanded' : 'is-compact'} economy-resource-glyph--${resource.tone}" aria-label="${resource.label}: ${resource.quantity}">
+        <circle class="economy-resource-glyph__backplate" cx="${x}%" cy="${y}%" r="${expanded ? 2.25 : 1.55}" />
         <text class="economy-resource-glyph__icon" x="${x}%" y="calc(${y}% + 1px)" text-anchor="middle">${resource.glyph}</text>
       </g>
     `;
@@ -899,8 +902,9 @@ function buildRouteVisual(route, origin, destination, index) {
   const modeClass = `is-${route.transportMode}`;
   const emphasisClass = critical ? 'is-critical' : 'is-support';
   const activeClass = inactive ? 'is-inactive' : 'is-active';
-  const amplitude = route.transportMode === 'river' ? 2.8 : route.transportMode === 'land' ? 1.6 : 2.2;
-  const curveLift = 4 + ((index % 2) * 1.8);
+  const amplitude = route.transportMode === 'river' ? 2.2 : route.transportMode === 'land' ? 1.25 : 1.8;
+  const lane = (index % 3) - 1;
+  const curveLift = (3.2 + (Math.abs(lane) * 1.9)) * (lane === 0 ? 1 : lane);
   const controlX = ((origin.x + destination.x) / 2) + (normalX * curveLift);
   const controlY = ((origin.y + destination.y) / 2) + (normalY * curveLift);
   const control = { x: controlX, y: controlY };
@@ -1611,17 +1615,19 @@ function renderEconomyMapOverlay(economyView) {
       : originTension === 'medium' || destinationTension === 'medium'
         ? 'has-medium-tension'
         : 'has-low-tension';
+    const emphasizeRoute = visual.critical || tensionClass === 'has-high-tension';
+    const showRouteLabel = emphasizeRoute || tensionClass === 'has-medium-tension';
 
     return `
-      <g class="economy-route-group ${visual.classes} ${tensionClass}" data-route-id="${route.routeId}">
+      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'}" data-route-id="${route.routeId}">
         <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
         <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
-        ${renderRouteHudMarkers(route, visual)}
-        <text class="economy-route__label" text-anchor="middle">
+        ${renderRouteHudMarkers(route, visual, { compact: !emphasizeRoute })}
+        ${showRouteLabel ? `<text class="economy-route__label" text-anchor="middle">
           <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
-        </text>
+        </text>` : ''}
         <path id="route-label-${route.routeId}" d="${visual.pathD}" fill="none" stroke="none" />
       </g>
     `;
@@ -1636,15 +1642,18 @@ function renderEconomyMapOverlay(economyView) {
 
     const tension = tensionByCityId[city.cityId]?.tensionLevel ?? 'low';
     const isHub = city.tradeRouteIds.length >= 2 || city.resources.totalStock >= 16;
+    const isSelected = state.selectedCityId === city.cityId || state.hoveredCityId === city.cityId;
+    const expandResources = isSelected || tension === 'high';
+    const showResources = expandResources || city.capital || isHub;
 
     return `
-      <g class="economy-city-group ${state.selectedCityId === city.cityId ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension" data-city-id="${city.cityId}">
-        <circle class="economy-city-tension-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 10.5}" />
-        ${city.capital ? `<circle class="economy-city-capital-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 12.4}" />` : ''}
-        ${isHub ? `<rect class="economy-city-hub-frame" x="calc(${position.x}% - ${city.marker.size * 9}px)" y="calc(${position.y}% - ${city.marker.size * 9}px)" width="${city.marker.size * 18}" height="${city.marker.size * 18}" rx="${city.marker.size * 4}" ry="${city.marker.size * 4}" />` : ''}
-        <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 8}" />
+      <g class="economy-city-group ${isSelected ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension" data-city-id="${city.cityId}">
+        <circle class="economy-city-tension-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 9.2}" />
+        ${city.capital ? `<circle class="economy-city-capital-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 10.8}" />` : ''}
+        ${isHub ? `<rect class="economy-city-hub-frame" x="calc(${position.x}% - ${city.marker.size * 7.4}px)" y="calc(${position.y}% - ${city.marker.size * 7.4}px)" width="${city.marker.size * 14.8}" height="${city.marker.size * 14.8}" rx="${city.marker.size * 3.2}" ry="${city.marker.size * 3.2}" />` : ''}
+        <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 6.6}" />
         ${city.capital ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">★</text>` : isHub ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">◆</text>` : ''}
-        ${renderResourceHudBadges(city, position)}
+        ${showResources ? renderResourceHudBadges(city, position, { expanded: expandResources }) : ''}
         <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 12}" />
         <text class="economy-city-label economy-city-label--sr" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
         <text class="economy-city-resource economy-city-resource--sr" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
