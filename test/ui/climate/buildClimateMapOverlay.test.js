@@ -233,11 +233,11 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         outline: {
           stroke: 'orange',
           pattern: 'ring',
-          opacity: 0.6000000000000001,
+          opacity: 0.52,
         },
         fill: {
           color: 'orange',
-          opacity: 0.30000000000000004,
+          opacity: 0.18000000000000002,
         },
       },
     ],
@@ -613,6 +613,12 @@ test('buildClimateMapOverlay can emit vector season anomaly and catastrophe visu
         icon: '☀',
         stroke: 'amber',
         animation: 'slow-scan-pulse',
+        opacity: 0.68,
+        placement: {
+          anchor: 'province-edge',
+          avoid: ['province-label', 'province-marker'],
+          priority: 'secondary',
+        },
       },
     },
     {
@@ -623,8 +629,10 @@ test('buildClimateMapOverlay can emit vector season anomaly and catastrophe visu
       intensity: 'high',
       vector: {
         primitive: 'wind-line-field',
-        density: 'dense',
+        density: 'measured',
         color: 'amber',
+        opacity: 0.38,
+        labelSafe: true,
       },
       summary: 'Été, critical',
     },
@@ -640,7 +648,9 @@ test('buildClimateMapOverlay can emit vector season anomaly and catastrophe visu
         primitive: 'pulsing-contour-ring',
         stroke: 'orange',
         fill: 'orange',
-        opacity: 0.5800000000000001,
+        opacity: 0.48000000000000004,
+        fillOpacity: 0.08,
+        labelSafe: true,
       },
     },
     {
@@ -654,8 +664,40 @@ test('buildClimateMapOverlay can emit vector season anomaly and catastrophe visu
       vector: {
         primitive: 'soft-gradient-field',
         blendMode: 'screen',
-        opacity: 0.26,
+        opacity: 0.16,
+        labelSafe: true,
       },
     },
   ]);
+});
+
+test('buildClimateMapOverlay reduces climate effects when another overlay is selected', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+      anomaly: 'frost',
+    },
+  ], {
+    visualEffects: true,
+    selectedOverlayId: 'culture-overlay',
+  });
+
+  assert.deepEqual(overlay.reducedState, {
+    reason: 'climate-overlay-inactive',
+    density: 'reduced',
+    preservedSignals: ['critical-catastrophe-rings', 'edge-pinned-anomaly-dots'],
+  });
+  assert.equal(overlay.visualEffects.find((effect) => effect.kind === 'season-wash').vector.opacity, 0.1);
+  assert.equal(overlay.visualEffects.find((effect) => effect.kind === 'anomaly-glyph').vector.opacity, 0.46);
+  assert.equal(overlay.visualEffects.find((effect) => effect.kind === 'anomaly-glyph').vector.animation, 'none');
+  assert.deepEqual(overlay.visualEffects.find((effect) => effect.kind === 'anomaly-glyph').vector.placement, {
+    anchor: 'province-edge',
+    avoid: ['province-label', 'province-marker'],
+    priority: 'secondary',
+  });
+  assert.equal(overlay.visualEffects.find((effect) => effect.kind === 'atmospheric-signal').vector.density, 'sparse');
 });
