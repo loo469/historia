@@ -3535,3 +3535,32 @@ button { font: inherit; }
     min-height: 260px;
   }
 }
+.intrigue-drilldown {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.38);
+  border: 1px solid rgba(103, 232, 249, 0.14);
+}
+.intrigue-drilldown--critical { border-color: rgba(251, 113, 133, 0.34); }
+.intrigue-drilldown--elevated { border-color: rgba(250, 204, 21, 0.28); }
+.intrigue-drilldown__header,
+.intrigue-drilldown__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+.intrigue-drilldown__header span,
+.intrigue-drilldown__context,
+.intrigue-drilldown small {
+  color: var(--muted);
+}
+.intrigue-drilldown p,
+.intrigue-drilldown ul {
+  margin: 8px 0 0;
+}
+.intrigue-drilldown ul {
+  padding-left: 18px;
+  color: #cbd5e1;
+}
