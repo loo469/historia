@@ -48,8 +48,8 @@ function compareHotspots(left, right) {
     return right.sabotageRiskScore - left.sabotageRiskScore;
   }
 
-  if (right.metrics.exposedCellCount !== left.metrics.exposedCellCount) {
-    return right.metrics.exposedCellCount - left.metrics.exposedCellCount;
+  if (right.exposedCellCount !== left.exposedCellCount) {
+    return right.exposedCellCount - left.exposedCellCount;
   }
 
   return left.locationId.localeCompare(right.locationId);
