@@ -1875,6 +1875,77 @@ button { font: inherit; }
   margin: 3px 0 0;
   font-size: 12px;
 }
+.province-logistics-choice-preview {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(12, 74, 110, 0.34), rgba(8, 15, 28, 0.58));
+  border: 1px solid rgba(56, 189, 248, 0.18);
+}
+.province-logistics-choice-preview__header,
+.province-logistics-choice__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.province-logistics-choice-preview__header span,
+.province-logistics-choice__title span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-logistics-choice-preview > p {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.province-logistics-choice-list {
+  display: grid;
+  gap: 8px;
+}
+.province-logistics-choice {
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-logistics-choice.is-recommended {
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.18), 0 0 18px rgba(56, 189, 248, 0.08);
+}
+.province-logistics-choice--high { border-color: rgba(251, 113, 133, 0.44); }
+.province-logistics-choice--medium { border-color: rgba(245, 158, 11, 0.36); }
+.province-logistics-choice--low { border-color: rgba(74, 222, 128, 0.28); }
+.province-logistics-choice p {
+  margin: 5px 0 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.38;
+}
+.province-logistics-choice dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.province-logistics-choice dl div {
+  padding: 7px;
+  border-radius: 10px;
+  background: rgba(8, 15, 28, 0.42);
+}
+.province-logistics-choice dt {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.province-logistics-choice dd {
+  margin: 3px 0 0;
+  font-size: 12px;
+}
 .overlay-anchor {
   flex: 1 1 140px;
   padding: 12px;

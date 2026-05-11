@@ -8,6 +8,7 @@ import { buildLauncherMapSelection } from '../src/ui/launcher/buildLauncherMapSe
 import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay.js';
 import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
 import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonPanel.js';
+import { buildProvinceLogisticsChoicePreview } from '../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
@@ -1034,6 +1035,44 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
   `;
 }
 
+function renderProvinceLogisticsChoicePreview(province, economyView) {
+  const preview = buildProvinceLogisticsChoicePreview(province, economyView, {
+    resourceLabelById: Object.fromEntries(Object.entries(resourceHudById).map(([resourceId, hud]) => [resourceId, hud.label])),
+  });
+
+  if (preview.options.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-logistics-choice-preview" aria-label="Aperçu reroutage et réparation logistique">
+      <div class="province-logistics-choice-preview__header">
+        <strong>Aperçu choix logistiques</strong>
+        <span>${preview.options.length} options</span>
+      </div>
+      <p>${preview.summary}</p>
+      <div class="province-logistics-choice-list">
+        ${preview.options.map((option) => `
+          <article class="province-logistics-choice province-logistics-choice--${option.tone} ${option.recommended ? 'is-recommended' : ''}">
+            <div class="province-logistics-choice__title">
+              <strong>${option.action}</strong>
+              <span>${option.recommended ? 'recommandé' : option.delay}</span>
+            </div>
+            <p>${option.impact}</p>
+            <dl>
+              <div><dt>Coût</dt><dd>${option.cost}</dd></div>
+              <div><dt>Délai</dt><dd>${option.delay}</dd></div>
+              <div><dt>Route</dt><dd>${option.routes.join(', ')}</dd></div>
+              <div><dt>Ressource</dt><dd>${option.resources.join(', ')}</dd></div>
+              <div><dt>Risque résiduel</dt><dd>${option.residualRisk}</dd></div>
+            </dl>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function buildConflictOutcomePreview(province, shell) {
   const neighbors = province.neighborIds
     .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId))
@@ -1143,6 +1182,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       </div>
       ${renderProvinceEconomyConsequences(province, economyView)}
       ${renderProvinceLogisticsBottleneckComparison(province, economyView)}
+      ${renderProvinceLogisticsChoicePreview(province, economyView)}
     </section>
   `;
 }
