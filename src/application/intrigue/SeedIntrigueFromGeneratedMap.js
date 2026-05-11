@@ -1,6 +1,13 @@
 import { Cellule } from '../../domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../../domain/intrigue/OperationClandestine.js';
 import { NiveauAlerte } from '../../domain/intrigue/NiveauAlerte.js';
+import {
+  clampInteger,
+  extractGeneratedMapProvinces,
+  normalizeGeneratedMapProvince,
+  requirePlainObject,
+  requireText,
+} from '../war/strategicMapContract.js';
 
 const DEFAULT_NETWORK_FACTION_ID = 'shadow-network';
 const DEFAULT_OPERATION_TYPE = 'sabotage';
@@ -9,52 +16,17 @@ const SABOTAGE_THRESHOLD = 65;
 
 const SUPPLY_RISK_BY_LEVEL = Object.freeze({
   abundant: 0,
+  secure: 0,
   stable: 0,
   strained: 8,
+  disrupted: 12,
   low: 12,
   critical: 18,
+  collapsed: 18,
   depleted: 18,
 });
 
-function requireObject(value, label) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError(`${label} must be an object.`);
-  }
-
-  return value;
-}
-
-function requireArray(value, label) {
-  if (!Array.isArray(value)) {
-    throw new TypeError(`${label} must be an array.`);
-  }
-
-  return value;
-}
-
-function requireText(value, label) {
-  const normalizedValue = String(value ?? '').trim();
-
-  if (!normalizedValue) {
-    throw new RangeError(`${label} is required.`);
-  }
-
-  return normalizedValue;
-}
-
-function normalizeInteger(value, label, { min, max, fallback }) {
-  const normalizedValue = value === undefined || value === null ? fallback : value;
-
-  if (!Number.isInteger(normalizedValue) || normalizedValue < min || normalizedValue > max) {
-    throw new RangeError(`${label} must be an integer between ${min} and ${max}.`);
-  }
-
-  return normalizedValue;
-}
-
-function clampInteger(value, min, max) {
-  return Math.max(min, Math.min(max, Math.round(value)));
-}
+const requireObject = requirePlainObject;
 
 function slugify(value) {
   return requireText(value, 'SeedIntrigueFromGeneratedMap slug value')
@@ -65,51 +37,20 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '') || 'province';
 }
 
-function extractProvinces(generatedMap) {
-  if (Array.isArray(generatedMap.provinces)) {
-    return generatedMap.provinces;
-  }
-
-  if (Array.isArray(generatedMap.regions)) {
-    return generatedMap.regions;
-  }
-
-  if (generatedMap.map && Array.isArray(generatedMap.map.provinces)) {
-    return generatedMap.map.provinces;
-  }
-
-  throw new TypeError('SeedIntrigueFromGeneratedMap generatedMap.provinces must be an array.');
-}
-
 function normalizeProvince(province) {
-  const normalizedProvince = requireObject(province, 'SeedIntrigueFromGeneratedMap province');
-  const id = requireText(normalizedProvince.id, 'SeedIntrigueFromGeneratedMap province id');
-  const ownerFactionId = requireText(
-    normalizedProvince.ownerFactionId ?? normalizedProvince.factionId,
-    'SeedIntrigueFromGeneratedMap province ownerFactionId',
-  );
-  const controllingFactionId = requireText(
-    normalizedProvince.controllingFactionId ?? ownerFactionId,
-    'SeedIntrigueFromGeneratedMap province controllingFactionId',
+  const normalizedProvince = normalizeGeneratedMapProvince(
+    province,
+    'SeedIntrigueFromGeneratedMap province',
+    { requireOwner: true },
   );
 
   return {
-    id,
-    name: String(normalizedProvince.name ?? id).trim() || id,
-    ownerFactionId,
-    controllingFactionId,
-    loyalty: normalizeInteger(normalizedProvince.loyalty, 'SeedIntrigueFromGeneratedMap province loyalty', {
-      min: 0,
-      max: 100,
-      fallback: 50,
-    }),
-    strategicValue: normalizeInteger(
-      normalizedProvince.strategicValue ?? normalizedProvince.value,
-      'SeedIntrigueFromGeneratedMap province strategicValue',
-      { min: 1, max: 10, fallback: 1 },
+    ...normalizedProvince,
+    ownerFactionId: requireText(normalizedProvince.ownerFactionId, 'SeedIntrigueFromGeneratedMap province ownerFactionId'),
+    controllingFactionId: requireText(
+      normalizedProvince.controllingFactionId ?? normalizedProvince.ownerFactionId,
+      'SeedIntrigueFromGeneratedMap province controllingFactionId',
     ),
-    supplyLevel: String(normalizedProvince.supplyLevel ?? 'stable').trim().toLowerCase(),
-    contested: Boolean(normalizedProvince.contested),
   };
 }
 
@@ -121,6 +62,18 @@ function computeSabotageRiskScore(province) {
   const supplyPressure = SUPPLY_RISK_BY_LEVEL[province.supplyLevel] ?? 6;
 
   return clampInteger(strategicPressure + loyaltyPressure + contestPressure + occupationPressure + supplyPressure, 0, 100);
+}
+
+function buildPresenceLevel(score) {
+  if (score >= SABOTAGE_THRESHOLD) {
+    return 'active-presence';
+  }
+
+  if (score >= PRESENCE_THRESHOLD) {
+    return 'sleeper-presence';
+  }
+
+  return 'no-presence';
 }
 
 function buildRiskLevel(score) {
@@ -201,7 +154,7 @@ function buildSabotageOperation({ province, riskScore, celluleId }) {
 export function seedIntrigueFromGeneratedMap(generatedMap, options = {}) {
   const normalizedMap = requireObject(generatedMap, 'SeedIntrigueFromGeneratedMap generatedMap');
   const normalizedOptions = requireObject(options, 'SeedIntrigueFromGeneratedMap options');
-  const provinces = requireArray(extractProvinces(normalizedMap), 'SeedIntrigueFromGeneratedMap generatedMap.provinces')
+  const provinces = extractGeneratedMapProvinces(normalizedMap, 'SeedIntrigueFromGeneratedMap generatedMap')
     .map(normalizeProvince)
     .sort((left, right) => left.id.localeCompare(right.id));
   const networkFactionId = requireText(
@@ -218,6 +171,8 @@ export function seedIntrigueFromGeneratedMap(generatedMap, options = {}) {
       controllingFactionId: province.controllingFactionId,
       sabotageRiskScore,
       riskLevel: buildRiskLevel(sabotageRiskScore),
+      presenceScore: sabotageRiskScore,
+      presenceLevel: buildPresenceLevel(sabotageRiskScore),
       drivers: [
         province.strategicValue >= 7 ? 'strategic-value' : null,
         province.loyalty <= 45 ? 'low-loyalty' : null,
@@ -263,6 +218,7 @@ export function seedIntrigueFromGeneratedMap(generatedMap, options = {}) {
     summary: {
       provinceCount: provinces.length,
       seededCelluleCount: cellules.length,
+      seededPresenceCount: cellules.length,
       seededSabotageOperationCount: operations.length,
       maxSabotageRiskScore: maxRiskScore,
       alertCode: alertLevel.code,

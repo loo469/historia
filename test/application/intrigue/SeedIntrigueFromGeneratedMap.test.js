@@ -51,6 +51,8 @@ test('seedIntrigueFromGeneratedMap derives cells, sabotage operations, risk prof
       controllingFactionId: 'moon-league',
       sabotageRiskScore: 100,
       riskLevel: 'critical',
+      presenceScore: 100,
+      presenceLevel: 'active-presence',
       drivers: ['strategic-value', 'low-loyalty', 'contested', 'occupied', 'supply-stress'],
     },
     {
@@ -59,6 +61,8 @@ test('seedIntrigueFromGeneratedMap derives cells, sabotage operations, risk prof
       controllingFactionId: 'sun-empire',
       sabotageRiskScore: 61,
       riskLevel: 'watch',
+      presenceScore: 61,
+      presenceLevel: 'sleeper-presence',
       drivers: ['supply-stress'],
     },
     {
@@ -67,6 +71,8 @@ test('seedIntrigueFromGeneratedMap derives cells, sabotage operations, risk prof
       controllingFactionId: 'sun-empire',
       sabotageRiskScore: 18,
       riskLevel: 'latent',
+      presenceScore: 18,
+      presenceLevel: 'no-presence',
       drivers: [],
     },
   ]);
@@ -127,6 +133,7 @@ test('seedIntrigueFromGeneratedMap derives cells, sabotage operations, risk prof
   assert.deepEqual(result.summary, {
     provinceCount: 3,
     seededCelluleCount: 2,
+    seededPresenceCount: 2,
     seededSabotageOperationCount: 1,
     maxSabotageRiskScore: 100,
     alertCode: 'verrouille',
