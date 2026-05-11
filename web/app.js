@@ -2536,6 +2536,17 @@ function renderIntrigueSidePanel(intrigueView) {
                   </article>
                 `).join('')}
               </div>
+              <div class="intrigue-quick-responses" aria-label="Réponses rapides intrigue">
+                ${intrigueView.selectedProvince.drillDown.quickResponses.map((response) => `
+                  <article class="intrigue-quick-response ${response.recommended ? 'is-recommended' : ''}">
+                    <div>
+                      <strong>${response.label}</strong>
+                      ${response.recommended ? '<b>recommandée</b>' : ''}
+                    </div>
+                    <span>${response.summary}</span>
+                  </article>
+                `).join('')}
+              </div>
               <small>${intrigueView.selectedProvince.drillDown.actionHint}</small>
             </div>
           ` : ''}

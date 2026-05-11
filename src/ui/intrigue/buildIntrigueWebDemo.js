@@ -132,6 +132,60 @@ function buildHotspotActionHints(entry, hotspot, activeOperations) {
   ];
 }
 
+
+function buildHotspotQuickResponses(entry, hotspot, activeOperations) {
+  const responses = [];
+  const riskLabel = entry.sabotageRiskLevel === 'high' ? 'élevé' : entry.sabotageRiskLevel === 'medium' ? 'moyen' : 'faible';
+  const hasImmediateThreat = hotspot.severity === 'critical' || entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0;
+
+  if (hasImmediateThreat) {
+    responses.push({
+      code: 'contenir',
+      label: 'Contenir',
+      recommended: true,
+      cost: '2 ordres sécurité',
+      risk: `Escalade ${riskLabel}`,
+      benefit: 'Réduit la fenêtre de sabotage immédiate',
+    });
+  }
+
+  if (activeOperations.length > 0 || entry.metrics.sleeperCellCount > 0) {
+    responses.push({
+      code: 'infiltrer',
+      label: 'Infiltrer',
+      recommended: !hasImmediateThreat,
+      cost: '1 agent disponible',
+      risk: activeOperations.length > 0 ? 'Chaleur opérationnelle accrue' : 'Couverture lente à établir',
+      benefit: 'Identifie cellule, cible ou commanditaire prioritaire',
+    });
+  }
+
+  if (entry.metrics.exposedCellCount > 0) {
+    responses.push({
+      code: 'exposer',
+      label: 'Exposer',
+      recommended: false,
+      cost: '1 preuve exploitable',
+      risk: 'Réseau adverse alerté',
+      benefit: 'Convertit une cellule exposée en avantage public',
+    });
+  }
+
+  responses.push({
+    code: 'surveiller',
+    label: 'Surveiller',
+    recommended: responses.length === 0,
+    cost: '0 ordre lourd',
+    risk: 'Menace différée possible',
+    benefit: 'Maintient le signal visible sans encombrer la carte',
+  });
+
+  return responses.slice(0, 3).map((response) => ({
+    ...response,
+    summary: `${response.cost} · ${response.risk} · ${response.benefit}`,
+  }));
+}
+
 function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
   const locationCellules = cellules
     .filter((cellule) => cellule.locationId === entry.locationId && cellule.status !== 'dismantled')
@@ -166,6 +220,7 @@ function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
     activeOperations.length > 0 ? `${activeOperations.length} opération${activeOperations.length > 1 ? 's' : ''} active${activeOperations.length > 1 ? 's' : ''}` : null,
   ].filter(Boolean);
   const actionHints = buildHotspotActionHints(entry, hotspot, activeOperations);
+  const quickResponses = buildHotspotQuickResponses(entry, hotspot, activeOperations);
 
   return {
     locationId: entry.locationId,
@@ -182,6 +237,8 @@ function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
     reasons: reasons.length > 0 ? reasons : [`Présence clandestine ${entry.presenceLevel}`],
     actionHint: actionHints[0].description,
     actionHints,
+    recommendedResponseCode: quickResponses.find((response) => response.recommended)?.code ?? quickResponses[0]?.code ?? null,
+    quickResponses,
   };
 }
 
