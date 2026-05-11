@@ -383,6 +383,8 @@ const state = {
   popupProvinceId: 'river-gate',
   hoveredCityId: 'river-gate-city',
   selectedCityId: 'river-gate-city',
+  hoveredRouteId: null,
+  selectedRouteId: null,
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   mobilePanelSection: 'details',
@@ -426,6 +428,8 @@ function applyMapScenario(scenario) {
   state.mobilePanelSection = 'details';
   state.mobileMapExpanded = true;
   state.hoveredProvinceId = null;
+  state.hoveredRouteId = null;
+  state.selectedRouteId = null;
   state.economyFilters = {
     criticalRoutes: false,
     resourceMarkers: true,
@@ -875,6 +879,74 @@ function renderRouteManifest(route) {
     <div class="economy-route-card__manifest">
       ${resources.map((resource) => `<span class="economy-resource-chip economy-resource-chip--${resource.tone}" title="${resource.label}">${resource.glyph} ${resource.resourceId} ${resource.capacity}</span>`).join('')}
     </div>
+  `;
+}
+
+function getRouteStressSummary(route, tensionByCityId, cityNameById = {}) {
+  const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
+  const destinationTension = tensionByCityId[route.destinationCityId]?.tensionLevel ?? 'low';
+  const resources = route.resources.slice().sort((left, right) => right.capacity - left.capacity || left.resourceId.localeCompare(right.resourceId));
+  const mainResource = resources[0];
+  const mainResourceLabel = mainResource ? getResourceHud(mainResource.resourceId).label : 'capacité réservée';
+  const highTension = originTension === 'high' || destinationTension === 'high';
+  const stressedEndpoint = originTension === 'high'
+    ? cityNameById[route.originCityId] ?? route.originCityId
+    : destinationTension === 'high'
+      ? cityNameById[route.destinationCityId] ?? route.destinationCityId
+      : null;
+  const drivers = [];
+
+  if (!route.active) {
+    drivers.push('route inactive: bascule logistique à prévoir');
+  }
+
+  if (route.riskLevel >= 70) {
+    drivers.push(`risque ${route.riskLevel}: convoi vulnérable`);
+  } else if (route.riskLevel >= 55) {
+    drivers.push(`risque ${route.riskLevel}: escorte utile`);
+  }
+
+  if (route.totalCapacity >= 9) {
+    drivers.push(`surcharge ${route.totalCapacity}: goulot possible`);
+  } else if (route.totalCapacity >= 6) {
+    drivers.push(`flux dense ${route.totalCapacity}: surveiller débit`);
+  }
+
+  if (highTension) {
+    drivers.push(`${stressedEndpoint} en tension: route prioritaire`);
+  }
+
+  if (mainResource) {
+    drivers.push(`${mainResourceLabel} (${mainResource.capacity}) ressource clé`);
+  }
+
+  const tone = !route.active || route.riskLevel >= 70 || highTension
+    ? 'high'
+    : route.riskLevel >= 55 || route.totalCapacity >= 9
+      ? 'medium'
+      : 'low';
+  const headline = tone === 'high'
+    ? 'Priorité logistique'
+    : tone === 'medium'
+      ? 'Flux à surveiller'
+      : 'Route stable';
+
+  return {
+    tone,
+    headline,
+    drivers: drivers.slice(0, 3),
+    summary: drivers.slice(0, 2).join(' · ') || 'Flux stable, pas de goulot visible',
+  };
+}
+
+function renderRouteStressBadge(route, stress, visual) {
+  const midpoint = getQuadraticPoint(visual.origin, visual.control, visual.destination, 0.5);
+
+  return `
+    <g class="economy-route-stress economy-route-stress--${stress.tone}" aria-label="${stress.headline}: ${stress.summary}">
+      <rect x="${midpoint.x - 9.4}" y="${midpoint.y - 8.6}" width="18.8" height="4.4" rx="2.2" />
+      <text x="${midpoint.x}" y="${midpoint.y - 5.55}" text-anchor="middle">${stress.headline}</text>
+    </g>
   `;
 }
 
@@ -1805,6 +1877,7 @@ function renderEconomyMapOverlay(economyView) {
 
   const filters = state.economyFilters;
   const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
   const heatNodes = economyView.overlay.cities.map((city) => {
     const position = city.marker.position;
     const tension = tensionByCityId[city.cityId];
@@ -1843,14 +1916,19 @@ function renderEconomyMapOverlay(economyView) {
     const emphasizeRoute = visual.critical || tensionClass === 'has-high-tension';
     const routeFiltered = filters.criticalRoutes && !emphasizeRoute;
     const showRouteLabel = !routeFiltered && (emphasizeRoute || tensionClass === 'has-medium-tension');
+    const routeFocused = state.hoveredRouteId === route.routeId || state.selectedRouteId === route.routeId;
+    const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
 
     return `
-      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}">
+      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${stress.summary}">
+        <title>${route.routeName}: ${stress.headline} — ${stress.summary}</title>
+        <path class="economy-route-hitbox" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
         <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
         ${renderRouteHudMarkers(route, visual, { compact: !emphasizeRoute || routeFiltered })}
+        ${routeFocused ? renderRouteStressBadge(route, stress, visual) : ''}
         ${showRouteLabel ? `<text class="economy-route__label" text-anchor="middle">
           <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
         </text>` : ''}
@@ -2209,6 +2287,11 @@ function renderEconomySidePanel(economyView, cultureView) {
 
   const filters = state.economyFilters;
   const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const selectedRoute = economyView.overlay.routes.find((route) => route.routeId === (state.hoveredRouteId ?? state.selectedRouteId))
+    ?? economyView.overlay.routes.find((route) => route.routeId === state.selectedRouteId)
+    ?? null;
+  const selectedRouteStress = selectedRoute ? getRouteStressSummary(selectedRoute, tensionByCityId, cityNameById) : null;
   const criticalRouteCount = economyView.overlay.routes.filter((route) => {
     const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
     const destinationTension = tensionByCityId[route.destinationCityId]?.tensionLevel ?? 'low';
@@ -2236,6 +2319,19 @@ function renderEconomySidePanel(economyView, cultureView) {
       </section>
       ${renderEconomyKpiStrip(economyView)}
       ${renderEconomyFocusPanel(economyView)}
+      ${selectedRoute && selectedRouteStress ? `
+        <article class="economy-route-stress-panel economy-route-stress-panel--${selectedRouteStress.tone}">
+          <div class="economy-route-stress-panel__header">
+            <span>Route suivie</span>
+            <strong>${selectedRoute.routeName}</strong>
+            <b>${selectedRouteStress.headline}</b>
+          </div>
+          <p>${selectedRouteStress.summary}</p>
+          <ul>
+            ${selectedRouteStress.drivers.map((driver) => `<li>${driver}</li>`).join('')}
+          </ul>
+        </article>
+      ` : ''}
       <div class="economy-route-list">
         ${economyView.overlay.routes.map((route) => {
           const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
@@ -2246,14 +2342,18 @@ function renderEconomySidePanel(economyView, cultureView) {
               ? 'has-medium-tension'
               : 'has-low-tension';
 
+          const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
+          const routeFocused = state.hoveredRouteId === route.routeId || state.selectedRouteId === route.routeId;
+
           return `
-            <article class="economy-route-card ${route.active ? '' : 'is-inactive'} ${route.transportMode === 'river' ? 'is-river' : route.transportMode === 'sea' ? 'is-sea' : 'is-land'} ${route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'is-critical' : ''} ${tensionClass}">
+            <article class="economy-route-card ${route.active ? '' : 'is-inactive'} ${route.transportMode === 'river' ? 'is-river' : route.transportMode === 'sea' ? 'is-sea' : 'is-land'} ${route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'is-critical' : ''} ${tensionClass} ${routeFocused ? 'is-selected' : ''}" data-route-id="${route.routeId}" title="${stress.headline}: ${stress.summary}">
               <div class="economy-route-card__header"><strong>${route.routeName}</strong><span>${getRouteHud(route).glyph}</span></div>
               <div class="economy-route-card__stats">
                 <span>${route.transportMode}</span>
                 <span>risque ${route.riskLevel}</span>
                 <span>capacité ${route.totalCapacity}</span>
               </div>
+              <p class="economy-route-card__stress economy-route-card__stress--${stress.tone}">${stress.headline}: ${stress.summary}</p>
               ${renderRouteManifest(route)}
             </article>
           `;
@@ -3092,6 +3192,19 @@ function render() {
 
       state.selectedCityId = cityId;
       state.hoveredCityId = cityId;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-route-id]').forEach((element) => {
+    element.addEventListener('mouseenter', () => {
+      state.hoveredRouteId = element.dataset.routeId;
+      render();
+    });
+
+    element.addEventListener('click', () => {
+      state.selectedRouteId = element.dataset.routeId;
+      state.hoveredRouteId = element.dataset.routeId;
       render();
     });
   });
