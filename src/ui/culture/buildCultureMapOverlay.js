@@ -295,12 +295,32 @@ function buildZoneContour(influenceTier, overlapCount, zoneRank) {
 function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById) {
   const cultureIds = regionPresence.map((entry) => entry.cultureId).sort();
   const cultureNames = regionPresence.map((entry) => entry.cultureName).sort();
-  const discoveryIds = [...new Set(regionPresence.flatMap((entry) => (
+  const discoveryPins = regionPresence.flatMap((entry) => (
     cultureSignalsById.get(entry.cultureId)?.signals.highlightedDiscoveries ?? []
-  )))].sort();
-  const eventCount = regionPresence.reduce((total, entry) => (
-    total + (cultureSignalsById.get(entry.cultureId)?.signals.eventCount ?? 0)
-  ), 0);
+  ).map((discoveryId) => ({
+    pinId: `${regionId}:${entry.cultureId}:discovery:${discoveryId}`,
+    kind: 'discovery',
+    name: discoveryId,
+    type: 'Découverte',
+    regionId,
+    cultureId: entry.cultureId,
+    cultureName: entry.cultureName,
+    importance: null,
+  }))).sort((left, right) => left.name.localeCompare(right.name) || left.cultureId.localeCompare(right.cultureId));
+  const eventPins = regionPresence.flatMap((entry) => (
+    cultureSignalsById.get(entry.cultureId)?.signals.orderedHistoricalEvents ?? []
+  ).map((historicalEvent) => ({
+    pinId: `${regionId}:${entry.cultureId}:event:${historicalEvent.id}`,
+    kind: 'event',
+    name: historicalEvent.title,
+    type: historicalEvent.category,
+    regionId,
+    cultureId: entry.cultureId,
+    cultureName: entry.cultureName,
+    importance: historicalEvent.importance,
+  }))).sort((left, right) => (right.importance ?? 0) - (left.importance ?? 0) || left.name.localeCompare(right.name));
+  const discoveryIds = [...new Set(discoveryPins.map((pin) => pin.name))].sort();
+  const eventCount = eventPins.length;
 
   return {
     clusterId: `${regionId}:culture-cluster`,
@@ -311,6 +331,7 @@ function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById)
     discoveryIds,
     discoveryCount: discoveryIds.length,
     eventCount,
+    pins: [...eventPins, ...discoveryPins],
     label: `${cultureIds.length} cultures · ${discoveryIds.length} découvertes`,
     summary: `${cultureNames.slice(0, 3).join(', ')}${cultureNames.length > 3 ? '…' : ''}`,
   };
