@@ -614,7 +614,7 @@ test('buildCultureMapOverlay supports plain payloads and style overrides', () =>
   assert.equal(overlay[0].zoneStyle.glow, 'sparking');
 });
 
-test('buildCultureMapOverlay can summarize overlapping culture clusters', () => {
+test('buildCultureMapOverlay can summarize overlapping culture clusters with discovery and event pins', () => {
   const overlay = buildCultureMapOverlay(
     {
       cultures: [
@@ -660,7 +660,19 @@ test('buildCultureMapOverlay can summarize overlapping culture clusters', () => 
           discoveredConceptIds: ['flood-archives'],
         },
       ],
-      historicalEvents: [],
+      historicalEvents: [
+        {
+          id: 'event-harbor-forum',
+          title: 'Harbor Forum',
+          category: 'knowledge',
+          summary: 'Pilots compare flood archive routes.',
+          era: 'map-play',
+          importance: 4,
+          triggeredAt: '2026-04-20T00:00:00.000Z',
+          affectedCultureIds: ['culture-harbor'],
+          discoveryIds: ['tidal-ledgers'],
+        },
+      ],
     },
     {
       clusterSummaries: true,
@@ -672,32 +684,54 @@ test('buildCultureMapOverlay can summarize overlapping culture clusters', () => 
   );
 
   assert.equal(overlay.length, 2);
-  assert.deepEqual(overlay.map((entry) => entry.clusterSummary), [
-    {
-      clusterId: 'shared-bay:culture-cluster',
-      regionId: 'shared-bay',
-      cultureIds: ['culture-delta', 'culture-harbor'],
-      cultureNames: ['Delta Scribes', 'Harbor Compact'],
-      cultureCount: 2,
-      discoveryIds: ['flood-archives', 'tidal-ledgers'],
-      discoveryCount: 2,
-      eventCount: 0,
-      label: '2 cultures · 2 découvertes',
-      summary: 'Delta Scribes, Harbor Compact',
-    },
-    {
-      clusterId: 'shared-bay:culture-cluster',
-      regionId: 'shared-bay',
-      cultureIds: ['culture-delta', 'culture-harbor'],
-      cultureNames: ['Delta Scribes', 'Harbor Compact'],
-      cultureCount: 2,
-      discoveryIds: ['flood-archives', 'tidal-ledgers'],
-      discoveryCount: 2,
-      eventCount: 0,
-      label: '2 cultures · 2 découvertes',
-      summary: 'Delta Scribes, Harbor Compact',
-    },
+  assert.deepEqual(overlay.map((entry) => entry.clusterSummary?.label), [
+    '2 cultures · 2 découvertes',
+    '2 cultures · 2 découvertes',
   ]);
+  assert.deepEqual(overlay[0].clusterSummary, {
+    clusterId: 'shared-bay:culture-cluster',
+    regionId: 'shared-bay',
+    cultureIds: ['culture-delta', 'culture-harbor'],
+    cultureNames: ['Delta Scribes', 'Harbor Compact'],
+    cultureCount: 2,
+    discoveryIds: ['flood-archives', 'tidal-ledgers'],
+    discoveryCount: 2,
+    eventCount: 1,
+    pins: [
+      {
+        pinId: 'shared-bay:culture-harbor:event:event-harbor-forum',
+        kind: 'event',
+        name: 'Harbor Forum',
+        type: 'knowledge',
+        regionId: 'shared-bay',
+        cultureId: 'culture-harbor',
+        cultureName: 'Harbor Compact',
+        importance: 4,
+      },
+      {
+        pinId: 'shared-bay:culture-delta:discovery:flood-archives',
+        kind: 'discovery',
+        name: 'flood-archives',
+        type: 'Découverte',
+        regionId: 'shared-bay',
+        cultureId: 'culture-delta',
+        cultureName: 'Delta Scribes',
+        importance: null,
+      },
+      {
+        pinId: 'shared-bay:culture-harbor:discovery:tidal-ledgers',
+        kind: 'discovery',
+        name: 'tidal-ledgers',
+        type: 'Découverte',
+        regionId: 'shared-bay',
+        cultureId: 'culture-harbor',
+        cultureName: 'Harbor Compact',
+        importance: null,
+      },
+    ],
+    label: '2 cultures · 2 découvertes',
+    summary: 'Delta Scribes, Harbor Compact',
+  });
 });
 
 test('buildCultureMapOverlay rejects invalid inputs', () => {

@@ -1527,7 +1527,31 @@ function buildCultureClusterSummaries(entries) {
     const cultureIds = [...new Set(entriesInCluster.flatMap((entry) => entry.clusterSummary?.cultureIds ?? [entry.cultureId]))].sort();
     const cultureNames = [...new Set(entriesInCluster.flatMap((entry) => entry.clusterSummary?.cultureNames ?? [entry.cultureName]))].sort();
     const discoveryIds = [...new Set(entriesInCluster.flatMap((entry) => entry.clusterSummary?.discoveryIds ?? entry.discoveries))].sort();
-    const eventCount = entriesInCluster.reduce((total, entry) => total + (entry.clusterSummary?.eventCount ?? entry.eventCount), 0);
+    const pins = entriesInCluster.flatMap((entry) => entry.clusterSummary?.pins ?? [
+      ...entry.eventPopups.map((event) => ({
+        pinId: `${entry.regionId}:${entry.cultureId}:event:${event.eventId}`,
+        kind: 'event',
+        name: event.title,
+        type: 'événement',
+        regionId: entry.regionId,
+        cultureId: entry.cultureId,
+        cultureName: entry.cultureName,
+        importance: event.importance,
+      })),
+      ...entry.regionalDiscoveryLinks.map((link) => ({
+        pinId: link.linkId,
+        kind: 'discovery',
+        name: link.discoveryId,
+        type: 'Découverte',
+        regionId: entry.regionId,
+        cultureId: entry.cultureId,
+        cultureName: entry.cultureName,
+        importance: null,
+      })),
+    ]);
+    const dedupedPins = [...new Map(pins.map((pin) => [pin.pinId, pin])).values()]
+      .sort((left, right) => (right.importance ?? -1) - (left.importance ?? -1) || left.name.localeCompare(right.name));
+    const eventCount = dedupedPins.filter((pin) => pin.kind === 'event').length;
     const centroid = members.reduce((accumulator, member) => ({
       x: accumulator.x + member.center.x,
       y: accumulator.y + member.center.y,
@@ -1546,6 +1570,7 @@ function buildCultureClusterSummaries(entries) {
       cultureCount: cultureIds.length,
       discoveryCount: discoveryIds.length,
       eventCount,
+      pins: dedupedPins,
       label: `${cultureIds.length} cultures · ${discoveryIds.length} découvertes`,
       summary: `${cultureNames.slice(0, 2).join(', ')}${cultureNames.length > 2 ? '…' : ''}`,
     });
@@ -1556,6 +1581,20 @@ function buildCultureClusterSummaries(entries) {
 
 function renderCultureClusterSummary(cluster, active) {
   const detail = `${cluster.summary} · régions ${cluster.regionIds.join(', ')} · cultures ${cluster.cultureIds.join(', ')}`;
+  const visiblePins = active ? cluster.pins.slice(0, 4) : [];
+  const pinNodes = visiblePins.map((pin, index) => {
+    const x = cluster.anchor.x - 5.4 + (index * 3.6);
+    const y = cluster.anchor.y + 5.4;
+    const pinCode = pin.kind === 'event' ? `H${pin.importance ?? ''}` : `D${index + 1}`;
+
+    return `
+      <g class="culture-cluster-pin culture-cluster-pin--${pin.kind}">
+        <title>${pin.name} · ${pin.type} · ${pin.regionId}${pin.importance ? ` · importance ${pin.importance}` : ''}</title>
+        <circle cx="${x}%" cy="${y}%" r="1.35"></circle>
+        <text x="${x}%" y="${y + 0.43}%" text-anchor="middle">${pinCode}</text>
+      </g>
+    `;
+  }).join('');
 
   return `
     <g class="culture-cluster-summary ${active ? 'is-active' : 'is-muted'}" data-culture-cluster="${cluster.clusterId}">
@@ -1563,7 +1602,36 @@ function renderCultureClusterSummary(cluster, active) {
       <rect x="${cluster.anchor.x - 7.8}%" y="${cluster.anchor.y - 3.1}%" width="15.6%" height="6.2%" rx="2.2%"></rect>
       <text class="culture-cluster-summary__count" x="${cluster.anchor.x - 5.9}%" y="${cluster.anchor.y + 0.45}%">C${cluster.cultureCount}</text>
       <text class="culture-cluster-summary__label" x="${cluster.anchor.x - 0.7}%" y="${cluster.anchor.y + 0.45}%">D${cluster.discoveryCount}${cluster.eventCount > 0 ? ` · H${cluster.eventCount}` : ''}</text>
+      ${pinNodes}
     </g>
+  `;
+}
+
+function renderCultureClusterPinList(cluster) {
+  if (!cluster) {
+    return '';
+  }
+
+  const pins = cluster.pins.slice(0, 5);
+
+  return `
+    <article class="culture-cluster-pin-list">
+      <div class="culture-cluster-pin-list__header">
+        <span>Cluster sélectionné</span>
+        <strong>${cluster.label}</strong>
+      </div>
+      ${pins.length > 0 ? `
+        <ul>
+          ${pins.map((pin) => `
+            <li class="culture-cluster-pin-list__item culture-cluster-pin-list__item--${pin.kind}">
+              <b>${pin.kind === 'event' ? 'Événement' : 'Découverte'}</b>
+              <span>${pin.name}</span>
+              <small>${pin.type} · ${pin.regionId}${pin.importance ? ` · IMP-${pin.importance}` : ''}</small>
+            </li>
+          `).join('')}
+        </ul>
+      ` : '<p>Aucun événement ou découverte lié à ce cluster.</p>'}
+    </article>
   `;
 }
 
@@ -1632,6 +1700,8 @@ function renderCultureSidePanel(cultureView) {
 
   const focus = cultureView.selectedMarker ?? cultureView.panel.focus;
   const focusSeed = focus ? cultureView.seeds.find((seed) => seed.cultureId === focus.cultureId) : null;
+  const selectedCluster = buildCultureClusterSummaries(cultureView.overlay)
+    .find((cluster) => cluster.regionIds.includes(state.selectedProvinceId)) ?? null;
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -1647,6 +1717,7 @@ function renderCultureSidePanel(cultureView) {
         <div class="overlay-anchor"><span>Repères</span><strong>${cultureView.metrics.eventCount}</strong></div>
       </div>
       ${renderCultureLegendKey(cultureView)}
+      ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
           <div class="culture-focus-card__header">
