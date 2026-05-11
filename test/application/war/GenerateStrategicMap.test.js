@@ -139,6 +139,21 @@ test('GenerateStrategicMap can derive province ownership from faction home colum
   assert.notDeepEqual(map.provinces.map((province) => province.loyalty), [50, 50]);
 });
 
+test('GenerateStrategicMap normalizes custom polygon whitespace before building CSS shapes', () => {
+  const generator = new GenerateStrategicMap();
+  const map = generator.execute({
+    provinceBlueprints: [{
+      id: 'custom',
+      name: 'Custom',
+      polygon: '10,10   24,12\n36,28\t12,30',
+    }],
+    links: [],
+  });
+
+  assert.equal(map.provinceGeometryById.custom.polygon, '10,10 24,12 36,28 12,30');
+  assert.equal(map.provinceGeometryById.custom.shape, 'polygon(10% 10%, 24% 12%, 36% 28%, 12% 30%)');
+});
+
 test('GenerateStrategicMap validates options, factions, blueprints and links', () => {
   const generator = new GenerateStrategicMap();
 

@@ -410,23 +410,27 @@ function buildRectanglePolygon(layout) {
   return `${layout.x},${layout.y} ${layout.x + layout.w},${layout.y} ${layout.x + layout.w},${layout.y + layout.h} ${layout.x},${layout.y + layout.h}`;
 }
 
-function normalizePolygon(polygon, layout, blueprint) {
-  if (polygon === undefined) {
-    return buildRectanglePolygon(layout);
-  }
-
-  const normalizedPolygon = requireText(polygon, `GenerateStrategicMap ${blueprint.id} polygon`);
-  const points = normalizedPolygon.split(/\s+/);
+function tokenizePolygonPoints(polygon, label) {
+  const points = requireText(polygon, label).split(/\s+/);
 
   if (points.some((point) => !/^[-]?\d+(?:\.\d+)?,[-]?\d+(?:\.\d+)?$/.test(point))) {
-    throw new RangeError(`GenerateStrategicMap ${blueprint.id} polygon must contain x,y point pairs.`);
+    throw new RangeError(`${label} must contain x,y point pairs.`);
   }
 
-  return normalizedPolygon;
+  return points;
+}
+
+function normalizePolygon(polygon, layout, blueprint) {
+  const polygonSource = polygon === undefined ? buildRectanglePolygon(layout) : polygon;
+
+  return tokenizePolygonPoints(
+    polygonSource,
+    `GenerateStrategicMap ${blueprint.id} polygon`,
+  ).join(' ');
 }
 
 function polygonToCssClipPath(polygon) {
-  return `polygon(${polygon.split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
+  return `polygon(${tokenizePolygonPoints(polygon, 'GenerateStrategicMap polygon').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
 }
 
 function normalizeLabelLayout(labelLayout, layout, blueprint) {
