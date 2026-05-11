@@ -262,6 +262,123 @@ function summarizeRegionClimate(region) {
   return region.strategicSignals?.summary ?? `${region.seasonLabel}, ${region.strategicImpact}`;
 }
 
+const CLIMATE_RISK_ORDER = Object.freeze({ stable: 0, strained: 1, critical: 2 });
+
+function getClimateRiskScore(riskLevel) {
+  return CLIMATE_RISK_ORDER[String(riskLevel ?? '').trim().toLowerCase()] ?? 1;
+}
+
+function getPrimaryClimateTimingSignal(comparison) {
+  if (comparison.state !== 'ready') {
+    return null;
+  }
+
+  const currentScore = getClimateRiskScore(comparison.current.riskLevel);
+  const previewScore = getClimateRiskScore(comparison.preview.riskLevel);
+
+  if (previewScore < currentScore) {
+    return {
+      direction: 'safer',
+      urgency: comparison.current.riskLevel === 'critical' ? 'wait-for-preview' : 'opportunistic',
+      tone: 'positive',
+      copy: `${comparison.preview.label} rend l’action plus sûre: risque ${comparison.current.riskLevel} → ${comparison.preview.riskLevel}.`,
+    };
+  }
+
+  if (previewScore > currentScore) {
+    return {
+      direction: 'riskier',
+      urgency: comparison.preview.riskLevel === 'critical' ? 'act-before-preview' : 'time-sensitive',
+      tone: 'warning',
+      copy: `${comparison.preview.label} augmente le risque: agir avant la bascule saisonnière si possible.`,
+    };
+  }
+
+  if (comparison.current.riskLevel === 'critical' || comparison.preview.riskLevel === 'critical') {
+    return {
+      direction: 'time-sensitive',
+      urgency: 'avoid-delay',
+      tone: 'danger',
+      copy: `Risque critique stable sur ${comparison.preview.label}: garder l’action sous surveillance immédiate.`,
+    };
+  }
+
+  if (comparison.current.anomaly !== comparison.preview.anomaly) {
+    return {
+      direction: comparison.preview.anomaly ? 'riskier' : 'safer',
+      urgency: comparison.preview.anomaly ? 'watch-preview' : 'opportunistic',
+      tone: comparison.preview.anomaly ? 'warning' : 'positive',
+      copy: comparison.preview.anomaly
+        ? `${comparison.preview.label} ajoute l’anomalie ${comparison.preview.anomaly}: préparer une marge de sécurité.`
+        : `${comparison.preview.label} lève l’anomalie actuelle: fenêtre plus lisible pour agir.`,
+    };
+  }
+
+  return {
+    direction: 'steady',
+    urgency: 'normal',
+    tone: 'neutral',
+    copy: `${comparison.preview.label} ne change pas le niveau de risque climatique pour cette province.`,
+  };
+}
+
+function buildSelectedClimateTimingRecommendation(comparison) {
+  if (comparison.state === 'no-selection') {
+    return {
+      state: 'no-selection',
+      compact: true,
+      relevant: false,
+      copy: 'Sélectionnez une province pour afficher le timing climat.',
+    };
+  }
+
+  if (comparison.state === 'missing-climate-data') {
+    return {
+      state: 'missing-climate-data',
+      compact: true,
+      relevant: false,
+      regionId: comparison.regionId,
+      copy: 'Pas de recommandation climat: données indisponibles pour cette province.',
+    };
+  }
+
+  if (comparison.state === 'no-preview') {
+    return {
+      state: 'current-only',
+      compact: true,
+      relevant: comparison.current.riskLevel !== 'stable' || comparison.current.anomaly !== null,
+      regionId: comparison.regionId,
+      direction: comparison.current.riskLevel === 'critical' ? 'time-sensitive' : 'steady',
+      urgency: comparison.current.riskLevel === 'critical' ? 'avoid-delay' : 'normal',
+      tone: comparison.current.riskLevel === 'critical'
+        ? 'danger'
+        : comparison.current.riskLevel === 'strained' || comparison.current.anomaly !== null
+          ? 'warning'
+          : 'neutral',
+      copy: comparison.current.riskLevel === 'stable' && comparison.current.anomaly === null
+        ? 'Timing climat normal: aucune contrainte notable pour cette province.'
+        : `${comparison.current.label}: tenir compte du risque ${comparison.current.riskLevel} avant d’agir.`,
+    };
+  }
+
+  const signal = getPrimaryClimateTimingSignal(comparison);
+
+  return {
+    state: 'ready',
+    compact: true,
+    relevant: signal.direction !== 'steady' || comparison.current.riskLevel !== 'stable',
+    regionId: comparison.regionId,
+    currentSeason: comparison.current.season,
+    previewSeason: comparison.preview.season,
+    currentRiskLevel: comparison.current.riskLevel,
+    previewRiskLevel: comparison.preview.riskLevel,
+    direction: signal.direction,
+    urgency: signal.urgency,
+    tone: signal.tone,
+    copy: signal.copy,
+  };
+}
+
 function buildSelectedClimateImpactComparison(regions, options, seasonPreview) {
   const selectedRegionId = normalizeSelectedRegionId(options);
 
@@ -754,6 +871,8 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       };
     });
 
+  const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
+
   return {
     title: 'Carte climat et catastrophes',
     summary: `${states.length} régions, ${catastropheEntries.length} catastrophes visibles, ${regions.filter((region) => region.anomaly !== null).length} anomalies`,
@@ -770,7 +889,8 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
-    selectedClimateImpactComparison: buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview),
+    selectedClimateImpactComparison,
+    selectedClimateTimingRecommendation: buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison),
     ...(seasonPreview?.active ? { seasonPreview: buildSeasonPreviewPanel(states, seasonPreview, seasonLabels) } : {}),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview),
     ...(!readabilityProfile.overlaySelected ? {
