@@ -2057,7 +2057,7 @@ function renderIntrigueSidePanel(intrigueView) {
             <div class="intrigue-drilldown intrigue-drilldown--${intrigueView.selectedProvince.drillDown.criticality}">
               <div class="intrigue-drilldown__header">
                 <span>Signal ${intrigueView.selectedProvince.drillDown.signalType}</span>
-                <strong>${intrigueView.selectedProvince.drillDown.criticality}</strong>
+                <strong>risque ${intrigueView.selectedProvince.drillDown.riskBand}</strong>
               </div>
               <p>${intrigueView.selectedProvince.drillDown.summary}</p>
               <div class="intrigue-drilldown__context">
@@ -2068,6 +2068,14 @@ function renderIntrigueSidePanel(intrigueView) {
               <ul>
                 ${intrigueView.selectedProvince.drillDown.reasons.map((reason) => `<li>${reason}</li>`).join('')}
               </ul>
+              <div class="intrigue-action-hints" aria-label="Indices d'action intrigue">
+                ${intrigueView.selectedProvince.drillDown.actionHints.map((hint) => `
+                  <article class="intrigue-action-hint intrigue-action-hint--${hint.priority}">
+                    <strong>${hint.label}</strong>
+                    <span>${hint.description}</span>
+                  </article>
+                `).join('')}
+              </div>
               <small>${intrigueView.selectedProvince.drillDown.actionHint}</small>
             </div>
           ` : ''}

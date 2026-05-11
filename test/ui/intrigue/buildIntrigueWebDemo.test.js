@@ -102,13 +102,28 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
     signalType: 'sabotage',
     severity: 'critical',
     criticality: 'critical',
+    riskBand: 'moyen',
     affectedFactionIds: ['shadow-league'],
     targetFactionIds: ['sun-empire'],
     primaryCelluleId: 'cell-ash-2',
     primaryOperationId: 'op-ash-1',
     summary: 'Risque sabotage medium (61)',
     reasons: ['Risque sabotage medium (61)', '1 cellule exposée', '1 cellule dormante', '1 opération active'],
-    actionHint: 'Inspecter les cellules exposées et interrompre les sabotages en cours.',
+    actionHint: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
+    actionHints: [
+      {
+        code: 'renforcer-securite',
+        label: 'Renforcer sécurité',
+        priority: 'high',
+        description: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
+      },
+      {
+        code: 'enqueter',
+        label: 'Enquêter',
+        priority: 'high',
+        description: 'Identifier les cellules exposées et relier les opérations actives au foyer.',
+      },
+    ],
   });
   assert.deepEqual(demo.hotspots, [
     {
@@ -130,13 +145,42 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
         signalType: 'sabotage',
         severity: 'critical',
         criticality: 'critical',
+        riskBand: 'moyen',
         affectedFactionIds: ['shadow-league'],
         targetFactionIds: ['sun-empire'],
         primaryCelluleId: 'cell-ash-2',
         primaryOperationId: 'op-ash-1',
         summary: 'Risque sabotage medium (61)',
         reasons: ['Risque sabotage medium (61)', '1 cellule exposée', '1 cellule dormante', '1 opération active'],
-        actionHint: 'Inspecter les cellules exposées et interrompre les sabotages en cours.',
+        actionHint: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
+    actionHints: [
+      {
+        code: 'renforcer-securite',
+        label: 'Renforcer sécurité',
+        priority: 'high',
+        description: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
+      },
+      {
+        code: 'enqueter',
+        label: 'Enquêter',
+        priority: 'high',
+        description: 'Identifier les cellules exposées et relier les opérations actives au foyer.',
+      },
+    ],
+        actionHints: [
+          {
+            code: 'renforcer-securite',
+            label: 'Renforcer sécurité',
+            priority: 'high',
+            description: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
+          },
+          {
+            code: 'enqueter',
+            label: 'Enquêter',
+            priority: 'high',
+            description: 'Identifier les cellules exposées et relier les opérations actives au foyer.',
+          },
+        ],
       },
     },
     {
@@ -158,13 +202,22 @@ test('buildIntrigueWebDemo assembles alert badge, hotspots, and panels for the w
         signalType: 'sabotage',
         severity: 'watch',
         criticality: 'watch',
+        riskBand: 'faible',
         affectedFactionIds: ['shadow-league'],
         targetFactionIds: ['sun-empire'],
         primaryCelluleId: 'cell-river-1',
         primaryOperationId: 'op-river-1',
         summary: 'Risque sabotage low (20)',
         reasons: ['Risque sabotage low (20)', '1 opération active'],
-        actionHint: 'Suivre les opérations actives et vérifier la chaleur opérationnelle.',
+        actionHint: 'Conserver un œil léger sur l’activité et la chaleur opérationnelle.',
+        actionHints: [
+          {
+            code: 'surveiller',
+            label: 'Surveiller',
+            priority: 'low',
+            description: 'Conserver un œil léger sur l’activité et la chaleur opérationnelle.',
+          },
+        ],
       },
     },
   ]);

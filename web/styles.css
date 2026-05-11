@@ -3633,3 +3633,25 @@ button { font: inherit; }
   padding-left: 18px;
   color: #cbd5e1;
 }
+.intrigue-action-hints {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.intrigue-action-hint {
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.intrigue-action-hint--high { border-color: rgba(251, 113, 133, 0.34); }
+.intrigue-action-hint--medium { border-color: rgba(250, 204, 21, 0.3); }
+.intrigue-action-hint--low { border-color: rgba(96, 165, 250, 0.26); }
+.intrigue-action-hint strong,
+.intrigue-action-hint span {
+  display: block;
+}
+.intrigue-action-hint span {
+  margin-top: 3px;
+  color: var(--muted);
+}
