@@ -76,6 +76,62 @@ function buildHotspotEntry(entry) {
   };
 }
 
+function buildHotspotActionHints(entry, hotspot, activeOperations) {
+  if (entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0) {
+    return [
+      {
+        code: 'renforcer-securite',
+        label: 'Renforcer sécurité',
+        priority: 'high',
+        description: 'Prioriser les contre-mesures locales et réduire les fenêtres de sabotage.',
+      },
+      {
+        code: 'enqueter',
+        label: 'Enquêter',
+        priority: 'high',
+        description: 'Identifier les cellules exposées et relier les opérations actives au foyer.',
+      },
+    ];
+  }
+
+  if (entry.sabotageRiskLevel === 'medium' || hotspot.severity === 'warning') {
+    return [
+      {
+        code: 'enqueter',
+        label: 'Enquêter',
+        priority: 'medium',
+        description: 'Vérifier les signaux moyens avant qu’ils ne deviennent critiques.',
+      },
+      {
+        code: 'surveiller',
+        label: 'Surveiller',
+        priority: 'medium',
+        description: 'Garder le hotspot dans le suivi de tour sans encombrer la carte.',
+      },
+    ];
+  }
+
+  if (entry.sabotageRiskLevel === 'low' || activeOperations.length > 0) {
+    return [
+      {
+        code: 'surveiller',
+        label: 'Surveiller',
+        priority: 'low',
+        description: 'Conserver un œil léger sur l’activité et la chaleur opérationnelle.',
+      },
+    ];
+  }
+
+  return [
+    {
+      code: 'ignorer',
+      label: 'Ignorer',
+      priority: 'low',
+      description: 'Aucun signal fort; laisser ce foyer hors des priorités immédiates.',
+    },
+  ];
+}
+
 function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
   const locationCellules = cellules
     .filter((cellule) => cellule.locationId === entry.locationId && cellule.status !== 'dismantled')
@@ -109,6 +165,7 @@ function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
     entry.metrics.sleeperCellCount > 0 ? `${entry.metrics.sleeperCellCount} cellule${entry.metrics.sleeperCellCount > 1 ? 's' : ''} dormante${entry.metrics.sleeperCellCount > 1 ? 's' : ''}` : null,
     activeOperations.length > 0 ? `${activeOperations.length} opération${activeOperations.length > 1 ? 's' : ''} active${activeOperations.length > 1 ? 's' : ''}` : null,
   ].filter(Boolean);
+  const actionHints = buildHotspotActionHints(entry, hotspot, activeOperations);
 
   return {
     locationId: entry.locationId,
@@ -116,17 +173,15 @@ function buildHotspotDrillDown(entry, cellules, operations, locationNames) {
     signalType,
     severity: hotspot.severity,
     criticality: hotspot.severity === 'critical' ? 'critical' : hotspot.severity === 'warning' ? 'elevated' : 'watch',
+    riskBand: entry.sabotageRiskLevel === 'high' ? 'élevé' : entry.sabotageRiskLevel === 'medium' ? 'moyen' : 'faible',
     affectedFactionIds: factionIds,
     targetFactionIds,
     primaryCelluleId: locationCellules[0]?.id ?? null,
     primaryOperationId: activeOperations[0]?.id ?? null,
     summary: reasons[0] ?? `Présence clandestine ${entry.presenceLevel}`,
     reasons: reasons.length > 0 ? reasons : [`Présence clandestine ${entry.presenceLevel}`],
-    actionHint: hotspot.severity === 'critical'
-      ? 'Inspecter les cellules exposées et interrompre les sabotages en cours.'
-      : activeOperations.length > 0
-        ? 'Suivre les opérations actives et vérifier la chaleur opérationnelle.'
-        : 'Garder le foyer en observation sans surcharger la carte.',
+    actionHint: actionHints[0].description,
+    actionHints,
   };
 }
 
