@@ -13,6 +13,7 @@ import { buildProvinceEconomyTurnReport } from '../src/ui/economy/buildProvinceE
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
+import { buildIntrigueTurnReportDeltas } from '../src/ui/intrigue/buildIntrigueTurnReportDeltas.js';
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
@@ -1117,6 +1118,35 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
   `;
 }
 
+
+function renderIntrigueTurnReportDeltas(province, intrigueView) {
+  const report = buildIntrigueTurnReportDeltas(province, intrigueView, {
+    previousActionCode: intrigueView?.selectedProvince?.drillDown?.recommendedResponseCode ?? null,
+  });
+
+  return `
+    <section class="province-intrigue-turn-report province-intrigue-turn-report--${report.tone}" aria-label="Rapport intrigue du dernier tour">
+      <div class="province-intrigue-turn-report__header">
+        <strong>Rapport intrigue dernier tour</strong>
+        <span>${report.deltas.length > 0 ? `${report.deltas.length} delta${report.deltas.length > 1 ? 's' : ''}` : 'masqué'}</span>
+      </div>
+      <p>${report.summary}</p>
+      ${report.previousAction ? `<small>${report.previousAction}</small>` : ''}
+      ${report.retaliationRisk ? `<small>Risque représailles: ${report.retaliationRisk}</small>` : ''}
+      ${report.deltas.length > 0 ? `
+        <ul class="province-intrigue-turn-report__list">
+          ${report.deltas.map((delta) => `
+            <li class="province-intrigue-turn-report__delta province-intrigue-turn-report__delta--${delta.tone}">
+              <b>${delta.label}</b>
+              <span>${delta.detail}</span>
+            </li>
+          `).join('')}
+        </ul>
+      ` : ''}
+    </section>
+  `;
+}
+
 function renderProvinceEconomyTurnReport(province, economyView) {
   const previousChoice = buildProvinceLogisticsChoicePreviewView(province, economyView).options[0] ?? null;
   const report = buildProvinceEconomyTurnReport(province, economyView, { previousChoice });
@@ -1398,6 +1428,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
+      ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
