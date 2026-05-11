@@ -784,7 +784,85 @@ function renderProvinceActionRecommendations(province, focusContext) {
   `;
 }
 
-function renderActiveProvince(shell) {
+function getProvinceEconomyConsequences(province, economyView) {
+  if (!province || !economyView) {
+    return [];
+  }
+
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const provinceCities = economyView.overlay.cities.filter((city) => city.regionId === province.provinceId);
+  const provinceCityIds = new Set(provinceCities.map((city) => city.cityId));
+  const connectedRoutes = economyView.overlay.routes.filter((route) => route.cityIds.some((cityId) => provinceCityIds.has(cityId)));
+  const routeStress = connectedRoutes
+    .map((route) => ({ route, stress: getRouteStressSummary(route, tensionByCityId, cityNameById) }))
+    .sort((left, right) => {
+      const toneRank = { high: 3, medium: 2, low: 1 };
+      return (toneRank[right.stress.tone] ?? 0) - (toneRank[left.stress.tone] ?? 0)
+        || right.route.riskLevel - left.route.riskLevel
+        || right.route.totalCapacity - left.route.totalCapacity;
+    });
+  const highTensionCity = provinceCities.find((city) => tensionByCityId[city.cityId]?.tensionLevel === 'high');
+  const lowStockCity = provinceCities.slice().sort((left, right) => left.resources.totalStock - right.resources.totalStock)[0] ?? null;
+  const consequences = [];
+
+  if (routeStress[0]) {
+    consequences.push({
+      tone: routeStress[0].stress.tone,
+      label: routeStress[0].stress.headline,
+      text: `${routeStress[0].route.routeName}: ${routeStress[0].stress.summary}`,
+    });
+  }
+
+  if (highTensionCity) {
+    consequences.push({
+      tone: 'high',
+      label: 'Stock critique',
+      text: `${highTensionCity.cityName}: pénurie probable, sécuriser ressources ou convoi prioritaire.`,
+    });
+  } else if (lowStockCity) {
+    consequences.push({
+      tone: 'medium',
+      label: 'Ressources à suivre',
+      text: `${lowStockCity.cityName}: ${lowStockCity.resources.totalStock} unités en stock, vérifier le prochain flux.`,
+    });
+  }
+
+  if (connectedRoutes.length === 0 && provinceCities.length > 0) {
+    consequences.push({
+      tone: 'medium',
+      label: 'Hub isolé',
+      text: `${provinceCities[0].cityName}: aucune route active visible, risque de décrochage logistique.`,
+    });
+  }
+
+  return consequences.slice(0, 3);
+}
+
+function renderProvinceEconomyConsequences(province, economyView) {
+  const consequences = getProvinceEconomyConsequences(province, economyView);
+
+  if (consequences.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-economy-recommendations" aria-label="Conséquences économiques recommandées">
+      <div class="province-economy-recommendations__header">
+        <strong>Conséquences économie</strong>
+        <span>routes · ressources · logistique</span>
+      </div>
+      ${consequences.map((consequence) => `
+        <article class="province-economy-recommendation province-economy-recommendation--${consequence.tone}">
+          <b>${consequence.label}</b>
+          <p>${consequence.text}</p>
+        </article>
+      `).join('')}
+    </section>
+  `;
+}
+
+function renderActiveProvince(shell, economyView) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
 
@@ -830,6 +908,7 @@ function renderActiveProvince(shell) {
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
       </div>
+      ${renderProvinceEconomyConsequences(province, economyView)}
     </section>
   `;
 }
@@ -3206,7 +3285,7 @@ function render() {
         <aside class="side-column">
           <div class="mobile-panel-stack ${state.mobilePanelSection === 'legend' ? 'show-legend' : state.mobilePanelSection === 'overlay' ? 'show-overlay' : 'show-details'}">
             ${renderLegend(shell)}
-            ${renderActiveProvince(shell)}
+            ${renderActiveProvince(shell, economyView)}
             ${renderIntrigueSidePanel(intrigueView) ?? renderEconomySidePanel(economyView, cultureView)}
             ${renderMapArchitecturePanel()}
           </div>
