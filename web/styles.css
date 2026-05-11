@@ -1668,6 +1668,37 @@ button { font: inherit; }
 .province-action-card--warning { border-color: rgba(251, 191, 36, 0.32); }
 .province-action-card--ready { border-color: rgba(74, 222, 128, 0.28); }
 .province-action-card--info { border-color: rgba(56, 189, 248, 0.3); }
+.culture-consequence-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+.culture-consequence-chip {
+  display: inline-grid;
+  gap: 2px;
+  max-width: 100%;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.68);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+}
+.culture-consequence-chip b {
+  color: #e0f2fe;
+  font-size: 11px;
+  line-height: 1;
+}
+.culture-consequence-chip small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.1;
+}
+.culture-consequence-chip--opportunity { border-color: rgba(251, 191, 36, 0.34); }
+.culture-consequence-chip--opportunity b { color: #fde68a; }
+.culture-consequence-chip--risk { border-color: rgba(251, 113, 133, 0.3); }
+.culture-consequence-chip--risk b { color: #fecdd3; }
+.culture-consequence-chip--research { border-color: rgba(34, 211, 238, 0.26); }
+.culture-consequence-chip--identity { border-color: rgba(167, 243, 208, 0.22); }
 .conflict-outcome-preview {
   margin-top: 14px;
   padding: 12px;
