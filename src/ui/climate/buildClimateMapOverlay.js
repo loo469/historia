@@ -180,7 +180,37 @@ function buildSeasonSummary(states, seasonLabels, seasonStyleByType) {
   };
 }
 
-function buildCatastropheZones(catastropheEntries) {
+function buildReadabilityProfile(options) {
+  const selectedOverlayId = options.selectedOverlayId ?? options.activeOverlaySlot ?? options.activeOverlayId;
+  const overlaySelected = options.overlaySelected
+    ?? (selectedOverlayId === undefined ? true : selectedOverlayId === 'climate-overlay');
+  const density = overlaySelected ? 'readable' : 'reduced';
+
+  return {
+    overlaySelected: Boolean(overlaySelected),
+    density,
+    seasonWashOpacity: density === 'reduced'
+      ? { stable: 0.06, strained: 0.1, critical: 0.12 }
+      : { stable: 0.1, strained: 0.14, critical: 0.16 },
+    anomalyOpacity: density === 'reduced' ? 0.46 : 0.68,
+    catastropheRingOpacityBoost: density === 'reduced' ? 0.02 : 0.08,
+    atmosphereOpacity: density === 'reduced' ? 0.24 : 0.38,
+  };
+}
+
+function getImpactOpacity(region, readabilityProfile) {
+  if (region.strategicImpact === 'critical') {
+    return readabilityProfile.seasonWashOpacity.critical;
+  }
+
+  if (region.strategicImpact === 'strained') {
+    return readabilityProfile.seasonWashOpacity.strained;
+  }
+
+  return readabilityProfile.seasonWashOpacity.stable;
+}
+
+function buildCatastropheZones(catastropheEntries, readabilityProfile) {
   return [...new Map(catastropheEntries
     .map((entry) => [entry.catastropheId, entry]))
     .values()]
@@ -202,11 +232,13 @@ function buildCatastropheZones(catastropheEntries) {
         outline: {
           stroke: entry.style.stroke,
           pattern: 'ring',
-          opacity: Math.min(1, entry.style.opacity + 0.2),
+          opacity: Math.min(0.72, entry.style.opacity + 0.12),
         },
         fill: {
           color: entry.style.fill,
-          opacity: Math.max(0.12, entry.style.opacity - 0.1),
+          opacity: readabilityProfile.density === 'reduced'
+            ? Math.max(0.05, entry.style.opacity - 0.3)
+            : Math.max(0.08, entry.style.opacity - 0.22),
         },
       };
     });
@@ -228,7 +260,7 @@ function buildTurnProgression(state, progressionByRegion) {
   };
 }
 
-function buildTacticalClimateTheme(regions, catastropheEntries) {
+function buildTacticalClimateTheme(regions, catastropheEntries, readabilityProfile) {
   const criticalCount = regions.filter((region) => region.strategicImpact === 'critical').length;
 
   return {
@@ -243,8 +275,12 @@ function buildTacticalClimateTheme(regions, catastropheEntries) {
       text: '#e2e8f0',
     },
     layers: {
-      regionFill: 'low-opacity-season-wash',
-      anomalyGlyphs: 'minimal-cyan-amber-markers',
+      regionFill: readabilityProfile.density === 'reduced'
+        ? 'reduced-season-hints'
+        : 'low-opacity-season-wash',
+      anomalyGlyphs: readabilityProfile.density === 'reduced'
+        ? 'edge-pinned-alert-dots'
+        : 'minimal-cyan-amber-markers',
       catastropheRings: catastropheEntries.length > 0 ? 'thin-glowing-alert-rings' : 'standby-grid',
       coordinateGrid: true,
     },
@@ -256,8 +292,7 @@ function buildTacticalClimateTheme(regions, catastropheEntries) {
   };
 }
 
-
-function buildSeasonVisualEffect(region, stateEntry) {
+function buildSeasonVisualEffect(region, stateEntry, readabilityProfile) {
   return {
     effectId: `${region.regionId}:season-wash`,
     regionId: region.regionId,
@@ -269,12 +304,13 @@ function buildSeasonVisualEffect(region, stateEntry) {
     vector: {
       primitive: 'soft-gradient-field',
       blendMode: 'screen',
-      opacity: region.strategicImpact === 'stable' ? 0.18 : 0.26,
+      opacity: getImpactOpacity(region, readabilityProfile),
+      labelSafe: true,
     },
   };
 }
 
-function buildAnomalyVisualEffect(entry) {
+function buildAnomalyVisualEffect(entry, readabilityProfile) {
   return {
     effectId: `${entry.regionId}:anomaly-glyph:${entry.label}`,
     regionId: entry.regionId,
@@ -287,12 +323,18 @@ function buildAnomalyVisualEffect(entry) {
       primitive: 'minimal-orbital-glyph',
       icon: entry.marker.icon,
       stroke: entry.marker.accent,
-      animation: 'slow-scan-pulse',
+      animation: readabilityProfile.density === 'reduced' ? 'none' : 'slow-scan-pulse',
+      opacity: readabilityProfile.anomalyOpacity,
+      placement: {
+        anchor: 'province-edge',
+        avoid: ['province-label', 'province-marker'],
+        priority: 'secondary',
+      },
     },
   };
 }
 
-function buildCatastropheVisualEffect(entry) {
+function buildCatastropheVisualEffect(entry, readabilityProfile) {
   return {
     effectId: `${entry.regionId}:catastrophe-ring:${entry.catastropheId}`,
     regionId: entry.regionId,
@@ -305,12 +347,14 @@ function buildCatastropheVisualEffect(entry) {
       primitive: entry.status === 'active' ? 'pulsing-contour-ring' : 'dashed-warning-contour',
       stroke: entry.style.stroke,
       fill: entry.style.fill,
-      opacity: Math.min(1, entry.style.opacity + 0.18),
+      opacity: Math.min(0.74, entry.style.opacity + readabilityProfile.catastropheRingOpacityBoost),
+      fillOpacity: readabilityProfile.density === 'reduced' ? 0.04 : 0.08,
+      labelSafe: true,
     },
   };
 }
 
-function buildAtmosphericSignal(region) {
+function buildAtmosphericSignal(region, readabilityProfile) {
   const intensity = region.strategicImpact === 'critical'
     ? 'high'
     : region.strategicImpact === 'strained'
@@ -325,23 +369,37 @@ function buildAtmosphericSignal(region) {
     intensity,
     vector: {
       primitive: 'wind-line-field',
-      density: intensity === 'high' ? 'dense' : intensity === 'medium' ? 'measured' : 'sparse',
+      density: readabilityProfile.density === 'reduced'
+        ? 'sparse'
+        : intensity === 'high'
+          ? 'measured'
+          : intensity === 'medium'
+            ? 'light'
+            : 'sparse',
       color: intensity === 'high' ? 'amber' : 'cyan',
+      opacity: readabilityProfile.atmosphereOpacity,
+      labelSafe: true,
     },
     summary: `${region.seasonLabel}, ${region.strategicImpact}`,
   };
 }
 
-function buildClimateVisualEffects(regions, stateEntries, catastropheEntries) {
+function buildClimateVisualEffects(regions, stateEntries, catastropheEntries, readabilityProfile) {
   const seasonEntriesByRegion = new Map(stateEntries
     .filter((entry) => entry.kind === 'season')
     .map((entry) => [entry.regionId, entry]));
 
   return [
-    ...regions.map((region) => buildSeasonVisualEffect(region, seasonEntriesByRegion.get(region.regionId))),
-    ...stateEntries.filter((entry) => entry.kind === 'anomaly').map(buildAnomalyVisualEffect),
-    ...catastropheEntries.map(buildCatastropheVisualEffect),
-    ...regions.map(buildAtmosphericSignal),
+    ...regions.map((region) => buildSeasonVisualEffect(
+      region,
+      seasonEntriesByRegion.get(region.regionId),
+      readabilityProfile,
+    )),
+    ...stateEntries
+      .filter((entry) => entry.kind === 'anomaly')
+      .map((entry) => buildAnomalyVisualEffect(entry, readabilityProfile)),
+    ...catastropheEntries.map((entry) => buildCatastropheVisualEffect(entry, readabilityProfile)),
+    ...regions.map((region) => buildAtmosphericSignal(region, readabilityProfile)),
   ].sort((left, right) => {
     const regionComparison = left.regionId.localeCompare(right.regionId);
 
@@ -447,6 +505,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   const progressionByRegion = requireObject(normalizedOptions.progressionByRegion ?? {}, 'ClimateMapOverlay progressionByRegion');
   const tacticalHud = Boolean(normalizedOptions.tacticalHud);
   const visualEffects = Boolean(normalizedOptions.visualEffects);
+  const readabilityProfile = buildReadabilityProfile(normalizedOptions);
   const catastropheEntries = buildCatastropheMapOverlay(
     normalizedOptions.catastrophes ?? [],
     { styleBySeverity: normalizedOptions.styleBySeverity ?? {}, tacticalHud },
@@ -506,11 +565,18 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     }),
     regions,
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
-    catastropheZones: buildCatastropheZones(catastropheEntries),
+    catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
-    ...(tacticalHud ? { tacticalTheme: buildTacticalClimateTheme(regions, catastropheEntries) } : {}),
-    ...(visualEffects ? { visualEffects: buildClimateVisualEffects(regions, stateEntries, catastropheEntries) } : {}),
+    ...(!readabilityProfile.overlaySelected ? {
+      reducedState: {
+        reason: 'climate-overlay-inactive',
+        density: readabilityProfile.density,
+        preservedSignals: ['critical-catastrophe-rings', 'edge-pinned-anomaly-dots'],
+      },
+    } : {}),
+    ...(tacticalHud ? { tacticalTheme: buildTacticalClimateTheme(regions, catastropheEntries, readabilityProfile) } : {}),
+    ...(visualEffects ? { visualEffects: buildClimateVisualEffects(regions, stateEntries, catastropheEntries, readabilityProfile) } : {}),
     metrics: {
       regionCount: states.length,
       seasonCount: states.length,
