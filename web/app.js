@@ -1,7 +1,7 @@
-import { Province } from '../src/domain/war/Province.js';
 import { GenerateStrategicMap } from '../src/application/war/GenerateStrategicMap.js';
 import { City } from '../src/domain/economy/City.js';
 import { TradeRoute } from '../src/domain/economy/TradeRoute.js';
+import { buildEconomySeedFromStrategicMap } from '../src/application/economy/BuildEconomySeedFromStrategicMap.js';
 import { buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
 import { buildLauncherMapSelection } from '../src/ui/launcher/buildLauncherMapSelection.js';
 import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay.js';
@@ -119,88 +119,44 @@ const overlayLabels = {
   'intrigue-overlay': 'Intrigue',
 };
 
-const cityLayoutsById = {
-  'crown-port': { x: 49.5, y: 28, labelDx: 0, labelDy: -6 },
-  'river-gate-city': { x: 34, y: 56, labelDx: -8, labelDy: 7 },
-  'iron-plain-city': { x: 62, y: 55, labelDx: 8, labelDy: -6 },
-  'southern-crossing': { x: 47, y: 79, labelDx: 0, labelDy: 8 },
+const cityPositionByProvinceId = {
+  'crown-heart': { x: 49.5, y: 28, labelDx: 0, labelDy: -6 },
+  'river-gate': { x: 34, y: 56, labelDx: -8, labelDy: 7 },
+  'iron-plain': { x: 62, y: 55, labelDx: 8, labelDy: -6 },
+  'southern-reach': { x: 47, y: 79, labelDx: 0, labelDy: 8 },
 };
 
 
-const cities = [
-  new City({
-    id: 'crown-port',
-    name: 'Port de Couronne',
-    regionId: 'crown-heart',
-    population: 145,
-    prosperity: 78,
-    stability: 72,
-    stockByResource: { grain: 12, fish: 14, timber: 7 },
-    tradeRouteIds: ['aurora-river', 'southern-grainway'],
-    capital: true,
-  }),
-  new City({
-    id: 'river-gate-city',
-    name: 'Porte du Fleuve',
-    regionId: 'river-gate',
-    population: 102,
-    prosperity: 49,
-    stability: 37,
-    stockByResource: { grain: 3, tools: 2, timber: 4 },
-    tradeRouteIds: ['aurora-river', 'ember-foundry-line'],
-  }),
-  new City({
-    id: 'iron-plain-city',
-    name: 'Forge des Plaines',
-    regionId: 'iron-plain',
-    population: 93,
-    prosperity: 57,
-    stability: 52,
-    stockByResource: { ore: 11, tools: 5, grain: 2 },
-    tradeRouteIds: ['ember-foundry-line'],
-  }),
-  new City({
-    id: 'southern-crossing',
-    name: 'Passage du Sud',
-    regionId: 'southern-reach',
-    population: 81,
-    prosperity: 43,
-    stability: 41,
-    stockByResource: { grain: 2, horses: 4, timber: 1 },
-    tradeRouteIds: ['southern-grainway'],
-  }),
-];
-
-const routes = [
-  new TradeRoute({
-    id: 'aurora-river',
-    name: 'Artère fluviale',
-    stopCityIds: ['crown-port', 'river-gate-city'],
-    distance: 5,
-    capacityByResource: { grain: 6, fish: 5, timber: 3 },
-    transportMode: 'river',
-    riskLevel: 24,
-  }),
-  new TradeRoute({
-    id: 'ember-foundry-line',
-    name: 'Ligne des fonderies',
-    stopCityIds: ['river-gate-city', 'iron-plain-city'],
-    distance: 4,
-    capacityByResource: { ore: 5, tools: 3, grain: 2 },
-    transportMode: 'land',
-    riskLevel: 61,
-  }),
-  new TradeRoute({
-    id: 'southern-grainway',
-    name: 'Route des moissons',
-    stopCityIds: ['crown-port', 'southern-crossing'],
-    distance: 6,
-    capacityByResource: { grain: 4, timber: 2, horses: 2 },
-    transportMode: 'land',
-    riskLevel: 42,
-    active: false,
-  }),
-];
+const economySeed = buildEconomySeedFromStrategicMap(strategicMap, {
+  cityIdByProvinceId: {
+    'north-watch': 'north-watch-city',
+    'crown-heart': 'crown-port',
+    'red-ridge': 'red-ridge-city',
+    'river-gate': 'river-gate-city',
+    'iron-plain': 'iron-plain-city',
+    'southern-reach': 'southern-crossing',
+  },
+  cityNameByProvinceId: {
+    'north-watch': 'Guet du Nord',
+    'crown-heart': 'Port de Couronne',
+    'red-ridge': 'Bastion Rouge',
+    'river-gate': 'Porte du Fleuve',
+    'iron-plain': 'Forge des Plaines',
+    'southern-reach': 'Passage du Sud',
+  },
+  cityPositionByProvinceId,
+  resourceHintsByProvinceId: {
+    'north-watch': { timber: 6, game: 4 },
+    'crown-heart': { fish: 14, timber: 7 },
+    'red-ridge': { ore: 9, stone: 4 },
+    'river-gate': { tools: 2, timber: 4 },
+    'iron-plain': { ore: 11, tools: 5 },
+    'southern-reach': { grain: 6, horses: 4, timber: 1 },
+  },
+});
+const cityLayoutsById = economySeed.cityPositionById;
+const cities = economySeed.cities;
+const routes = economySeed.routes;
 
 const intrigueCellules = [
   new Cellule({
@@ -307,7 +263,9 @@ const intrigueOperations = [
 ];
 
 const desiredStockByCityId = {
+  'north-watch-city': { grain: 8, timber: 5, game: 3 },
   'crown-port': { grain: 10, fish: 10, timber: 5 },
+  'red-ridge-city': { grain: 5, ore: 7, stone: 3 },
   'river-gate-city': { grain: 9, tools: 4, timber: 5 },
   'iron-plain-city': { ore: 8, tools: 4, grain: 5 },
   'southern-crossing': { grain: 7, horses: 3, timber: 3 },
@@ -316,9 +274,11 @@ const desiredStockByCityId = {
 
 const resourceHudById = {
   fish: { glyph: '◒', label: 'Vivres maritimes', tone: 'cyan' },
+  game: { glyph: '◌', label: 'Gibier', tone: 'green' },
   grain: { glyph: '▦', label: 'Grain', tone: 'amber' },
   horses: { glyph: '♞', label: 'Remonte', tone: 'green' },
   ore: { glyph: '◆', label: 'Minerai', tone: 'slate' },
+  stone: { glyph: '◇', label: 'Pierre', tone: 'slate' },
   timber: { glyph: '▰', label: 'Bois', tone: 'green' },
   tools: { glyph: '⚙', label: 'Outillage', tone: 'cyan' },
 };
