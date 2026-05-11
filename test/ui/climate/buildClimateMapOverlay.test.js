@@ -277,6 +277,11 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
         summary: 'Été, logistique severe, stabilité moderate, récoltes high',
       },
     ],
+    selectedClimateImpactComparison: {
+      state: 'no-selection',
+      compact: true,
+      copy: 'Sélectionnez une province pour comparer son climat.',
+    },
     legend: {
       title: 'Légende climat',
       compact: true,
@@ -768,5 +773,89 @@ test('buildClimateMapOverlay exposes lightweight season preview controls and edg
       },
     },
     summary: 'Hiver → Printemps',
+  });
+});
+
+test('buildClimateMapOverlay compares selected province current and preview climate impact compactly', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 33,
+      precipitationLevel: 11,
+      droughtIndex: 74,
+      anomaly: 'heatwave',
+    },
+  ], {
+    selectedRegionId: 'sunreach',
+    seasonLabels: { summer: 'Été', autumn: 'Automne' },
+    seasonPreview: {
+      season: 'autumn',
+      impactsByRegion: {
+        sunreach: {
+          strategicImpact: 'strained',
+          anomaly: null,
+          summary: 'Automne: pression réduite, routes encore fragiles',
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.selectedClimateImpactComparison, {
+    state: 'ready',
+    compact: true,
+    regionId: 'sunreach',
+    current: {
+      season: 'summer',
+      label: 'Été',
+      riskLevel: 'critical',
+      anomaly: 'heatwave',
+      summary: 'logistique elevated, stabilité moderate, récoltes moderate',
+    },
+    preview: {
+      season: 'autumn',
+      label: 'Automne',
+      riskLevel: 'strained',
+      anomaly: null,
+      summary: 'Automne: pression réduite, routes encore fragiles',
+      projected: true,
+    },
+    delta: {
+      seasonChanged: true,
+      riskChanged: true,
+      anomalyChanged: true,
+    },
+    copy: 'Été critical → Automne strained',
+  });
+});
+
+test('buildClimateMapOverlay reports compact selected climate comparison empty states', () => {
+  assert.deepEqual(buildClimateMapOverlay([], { selectedRegionId: 'missing' }).selectedClimateImpactComparison, {
+    state: 'missing-climate-data',
+    compact: true,
+    regionId: 'missing',
+    copy: 'Aucune donnée climat disponible pour cette province.',
+  });
+
+  assert.deepEqual(buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+    },
+  ], { selectedRegionId: 'delta' }).selectedClimateImpactComparison, {
+    state: 'no-preview',
+    compact: true,
+    regionId: 'delta',
+    current: {
+      season: 'winter',
+      label: 'winter',
+      riskLevel: 'stable',
+      anomaly: null,
+      summary: 'logistique low, stabilité low, récoltes low',
+    },
+    copy: 'winter: stable',
   });
 });

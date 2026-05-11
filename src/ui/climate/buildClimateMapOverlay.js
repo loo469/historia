@@ -206,6 +206,7 @@ function normalizeSeasonPreview(options, seasonLabels, seasonStyleByType) {
     label,
     active: preview.active === undefined ? true : Boolean(preview.active),
     badge,
+    impactsByRegion: preview.impactsByRegion ?? preview.regions,
     copy: String(preview.copy ?? `Aperçu saison suivante: ${label}`).trim() || `Aperçu saison suivante: ${label}`,
   };
 }
@@ -234,6 +235,104 @@ function buildSeasonPreviewPanel(states, seasonPreview, seasonLabels) {
       obscuresMap: false,
     },
     copy: `${seasonPreview.label} preview on ${changedRegionCount}/${states.length} regions`,
+  };
+}
+
+function normalizeSelectedRegionId(options) {
+  const selectedRegionId = options.selectedRegionId ?? options.selectedProvinceId ?? options.focusedRegionId ?? options.focusedProvinceId;
+
+  if (selectedRegionId === undefined || selectedRegionId === null) {
+    return null;
+  }
+
+  return String(selectedRegionId).trim() || null;
+}
+
+function normalizePreviewImpacts(options, seasonPreview) {
+  const previewImpacts = options.previewImpactsByRegion ?? seasonPreview?.impactsByRegion ?? seasonPreview?.regions;
+
+  if (previewImpacts === undefined || previewImpacts === null) {
+    return {};
+  }
+
+  return requireObject(previewImpacts, 'ClimateMapOverlay previewImpactsByRegion');
+}
+
+function summarizeRegionClimate(region) {
+  return region.strategicSignals?.summary ?? `${region.seasonLabel}, ${region.strategicImpact}`;
+}
+
+function buildSelectedClimateImpactComparison(regions, options, seasonPreview) {
+  const selectedRegionId = normalizeSelectedRegionId(options);
+
+  if (!selectedRegionId) {
+    return {
+      state: 'no-selection',
+      compact: true,
+      copy: 'Sélectionnez une province pour comparer son climat.',
+    };
+  }
+
+  const region = regions.find((candidate) => candidate.regionId === selectedRegionId);
+
+  if (!region) {
+    return {
+      state: 'missing-climate-data',
+      compact: true,
+      regionId: selectedRegionId,
+      copy: 'Aucune donnée climat disponible pour cette province.',
+    };
+  }
+
+  if (!seasonPreview?.active) {
+    return {
+      state: 'no-preview',
+      compact: true,
+      regionId: selectedRegionId,
+      current: {
+        season: region.season,
+        label: region.seasonLabel,
+        riskLevel: region.strategicImpact,
+        anomaly: region.anomaly,
+        summary: summarizeRegionClimate(region),
+      },
+      copy: `${region.seasonLabel}: ${region.strategicImpact}`,
+    };
+  }
+
+  const previewImpacts = normalizePreviewImpacts(options, seasonPreview);
+  const previewImpact = previewImpacts[selectedRegionId] ?? {};
+  const previewRiskLevel = String(previewImpact.riskLevel ?? previewImpact.strategicImpact ?? region.strategicImpact).trim()
+    || region.strategicImpact;
+  const previewAnomaly = previewImpact.anomaly === undefined ? region.anomaly : previewImpact.anomaly;
+  const previewSummary = String(previewImpact.summary ?? `${seasonPreview.label}: ${previewRiskLevel}`).trim()
+    || `${seasonPreview.label}: ${previewRiskLevel}`;
+
+  return {
+    state: 'ready',
+    compact: true,
+    regionId: selectedRegionId,
+    current: {
+      season: region.season,
+      label: region.seasonLabel,
+      riskLevel: region.strategicImpact,
+      anomaly: region.anomaly,
+      summary: summarizeRegionClimate(region),
+    },
+    preview: {
+      season: seasonPreview.season,
+      label: seasonPreview.label,
+      riskLevel: previewRiskLevel,
+      anomaly: previewAnomaly,
+      summary: previewSummary,
+      projected: true,
+    },
+    delta: {
+      seasonChanged: region.season !== seasonPreview.season,
+      riskChanged: region.strategicImpact !== previewRiskLevel,
+      anomalyChanged: region.anomaly !== previewAnomaly,
+    },
+    copy: `${region.seasonLabel} ${region.strategicImpact} → ${seasonPreview.label} ${previewRiskLevel}`,
   };
 }
 
@@ -671,6 +770,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
+    selectedClimateImpactComparison: buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview),
     ...(seasonPreview?.active ? { seasonPreview: buildSeasonPreviewPanel(states, seasonPreview, seasonLabels) } : {}),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview),
     ...(!readabilityProfile.overlaySelected ? {
