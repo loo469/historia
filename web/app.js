@@ -708,7 +708,64 @@ function renderOverlaySlots(shell) {
   }).join('');
 }
 
-function buildProvinceActionRecommendations(province, focusContext) {
+function getIntrigueRecommendationTone(criticality) {
+  if (criticality === 'critical') {
+    return 'danger';
+  }
+
+  if (criticality === 'elevated') {
+    return 'warning';
+  }
+
+  return 'info';
+}
+
+function compareIntrigueRecommendationSignals(left, right) {
+  const priority = { critical: 3, elevated: 2, watch: 1 };
+  const leftDrillDown = left.drillDown ?? {};
+  const rightDrillDown = right.drillDown ?? {};
+
+  if ((priority[rightDrillDown.criticality] ?? 0) !== (priority[leftDrillDown.criticality] ?? 0)) {
+    return (priority[rightDrillDown.criticality] ?? 0) - (priority[leftDrillDown.criticality] ?? 0);
+  }
+
+  if (right.sabotageRiskScore !== left.sabotageRiskScore) {
+    return right.sabotageRiskScore - left.sabotageRiskScore;
+  }
+
+  if (right.metrics.exposedCellCount !== left.metrics.exposedCellCount) {
+    return right.metrics.exposedCellCount - left.metrics.exposedCellCount;
+  }
+
+  return left.locationId.localeCompare(right.locationId);
+}
+
+function buildIntrigueProvinceRecommendation(province, intrigueView) {
+  const entries = intrigueView?.map?.entries ?? [];
+  const localEntry = entries.find((entry) => entry.locationId === province.provinceId) ?? null;
+  const fallbackEntry = entries.slice().sort(compareIntrigueRecommendationSignals)[0] ?? null;
+  const entry = localEntry ?? fallbackEntry;
+
+  if (!entry?.drillDown) {
+    return {
+      tone: 'neutral',
+      title: 'Aucun signal intrigue local',
+      body: 'Aucun hotspot prioritaire sur cette province: garder le suivi sans encombrer la carte.',
+    };
+  }
+
+  const drillDown = entry.drillDown;
+  const primaryHint = drillDown.actionHints?.[0] ?? { label: 'Surveiller', description: drillDown.actionHint };
+  const localPrefix = localEntry ? 'Signal local' : `Signal prioritaire ailleurs (${drillDown.locationName})`;
+
+  return {
+    tone: getIntrigueRecommendationTone(drillDown.criticality),
+    title: `${localPrefix}: ${primaryHint.label}`,
+    body: `${drillDown.riskBand} · ${drillDown.summary}. ${primaryHint.description}`,
+  };
+}
+
+function buildProvinceActionRecommendations(province, focusContext, intrigueView = null) {
   const recommendations = [];
   const neighborCount = focusContext.neighborIds.size;
   const linkedCity = cities.find((city) => city.regionId === province.provinceId) ?? null;
@@ -732,6 +789,8 @@ function buildProvinceActionRecommendations(province, focusContext) {
       body: neighborCount > 0 ? `Scanner ${neighborCount} province${neighborCount > 1 ? 's' : ''} voisine${neighborCount > 1 ? 's' : ''} avant l’ordre.` : 'Aucun voisin direct: garder la province en réserve.',
     });
   }
+
+  recommendations.push(buildIntrigueProvinceRecommendation(province, intrigueView));
 
   if (['disrupted', 'collapsed'].includes(province.supplyLevel)) {
     recommendations.push({
@@ -764,8 +823,8 @@ function buildProvinceActionRecommendations(province, focusContext) {
   return recommendations.slice(0, 3);
 }
 
-function renderProvinceActionRecommendations(province, focusContext) {
-  const recommendations = buildProvinceActionRecommendations(province, focusContext);
+function renderProvinceActionRecommendations(province, focusContext, intrigueView = null) {
+  const recommendations = buildProvinceActionRecommendations(province, focusContext, intrigueView);
 
   return `
     <div class="province-action-recommendations" aria-label="Actions recommandées pour la province sélectionnée">
@@ -863,7 +922,7 @@ function renderProvinceEconomyConsequences(province, economyView) {
   `;
 }
 
-function renderActiveProvince(shell, economyView) {
+function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
 
@@ -904,7 +963,7 @@ function renderActiveProvince(shell, economyView) {
           <strong>${focusContext.focusedProvince?.label ?? province.label}</strong>
         </div>
       </div>
-      ${renderProvinceActionRecommendations(province, focusContext)}
+      ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
@@ -3312,7 +3371,7 @@ function render() {
         <aside class="side-column">
           <div class="mobile-panel-stack ${state.mobilePanelSection === 'legend' ? 'show-legend' : state.mobilePanelSection === 'overlay' ? 'show-overlay' : 'show-details'}">
             ${renderLegend(shell)}
-            ${renderActiveProvince(shell, economyView)}
+            ${renderActiveProvince(shell, economyView, intrigueView)}
             ${renderIntrigueSidePanel(intrigueView) ?? renderEconomySidePanel(economyView, cultureView)}
             ${renderMapArchitecturePanel()}
           </div>
