@@ -1,4 +1,4 @@
-const DEFAULT_SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+import { CLIMATE_SEASONS } from './climateTaxonomy.js';
 
 function normalizeSeasonOrder(seasonOrder) {
   if (!Array.isArray(seasonOrder) || seasonOrder.length === 0) {
@@ -20,7 +20,7 @@ export class SeasonCycle {
     year = 1,
     dayOfSeason = 1,
     seasonLengthDays = 30,
-    seasonOrder = DEFAULT_SEASONS,
+    seasonOrder = CLIMATE_SEASONS,
   } = {}) {
     this.seasonOrder = normalizeSeasonOrder(seasonOrder);
     this.currentSeason = SeasonCycle.requireText(currentSeason, 'SeasonCycle currentSeason');

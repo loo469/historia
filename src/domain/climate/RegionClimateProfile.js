@@ -1,6 +1,4 @@
-const VALID_BIOMES = ['temperate', 'arid', 'tropical', 'continental', 'polar', 'coastal', 'highland'];
-const VALID_RISK_LEVELS = ['low', 'moderate', 'high', 'extreme'];
-const VALID_SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+import { CLIMATE_BIOMES, CLIMATE_RISK_LEVELS, CLIMATE_SEASONS } from './climateTaxonomy.js';
 
 function normalizeSeasonalAverages(seasonalAverages) {
   if (seasonalAverages === null || typeof seasonalAverages !== 'object' || Array.isArray(seasonalAverages)) {
@@ -10,8 +8,8 @@ function normalizeSeasonalAverages(seasonalAverages) {
   const normalized = {};
 
   for (const season of Object.keys(seasonalAverages)) {
-    if (!VALID_SEASONS.includes(season)) {
-      throw new RangeError(`RegionClimateProfile seasonalAverages season must be one of: ${VALID_SEASONS.join(', ')}.`);
+    if (!CLIMATE_SEASONS.includes(season)) {
+      throw new RangeError(`RegionClimateProfile seasonalAverages season must be one of: ${CLIMATE_SEASONS.join(', ')}.`);
     }
 
     const snapshot = seasonalAverages[season];
@@ -56,7 +54,7 @@ function normalizeCatastropheRisks(catastropheRisks) {
     normalized[normalizedType] = RegionClimateProfile.requireChoice(
       riskLevel,
       `RegionClimateProfile catastrophe risk ${normalizedType}`,
-      VALID_RISK_LEVELS,
+      CLIMATE_RISK_LEVELS,
     );
   }
 
@@ -82,7 +80,7 @@ export class RegionClimateProfile {
     tags = [],
   }) {
     this.regionId = RegionClimateProfile.requireText(regionId, 'RegionClimateProfile regionId');
-    this.biome = RegionClimateProfile.requireChoice(biome, 'RegionClimateProfile biome', VALID_BIOMES);
+    this.biome = RegionClimateProfile.requireChoice(biome, 'RegionClimateProfile biome', CLIMATE_BIOMES);
     this.altitudeMeters = RegionClimateProfile.requireFiniteNumber(altitudeMeters, 'RegionClimateProfile altitudeMeters');
     this.coastal = Boolean(coastal);
     this.seasonalAverages = normalizeSeasonalAverages(seasonalAverages);

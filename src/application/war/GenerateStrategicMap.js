@@ -15,6 +15,7 @@ import {
   requirePlainObject,
   requireText,
 } from './strategicMapContract.js';
+import { buildStrategicMapClimateRegions } from './buildStrategicMapClimateRegions.js';
 
 function requireOptions(options, label = 'GenerateStrategicMap options') {
   return requirePlainObject(options, label);
@@ -267,7 +268,8 @@ export class GenerateStrategicMap {
 
     const culture = buildGeneratedMapCultureData(normalizedOptions.culturePayload, normalizedOptions);
     const provincePositionById = Object.fromEntries(Object.entries(provinceGeometryById).map(([provinceId, geometry]) => [provinceId, { ...geometry.center }]));
-    const regions = buildGeneratedMapRegions(provinces, blueprints, provinceGeometryById);
+    const regions = buildStrategicMapClimateRegions(buildGeneratedMapRegions(provinces, blueprints, provinceGeometryById));
+    const climateRegions = regions;
 
     return {
       seed,
@@ -296,6 +298,7 @@ export class GenerateStrategicMap {
       businessData: {
         regionIdsByCulture: culture.regionIdsByCulture,
         cultureSeeds: culture.seeds,
+        climateRegions,
       },
     };
   }
