@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { SeedClimateFromGeneratedMap } from '../../../src/application/climate/SeedClimateFromGeneratedMap.js';
 import { GenerateStrategicMap } from '../../../src/application/war/GenerateStrategicMap.js';
 import { Province } from '../../../src/domain/war/Province.js';
 
@@ -73,6 +74,30 @@ test('GenerateStrategicMap returns deterministic strategic provinces and UI busi
   assert.deepEqual(map.overlays.culture, []);
   assert.equal(map.panels.culture.focus, null);
   assert.deepEqual(map.businessData.cultureSeeds, []);
+  assert.deepEqual(map.regions.map((region) => region.id), [
+    'crown-heart',
+    'iron-plain',
+    'north-watch',
+    'red-ridge',
+    'river-gate',
+    'southern-reach',
+  ]);
+  assert.deepEqual(map.businessData.climateRegions, map.regions);
+});
+
+test('GenerateStrategicMap exposes climate-ready regions for seeded seasons and anomalies', () => {
+  const generatedMap = new GenerateStrategicMap().execute();
+  const climate = new SeedClimateFromGeneratedMap().execute({
+    generatedMap,
+    season: 'summer',
+    seededAt: '1200-06-01T00:00:00.000Z',
+  });
+
+  assert.equal(climate.regionalStates.length, generatedMap.provinces.length);
+  assert.ok(climate.summary.includes('anomalies'));
+  assert.equal(climate.profiles.find((profile) => profile.regionId === 'river-gate').biome, 'coastal');
+  assert.equal(climate.regionalStates.find((state) => state.regionId === 'north-watch').season, 'summer');
+  assert.ok(climate.regionalStates.find((state) => state.regionId === 'river-gate').activeCatastropheIds.some((id) => id.includes('flood')));
 });
 
 test('GenerateStrategicMap composes culture overlays and seed data from the generated map contract', () => {

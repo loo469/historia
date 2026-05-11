@@ -2,11 +2,14 @@ import { Catastrophe } from '../../domain/climate/Catastrophe.js';
 import { ClimateState } from '../../domain/climate/ClimateState.js';
 import { Myth } from '../../domain/climate/Myth.js';
 import { RegionClimateProfile } from '../../domain/climate/RegionClimateProfile.js';
-
-const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
-const VALID_BIOMES = ['temperate', 'arid', 'tropical', 'continental', 'polar', 'coastal', 'highland'];
-const RISK_SCORE_BY_LEVEL = { low: 1, moderate: 2, high: 3, extreme: 4 };
-const RISK_LEVEL_BY_SCORE = ['low', 'moderate', 'high', 'extreme'];
+import {
+  CLIMATE_RISK_LEVEL_BY_SCORE,
+  CLIMATE_RISK_SCORE_BY_LEVEL,
+  CLIMATE_SEASONS,
+  normalizeClimateBiome,
+  normalizeClimateRiskLevel,
+  normalizeClimateSeason,
+} from '../../domain/climate/climateTaxonomy.js';
 
 const BIOME_BASELINES = {
   temperate: { temperatureC: 12, precipitationLevel: 56, droughtIndex: 24, risks: { flood: 'moderate', storm: 'moderate' } },
@@ -50,34 +53,14 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function normalizeBiome(value) {
-  const normalized = String(value ?? '').trim().toLowerCase();
-  return VALID_BIOMES.includes(normalized) ? normalized : 'temperate';
-}
-
-function normalizeSeason(value, label) {
-  const normalized = requireText(value, label).toLowerCase();
-
-  if (!SEASONS.includes(normalized)) {
-    throw new RangeError(`${label} must be one of: ${SEASONS.join(', ')}.`);
-  }
-
-  return normalized;
-}
-
-function normalizeRiskLevel(value) {
-  const normalized = String(value ?? '').trim().toLowerCase();
-  return RISK_SCORE_BY_LEVEL[normalized] ? normalized : 'low';
-}
-
 function maxRisk(left, right) {
-  return RISK_SCORE_BY_LEVEL[normalizeRiskLevel(left)] >= RISK_SCORE_BY_LEVEL[normalizeRiskLevel(right)]
-    ? normalizeRiskLevel(left)
-    : normalizeRiskLevel(right);
+  return CLIMATE_RISK_SCORE_BY_LEVEL[normalizeClimateRiskLevel(left)] >= CLIMATE_RISK_SCORE_BY_LEVEL[normalizeClimateRiskLevel(right)]
+    ? normalizeClimateRiskLevel(left)
+    : normalizeClimateRiskLevel(right);
 }
 
 function scoreToRisk(score) {
-  return RISK_LEVEL_BY_SCORE[clamp(Math.ceil(score), 1, 4) - 1];
+  return CLIMATE_RISK_LEVEL_BY_SCORE[clamp(Math.ceil(score), 1, 4) - 1];
 }
 
 function normalizeMapRegions(generatedMap) {
@@ -93,7 +76,7 @@ function normalizeMapRegions(generatedMap) {
 
 function deriveSeason(region, defaultSeason) {
   if (region.season !== undefined) {
-    return normalizeSeason(region.season, 'SeedClimateFromGeneratedMap region season');
+    return normalizeClimateSeason(region.season, 'SeedClimateFromGeneratedMap region season');
   }
 
   const latitude = Number.isFinite(region.latitude) ? region.latitude : null;
@@ -107,7 +90,7 @@ function deriveSeason(region, defaultSeason) {
 
 function deriveProfile(region) {
   const regionId = requireText(region.id ?? region.regionId ?? region.provinceId, 'SeedClimateFromGeneratedMap region id');
-  const biome = normalizeBiome(region.biome ?? region.climateBiome ?? region.terrain);
+  const biome = normalizeClimateBiome(region.biome ?? region.climateBiome ?? region.terrain);
   const baseline = BIOME_BASELINES[biome];
   const altitudeMeters = Number.isFinite(region.altitudeMeters) ? region.altitudeMeters : Number.isFinite(region.elevationMeters) ? region.elevationMeters : 0;
   const coastal = Boolean(region.coastal ?? region.isCoastal ?? biome === 'coastal');
@@ -116,7 +99,7 @@ function deriveProfile(region) {
   const temperatureOffset = Number.isFinite(region.temperatureOffsetC) ? region.temperatureOffsetC : 0;
   const altitudeCooling = Math.round((altitudeMeters / 1000) * 6 * 10) / 10;
   const precipitationOffset = (moisture === null ? 0 : (moisture - 50) * 0.6) - (aridity === null ? 0 : aridity * 0.35);
-  const seasonalAverages = Object.fromEntries(SEASONS.map((season) => {
+  const seasonalAverages = Object.fromEntries(CLIMATE_SEASONS.map((season) => {
     const shift = SEASON_SHIFT_BY_BIOME[biome][season];
     return [season, {
       averageTemperatureC: Math.round((baseline.temperatureC + shift.t + temperatureOffset - altitudeCooling) * 10) / 10,
@@ -143,7 +126,7 @@ function deriveProfile(region) {
 
   for (const hazard of Array.isArray(region.hazards) ? region.hazards : []) {
     const hazardType = requireText(typeof hazard === 'string' ? hazard : hazard.type, 'SeedClimateFromGeneratedMap hazard type');
-    const riskLevel = typeof hazard === 'string' ? 'high' : normalizeRiskLevel(hazard.riskLevel ?? hazard.risk ?? hazard.severity);
+    const riskLevel = typeof hazard === 'string' ? 'high' : normalizeClimateRiskLevel(hazard.riskLevel ?? hazard.risk ?? hazard.severity);
     catastropheRisks[hazardType] = maxRisk(catastropheRisks[hazardType], riskLevel);
   }
 
@@ -166,10 +149,10 @@ function deriveAnomaly(profile, season, region) {
   }
 
   const average = profile.averageForSeason(season);
-  const droughtRisk = RISK_SCORE_BY_LEVEL[profile.riskLevelFor('drought')];
-  const floodRisk = RISK_SCORE_BY_LEVEL[profile.riskLevelFor('flood')];
-  const stormRisk = RISK_SCORE_BY_LEVEL[profile.riskLevelFor('storm')];
-  const blizzardRisk = RISK_SCORE_BY_LEVEL[profile.riskLevelFor('blizzard')];
+  const droughtRisk = CLIMATE_RISK_SCORE_BY_LEVEL[profile.riskLevelFor('drought')];
+  const floodRisk = CLIMATE_RISK_SCORE_BY_LEVEL[profile.riskLevelFor('flood')];
+  const stormRisk = CLIMATE_RISK_SCORE_BY_LEVEL[profile.riskLevelFor('storm')];
+  const blizzardRisk = CLIMATE_RISK_SCORE_BY_LEVEL[profile.riskLevelFor('blizzard')];
 
   if (average.averagePrecipitationLevel <= 18 || (season === 'summer' && droughtRisk >= 3)) return 'drought-watch';
   if (average.averageTemperatureC >= 30 && profile.riskLevelFor('heatwave') !== 'low') return 'heatwave';
@@ -181,7 +164,7 @@ function deriveAnomaly(profile, season, region) {
 
 function deriveClimateState(profile, season, region, seededAt) {
   const average = profile.averageForSeason(season);
-  const droughtRiskScore = RISK_SCORE_BY_LEVEL[profile.riskLevelFor('drought')];
+  const droughtRiskScore = CLIMATE_RISK_SCORE_BY_LEVEL[profile.riskLevelFor('drought')];
   const droughtIndex = clamp(Math.round(100 - average.averagePrecipitationLevel + (droughtRiskScore - 1) * 12), 0, 100);
 
   return new ClimateState({
@@ -203,7 +186,7 @@ function catastropheSeverity(riskLevel) {
 }
 
 function catastropheImpact(type, riskLevel) {
-  const score = RISK_SCORE_BY_LEVEL[riskLevel];
+  const score = CLIMATE_RISK_SCORE_BY_LEVEL[riskLevel];
   const impact = {
     stabilityDelta: -score * 4,
     resourceYieldDelta: -score * 6,
@@ -224,7 +207,7 @@ function buildCatastrophes(profiles, seededAt) {
 
   profiles.forEach((profile) => {
     Object.entries(profile.catastropheRisks).forEach(([type, riskLevel]) => {
-      if (RISK_SCORE_BY_LEVEL[riskLevel] >= 3) {
+      if (CLIMATE_RISK_SCORE_BY_LEVEL[riskLevel] >= 3) {
         candidates.push({ type, riskLevel, regionId: profile.regionId });
       }
     });
@@ -269,7 +252,7 @@ function buildMyths(catastrophes, seededAt) {
 
 export class SeedClimateFromGeneratedMap {
   execute({ generatedMap, season = 'spring', seededAt = new Date().toISOString() } = {}) {
-    const defaultSeason = normalizeSeason(season, 'SeedClimateFromGeneratedMap season');
+    const defaultSeason = normalizeClimateSeason(season, 'SeedClimateFromGeneratedMap season');
     const regions = normalizeMapRegions(generatedMap);
     const profiles = regions.map(deriveProfile);
     const climateStates = profiles.map((profile, index) => deriveClimateState(profile, deriveSeason(regions[index], defaultSeason), regions[index], seededAt));
