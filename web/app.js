@@ -13,6 +13,7 @@ import { OperationClandestine } from '../src/domain/intrigue/OperationClandestin
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
+import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 
 const culturePayload = {
   cultures: [
@@ -824,8 +825,30 @@ function buildProvinceActionRecommendations(province, focusContext, intrigueView
   return recommendations.slice(0, 3);
 }
 
+function renderCultureConsequenceChips(chips) {
+  return `
+    <div class="culture-consequence-chips" aria-label="Conséquences culturelles">
+      ${chips.map((chip) => `
+        <span class="culture-consequence-chip culture-consequence-chip--${chip.tone}" title="${chip.explanation}">
+          <b>${chip.label}</b>
+          <small>${chip.cultureName} · ${chip.regionId} · S${chip.severity}</small>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderProvinceActionRecommendations(province, focusContext, intrigueView = null) {
   const recommendations = buildProvinceActionRecommendations(province, focusContext, intrigueView);
+  const cultureView = getCultureViewModel();
+  const selectedMarker = cultureView.overlay.find((entry) => entry.regionId === province.provinceId) ?? null;
+  const selectedCluster = buildCultureClusterSummaries(cultureView.overlay)
+    .find((cluster) => cluster.regionIds.includes(province.provinceId)) ?? null;
+  const localTimeline = buildCultureLocalTimeline({
+    selectedRegionId: province.provinceId,
+    selectedMarker,
+    selectedCluster,
+  });
 
   return `
     <div class="province-action-recommendations" aria-label="Actions recommandées pour la province sélectionnée">
@@ -834,12 +857,23 @@ function renderProvinceActionRecommendations(province, focusContext, intrigueVie
         <span>${province.selectionState.selected ? 'sélection active' : 'focus tactique'}</span>
       </div>
       <div class="province-action-list">
-        ${recommendations.map((recommendation) => `
-          <article class="province-action-card province-action-card--${recommendation.tone}">
-            <strong>${recommendation.title}</strong>
-            <p>${recommendation.body}</p>
-          </article>
-        `).join('')}
+        ${recommendations.map((recommendation) => {
+          const cultureChips = buildCultureConsequenceChips({
+            province,
+            action: recommendation,
+            selectedMarker,
+            selectedCluster,
+            localTimeline,
+          });
+
+          return `
+            <article class="province-action-card province-action-card--${recommendation.tone}">
+              <strong>${recommendation.title}</strong>
+              <p>${recommendation.body}</p>
+              ${renderCultureConsequenceChips(cultureChips)}
+            </article>
+          `;
+        }).join('')}
       </div>
     </div>
   `;
