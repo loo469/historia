@@ -1624,6 +1624,50 @@ button { font: inherit; }
   color: var(--muted);
   margin-bottom: 4px;
 }
+.province-action-recommendations {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(8, 15, 28, 0.58));
+  border: 1px solid rgba(125, 211, 252, 0.16);
+}
+.province-action-recommendations__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.province-action-recommendations__header span {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-action-list {
+  display: grid;
+  gap: 8px;
+}
+.province-action-card {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-action-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.province-action-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.province-action-card--danger { border-color: rgba(251, 113, 133, 0.34); }
+.province-action-card--warning { border-color: rgba(251, 191, 36, 0.32); }
+.province-action-card--ready { border-color: rgba(74, 222, 128, 0.28); }
+.province-action-card--info { border-color: rgba(56, 189, 248, 0.3); }
 .context-summary {
   margin-top: 14px;
   padding: 12px;

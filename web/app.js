@@ -707,6 +707,83 @@ function renderOverlaySlots(shell) {
   }).join('');
 }
 
+function buildProvinceActionRecommendations(province, focusContext) {
+  const recommendations = [];
+  const neighborCount = focusContext.neighborIds.size;
+  const linkedCity = cities.find((city) => city.regionId === province.provinceId) ?? null;
+
+  if (province.contested) {
+    recommendations.push({
+      tone: 'danger',
+      title: 'Renforcer le front',
+      body: 'Prioriser garnison, ravitaillement et reconnaissance avant la prochaine poussée.',
+    });
+  } else if (province.occupied) {
+    recommendations.push({
+      tone: 'warning',
+      title: 'Stabiliser l’occupation',
+      body: 'Comparer contrôle et propriétaire avant de déplacer des forces voisines.',
+    });
+  } else {
+    recommendations.push({
+      tone: 'ready',
+      title: 'Préparer la manœuvre',
+      body: neighborCount > 0 ? `Scanner ${neighborCount} province${neighborCount > 1 ? 's' : ''} voisine${neighborCount > 1 ? 's' : ''} avant l’ordre.` : 'Aucun voisin direct: garder la province en réserve.',
+    });
+  }
+
+  if (['disrupted', 'collapsed'].includes(province.supplyLevel)) {
+    recommendations.push({
+      tone: 'warning',
+      title: 'Inspecter les routes',
+      body: 'Ouvrir la couche économie pour repérer les convois et points de rupture.',
+    });
+  } else if (province.loyalty < 50) {
+    recommendations.push({
+      tone: 'warning',
+      title: 'Surveiller l’agitation',
+      body: 'Croiser avec intrigue/culture avant d’engager une action longue.',
+    });
+  } else if (linkedCity) {
+    recommendations.push({
+      tone: 'info',
+      title: 'Contrôler le hub local',
+      body: `Vérifier ${linkedCity.name} pour stocks, stabilité et relais logistiques.`,
+    });
+  }
+
+  recommendations.push({
+    tone: province.strategicValue >= 6 ? 'info' : 'neutral',
+    title: province.strategicValue >= 6 ? 'Comparer le risque climat' : 'Garder en observation',
+    body: province.strategicValue >= 6
+      ? 'Comparer l’impact climat avant de verrouiller une décision coûteuse.'
+      : 'Conserver comme point d’appui et réévaluer après le prochain tour.',
+  });
+
+  return recommendations.slice(0, 3);
+}
+
+function renderProvinceActionRecommendations(province, focusContext) {
+  const recommendations = buildProvinceActionRecommendations(province, focusContext);
+
+  return `
+    <div class="province-action-recommendations" aria-label="Actions recommandées pour la province sélectionnée">
+      <div class="province-action-recommendations__header">
+        <strong>Actions recommandées</strong>
+        <span>${province.selectionState.selected ? 'sélection active' : 'focus tactique'}</span>
+      </div>
+      <div class="province-action-list">
+        ${recommendations.map((recommendation) => `
+          <article class="province-action-card province-action-card--${recommendation.tone}">
+            <strong>${recommendation.title}</strong>
+            <p>${recommendation.body}</p>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function renderActiveProvince(shell) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -748,6 +825,7 @@ function renderActiveProvince(shell) {
           <strong>${focusContext.focusedProvince?.label ?? province.label}</strong>
         </div>
       </div>
+      ${renderProvinceActionRecommendations(province, focusContext)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
