@@ -480,6 +480,11 @@ button { font: inherit; }
   stroke: rgba(251, 191, 36, 0.72);
   opacity: 0.28;
 }
+.province-surface.is-hovered .province-surface__core {
+  stroke: #a5f3fc;
+  stroke-width: 1.55;
+  filter: drop-shadow(0 0 10px rgba(103, 232, 249, 0.26));
+}
 .province-surface.is-focused .province-surface__core,
 .province-surface.is-selected .province-surface__core {
   stroke: #67e8f9;
@@ -488,11 +493,15 @@ button { font: inherit; }
 .province-surface.is-selected .province-surface__core {
   filter: drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 16px rgba(34, 211, 238, 0.48)) drop-shadow(0 0 28px rgba(251, 191, 36, 0.18));
 }
+.province-surface.is-hovered .province-surface__glow,
 .province-surface.is-selected .province-surface__glow,
 .province-surface.is-focused .province-surface__glow {
   stroke: #67e8f9;
   stroke-width: 3.4;
   opacity: 0.34;
+}
+.province-surface.is-hovered .province-surface__glow {
+  opacity: 0.26;
 }
 .province-surface.is-occupied .province-surface__hairline {
   stroke-dasharray: 3 2;
@@ -553,13 +562,18 @@ button { font: inherit; }
   fill: #fda4af;
 }
 .province-map-label.is-selected .province-map-label__title,
-.province-map-label.is-focused .province-map-label__title {
+.province-map-label.is-focused .province-map-label__title,
+.province-map-label.is-hovered .province-map-label__title {
   fill: #67e8f9;
 }
+.province-map-label.is-hovered .province-map-label__plate,
 .province-map-label.is-selected .province-map-label__plate,
 .province-map-label.is-focused .province-map-label__plate {
   fill: rgba(8, 15, 28, 0.86);
   stroke: rgba(103, 232, 249, 0.48);
+}
+.province-map-label.is-hovered .province-map-label__plate {
+  stroke: rgba(165, 243, 252, 0.34);
 }
 .city-map-label__leader {
   stroke: rgba(226, 232, 240, 0.38);
@@ -617,6 +631,14 @@ button { font: inherit; }
 .front-line.is-emphasized {
   stroke-width: 0.9;
   opacity: 1;
+}
+.front-link.is-previewed .front-line {
+  stroke-width: 0.74;
+  opacity: 0.9;
+}
+.front-link.is-previewed .front-line-casing {
+  stroke-width: 1.9;
+  opacity: 0.9;
 }
 .front-link.is-emphasized .front-line-casing {
   stroke-width: 2.1;
@@ -1128,19 +1150,24 @@ button { font: inherit; }
   transition: opacity 160ms ease, transform 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 .province-node:hover::after,
+.province-node.is-hovered::after,
 .province-node.is-focused::after,
 .province-node.is-selected::after {
   opacity: 1;
   transform: translateY(0);
 }
-.province-node:hover, .province-node.is-focused {
+.province-node:hover, .province-node.is-hovered, .province-node.is-focused {
   transform: translateY(-2px);
   filter: drop-shadow(0 0 14px rgba(103, 232, 249, 0.24));
 }
 .province-node:hover::before,
+.province-node.is-hovered::before,
 .province-node.is-focused::before {
   border-color: rgba(103, 232, 249, 0.34);
   background: linear-gradient(135deg, rgba(103, 232, 249, 0.1), transparent 36%, rgba(251, 191, 36, 0.07));
+}
+.province-node.is-hovered {
+  z-index: 5;
 }
 .province-node.is-selected {
   z-index: 6;
@@ -1192,6 +1219,7 @@ button { font: inherit; }
   transition: opacity 160ms ease;
 }
 .province-node:hover .province-node__terrain::before,
+.province-node.is-hovered .province-node__terrain::before,
 .province-node.is-focused .province-node__terrain::before,
 .province-node.is-selected .province-node__terrain::before {
   opacity: 1;
@@ -1210,8 +1238,12 @@ button { font: inherit; }
 }
 .province-node.is-selected .province-node__focus-rail,
 .province-node.is-neighbor .province-node__focus-rail,
+.province-node.is-hovered .province-node__focus-rail,
 .province-node.is-focused .province-node__focus-rail {
   opacity: 1;
+}
+.province-node.is-hovered .province-node__focus-rail {
+  opacity: 0.78;
 }
 .province-node__signal,
 .province-node__name, .province-node__meta, .province-node__badges, .province-node__link { position: relative; z-index: 1; }
@@ -1234,9 +1266,14 @@ button { font: inherit; }
   box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
 }
 .province-node.is-focused .province-node__signal,
+.province-node.is-hovered .province-node__signal,
 .province-node:hover .province-node__signal {
   border-color: rgba(103, 232, 249, 0.42);
   color: #cffafe;
+}
+.province-node.is-hovered .province-node__signal {
+  background: rgba(8, 47, 73, 0.68);
+  box-shadow: 0 0 12px rgba(103, 232, 249, 0.18);
 }
 .province-node__name {
   font-weight: 800;
@@ -1249,6 +1286,7 @@ button { font: inherit; }
   transition: opacity 160ms ease, transform 160ms ease;
 }
 .province-node:hover .province-node__name,
+.province-node.is-hovered .province-node__name,
 .province-node.is-focused .province-node__name,
 .province-node.is-selected .province-node__name,
 .province-node.is-neighbor .province-node__name {
@@ -1263,12 +1301,14 @@ button { font: inherit; }
   opacity: 0;
 }
 .province-node:hover .province-node__meta,
+.province-node.is-hovered .province-node__meta,
 .province-node.is-focused .province-node__meta,
 .province-node.is-selected .province-node__meta {
   opacity: 1;
 }
 .province-node__badges { display: none; flex-wrap: wrap; gap: 6px; }
 .province-node.is-selected .province-node__badges,
+.province-node.is-hovered .province-node__badges,
 .province-node.is-focused .province-node__badges { display: flex; }
 .province-node__link {
   margin-top: 8px;

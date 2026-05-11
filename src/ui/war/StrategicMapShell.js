@@ -89,6 +89,7 @@ function buildLegend(renderedProvinces, options) {
 function enhanceProvince(renderedProvince, options, provinceGeometryById) {
   const selectedProvinceId = String(options.selectedProvinceId ?? '').trim();
   const focusedProvinceId = String(options.focusedProvinceId ?? '').trim();
+  const hoveredProvinceId = String(options.hoveredProvinceId ?? '').trim();
   const geometry = provinceGeometryById[renderedProvince.provinceId] ?? {};
 
   return {
@@ -103,6 +104,7 @@ function enhanceProvince(renderedProvince, options, provinceGeometryById) {
     selectionState: {
       selected: renderedProvince.provinceId === selectedProvinceId,
       focused: renderedProvince.provinceId === focusedProvinceId,
+      hovered: renderedProvince.provinceId === hoveredProvinceId,
     },
   };
 }
@@ -155,7 +157,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
       })),
     },
     activeProvince: renderedProvinces.find(
-      (province) => province.selectionState.selected || province.selectionState.focused,
+      (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
   };
 }

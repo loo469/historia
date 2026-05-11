@@ -36,6 +36,7 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
       title: 'Théâtre nord',
       selectedProvinceId: 'prov-c',
       focusedProvinceId: 'prov-a',
+      hoveredProvinceId: 'prov-a',
       factionMetaById: {
         'faction-a': { label: 'Alliance d’Azur' },
         'faction-b': { label: 'Ligue cramoisie' },
@@ -60,8 +61,8 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
   assert.equal(shell.subtitle, 'Vue d’ensemble des provinces et lignes de front');
   assert.deepEqual(shell.provinces.map((province) => province.provinceId), ['prov-a', 'prov-c']);
   assert.deepEqual(shell.provinces.map((province) => province.selectionState), [
-    { selected: false, focused: true },
-    { selected: true, focused: false },
+    { selected: false, focused: true, hovered: true },
+    { selected: true, focused: false, hovered: false },
   ]);
   assert.deepEqual(shell.provinces[0].geometry.layout, { x: 10, y: 12, w: 20, h: 18 });
   assert.equal(shell.provinces[0].geometry.shape, 'polygon(10% 12%, 30% 12%, 30% 30%, 10% 30%)');

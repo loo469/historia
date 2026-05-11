@@ -378,6 +378,7 @@ const state = {
   seasonIndex: 0,
   focusedProvinceId: 'crown-heart',
   selectedProvinceId: 'river-gate',
+  hoveredProvinceId: null,
   activeOverlaySlot: 'culture-overlay',
   popupProvinceId: 'river-gate',
   hoveredCityId: 'river-gate-city',
@@ -419,6 +420,7 @@ function applyMapScenario(scenario) {
   state.mapPanY = 0;
   state.mobilePanelSection = 'details';
   state.mobileMapExpanded = true;
+  state.hoveredProvinceId = null;
   state.intrigueFilters = {
     presence: true,
     alerts: true,
@@ -432,12 +434,14 @@ const seasonLabels = ['Printemps', 'Été', 'Automne', 'Hiver'];
 function getFocusContext(shell) {
   const selectedProvince = shell.provinces.find((province) => province.provinceId === state.selectedProvinceId) ?? null;
   const focusedProvince = shell.provinces.find((province) => province.provinceId === state.focusedProvinceId) ?? selectedProvince ?? null;
-  const anchorProvince = selectedProvince ?? focusedProvince;
+  const hoveredProvince = shell.provinces.find((province) => province.provinceId === state.hoveredProvinceId) ?? null;
+  const anchorProvince = hoveredProvince ?? selectedProvince ?? focusedProvince;
   const neighborIds = new Set(anchorProvince?.neighborIds ?? []);
 
   return {
     selectedProvince,
     focusedProvince,
+    hoveredProvince,
     neighborIds,
   };
 }
@@ -547,6 +551,7 @@ function getShell() {
     factionMetaById,
     selectedProvinceId: state.selectedProvinceId,
     focusedProvinceId: state.focusedProvinceId,
+    hoveredProvinceId: state.hoveredProvinceId,
   });
 }
 
@@ -620,9 +625,10 @@ function renderProvinceSurface(shell, focusContext) {
         const isNeighbor = focusContext.neighborIds.has(province.provinceId);
         const isSelected = province.selectionState.selected;
         const isFocused = province.selectionState.focused;
-        const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
+        const isHovered = province.selectionState.hovered;
+        const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince);
         return `
-          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
+          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isHovered ? 'is-hovered' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
             <polygon class="province-surface__glow" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
             <polygon class="province-surface__core" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
             <polygon class="province-surface__hairline" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
@@ -639,13 +645,15 @@ function renderProvinceCard(province, focusContext) {
   const isNeighbor = focusContext.neighborIds.has(province.provinceId);
   const isSelected = province.selectionState.selected;
   const isFocused = province.selectionState.focused;
-  const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
+  const isHovered = province.selectionState.hovered;
+  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
-  const selectionSignal = isSelected ? 'ACTIF' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
+  const selectionSignal = isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
     isFocused ? 'is-focused' : '',
+    isHovered ? 'is-hovered' : '',
     isNeighbor ? 'is-neighbor' : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
@@ -2283,7 +2291,7 @@ function renderProvinceLabels(shell) {
         const cityLabelY = cityLayout ? cityLayout.y + (cityLayout.labelDy ?? 0) : null;
 
         return `
-          <g class="province-map-label province-map-label--${label.tone} ${province.selectionState.selected ? 'is-selected' : province.selectionState.focused ? 'is-focused' : ''}">
+          <g class="province-map-label province-map-label--${label.tone} ${province.selectionState.selected ? 'is-selected' : province.selectionState.hovered ? 'is-hovered' : province.selectionState.focused ? 'is-focused' : ''}">
             ${label.leaderNeeded ? `<path class="province-map-label__leader" d="M ${label.center.x} ${label.center.y} L ${label.x} ${label.y - 1.5}"></path>` : ''}
             <rect class="province-map-label__plate" x="${label.rectX}%" y="${label.rectY}%" width="${label.width}%" height="${label.height}%" rx="1.4" ry="1.4"></rect>
             <text class="province-map-label__title" x="${label.titleX}%" y="${label.y}%" text-anchor="${label.align}">${province.label}</text>
@@ -2355,10 +2363,12 @@ function renderStrategicRelations(shell) {
   const relationLines = buildProvinceRelations(shell).map((relation, index) => {
     const linkedToSelection = focusContext.selectedProvince
       && (relation.relationId.includes(focusContext.selectedProvince.provinceId));
+    const linkedToHover = focusContext.hoveredProvince
+      && (relation.relationId.includes(focusContext.hoveredProvince.provinceId));
     const pathD = buildReadableRelationPath(relation, index);
 
     return `
-    <g class="front-link ${linkedToSelection ? 'is-emphasized' : ''}">
+    <g class="front-link ${linkedToSelection ? 'is-emphasized' : ''} ${linkedToHover ? 'is-previewed' : ''}">
       <path class="front-line-casing" d="${pathD}" />
       <path
         class="front-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : relation.stable ? 'is-stable' : ''} ${linkedToSelection ? 'is-emphasized' : ''}"
@@ -2795,16 +2805,19 @@ function render() {
 
   document.querySelectorAll('[data-province-id]').forEach((element) => {
     element.addEventListener('mouseenter', () => {
+      state.hoveredProvinceId = element.dataset.provinceId;
       state.focusedProvinceId = element.dataset.provinceId;
       render();
     });
 
     element.addEventListener('mouseleave', () => {
+      state.hoveredProvinceId = null;
       state.focusedProvinceId = state.selectedProvinceId;
       render();
     });
 
     element.addEventListener('click', () => {
+      state.hoveredProvinceId = null;
       state.focusedProvinceId = element.dataset.provinceId;
       state.selectedProvinceId = element.dataset.provinceId;
       state.popupProvinceId = element.dataset.provinceId;
