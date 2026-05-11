@@ -2544,6 +2544,13 @@ button { font: inherit; }
 }
 .culture-marker.is-readable { opacity: 0.9; }
 .culture-marker.is-quiet { opacity: 0.46; }
+.culture-marker.is-clustered:not(.is-selected) {
+  opacity: 0.54;
+}
+.culture-marker.is-clustered:not(.is-selected) .culture-marker__code,
+.culture-marker.is-clustered:not(.is-selected) .culture-marker__sigil {
+  opacity: 0.72;
+}
 .culture-marker__aura {
   fill: rgba(8, 47, 73, 0.12);
   stroke: rgba(125, 211, 252, 0.14);
@@ -2826,6 +2833,29 @@ button { font: inherit; }
 .culture-discovery-ping--amber .culture-discovery-ping__glyph { stroke: #fcd34d; fill: rgba(120, 53, 15, 0.72); }
 .culture-discovery-ping--rose .culture-discovery-ping__leader { stroke: rgba(251, 113, 133, 0.3); }
 .culture-discovery-ping--rose .culture-discovery-ping__glyph { stroke: #fda4af; fill: rgba(136, 19, 55, 0.66); }
+.culture-cluster-summary {
+  opacity: 0.88;
+  filter: url(#cultureHudGlow);
+}
+.culture-cluster-summary.is-muted {
+  opacity: 0.5;
+}
+.culture-cluster-summary rect {
+  fill: rgba(2, 6, 23, 0.74);
+  stroke: rgba(125, 211, 252, 0.48);
+  stroke-width: 0.24;
+}
+.culture-cluster-summary__count,
+.culture-cluster-summary__label {
+  font-size: 1.55px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.92);
+  stroke-width: 0.3px;
+}
+.culture-cluster-summary__count { fill: #bae6fd; }
+.culture-cluster-summary__label { fill: #fde68a; }
 .culture-symbol-key {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

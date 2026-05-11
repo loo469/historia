@@ -1458,7 +1458,7 @@ function renderCultureLegendKey(cultureView) {
   `;
 }
 
-function renderCultureMarker(entry, active) {
+function renderCultureMarker(entry, active, clusteredRegionIds = new Set()) {
   const center = getProvinceCenter(entry.regionId);
 
   if (!center) {
@@ -1466,23 +1466,92 @@ function renderCultureMarker(entry, active) {
   }
 
   const selected = entry.regionId === state.selectedProvinceId;
+  const clustered = clusteredRegionIds.has(entry.regionId);
   const tone = getCultureTone(entry);
-  const radius = active ? Math.max(3.9, Math.min(8.2, entry.zoneContour.radius / 3.4)) : 2.15;
+  const radius = active ? Math.max(3.9, Math.min(8.2, entry.zoneContour.radius / (clustered ? 4.2 : 3.4))) : 2.15;
   const eventBadgeY = center.y - radius - 2.1;
   const language = getCultureMarkerLanguage(entry);
-  const glyphScale = active ? Math.max(1.75, radius * 0.34) : 1.05;
+  const glyphScale = active ? Math.max(1.55, radius * 0.32) : 1.05;
   const selectedClass = selected ? 'is-selected' : '';
   const stateClass = active ? 'is-readable' : 'is-quiet';
+  const clusterClass = clustered ? 'is-clustered' : '';
 
   return `
-    <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} culture-marker--${entry.markerType} ${selectedClass} ${stateClass}" data-culture-region="${entry.regionId}">
+    <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} culture-marker--${entry.markerType} ${selectedClass} ${stateClass} ${clusterClass}" data-culture-region="${entry.regionId}">
       <title>${entry.cultureName} · ${entry.regionId} · ${entry.summary}</title>
       <circle class="culture-marker__aura" cx="${center.x}%" cy="${center.y}%" r="${radius + (active ? 1.8 : 0.9)}"></circle>
       <circle class="culture-marker__ring" cx="${center.x}%" cy="${center.y}%" r="${radius}"></circle>
       ${active && selected ? renderCultureMarkerTicks(center, radius, language) : ''}
       ${active ? `<path class="culture-marker__sigil" d="${language.glyph}" transform="translate(${center.x} ${center.y}) scale(${glyphScale})"></path>` : ''}
       ${active ? `<text class="culture-marker__code" x="${center.x}%" y="${center.y + radius + 2.4}%" text-anchor="middle">${language.code}</text>` : ''}
-      ${active && entry.eventCount > 0 ? `<g class="culture-event-flag"><circle cx="${center.x + radius + 1.7}%" cy="${eventBadgeY}%" r="1.55"></circle><text x="${center.x + radius + 1.7}%" y="${eventBadgeY + 0.48}%" text-anchor="middle">${entry.eventCount}</text></g>` : ''}
+      ${active && entry.eventCount > 0 && !clustered ? `<g class="culture-event-flag"><circle cx="${center.x + radius + 1.7}%" cy="${eventBadgeY}%" r="1.55"></circle><text x="${center.x + radius + 1.7}%" y="${eventBadgeY + 0.48}%" text-anchor="middle">${entry.eventCount}</text></g>` : ''}
+    </g>
+  `;
+}
+
+function buildCultureClusterSummaries(entries) {
+  const remaining = entries
+    .map((entry) => ({ entry, center: getProvinceCenter(entry.regionId) }))
+    .filter((item) => item.center)
+    .sort((left, right) => left.center.x - right.center.x || left.center.y - right.center.y);
+  const clusters = [];
+  const usedRegionIds = new Set();
+
+  remaining.forEach((item) => {
+    if (usedRegionIds.has(item.entry.regionId)) {
+      return;
+    }
+
+    const members = remaining.filter((candidate) => (
+      !usedRegionIds.has(candidate.entry.regionId)
+      && Math.hypot(candidate.center.x - item.center.x, candidate.center.y - item.center.y) <= 14
+    ));
+
+    if (members.length < 3 && !item.entry.clusterSummary) {
+      return;
+    }
+
+    members.forEach((member) => usedRegionIds.add(member.entry.regionId));
+    const entriesInCluster = members.map((member) => member.entry);
+    const cultureIds = [...new Set(entriesInCluster.flatMap((entry) => entry.clusterSummary?.cultureIds ?? [entry.cultureId]))].sort();
+    const cultureNames = [...new Set(entriesInCluster.flatMap((entry) => entry.clusterSummary?.cultureNames ?? [entry.cultureName]))].sort();
+    const discoveryIds = [...new Set(entriesInCluster.flatMap((entry) => entry.clusterSummary?.discoveryIds ?? entry.discoveries))].sort();
+    const eventCount = entriesInCluster.reduce((total, entry) => total + (entry.clusterSummary?.eventCount ?? entry.eventCount), 0);
+    const centroid = members.reduce((accumulator, member) => ({
+      x: accumulator.x + member.center.x,
+      y: accumulator.y + member.center.y,
+    }), { x: 0, y: 0 });
+    const anchor = {
+      x: Math.max(9, Math.min(91, centroid.x / members.length)),
+      y: Math.max(5, Math.min(94, (centroid.y / members.length) - 7.4)),
+    };
+
+    clusters.push({
+      clusterId: `culture-cluster:${entriesInCluster.map((entry) => entry.regionId).sort().join(':')}`,
+      anchor,
+      regionIds: entriesInCluster.map((entry) => entry.regionId).sort(),
+      cultureIds,
+      cultureNames,
+      cultureCount: cultureIds.length,
+      discoveryCount: discoveryIds.length,
+      eventCount,
+      label: `${cultureIds.length} cultures · ${discoveryIds.length} découvertes`,
+      summary: `${cultureNames.slice(0, 2).join(', ')}${cultureNames.length > 2 ? '…' : ''}`,
+    });
+  });
+
+  return clusters;
+}
+
+function renderCultureClusterSummary(cluster, active) {
+  const detail = `${cluster.summary} · régions ${cluster.regionIds.join(', ')} · cultures ${cluster.cultureIds.join(', ')}`;
+
+  return `
+    <g class="culture-cluster-summary ${active ? 'is-active' : 'is-muted'}" data-culture-cluster="${cluster.clusterId}">
+      <title>${detail}</title>
+      <rect x="${cluster.anchor.x - 7.8}%" y="${cluster.anchor.y - 3.1}%" width="15.6%" height="6.2%" rx="2.2%"></rect>
+      <text class="culture-cluster-summary__count" x="${cluster.anchor.x - 5.9}%" y="${cluster.anchor.y + 0.45}%">C${cluster.cultureCount}</text>
+      <text class="culture-cluster-summary__label" x="${cluster.anchor.x - 0.7}%" y="${cluster.anchor.y + 0.45}%">D${cluster.discoveryCount}${cluster.eventCount > 0 ? ` · H${cluster.eventCount}` : ''}</text>
     </g>
   `;
 }
@@ -1492,7 +1561,10 @@ function renderCultureMapOverlay(cultureView) {
   const markerEntries = active
     ? cultureView.overlay
     : cultureView.overlay.filter((entry) => entry.dominantInRegion || entry.regionId === state.selectedProvinceId);
-  const markerNodes = markerEntries.map((entry) => renderCultureMarker(entry, active)).join('');
+  const clusterSummaries = buildCultureClusterSummaries(markerEntries);
+  const clusteredRegionIds = new Set(clusterSummaries.flatMap((cluster) => cluster.regionIds));
+  const markerNodes = markerEntries.map((entry) => renderCultureMarker(entry, active, clusteredRegionIds)).join('');
+  const clusterNodes = clusterSummaries.map((cluster) => renderCultureClusterSummary(cluster, active)).join('');
 
   const discoveryLinks = active ? cultureView.overlay.flatMap((entry) => {
     const center = getProvinceCenter(entry.regionId);
@@ -1502,6 +1574,12 @@ function renderCultureMapOverlay(cultureView) {
     }
 
     const selected = entry.regionId === state.selectedProvinceId;
+    const clustered = clusteredRegionIds.has(entry.regionId);
+
+    if (clustered && !selected) {
+      return [];
+    }
+
     const visibleLinks = entry.regionalDiscoveryLinks.slice(0, selected ? 2 : 1);
 
     return visibleLinks.map((link, index) => {
@@ -1530,6 +1608,7 @@ function renderCultureMapOverlay(cultureView) {
         </filter>
       </defs>
       ${markerNodes}
+      ${clusterNodes}
       ${discoveryLinks}
     </svg>
   `;

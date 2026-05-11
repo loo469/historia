@@ -292,6 +292,30 @@ function buildZoneContour(influenceTier, overlapCount, zoneRank) {
   };
 }
 
+function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById) {
+  const cultureIds = regionPresence.map((entry) => entry.cultureId).sort();
+  const cultureNames = regionPresence.map((entry) => entry.cultureName).sort();
+  const discoveryIds = [...new Set(regionPresence.flatMap((entry) => (
+    cultureSignalsById.get(entry.cultureId)?.signals.highlightedDiscoveries ?? []
+  )))].sort();
+  const eventCount = regionPresence.reduce((total, entry) => (
+    total + (cultureSignalsById.get(entry.cultureId)?.signals.eventCount ?? 0)
+  ), 0);
+
+  return {
+    clusterId: `${regionId}:culture-cluster`,
+    regionId,
+    cultureIds,
+    cultureNames,
+    cultureCount: cultureIds.length,
+    discoveryIds,
+    discoveryCount: discoveryIds.length,
+    eventCount,
+    label: `${cultureIds.length} cultures · ${discoveryIds.length} découvertes`,
+    summary: `${cultureNames.slice(0, 3).join(', ')}${cultureNames.length > 3 ? '…' : ''}`,
+  };
+}
+
 export function buildCultureMapOverlay(payload, options = {}) {
   const normalizedPayload = requireObject(payload, 'CultureMapOverlay payload');
   const normalizedOptions = requireObject(options, 'CultureMapOverlay options');
@@ -338,6 +362,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
     }),
   );
   const regionPresenceMap = buildRegionPresenceMap(cultures, regionIdsByCulture, cultureSignalsById);
+  const includeClusterSummaries = normalizedOptions.clusterSummaries === true;
 
   return cultures
     .flatMap((culture) => {
@@ -352,6 +377,9 @@ export function buildCultureMapOverlay(payload, options = {}) {
         const overlapCount = regionPresence.length;
         const dominantCulture = regionPresence[0] ?? null;
         const zoneBand = buildZoneBand(zoneRank, overlapCount);
+        const clusterSummary = includeClusterSummaries && overlapCount > 1
+          ? buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById)
+          : null;
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -417,6 +445,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           zoneBand,
           dominantInRegion: dominantCulture?.cultureId === culture.id,
           competingCultureIds: regionPresence.filter((entry) => entry.cultureId !== culture.id).map((entry) => entry.cultureId),
+          ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
           style,
           zoneStyle: buildZoneStyle(markerType, cultureState.influenceTier, style, zoneBand),

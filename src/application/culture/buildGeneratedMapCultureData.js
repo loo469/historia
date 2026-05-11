@@ -151,6 +151,7 @@ export function buildGeneratedMapCultureData(culturePayload = {}, options = {}) 
     normalizedOptions.regionIdsByCulture,
   );
   const overlay = buildCultureMapOverlay(normalizedCulturePayload, {
+    clusterSummaries: true,
     ...(normalizedOptions.cultureOverlay ?? {}),
     regionIdsByCulture,
   });
