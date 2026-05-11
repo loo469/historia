@@ -4062,3 +4062,36 @@ button { font: inherit; }
   margin-top: 3px;
   color: var(--muted);
 }
+
+.intrigue-quick-responses {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.intrigue-quick-response {
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.54);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.intrigue-quick-response.is-recommended {
+  border-color: rgba(56, 189, 248, 0.38);
+  box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.62);
+}
+.intrigue-quick-response div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.intrigue-quick-response b {
+  color: #67e8f9;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.intrigue-quick-response span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
