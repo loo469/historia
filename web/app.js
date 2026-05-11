@@ -3,6 +3,7 @@ import { GenerateStrategicMap } from '../src/application/war/GenerateStrategicMa
 import { City } from '../src/domain/economy/City.js';
 import { TradeRoute } from '../src/domain/economy/TradeRoute.js';
 import { buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
+import { buildLauncherMapSelection } from '../src/ui/launcher/buildLauncherMapSelection.js';
 import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay.js';
 import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
 import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonPanel.js';
@@ -341,7 +342,86 @@ const routeHudByMode = {
 
 const defaultRouteHud = { glyph: '—', label: 'Route logistique', tone: 'slate' };
 
+const mapScenarios = [
+  {
+    id: 'continental-prototype',
+    title: 'Pax Historia — théâtre continental',
+    subtitle: 'Carte prototype jouable',
+    description: 'Le prototype complet avec provinces visibles, fronts, villes, routes et overlays prêts pour test rapide.',
+    tag: 'Recommandée',
+    status: 'ready',
+    previewTone: 'cyan',
+    recommended: true,
+    stats: {
+      Provinces: provinces.length,
+      Villes: cities.length,
+      Routes: routes.length,
+      Fronts: provinces.filter((province) => province.contested).length,
+    },
+    gameTitle: 'Écran stratégique, théâtre continental',
+    gameSubtitle: 'Prototype local Alpha prêt à accueillir les overlays inter-domaines',
+    initialState: {
+      focusedProvinceId: 'crown-heart',
+      selectedProvinceId: 'river-gate',
+      activeOverlaySlot: 'culture-overlay',
+      popupProvinceId: 'river-gate',
+      hoveredCityId: 'river-gate-city',
+      selectedCityId: 'river-gate-city',
+      comparedCityIds: ['river-gate-city', 'crown-port'],
+      comparisonProvinceIds: ['river-gate', 'crown-heart'],
+      selectedIntrigueOperationId: 'op-river-locks',
+      lastTurnSummary: 'Le théâtre continental est chargé: carte visible, overlays prêts, crise du fleuve sélectionnée.',
+    },
+  },
+  {
+    id: 'river-crisis',
+    title: 'Crise de la Porte du Fleuve',
+    subtitle: 'Scénario court de validation UI',
+    description: 'Démarre directement sur la province contestée, avec économie et intrigue autour des convois du fleuve.',
+    tag: 'Test rapide',
+    status: 'ready',
+    previewTone: 'amber',
+    playable: true,
+    stats: {
+      Provinces: provinces.length,
+      Villes: 2,
+      Routes: 2,
+      Alertes: intrigueOperations.length,
+    },
+    gameTitle: 'Crise de la Porte du Fleuve',
+    gameSubtitle: 'Carte prototype centrée sur le verrou fluvial et ses opérations clandestines',
+    initialState: {
+      focusedProvinceId: 'river-gate',
+      selectedProvinceId: 'river-gate',
+      activeOverlaySlot: 'intrigue-overlay',
+      popupProvinceId: 'river-gate',
+      hoveredCityId: 'river-gate-city',
+      selectedCityId: 'river-gate-city',
+      comparedCityIds: ['river-gate-city', 'iron-plain-city'],
+      comparisonProvinceIds: ['river-gate', 'iron-plain'],
+      selectedIntrigueOperationId: 'op-river-locks',
+      lastTurnSummary: 'La Porte du Fleuve est sélectionnée pour vérifier immédiatement carte, panels et signaux d’alerte.',
+    },
+  },
+  {
+    id: 'archipelago-coming-soon',
+    title: 'Archipels marchands',
+    subtitle: 'Carte future',
+    description: 'Emplacement réservé pour une carte maritime; visible dans le launcher mais non lançable.',
+    tag: 'Bientôt',
+    status: 'locked',
+    previewTone: 'slate',
+    playable: false,
+    stats: {
+      Îles: 0,
+      Routes: 0,
+    },
+  },
+];
+
 const state = {
+  screen: 'launcher',
+  selectedMapId: 'continental-prototype',
   turn: 1,
   seasonIndex: 0,
   focusedProvinceId: 'crown-heart',
@@ -365,6 +445,35 @@ const state = {
     sabotage: true,
   },
 };
+
+function getSelectedMapScenario() {
+  return mapScenarios.find((scenario) => scenario.id === state.selectedMapId && scenario.playable !== false)
+    ?? mapScenarios.find((scenario) => scenario.recommended && scenario.playable !== false)
+    ?? mapScenarios.find((scenario) => scenario.playable !== false)
+    ?? null;
+}
+
+function applyMapScenario(scenario) {
+  if (!scenario) {
+    return;
+  }
+
+  state.screen = 'game';
+  state.selectedMapId = scenario.id;
+  state.turn = 1;
+  state.seasonIndex = 0;
+  state.mapZoom = 1;
+  state.mapPanX = 0;
+  state.mapPanY = 0;
+  state.mobilePanelSection = 'details';
+  state.mobileMapExpanded = true;
+  state.intrigueFilters = {
+    presence: true,
+    alerts: true,
+    sabotage: true,
+  };
+  Object.assign(state, scenario.initialState ?? {});
+}
 
 const seasonLabels = ['Printemps', 'Été', 'Automne', 'Hiver'];
 
@@ -462,9 +571,11 @@ function getProvinceStateByTurn(province) {
 }
 
 function getShell() {
+  const scenario = getSelectedMapScenario();
+
   return buildStrategicMapShell(provinces.map(getProvinceStateByTurn), {
-    title: 'Écran stratégique, théâtre continental',
-    subtitle: 'Prototype local Alpha prêt à accueillir les overlays inter-domaines',
+    title: scenario?.gameTitle ?? 'Écran stratégique, théâtre continental',
+    subtitle: scenario?.gameSubtitle ?? 'Prototype local Alpha prêt à accueillir les overlays inter-domaines',
     paletteByFaction,
     factionMetaById,
     selectedProvinceId: state.selectedProvinceId,
@@ -2356,7 +2467,152 @@ function renderMobileToolbar() {
   `;
 }
 
+function renderLauncherMapStats(stats) {
+  return Object.entries(stats).map(([label, value]) => `
+    <span class="launcher-map-card__stat"><strong>${value}</strong>${label}</span>
+  `).join('');
+}
+
+function renderLauncher() {
+  return `
+    <main class="launcher-root">
+      <section class="launcher-hero panel launcher-hero--startup">
+        <div class="launcher-hero__copy">
+          <p class="eyebrow">Historia launcher</p>
+          <h1>Bienvenue dans Historia</h1>
+          <p>Un démarrage clair avant le jeu: choisissez une carte prototype, puis entrez dans une carte visible sans écran vide.</p>
+          <div class="launcher-actions">
+            <button type="button" class="turn-button launcher-primary" data-open-map-select="true">Choisir une carte</button>
+          </div>
+        </div>
+        <div class="launcher-hero__screen" aria-label="Aperçu du menu de démarrage">
+          <div class="launcher-screen-frame launcher-screen-frame--cyan">
+            <div class="launcher-screen-map">
+              <span class="launcher-screen-map__province launcher-screen-map__province--a"></span>
+              <span class="launcher-screen-map__province launcher-screen-map__province--b"></span>
+              <span class="launcher-screen-map__province launcher-screen-map__province--c"></span>
+              <span class="launcher-screen-map__route launcher-screen-map__route--a"></span>
+              <span class="launcher-screen-map__route launcher-screen-map__route--b"></span>
+            </div>
+            <strong>Launcher → sélection → carte</strong>
+            <small>Flux court et testable pour vérifier immédiatement que la carte apparaît.</small>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderMapSelection() {
+  const selection = buildLauncherMapSelection(mapScenarios, state.selectedMapId);
+  const selectedMap = selection.selectedMap;
+  const mapCards = selection.maps.map((map) => `
+    <button
+      type="button"
+      class="launcher-map-card launcher-map-card--${map.previewTone} ${map.selected ? 'is-selected' : ''} ${map.playable ? '' : 'is-locked'}"
+      data-map-option="${map.id}"
+      ${map.playable ? '' : 'disabled'}
+      aria-pressed="${map.selected ? 'true' : 'false'}"
+    >
+      <span class="launcher-map-card__tag">${map.tag}</span>
+      <span class="launcher-map-card__preview" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </span>
+      <span class="launcher-map-card__title">${map.title}</span>
+      <span class="launcher-map-card__subtitle">${map.subtitle}</span>
+      <span class="launcher-map-card__description">${map.description}</span>
+      <span class="launcher-map-card__stats">${renderLauncherMapStats(map.stats)}</span>
+    </button>
+  `).join('');
+
+  return `
+    <main class="launcher-root">
+      <section class="launcher-hero panel">
+        <div class="launcher-hero__copy">
+          <p class="eyebrow">Historia launcher</p>
+          <h1>Choisissez une carte</h1>
+          <p>Une carte prototype est disponible maintenant; les autres emplacements restent visibles mais ne se superposent pas au jeu.</p>
+          <div class="launcher-actions">
+            <button type="button" class="turn-button turn-button--secondary" data-open-startup="true">Retour au menu</button>
+            <button type="button" class="turn-button launcher-primary" data-launch-selected="true" ${selection.canLaunch ? '' : 'disabled'}>
+              Lancer la carte sélectionnée
+            </button>
+            <span>${selection.headline}</span>
+          </div>
+        </div>
+        <div class="launcher-hero__screen" aria-label="Aperçu de la carte sélectionnée">
+          <div class="launcher-screen-frame launcher-screen-frame--${selectedMap?.previewTone ?? 'cyan'}">
+            <div class="launcher-screen-map">
+              <span class="launcher-screen-map__province launcher-screen-map__province--a"></span>
+              <span class="launcher-screen-map__province launcher-screen-map__province--b"></span>
+              <span class="launcher-screen-map__province launcher-screen-map__province--c"></span>
+              <span class="launcher-screen-map__route launcher-screen-map__route--a"></span>
+              <span class="launcher-screen-map__route launcher-screen-map__route--b"></span>
+            </div>
+            <strong>${selectedMap?.title ?? 'Aucune carte'}</strong>
+            <small>${selectedMap?.description ?? 'Ajoutez une carte jouable pour lancer Historia.'}</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="launcher-map-select panel">
+        <div class="panel-header panel-header--spread">
+          <div>
+            <h2>Sélection de carte</h2>
+            <p>Le premier choix est prêt pour validation produit; les cartes futures restent visibles sans bloquer le test.</p>
+          </div>
+        </div>
+        <div class="launcher-map-grid">${mapCards}</div>
+      </section>
+    </main>
+  `;
+}
+
+function bindLauncherEvents() {
+  document.querySelectorAll('[data-open-map-select]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.screen = 'map-select';
+      render();
+    });
+  });
+}
+
+function bindMapSelectionEvents() {
+  document.querySelectorAll('[data-open-startup]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.screen = 'launcher';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-map-option]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.selectedMapId = element.dataset.mapOption;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-launch-selected]').forEach((element) => {
+    element.addEventListener('click', () => {
+      applyMapScenario(getSelectedMapScenario());
+      render();
+    });
+  });
+}
+
 function render() {
+  if (state.screen === 'launcher') {
+    document.querySelector('#app').innerHTML = renderLauncher();
+    bindLauncherEvents();
+    return;
+  }
+
+  if (state.screen === 'map-select') {
+    document.querySelector('#app').innerHTML = renderMapSelection();
+    bindMapSelectionEvents();
+    return;
+  }
+
   const shell = getShell();
   const economyView = getEconomyViewModel();
   const focusContext = getFocusContext(shell);
@@ -2376,6 +2632,7 @@ function render() {
               <span>${seasonLabels[state.seasonIndex]}</span>
             </div>
             <button type="button" class="turn-button" data-next-turn="true">Tour suivant</button>
+            <button type="button" class="turn-button turn-button--secondary" data-open-launcher="true">Changer de carte</button>
           </div>
           <p class="turn-summary">${state.lastTurnSummary}</p>
           ${economyView.pulse ? `
@@ -2492,6 +2749,13 @@ function render() {
   document.querySelectorAll('[data-next-turn]').forEach((element) => {
     element.addEventListener('click', () => {
       advanceTurn();
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-open-launcher]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.screen = 'launcher';
       render();
     });
   });
