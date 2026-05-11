@@ -922,6 +922,66 @@ function renderProvinceEconomyConsequences(province, economyView) {
   `;
 }
 
+function buildConflictOutcomePreview(province, shell) {
+  const neighbors = province.neighborIds
+    .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId))
+    .filter(Boolean);
+  const alliedNeighbors = neighbors.filter((neighbor) => neighbor.controllingFactionId === province.controllingFactionId).length;
+  const hostileNeighbors = neighbors.length - alliedNeighbors;
+  const supplyScore = { stable: 2, strained: 1, disrupted: -1, collapsed: -2 }[province.supplyLevel] ?? 0;
+  const frontPressureScore = province.contested ? -2 : province.occupied ? -1 : hostileNeighbors > alliedNeighbors ? -1 : 1;
+  const stabilityScore = province.loyalty >= 70 ? 1 : province.loyalty < 45 ? -1 : 0;
+  const totalScore = supplyScore + frontPressureScore + stabilityScore + (alliedNeighbors > hostileNeighbors ? 1 : 0);
+  const tone = totalScore >= 2 ? 'success' : totalScore <= -2 ? 'danger' : 'warning';
+  const title = totalScore >= 2 ? 'Victoire probable' : totalScore <= -2 ? 'Risque élevé' : 'Issue disputée';
+
+  return {
+    tone,
+    title,
+    summary: totalScore >= 2
+      ? 'La province dispose de suffisamment d’appuis pour tenter une action limitée.'
+      : totalScore <= -2
+        ? 'Action risquée: sécuriser appuis et ravitaillement avant confirmation.'
+        : 'Résultat incertain: une préparation ciblée peut faire basculer l’issue.',
+    factors: [
+      {
+        label: 'Pression de front',
+        value: province.contested ? 'front actif' : hostileNeighbors > 0 ? `${hostileNeighbors} voisin${hostileNeighbors > 1 ? 's' : ''} adverse${hostileNeighbors > 1 ? 's' : ''}` : 'front calme',
+      },
+      {
+        label: 'Ravitaillement',
+        value: province.supplyLevel,
+      },
+      {
+        label: 'Contrôle adjacent',
+        value: `${alliedNeighbors} appui${alliedNeighbors > 1 ? 's' : ''} / ${hostileNeighbors} menace${hostileNeighbors > 1 ? 's' : ''}`,
+      },
+    ],
+  };
+}
+
+function renderConflictOutcomePreview(province, shell) {
+  const preview = buildConflictOutcomePreview(province, shell);
+
+  return `
+    <section class="conflict-outcome-preview conflict-outcome-preview--${preview.tone}" aria-label="Issue probable de conflit">
+      <div class="conflict-outcome-preview__header">
+        <span>Issue probable</span>
+        <strong>${preview.title}</strong>
+      </div>
+      <p>${preview.summary}</p>
+      <div class="conflict-outcome-factors">
+        ${preview.factors.map((factor) => `
+          <div class="conflict-outcome-factor">
+            <span>${factor.label}</span>
+            <strong>${factor.value}</strong>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -964,6 +1024,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
         </div>
       </div>
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
+      ${renderConflictOutcomePreview(province, shell)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
