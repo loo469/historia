@@ -18,6 +18,7 @@ const DEFAULT_PROVINCE_BLUEPRINTS = Object.freeze([
     name: 'Veille du Nord',
     grid: { col: 0, row: 0 },
     layout: { x: 15, y: 18, w: 20, h: 18 },
+    labelLayout: { x: 26, y: 20, align: 'middle', tone: 'standard' },
     polygon: '8,24 24,12 39,10 47,18 46,36 34,42 18,40 8,32',
     ownerFactionId: 'aurora',
     controllingFactionId: 'aurora',
@@ -30,6 +31,7 @@ const DEFAULT_PROVINCE_BLUEPRINTS = Object.freeze([
     name: 'Coeur de Couronne',
     grid: { col: 1, row: 0 },
     layout: { x: 38, y: 18, w: 23, h: 20 },
+    labelLayout: { x: 49.5, y: 18.5, align: 'middle', tone: 'capital' },
     polygon: '24,18 40,12 58,14 64,24 58,40 40,46 26,38 22,28',
     ownerFactionId: 'aurora',
     controllingFactionId: 'aurora',
@@ -42,6 +44,7 @@ const DEFAULT_PROVINCE_BLUEPRINTS = Object.freeze([
     name: 'Crête Rouge',
     grid: { col: 2, row: 0 },
     layout: { x: 64, y: 16, w: 21, h: 22 },
+    labelLayout: { x: 75, y: 18.5, align: 'middle', tone: 'standard' },
     polygon: '58,16 73,10 88,18 90,34 80,44 64,42 54,32 52,22',
     ownerFactionId: 'ember',
     controllingFactionId: 'ember',
@@ -54,6 +57,7 @@ const DEFAULT_PROVINCE_BLUEPRINTS = Object.freeze([
     name: 'Porte du Fleuve',
     grid: { col: 0, row: 1 },
     layout: { x: 22, y: 46, w: 24, h: 20 },
+    labelLayout: { x: 21, y: 45, align: 'start', tone: 'frontier' },
     polygon: '38,38 54,34 66,40 68,54 56,66 40,64 32,52 34,42',
     ownerFactionId: 'aurora',
     controllingFactionId: 'ember',
@@ -67,6 +71,7 @@ const DEFAULT_PROVINCE_BLUEPRINTS = Object.freeze([
     name: 'Plaine de Fer',
     grid: { col: 1, row: 1 },
     layout: { x: 50, y: 46, w: 26, h: 22 },
+    labelLayout: { x: 80, y: 48, align: 'end', tone: 'standard' },
     polygon: '60,44 78,42 90,52 88,68 72,78 56,72 54,56',
     ownerFactionId: 'ember',
     controllingFactionId: 'ember',
@@ -79,6 +84,7 @@ const DEFAULT_PROVINCE_BLUEPRINTS = Object.freeze([
     name: 'Basses Marches',
     grid: { col: 0, row: 2 },
     layout: { x: 33, y: 72, w: 28, h: 18 },
+    labelLayout: { x: 47, y: 91, align: 'middle', tone: 'frontier' },
     polygon: '24,58 42,54 58,58 64,74 48,88 28,86 16,72',
     ownerFactionId: 'neutral',
     controllingFactionId: 'aurora',
@@ -368,6 +374,97 @@ function chooseFactionForBlueprint(blueprint, factions) {
   return faction.id;
 }
 
+
+function requireNumber(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`${label} must be a finite number.`);
+  }
+
+  return value;
+}
+
+function normalizeLayout(layout, blueprint) {
+  if (layout === undefined) {
+    const col = Number.isInteger(blueprint.grid?.col) ? blueprint.grid.col : 0;
+    const row = Number.isInteger(blueprint.grid?.row) ? blueprint.grid.row : 0;
+
+    return {
+      x: 10 + col * 28,
+      y: 12 + row * 24,
+      w: 22,
+      h: 18,
+    };
+  }
+
+  const normalizedLayout = requireOptions(layout);
+
+  return {
+    x: requireNumber(normalizedLayout.x, `GenerateStrategicMap ${blueprint.id} layout.x`),
+    y: requireNumber(normalizedLayout.y, `GenerateStrategicMap ${blueprint.id} layout.y`),
+    w: requireNumber(normalizedLayout.w, `GenerateStrategicMap ${blueprint.id} layout.w`),
+    h: requireNumber(normalizedLayout.h, `GenerateStrategicMap ${blueprint.id} layout.h`),
+  };
+}
+
+function buildRectanglePolygon(layout) {
+  return `${layout.x},${layout.y} ${layout.x + layout.w},${layout.y} ${layout.x + layout.w},${layout.y + layout.h} ${layout.x},${layout.y + layout.h}`;
+}
+
+function normalizePolygon(polygon, layout, blueprint) {
+  if (polygon === undefined) {
+    return buildRectanglePolygon(layout);
+  }
+
+  const normalizedPolygon = requireText(polygon, `GenerateStrategicMap ${blueprint.id} polygon`);
+  const points = normalizedPolygon.split(/\s+/);
+
+  if (points.some((point) => !/^[-]?\d+(?:\.\d+)?,[-]?\d+(?:\.\d+)?$/.test(point))) {
+    throw new RangeError(`GenerateStrategicMap ${blueprint.id} polygon must contain x,y point pairs.`);
+  }
+
+  return normalizedPolygon;
+}
+
+function polygonToCssClipPath(polygon) {
+  return `polygon(${polygon.split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
+}
+
+function normalizeLabelLayout(labelLayout, layout, blueprint) {
+  if (labelLayout === undefined) {
+    return {
+      x: layout.x + (layout.w / 2),
+      y: layout.y + (layout.h / 2),
+      align: 'middle',
+      tone: 'standard',
+    };
+  }
+
+  const normalizedLabelLayout = requireOptions(labelLayout);
+
+  return {
+    x: requireNumber(normalizedLabelLayout.x, `GenerateStrategicMap ${blueprint.id} labelLayout.x`),
+    y: requireNumber(normalizedLabelLayout.y, `GenerateStrategicMap ${blueprint.id} labelLayout.y`),
+    align: String(normalizedLabelLayout.align ?? 'middle').trim() || 'middle',
+    tone: String(normalizedLabelLayout.tone ?? 'standard').trim() || 'standard',
+  };
+}
+
+function buildProvinceGeometry(blueprint) {
+  const layout = normalizeLayout(blueprint.layout, blueprint);
+  const polygon = normalizePolygon(blueprint.polygon, layout, blueprint);
+
+  return {
+    layout,
+    center: {
+      x: layout.x + (layout.w / 2),
+      y: layout.y + (layout.h / 2),
+    },
+    polygon,
+    shape: polygonToCssClipPath(polygon),
+    labelLayout: normalizeLabelLayout(blueprint.labelLayout, layout, blueprint),
+  };
+}
+
 export class GenerateStrategicMap {
   execute(options = {}) {
     const normalizedOptions = requireOptions(options);
@@ -379,6 +476,7 @@ export class GenerateStrategicMap {
     );
     const links = normalizeCollection(normalizedOptions.links, DEFAULT_LINKS, 'GenerateStrategicMap links');
     const neighborIdsByProvinceId = buildNeighborIds(blueprints, links);
+    const provinceGeometryById = Object.fromEntries(blueprints.map((blueprint) => [blueprint.id, buildProvinceGeometry(blueprint)]));
     const loyaltyJitter = Number.isInteger(normalizedOptions.loyaltyJitter) ? normalizedOptions.loyaltyJitter : 0;
     const strategicValueJitter = Number.isInteger(normalizedOptions.strategicValueJitter) ? normalizedOptions.strategicValueJitter : 0;
 
@@ -407,8 +505,10 @@ export class GenerateStrategicMap {
       width: normalizedOptions.width ?? DEFAULT_WIDTH,
       height: normalizedOptions.height ?? DEFAULT_HEIGHT,
       provinces,
-      provinceLayouts: Object.fromEntries(blueprints.map((blueprint) => [blueprint.id, { ...blueprint.layout }])),
-      provincePolygons: Object.fromEntries(blueprints.map((blueprint) => [blueprint.id, blueprint.polygon])),
+      provinceGeometryById,
+      provinceLayouts: Object.fromEntries(Object.entries(provinceGeometryById).map(([provinceId, geometry]) => [provinceId, { ...geometry.layout }])),
+      provincePolygons: Object.fromEntries(Object.entries(provinceGeometryById).map(([provinceId, geometry]) => [provinceId, geometry.polygon])),
+      provinceLabelLayouts: Object.fromEntries(Object.entries(provinceGeometryById).map(([provinceId, geometry]) => [provinceId, { ...geometry.labelLayout }])),
       paletteByFaction: Object.fromEntries(factions.map((faction) => [faction.id, {
         fill: faction.fill,
         border: faction.border,

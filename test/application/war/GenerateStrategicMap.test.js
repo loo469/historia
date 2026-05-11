@@ -33,6 +33,12 @@ test('GenerateStrategicMap returns deterministic strategic provinces and UI busi
   assert.deepEqual(map.paletteByFaction.ember, { fill: '#E8572A', border: '#FFB394' });
   assert.deepEqual(map.provinceLayouts['crown-heart'], { x: 38, y: 18, w: 23, h: 20 });
   assert.equal(map.provincePolygons['red-ridge'], '58,16 73,10 88,18 90,34 80,44 64,42 54,32 52,22');
+  assert.deepEqual(map.provinceLabelLayouts['river-gate'], { x: 21, y: 45, align: 'start', tone: 'frontier' });
+  assert.deepEqual(map.provinceGeometryById['river-gate'].center, { x: 34, y: 56 });
+  assert.equal(
+    map.provinceGeometryById['river-gate'].shape,
+    'polygon(38% 38%, 54% 34%, 66% 40%, 68% 54%, 56% 66%, 40% 64%, 32% 52%, 34% 42%)',
+  );
   assert.deepEqual(map.overlays.culture, []);
   assert.equal(map.panels.culture.focus, null);
   assert.deepEqual(map.businessData.cultureSeeds, []);
@@ -128,6 +134,8 @@ test('GenerateStrategicMap can derive province ownership from faction home colum
     { id: 'a', ownerFactionId: 'west', neighborIds: ['b'], contested: false },
     { id: 'b', ownerFactionId: 'east', neighborIds: ['a'], contested: true },
   ]);
+  assert.deepEqual(map.provinceGeometryById.a.layout, { x: 10, y: 12, w: 22, h: 18 });
+  assert.equal(map.provinceGeometryById.b.polygon, '38,12 60,12 60,30 38,30');
   assert.notDeepEqual(map.provinces.map((province) => province.loyalty), [50, 50]);
 });
 
@@ -139,5 +147,7 @@ test('GenerateStrategicMap validates options, factions, blueprints and links', (
   assert.throws(() => generator.execute({ factions: [{}] }), /faction id is required/);
   assert.throws(() => generator.execute({ provinceBlueprints: null }), /provinceBlueprints must be an array/);
   assert.throws(() => generator.execute({ provinceBlueprints: [{}] }), /province id is required/);
+  assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A', layout: { x: 'bad', y: 0, w: 1, h: 1 } }], links: [] }), /layout.x/);
+  assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A', polygon: 'broken' }], links: [] }), /polygon must contain x,y point pairs/);
   assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A' }], links: [['a', 'missing']] }), /links must reference generated provinces/);
 });

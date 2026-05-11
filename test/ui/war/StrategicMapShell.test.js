@@ -44,6 +44,15 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
         'faction-a': { fill: '#2563EB', border: '#1E3A8A' },
         'faction-b': { fill: '#DC2626', border: '#7F1D1D' },
       },
+      provinceGeometryById: {
+        'prov-a': {
+          layout: { x: 10, y: 12, w: 20, h: 18 },
+          center: { x: 20, y: 21 },
+          polygon: '10,12 30,12 30,30 10,30',
+          shape: 'polygon(10% 12%, 30% 12%, 30% 30%, 10% 30%)',
+          labelLayout: { x: 20, y: 18, align: 'middle', tone: 'capital' },
+        },
+      },
     },
   );
 
@@ -54,6 +63,9 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     { selected: false, focused: true },
     { selected: true, focused: false },
   ]);
+  assert.deepEqual(shell.provinces[0].geometry.layout, { x: 10, y: 12, w: 20, h: 18 });
+  assert.equal(shell.provinces[0].geometry.shape, 'polygon(10% 12%, 30% 12%, 30% 30%, 10% 30%)');
+  assert.equal(shell.provinces[1].geometry.layout, null);
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -101,4 +113,5 @@ test('StrategicMapShell falls back to default title and validates inputs', () =>
   assert.throws(() => buildStrategicMapShell([], null), /StrategicMapShell options must be an object/);
   assert.throws(() => buildStrategicMapShell([], { overlaySlots: null }), /overlaySlots must be an array/);
   assert.throws(() => buildStrategicMapShell([], { factionMetaById: [] }), /factionMetaById must be an object/);
+  assert.throws(() => buildStrategicMapShell([], { provinceGeometryById: [] }), /provinceGeometryById must be an object/);
 });

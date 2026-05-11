@@ -109,8 +109,7 @@ const culturePayload = {
 const strategicMap = new GenerateStrategicMap().execute({ culturePayload });
 const paletteByFaction = strategicMap.paletteByFaction;
 const factionMetaById = strategicMap.factionMetaById;
-const provinceLayouts = strategicMap.provinceLayouts;
-const provincePolygonById = strategicMap.provincePolygons;
+const provinceGeometryById = strategicMap.provinceGeometryById;
 const provinces = strategicMap.provinces;
 
 const overlayLabels = {
@@ -127,14 +126,6 @@ const cityLayoutsById = {
   'southern-crossing': { x: 47, y: 79, labelDx: 0, labelDy: 8 },
 };
 
-const provinceLabelLayouts = {
-  'north-watch': { x: 26, y: 20, align: 'middle', tone: 'standard' },
-  'crown-heart': { x: 49.5, y: 18.5, align: 'middle', tone: 'capital' },
-  'red-ridge': { x: 75, y: 18.5, align: 'middle', tone: 'standard' },
-  'river-gate': { x: 21, y: 45, align: 'start', tone: 'frontier' },
-  'iron-plain': { x: 80, y: 48, align: 'end', tone: 'standard' },
-  'southern-reach': { x: 47, y: 91, align: 'middle', tone: 'frontier' },
-};
 
 const cities = [
   new City({
@@ -490,12 +481,26 @@ function getFocusContext(shell) {
   };
 }
 
-function getProvinceCenter(provinceId) {
-  const layout = provinceLayouts[provinceId];
+function getProvinceGeometry(provinceId) {
+  return provinceGeometryById[provinceId] ?? {};
+}
 
-  if (!layout) {
-    return null;
+function getProvinceLayout(provinceId) {
+  return getProvinceGeometry(provinceId).layout ?? { x: 12, y: 12, w: 76, h: 76 };
+}
+
+function getProvincePolygon(provinceId) {
+  return getProvinceGeometry(provinceId).polygon ?? '12,12 88,12 88,88 12,88';
+}
+
+function getProvinceCenter(provinceId) {
+  const geometry = getProvinceGeometry(provinceId);
+
+  if (geometry.center) {
+    return geometry.center;
   }
+
+  const layout = getProvinceLayout(provinceId);
 
   return {
     x: layout.x + (layout.w / 2),
@@ -574,6 +579,7 @@ function getShell() {
   const scenario = getSelectedMapScenario();
 
   return buildStrategicMapShell(provinces.map(getProvinceStateByTurn), {
+    provinceGeometryById,
     title: scenario?.gameTitle ?? 'Écran stratégique, théâtre continental',
     subtitle: scenario?.gameSubtitle ?? 'Prototype local Alpha prêt à accueillir les overlays inter-domaines',
     paletteByFaction,
@@ -643,8 +649,7 @@ function renderLegend(shell) {
 }
 
 function getProvinceShape(provinceId) {
-  const polygon = provincePolygonById[provinceId] ?? '12,12 88,12 88,88 12,88';
-  return `polygon(${polygon.split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
+  return getProvinceGeometry(provinceId).shape ?? `polygon(${getProvincePolygon(provinceId).split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
 }
 
 function renderProvinceSurface(shell, focusContext) {
@@ -657,9 +662,9 @@ function renderProvinceSurface(shell, focusContext) {
         const isMuted = !isSelected && !isFocused && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince);
         return `
           <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
-            <polygon class="province-surface__glow" points="${provincePolygonById[province.provinceId]}"></polygon>
-            <polygon class="province-surface__core" points="${provincePolygonById[province.provinceId]}"></polygon>
-            <polygon class="province-surface__hairline" points="${provincePolygonById[province.provinceId]}"></polygon>
+            <polygon class="province-surface__glow" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
+            <polygon class="province-surface__core" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
+            <polygon class="province-surface__hairline" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
           </g>
         `;
       }).join('')}
@@ -668,7 +673,7 @@ function renderProvinceSurface(shell, focusContext) {
 }
 
 function renderProvinceCard(province, focusContext) {
-  const layout = provinceLayouts[province.provinceId];
+  const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
   const isNeighbor = focusContext.neighborIds.has(province.provinceId);
   const isSelected = province.selectionState.selected;
@@ -2188,7 +2193,7 @@ function renderProvinceLabels(shell) {
   return `
     <svg class="map-label-layer" viewBox="0 0 100 100" aria-label="Labels des provinces et points clés">
       ${shell.provinces.map((province) => {
-        const label = provinceLabelLayouts[province.provinceId] ?? { ...getProvinceCenter(province.provinceId), align: 'middle', tone: 'standard' };
+        const label = province.geometry.labelLayout ?? { ...getProvinceCenter(province.provinceId), align: 'middle', tone: 'standard' };
         const city = cities.find((candidate) => candidate.regionId === province.provinceId) ?? null;
         const cityLayout = city ? cityLayoutsById[city.id] : null;
         const cityLabelX = cityLayout ? cityLayout.x + (cityLayout.labelDx ?? 0) : null;
@@ -2218,7 +2223,7 @@ function renderProvincePopup(shell) {
     return '';
   }
 
-  const layout = provinceLayouts[province.provinceId];
+  const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
   const controller = factionMetaById[province.controllingFactionId]?.label ?? province.controllingFactionId;
   const status = province.contested ? 'Front contesté' : province.occupied ? 'Sous occupation' : 'Contrôle stable';
 

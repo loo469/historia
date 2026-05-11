@@ -42,6 +42,18 @@ function normalizeTextMap(value, label) {
   return value;
 }
 
+function normalizeGeometryMap(value) {
+  if (value === undefined) {
+    return {};
+  }
+
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('StrategicMapShell provinceGeometryById must be an object.');
+  }
+
+  return value;
+}
+
 function normalizeOverlaySlots(overlaySlots) {
   if (overlaySlots === undefined) {
     return [...DEFAULT_OVERLAY_SLOTS];
@@ -74,12 +86,20 @@ function buildLegend(renderedProvinces, options) {
   };
 }
 
-function enhanceProvince(renderedProvince, options) {
+function enhanceProvince(renderedProvince, options, provinceGeometryById) {
   const selectedProvinceId = String(options.selectedProvinceId ?? '').trim();
   const focusedProvinceId = String(options.focusedProvinceId ?? '').trim();
+  const geometry = provinceGeometryById[renderedProvince.provinceId] ?? {};
 
   return {
     ...renderedProvince,
+    geometry: {
+      layout: geometry.layout ?? null,
+      center: geometry.center ?? null,
+      polygon: geometry.polygon ?? null,
+      shape: geometry.shape ?? null,
+      labelLayout: geometry.labelLayout ?? null,
+    },
     selectionState: {
       selected: renderedProvince.provinceId === selectedProvinceId,
       focused: renderedProvince.provinceId === focusedProvinceId,
@@ -94,11 +114,12 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const subtitle = String(normalizedOptions.subtitle ?? 'Vue d’ensemble des provinces et lignes de front').trim()
     || 'Vue d’ensemble des provinces et lignes de front';
   const overlaySlots = normalizeOverlaySlots(normalizedOptions.overlaySlots);
+  const provinceGeometryById = normalizeGeometryMap(normalizedOptions.provinceGeometryById);
 
   const renderedProvinces = normalizedProvinces
     .slice()
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((province) => enhanceProvince(renderProvince(province, normalizedOptions), normalizedOptions));
+    .map((province) => enhanceProvince(renderProvince(province, normalizedOptions), normalizedOptions, provinceGeometryById));
 
   const stats = renderedProvinces.reduce(
     (summary, province) => ({
