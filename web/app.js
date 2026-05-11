@@ -392,6 +392,11 @@ const state = {
   mapPanY: 0,
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
   selectedIntrigueOperationId: 'op-river-ashes',
+  economyFilters: {
+    criticalRoutes: false,
+    resourceMarkers: true,
+    cityLabels: false,
+  },
   intrigueFilters: {
     presence: true,
     alerts: true,
@@ -421,6 +426,11 @@ function applyMapScenario(scenario) {
   state.mobilePanelSection = 'details';
   state.mobileMapExpanded = true;
   state.hoveredProvinceId = null;
+  state.economyFilters = {
+    criticalRoutes: false,
+    resourceMarkers: true,
+    cityLabels: false,
+  };
   state.intrigueFilters = {
     presence: true,
     alerts: true,
@@ -1642,6 +1652,7 @@ function renderEconomyMapOverlay(economyView) {
     return '';
   }
 
+  const filters = state.economyFilters;
   const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
   const heatNodes = economyView.overlay.cities.map((city) => {
     const position = city.marker.position;
@@ -1679,15 +1690,16 @@ function renderEconomyMapOverlay(economyView) {
         ? 'has-medium-tension'
         : 'has-low-tension';
     const emphasizeRoute = visual.critical || tensionClass === 'has-high-tension';
-    const showRouteLabel = emphasizeRoute || tensionClass === 'has-medium-tension';
+    const routeFiltered = filters.criticalRoutes && !emphasizeRoute;
+    const showRouteLabel = !routeFiltered && (emphasizeRoute || tensionClass === 'has-medium-tension');
 
     return `
-      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'}" data-route-id="${route.routeId}">
+      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}">
         <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
         <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
-        ${renderRouteHudMarkers(route, visual, { compact: !emphasizeRoute })}
+        ${renderRouteHudMarkers(route, visual, { compact: !emphasizeRoute || routeFiltered })}
         ${showRouteLabel ? `<text class="economy-route__label" text-anchor="middle">
           <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
         </text>` : ''}
@@ -1707,19 +1719,21 @@ function renderEconomyMapOverlay(economyView) {
     const isHub = city.tradeRouteIds.length >= 2 || city.resources.totalStock >= 16;
     const isSelected = state.selectedCityId === city.cityId || state.hoveredCityId === city.cityId;
     const expandResources = isSelected || tension === 'high';
-    const showResources = expandResources || city.capital || isHub;
+    const keepResourceWarning = tension === 'high';
+    const showResources = keepResourceWarning || (filters.resourceMarkers && (expandResources || city.capital || isHub));
+    const showCityLabels = filters.cityLabels && (isSelected || city.capital || isHub || tension !== 'low');
 
     return `
-      <g class="economy-city-group ${isSelected ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension" data-city-id="${city.cityId}">
+      <g class="economy-city-group ${isSelected ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension ${!filters.resourceMarkers && showResources ? 'has-forced-resource-warning' : ''}" data-city-id="${city.cityId}">
         <circle class="economy-city-tension-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 9.2}" />
         ${city.capital ? `<circle class="economy-city-capital-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 10.8}" />` : ''}
         ${isHub ? `<rect class="economy-city-hub-frame" x="calc(${position.x}% - ${city.marker.size * 7.4}px)" y="calc(${position.y}% - ${city.marker.size * 7.4}px)" width="${city.marker.size * 14.8}" height="${city.marker.size * 14.8}" rx="${city.marker.size * 3.2}" ry="${city.marker.size * 3.2}" />` : ''}
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 6.6}" />
         ${city.capital ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">★</text>` : isHub ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">◆</text>` : ''}
-        ${showResources ? renderResourceHudBadges(city, position, { expanded: expandResources }) : ''}
+        ${showResources ? renderResourceHudBadges(city, position, { expanded: expandResources && filters.resourceMarkers }) : ''}
         <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 12}" />
-        <text class="economy-city-label economy-city-label--sr" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
-        <text class="economy-city-resource economy-city-resource--sr" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
+        <text class="economy-city-label ${showCityLabels ? '' : 'economy-city-label--sr'}" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
+        <text class="economy-city-resource ${showCityLabels ? '' : 'economy-city-resource--sr'}" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
       </g>
     `;
   }).join('');
@@ -2024,13 +2038,33 @@ function renderEconomySidePanel(economyView, cultureView) {
     `;
   }
 
+  const filters = state.economyFilters;
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const criticalRouteCount = economyView.overlay.routes.filter((route) => {
+    const originTension = tensionByCityId[route.originCityId]?.tensionLevel ?? 'low';
+    const destinationTension = tensionByCityId[route.destinationCityId]?.tensionLevel ?? 'low';
+    return route.riskLevel >= 55 || route.totalCapacity >= 9 || originTension === 'high' || destinationTension === 'high';
+  }).length;
+  const resourceSignalCopy = filters.resourceMarkers
+    ? 'ressources compactes visibles'
+    : 'ressources masquées sauf tension forte';
+  const routeSignalCopy = filters.criticalRoutes
+    ? `${criticalRouteCount} routes critiques gardées nettes`
+    : 'routes critiques et support visibles';
+
   return `
     <section class="panel overlay-panel overlay-panel--economy">
       <div class="panel-header economy-panel-header">
         <p class="eyebrow">Economy HUD</p>
         <h3>Overlay actif, Économie</h3>
-        <p>${economyView.overlay.summary} · lecture verre dépoli haute densité</p>
+        <p>${economyView.overlay.summary} · ${routeSignalCopy} · ${resourceSignalCopy}</p>
       </div>
+      <section class="economy-filter-bar" aria-label="Filtres économie">
+        <button type="button" class="economy-filter-chip ${filters.criticalRoutes ? 'is-active' : ''}" data-economy-filter="criticalRoutes" aria-pressed="${filters.criticalRoutes}">Routes critiques</button>
+        <button type="button" class="economy-filter-chip ${filters.resourceMarkers ? 'is-active' : ''}" data-economy-filter="resourceMarkers" aria-pressed="${filters.resourceMarkers}">Ressources</button>
+        <button type="button" class="economy-filter-chip ${filters.cityLabels ? 'is-active' : ''}" data-economy-filter="cityLabels" aria-pressed="${filters.cityLabels}">Labels logistiques</button>
+        <small>${filters.criticalRoutes ? 'Routes secondaires atténuées, pas supprimées.' : 'Vue lisible par défaut.'} ${filters.cityLabels ? 'Labels clés affichés.' : 'Labels détaillés au survol/sélection.'}</small>
+      </section>
       ${renderEconomyKpiStrip(economyView)}
       ${renderEconomyFocusPanel(economyView)}
       <div class="economy-route-list">
@@ -2995,6 +3029,14 @@ function render() {
   document.querySelectorAll('[data-intrigue-operation-id]').forEach((element) => {
     element.addEventListener('click', () => {
       state.selectedIntrigueOperationId = element.dataset.intrigueOperationId;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-economy-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const key = element.dataset.economyFilter;
+      state.economyFilters[key] = !state.economyFilters[key];
       render();
     });
   });
