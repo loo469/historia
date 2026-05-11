@@ -17,6 +17,23 @@ Prototype de jeu de stratégie/simulation découpé entre Alpha, Beta, Gamma, De
 - chaque agent garde au maximum une PR de feature ouverte
 - l'équipe garde au maximum trois PR de feature ouvertes en parallèle
 
+
+## QA carte stratégique
+
+Alpha fournit une preview HTML exportable de la carte générée pour inspection visuelle rapide par Main/Zeta.
+
+```bash
+npm run preview:map
+```
+
+La commande écrit `dist/map-preview/index.html`. Ouvrez ce fichier dans un navigateur ou capturez-le avec l’outil de screenshot de votre choix. La preview réutilise le vrai `GenerateStrategicMap` et le contrat `buildStrategicMapShell`: polygones, labels, factions, relations et stats viennent donc de la génération de jeu courante, pas d’une carte mockée.
+
+Vous pouvez aussi choisir un chemin de sortie ponctuel:
+
+```bash
+npm run preview:map -- /tmp/historia-map-preview.html
+```
+
 ## Règles Beta, villes, économie et logistique
 - `City` garde un état canonique pour une ville avec population, workforce, prospérité, stabilité, stocks, routes commerciales et règles de production, avec normalisation stricte des identifiants et quantités
 - `ResourceStock`, `ProductionRule` et `TradeRoute` servent de briques métier de base pour raisonner sur les stocks, les recettes de production et les routes à capacité limitée
