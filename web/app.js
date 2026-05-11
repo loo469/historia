@@ -9,6 +9,7 @@ import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay
 import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
 import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonPanel.js';
 import { buildProvinceLogisticsChoicePreview } from '../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
+import { buildProvinceEconomyTurnReport } from '../src/ui/economy/buildProvinceEconomyTurnReport.js';
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
@@ -1035,10 +1036,14 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
   `;
 }
 
-function renderProvinceLogisticsChoicePreview(province, economyView) {
-  const preview = buildProvinceLogisticsChoicePreview(province, economyView, {
+function buildProvinceLogisticsChoicePreviewView(province, economyView) {
+  return buildProvinceLogisticsChoicePreview(province, economyView, {
     resourceLabelById: Object.fromEntries(Object.entries(resourceHudById).map(([resourceId, hud]) => [resourceId, hud.label])),
   });
+}
+
+function renderProvinceLogisticsChoicePreview(province, economyView) {
+  const preview = buildProvinceLogisticsChoicePreviewView(province, economyView);
 
   if (preview.options.length === 0) {
     return '';
@@ -1069,6 +1074,32 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           </article>
         `).join('')}
       </div>
+    </section>
+  `;
+}
+
+function renderProvinceEconomyTurnReport(province, economyView) {
+  const previousChoice = buildProvinceLogisticsChoicePreviewView(province, economyView).options[0] ?? null;
+  const report = buildProvinceEconomyTurnReport(province, economyView, { previousChoice });
+
+  return `
+    <section class="province-economy-turn-report province-economy-turn-report--${report.tone}" aria-label="Rapport économie et logistique du dernier tour">
+      <div class="province-economy-turn-report__header">
+        <strong>Rapport économie dernier tour</strong>
+        <span>${report.deltas.length > 0 ? `${report.deltas.length} delta${report.deltas.length > 1 ? 's' : ''}` : 'stable'}</span>
+      </div>
+      <p>${report.summary}</p>
+      ${report.previousAction ? `<small>${report.previousAction}</small>` : ''}
+      ${report.deltas.length > 0 ? `
+        <ul class="province-economy-turn-report__list">
+          ${report.deltas.map((delta) => `
+            <li class="province-economy-turn-report__delta province-economy-turn-report__delta--${delta.tone}">
+              <b>${delta.label}</b>
+              <span>${delta.detail}</span>
+            </li>
+          `).join('')}
+        </ul>
+      ` : ''}
     </section>
   `;
 }
@@ -1268,6 +1299,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
       </div>
       ${renderProvinceEconomyConsequences(province, economyView)}
+      ${renderProvinceEconomyTurnReport(province, economyView)}
       ${renderProvinceLogisticsBottleneckComparison(province, economyView)}
       ${renderProvinceLogisticsChoicePreview(province, economyView)}
     </section>
@@ -1301,11 +1333,11 @@ function getCityStateByTurn(city, explicitTurn = state.turn) {
   });
 }
 
-function getRouteStateByTurn(route) {
+function getRouteStateByTurn(route, explicitTurn = state.turn, explicitSeasonIndex = state.seasonIndex) {
   return new TradeRoute({
     ...route.toJSON(),
-    active: route.id === 'southern-grainway' ? state.seasonIndex !== 3 : route.active,
-    riskLevel: Math.max(0, Math.min(100, route.riskLevel + (route.id === 'ember-foundry-line' ? state.turn * 3 : state.seasonIndex === 3 ? 8 : -2))),
+    active: route.id === 'southern-grainway' ? explicitSeasonIndex !== 3 : route.active,
+    riskLevel: Math.max(0, Math.min(100, route.riskLevel + (route.id === 'ember-foundry-line' ? explicitTurn * 3 : explicitSeasonIndex === 3 ? 8 : -2))),
   });
 }
 
@@ -1473,6 +1505,8 @@ function getEconomyViewModel() {
   const previousTurn = Math.max(1, state.turn - 1);
   const previousCities = cities.map((city) => getCityStateByTurn(city, previousTurn));
   const liveRoutes = routes.map(getRouteStateByTurn);
+  const previousSeasonIndex = (state.seasonIndex + seasonLabels.length - 1) % seasonLabels.length;
+  const previousRoutes = routes.map((route) => getRouteStateByTurn(route, previousTurn, previousSeasonIndex));
   const overlay = buildEconomyMapOverlay(liveCities, liveRoutes, { cityPositionById: cityLayoutsById });
   const comparison = buildCityComparisonPanel(liveCities, { desiredStockByCityId });
   const stockPanels = Object.fromEntries(
@@ -1492,11 +1526,23 @@ function getEconomyViewModel() {
     }),
   );
 
+  const routeDeltaById = Object.fromEntries(
+    liveRoutes.map((route) => {
+      const previousRoute = previousRoutes.find((candidate) => candidate.id === route.id) ?? route;
+
+      return [route.id, {
+        riskDelta: route.riskLevel - previousRoute.riskLevel,
+        activeDelta: Number(route.active) - Number(previousRoute.active),
+        capacityDelta: route.totalCapacity - previousRoute.totalCapacity,
+      }];
+    }),
+  );
+
   const pulse = liveCities
     .map((city) => ({ city, delta: deltaByCityId[city.id] }))
     .sort((left, right) => Math.abs(right.delta.stockDelta) - Math.abs(left.delta.stockDelta))[0] ?? null;
 
-  return { overlay, comparison, stockPanels, cities: liveCities, routes: liveRoutes, deltaByCityId, pulse };
+  return { overlay, comparison, stockPanels, cities: liveCities, routes: liveRoutes, deltaByCityId, routeDeltaById, pulse };
 }
 
 function buildRouteVisual(route, origin, destination, index) {
