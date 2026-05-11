@@ -1371,9 +1371,14 @@ function renderCultureEventCard(event, cultureName) {
 
 function renderCultureLegendKey(cultureView) {
   const entriesByType = [...new Map(cultureView.overlay.map((entry) => [entry.markerType, entry])).values()];
+  const active = state.activeOverlaySlot === 'culture-overlay';
 
   return `
-    <div class="culture-symbol-key" aria-label="Langage visuel culture et découvertes">
+    <div class="culture-symbol-key ${active ? 'is-active' : 'is-muted'}" aria-label="Langage visuel culture et découvertes">
+      <div class="culture-symbol-key__status">
+        <strong>${active ? 'Couche culture active' : 'Couche culture en veille'}</strong>
+        <span>${active ? 'Codes compacts et découvertes du focus pour limiter les collisions.' : 'Repères discrets; activez Culture pour les détails.'}</span>
+      </div>
       ${entriesByType.map((entry) => {
         const language = getCultureMarkerLanguage(entry);
         return `
@@ -1386,67 +1391,74 @@ function renderCultureLegendKey(cultureView) {
   `;
 }
 
-function renderCultureMapOverlay(cultureView) {
-  if (state.activeOverlaySlot !== 'culture-overlay') {
+function renderCultureMarker(entry, active) {
+  const center = getProvinceCenter(entry.regionId);
+
+  if (!center) {
     return '';
   }
 
-  const markerNodes = cultureView.overlay.map((entry) => {
+  const selected = entry.regionId === state.selectedProvinceId;
+  const tone = getCultureTone(entry);
+  const radius = active ? Math.max(3.9, Math.min(8.2, entry.zoneContour.radius / 3.4)) : 2.15;
+  const eventBadgeY = center.y - radius - 2.1;
+  const language = getCultureMarkerLanguage(entry);
+  const glyphScale = active ? Math.max(1.75, radius * 0.34) : 1.05;
+  const selectedClass = selected ? 'is-selected' : '';
+  const stateClass = active ? 'is-readable' : 'is-quiet';
+
+  return `
+    <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} culture-marker--${entry.markerType} ${selectedClass} ${stateClass}" data-culture-region="${entry.regionId}">
+      <title>${entry.cultureName} · ${entry.regionId} · ${entry.summary}</title>
+      <circle class="culture-marker__aura" cx="${center.x}%" cy="${center.y}%" r="${radius + (active ? 1.8 : 0.9)}"></circle>
+      <circle class="culture-marker__ring" cx="${center.x}%" cy="${center.y}%" r="${radius}"></circle>
+      ${active && selected ? renderCultureMarkerTicks(center, radius, language) : ''}
+      ${active ? `<path class="culture-marker__sigil" d="${language.glyph}" transform="translate(${center.x} ${center.y}) scale(${glyphScale})"></path>` : ''}
+      ${active ? `<text class="culture-marker__code" x="${center.x}%" y="${center.y + radius + 2.4}%" text-anchor="middle">${language.code}</text>` : ''}
+      ${active && entry.eventCount > 0 ? `<g class="culture-event-flag"><circle cx="${center.x + radius + 1.7}%" cy="${eventBadgeY}%" r="1.55"></circle><text x="${center.x + radius + 1.7}%" y="${eventBadgeY + 0.48}%" text-anchor="middle">${entry.eventCount}</text></g>` : ''}
+    </g>
+  `;
+}
+
+function renderCultureMapOverlay(cultureView) {
+  const active = state.activeOverlaySlot === 'culture-overlay';
+  const markerEntries = active
+    ? cultureView.overlay
+    : cultureView.overlay.filter((entry) => entry.dominantInRegion || entry.regionId === state.selectedProvinceId);
+  const markerNodes = markerEntries.map((entry) => renderCultureMarker(entry, active)).join('');
+
+  const discoveryLinks = active ? cultureView.overlay.flatMap((entry) => {
     const center = getProvinceCenter(entry.regionId);
 
     if (!center) {
-      return '';
+      return [];
     }
 
     const selected = entry.regionId === state.selectedProvinceId;
-    const tone = getCultureTone(entry);
-    const radius = Math.max(4.8, Math.min(13, entry.zoneContour.radius / 2.2));
-    const eventBadgeY = center.y - radius - 2.8;
-    const language = getCultureMarkerLanguage(entry);
-    const glyphScale = Math.max(2.2, radius * 0.36);
-    const selectedClass = selected ? 'is-selected' : '';
+    const visibleLinks = entry.regionalDiscoveryLinks.slice(0, selected ? 2 : 1);
 
-    return `
-      <g class="culture-marker culture-marker--${tone} culture-marker--${entry.influenceTier} culture-marker--${entry.markerType} ${selectedClass}" data-culture-region="${entry.regionId}">
-        <circle class="culture-marker__aura" cx="${center.x}%" cy="${center.y}%" r="${radius + 2.6}"></circle>
-        <circle class="culture-marker__ring" cx="${center.x}%" cy="${center.y}%" r="${radius}"></circle>
-        ${renderCultureMarkerTicks(center, radius, language)}
-        <path class="culture-marker__crosshair" d="M ${center.x - radius * 0.62} ${center.y} H ${center.x + radius * 0.62} M ${center.x} ${center.y - radius * 0.62} V ${center.y + radius * 0.62}"></path>
-        <path class="culture-marker__sigil" d="${language.glyph}" transform="translate(${center.x} ${center.y}) scale(${glyphScale})"></path>
-        <text class="culture-marker__code" x="${center.x + radius + 2.6}%" y="${center.y - 1.2}%" text-anchor="start">${language.code}</text>
-        <text class="culture-marker__label" x="${center.x}%" y="${center.y + radius + 4}%" text-anchor="middle">${entry.cultureName}</text>
-        ${entry.eventCount > 0 ? `<g class="culture-event-flag"><path d="M ${center.x - 3.8} ${eventBadgeY - 2.1} H ${center.x + 3.8} L ${center.x + 2.8} ${eventBadgeY + 1.4} H ${center.x - 3.8} Z"></path><text x="${center.x}%" y="${eventBadgeY + 0.15}%" text-anchor="middle">H-${entry.eventCount}</text></g>` : ''}
-      </g>
-    `;
-  }).join('');
+    return visibleLinks.map((link, index) => {
+      const offset = (index - ((visibleLinks.length - 1) / 2)) * 4.2;
+      const tone = getCultureTone(entry);
+      const x = center.x + offset;
+      const y = center.y - 6.3;
 
-  const discoveryLinks = cultureView.overlay.flatMap((entry) => entry.regionalDiscoveryLinks.slice(0, 2).map((link, index) => {
-    const center = getProvinceCenter(entry.regionId);
-
-    if (!center) {
-      return '';
-    }
-
-    const offset = (index - 0.5) * 5.4;
-    const tone = getCultureTone(entry);
-
-    const x = center.x + offset;
-    const y = center.y - 8.4;
-
-    return `
-      <g class="culture-discovery-ping culture-discovery-ping--${tone}">
-        <line class="culture-discovery-ping__leader" x1="${center.x}%" y1="${center.y}%" x2="${x}%" y2="${y}%"></line>
-        <path class="culture-discovery-ping__glyph" d="M ${x} ${y - 1.45} L ${x + 1.45} ${y} L ${x} ${y + 1.45} L ${x - 1.45} ${y} Z M ${x - 0.55} ${y} H ${x + 0.55}"></path>
-        <text x="${x}%" y="${y - 2.15}%" text-anchor="middle">D:${link.discoveryId}</text>
-      </g>
-    `;
-  })).join('');
+      return `
+        <g class="culture-discovery-ping culture-discovery-ping--${tone} ${selected ? 'is-selected' : ''}">
+          <title>${link.discoveryId} · ${entry.cultureName}</title>
+          <line class="culture-discovery-ping__leader" x1="${center.x}%" y1="${center.y}%" x2="${x}%" y2="${y}%"></line>
+          <path class="culture-discovery-ping__glyph" d="M ${x} ${y - 1.05} L ${x + 1.05} ${y} L ${x} ${y + 1.05} L ${x - 1.05} ${y} Z M ${x - 0.42} ${y} H ${x + 0.42}"></path>
+          <text x="${x}%" y="${y - 1.55}%" text-anchor="middle">D${index + 1}</text>
+        </g>
+      `;
+    });
+  }).join('') : '';
 
   return `
-    <svg class="culture-overlay-map" viewBox="0 0 100 100" aria-label="Overlay culture et découvertes">
+    <svg class="culture-overlay-map ${active ? 'is-active' : 'is-muted'}" viewBox="0 0 100 100" aria-label="Overlay culture et découvertes">
       <defs>
         <filter id="cultureHudGlow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="1.4" result="blur" />
+          <feGaussianBlur stdDeviation="1.1" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>

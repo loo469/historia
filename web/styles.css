@@ -2394,28 +2394,37 @@ button { font: inherit; }
   height: 100%;
   pointer-events: none;
   mix-blend-mode: screen;
-  filter: saturate(1.08);
+  filter: saturate(1.02);
+}
+.culture-overlay-map.is-muted {
+  mix-blend-mode: normal;
+  filter: saturate(0.8);
+  opacity: 0.42;
 }
 .culture-marker {
   filter: url(#cultureHudGlow);
-  opacity: 0.88;
+  opacity: 0.78;
 }
+.culture-marker.is-readable { opacity: 0.9; }
+.culture-marker.is-quiet { opacity: 0.46; }
 .culture-marker__aura {
-  fill: rgba(8, 47, 73, 0.18);
-  stroke: rgba(125, 211, 252, 0.2);
-  stroke-width: 0.36;
+  fill: rgba(8, 47, 73, 0.12);
+  stroke: rgba(125, 211, 252, 0.14);
+  stroke-width: 0.28;
   stroke-dasharray: 1.2 1.1;
 }
 .culture-marker__ring {
-  fill: rgba(2, 6, 23, 0.34);
-  stroke: rgba(125, 211, 252, 0.82);
-  stroke-width: 0.52;
+  fill: rgba(2, 6, 23, 0.28);
+  stroke: rgba(125, 211, 252, 0.68);
+  stroke-width: 0.42;
 }
-.culture-marker__crosshair {
-  fill: none;
-  stroke: rgba(226, 232, 240, 0.6);
-  stroke-width: 0.2;
-  stroke-linecap: round;
+.culture-marker.is-quiet .culture-marker__aura {
+  fill: transparent;
+  stroke-dasharray: none;
+}
+.culture-marker.is-quiet .culture-marker__ring {
+  fill: rgba(15, 23, 42, 0.28);
+  stroke-width: 0.34;
 }
 .culture-marker__icon {
   fill: #e0f2fe;
@@ -2435,31 +2444,26 @@ button { font: inherit; }
 }
 .culture-marker__label { fill: #e2e8f0; }
 .culture-marker__event { fill: #fbbf24; }
-.culture-discovery-ping circle {
-  fill: #fbbf24;
-  stroke: rgba(2, 6, 23, 0.85);
-  stroke-width: 0.26;
-}
 .culture-discovery-ping text {
   fill: #fde68a;
-  font-size: 1.6px;
+  font-size: 1.35px;
 }
 .culture-marker--amber .culture-marker__ring,
-.culture-discovery-ping--amber circle { stroke: rgba(251, 191, 36, 0.88); }
-.culture-marker--amber .culture-marker__aura { fill: rgba(120, 53, 15, 0.22); }
+.culture-discovery-ping--amber .culture-discovery-ping__glyph { stroke: rgba(251, 191, 36, 0.78); }
+.culture-marker--amber .culture-marker__aura { fill: rgba(120, 53, 15, 0.16); }
 .culture-marker--amber .culture-marker__icon { fill: #fde68a; }
 .culture-marker--slate .culture-marker__ring,
-.culture-discovery-ping--slate circle { stroke: rgba(148, 163, 184, 0.88); }
-.culture-marker--slate .culture-marker__aura { fill: rgba(51, 65, 85, 0.24); }
+.culture-discovery-ping--slate .culture-discovery-ping__glyph { stroke: rgba(148, 163, 184, 0.72); }
+.culture-marker--slate .culture-marker__aura { fill: rgba(51, 65, 85, 0.16); }
 .culture-marker--rose .culture-marker__ring,
-.culture-discovery-ping--rose circle { stroke: rgba(251, 113, 133, 0.88); }
-.culture-marker--rose .culture-marker__aura { fill: rgba(136, 19, 55, 0.24); }
+.culture-discovery-ping--rose .culture-discovery-ping__glyph { stroke: rgba(251, 113, 133, 0.76); }
+.culture-marker--rose .culture-marker__aura { fill: rgba(136, 19, 55, 0.18); }
 .culture-marker.is-selected .culture-marker__ring {
-  stroke-width: 0.86;
+  stroke-width: 0.78;
   stroke: #fbbf24;
 }
 .culture-marker.is-selected .culture-marker__aura {
-  stroke: rgba(251, 191, 36, 0.72);
+  stroke: rgba(251, 191, 36, 0.58);
   stroke-dasharray: 0.8 0.7;
 }
 .overlay-panel--culture {
@@ -2623,26 +2627,26 @@ button { font: inherit; }
 
 /* Gamma UI-G2: technical culture marker language */
 .culture-marker__tick {
-  stroke: rgba(226, 232, 240, 0.56);
-  stroke-width: 0.22;
+  stroke: rgba(226, 232, 240, 0.48);
+  stroke-width: 0.18;
   stroke-linecap: round;
 }
 .culture-marker__sigil {
   fill: none;
   stroke: #e0f2fe;
-  stroke-width: 0.28;
+  stroke-width: 0.24;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 .culture-marker__code {
   fill: #bae6fd;
-  font-size: 1.65px;
+  font-size: 1.38px;
   font-weight: 900;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   paint-order: stroke;
-  stroke: rgba(2, 6, 23, 0.9);
-  stroke-width: 0.38px;
+  stroke: rgba(2, 6, 23, 0.92);
+  stroke-width: 0.32px;
 }
 .culture-marker--traditional .culture-marker__sigil,
 .culture-marker--traditional .culture-marker__code { stroke: #fde68a; fill: #fde68a; }
@@ -2652,26 +2656,32 @@ button { font: inherit; }
 .culture-marker--balanced .culture-marker__code { stroke: #a7f3d0; fill: #a7f3d0; }
 .culture-marker--innovation .culture-marker__sigil,
 .culture-marker--innovation .culture-marker__code { stroke: #bae6fd; fill: #bae6fd; }
-.culture-event-flag path {
-  fill: rgba(120, 53, 15, 0.82);
-  stroke: rgba(251, 191, 36, 0.86);
-  stroke-width: 0.28;
+.culture-event-flag circle {
+  fill: rgba(120, 53, 15, 0.78);
+  stroke: rgba(251, 191, 36, 0.82);
+  stroke-width: 0.22;
 }
 .culture-event-flag text {
   fill: #fef3c7;
-  font-size: 1.55px;
+  font-size: 1.25px;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+}
+.culture-discovery-ping {
+  opacity: 0.66;
+}
+.culture-discovery-ping.is-selected {
+  opacity: 0.9;
 }
 .culture-discovery-ping__leader {
-  stroke: rgba(125, 211, 252, 0.28);
-  stroke-width: 0.18;
+  stroke: rgba(125, 211, 252, 0.22);
+  stroke-width: 0.14;
   stroke-dasharray: 0.7 0.8;
 }
 .culture-discovery-ping__glyph {
-  fill: rgba(8, 47, 73, 0.72);
+  fill: rgba(8, 47, 73, 0.62);
   stroke: #67e8f9;
-  stroke-width: 0.26;
+  stroke-width: 0.22;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -2684,6 +2694,21 @@ button { font: inherit; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 0 0 12px;
+}
+.culture-symbol-key__status {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+}
+.culture-symbol-key__status strong { color: #e0f2fe; }
+.culture-symbol-key__status span { color: var(--muted); font-size: 12px; }
+.culture-symbol-key.is-muted .culture-symbol-key__status {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.34);
 }
 .culture-symbol-key__item {
   display: inline-flex;
