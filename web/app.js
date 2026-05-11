@@ -2162,11 +2162,42 @@ function renderBottomTray(economyView, intrigueView, cultureView) {
   `;
 }
 
+function getLabelAnchorOffset(align) {
+  if (align === 'start') {
+    return { rectX: 0, textPadding: 1.2 };
+  }
+
+  if (align === 'end') {
+    return { rectX: -19.2, textPadding: -1.2 };
+  }
+
+  return { rectX: -9.6, textPadding: 0 };
+}
+
+function getProvinceLabelModel(province) {
+  const center = getProvinceCenter(province.provinceId);
+  const label = province.geometry.labelLayout ?? { ...center, align: 'middle', tone: 'standard' };
+  const offset = getLabelAnchorOffset(label.align);
+  const leaderNeeded = Math.abs(label.x - center.x) > 4 || Math.abs(label.y - center.y) > 4;
+
+  return {
+    ...label,
+    center,
+    leaderNeeded,
+    titleX: label.x + offset.textPadding,
+    rectX: label.x + offset.rectX,
+    rectY: label.y - 4.4,
+    subtitleY: label.y + 4.25,
+    width: 19.2,
+    height: 7.8,
+  };
+}
+
 function renderProvinceLabels(shell) {
   return `
     <svg class="map-label-layer" viewBox="0 0 100 100" aria-label="Labels des provinces et points clés">
       ${shell.provinces.map((province) => {
-        const label = province.geometry.labelLayout ?? { ...getProvinceCenter(province.provinceId), align: 'middle', tone: 'standard' };
+        const label = getProvinceLabelModel(province);
         const city = cities.find((candidate) => candidate.regionId === province.provinceId) ?? null;
         const cityLayout = city ? cityLayoutsById[city.id] : null;
         const cityLabelX = cityLayout ? cityLayout.x + (cityLayout.labelDx ?? 0) : null;
@@ -2174,8 +2205,10 @@ function renderProvinceLabels(shell) {
 
         return `
           <g class="province-map-label province-map-label--${label.tone} ${province.selectionState.selected ? 'is-selected' : province.selectionState.focused ? 'is-focused' : ''}">
-            <text class="province-map-label__title" x="${label.x}%" y="${label.y}%" text-anchor="${label.align}">${province.label}</text>
-            <text class="province-map-label__subtitle" x="${label.x}%" y="${label.y + 3.4}%" text-anchor="${label.align}">${province.contested ? 'Front actif' : province.occupied ? 'Occupation' : `Valeur ${province.strategicValue}`}</text>
+            ${label.leaderNeeded ? `<path class="province-map-label__leader" d="M ${label.center.x} ${label.center.y} L ${label.x} ${label.y - 1.5}"></path>` : ''}
+            <rect class="province-map-label__plate" x="${label.rectX}%" y="${label.rectY}%" width="${label.width}%" height="${label.height}%" rx="1.4" ry="1.4"></rect>
+            <text class="province-map-label__title" x="${label.titleX}%" y="${label.y}%" text-anchor="${label.align}">${province.label}</text>
+            <text class="province-map-label__subtitle" x="${label.titleX}%" y="${label.subtitleY}%" text-anchor="${label.align}">${province.contested ? 'Front actif' : province.occupied ? 'Occupation' : `Valeur ${province.strategicValue}`}</text>
             ${city && cityLayout ? `
               <g class="city-map-label ${city.capital ? 'is-capital' : 'is-key'} ${state.selectedCityId === city.id ? 'is-selected' : ''}">
                 <line class="city-map-label__leader" x1="${cityLayout.x}%" y1="${cityLayout.y}%" x2="${cityLabelX}%" y2="${cityLabelY}%"></line>
@@ -2227,20 +2260,32 @@ function renderProvincePopup(shell) {
   `;
 }
 
+function buildReadableRelationPath(relation, index) {
+  const dx = relation.destination.x - relation.origin.x;
+  const dy = relation.destination.y - relation.origin.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const bend = ((index % 3) - 1) * 2.8;
+  const controlX = ((relation.origin.x + relation.destination.x) / 2) - (dy / length) * bend;
+  const controlY = ((relation.origin.y + relation.destination.y) / 2) + (dx / length) * bend;
+
+  return `M ${relation.origin.x} ${relation.origin.y} Q ${controlX.toFixed(2)} ${controlY.toFixed(2)} ${relation.destination.x} ${relation.destination.y}`;
+}
+
 function renderStrategicRelations(shell) {
   const focusContext = getFocusContext(shell);
-  const relationLines = buildProvinceRelations(shell).map((relation) => {
+  const relationLines = buildProvinceRelations(shell).map((relation, index) => {
     const linkedToSelection = focusContext.selectedProvince
       && (relation.relationId.includes(focusContext.selectedProvince.provinceId));
+    const pathD = buildReadableRelationPath(relation, index);
 
     return `
-    <line
-      class="front-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : relation.stable ? 'is-stable' : ''} ${linkedToSelection ? 'is-emphasized' : ''}"
-      x1="${relation.origin.x}%"
-      y1="${relation.origin.y}%"
-      x2="${relation.destination.x}%"
-      y2="${relation.destination.y}%"
-    />
+    <g class="front-link ${linkedToSelection ? 'is-emphasized' : ''}">
+      <path class="front-line-casing" d="${pathD}" />
+      <path
+        class="front-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : relation.stable ? 'is-stable' : ''} ${linkedToSelection ? 'is-emphasized' : ''}"
+        d="${pathD}"
+      />
+    </g>
   `;
   }).join('');
 

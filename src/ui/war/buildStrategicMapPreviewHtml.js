@@ -107,22 +107,71 @@ function renderLegend(shell) {
   `).join('');
 }
 
+function buildReadableRelationPath(relation, index) {
+  const dx = relation.destination.x - relation.origin.x;
+  const dy = relation.destination.y - relation.origin.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const bend = ((index % 3) - 1) * 2.8;
+  const controlX = ((relation.origin.x + relation.destination.x) / 2) - (dy / length) * bend;
+  const controlY = ((relation.origin.y + relation.destination.y) / 2) + (dx / length) * bend;
+
+  return `M ${relation.origin.x} ${relation.origin.y} Q ${controlX.toFixed(2)} ${controlY.toFixed(2)} ${relation.destination.x} ${relation.destination.y}`;
+}
+
 function renderRelationLines(shell) {
-  return buildProvinceRelations(shell.provinces).map((relation) => `
-    <line
-      class="relation-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : ''}"
-      x1="${relation.origin.x}"
-      y1="${relation.origin.y}"
-      x2="${relation.destination.x}"
-      y2="${relation.destination.y}"
-    />
-  `).join('');
+  return buildProvinceRelations(shell.provinces).map((relation, index) => {
+    const pathD = buildReadableRelationPath(relation, index);
+
+    return `
+      <g class="relation-link">
+        <path class="relation-line-casing" d="${pathD}"></path>
+        <path class="relation-line ${relation.contested ? 'is-contested' : relation.occupied ? 'is-occupied' : ''}" d="${pathD}"></path>
+      </g>
+    `;
+  }).join('');
+}
+
+function getLabelAnchorOffset(align) {
+  if (align === 'start') {
+    return { rectX: 0, textPadding: 1.2 };
+  }
+
+  if (align === 'end') {
+    return { rectX: -19.2, textPadding: -1.2 };
+  }
+
+  return { rectX: -9.6, textPadding: 0 };
+}
+
+function getProvinceLabelModel(province) {
+  const center = getCenter(province);
+  const label = province.geometry.labelLayout ?? center;
+
+  if (!label || !center) {
+    return null;
+  }
+
+  const align = label.align ?? 'middle';
+  const offset = getLabelAnchorOffset(align);
+
+  return {
+    ...label,
+    align,
+    center,
+    leaderNeeded: Math.abs(label.x - center.x) > 4 || Math.abs(label.y - center.y) > 4,
+    titleX: label.x + offset.textPadding,
+    rectX: label.x + offset.rectX,
+    rectY: label.y - 4.4,
+    subtitleY: label.y + 4.25,
+    width: 19.2,
+    height: 7.8,
+  };
 }
 
 function renderProvinceShapes(shell) {
   return shell.provinces.map((province) => {
     const polygon = province.geometry.polygon;
-    const label = province.geometry.labelLayout ?? getCenter(province);
+    const label = getProvinceLabelModel(province);
 
     if (!polygon || !label) {
       return '';
@@ -131,8 +180,10 @@ function renderProvinceShapes(shell) {
     return `
       <g class="province ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--fill:${escapeHtml(province.style.fill)};--border:${escapeHtml(province.style.border)}">
         <polygon class="province-shape" points="${escapeHtml(polygon)}"></polygon>
-        <text class="province-label" x="${label.x}" y="${label.y}" text-anchor="${escapeHtml(label.align ?? 'middle')}">${escapeHtml(province.label)}</text>
-        <text class="province-meta" x="${label.x}" y="${label.y + 3.6}" text-anchor="${escapeHtml(label.align ?? 'middle')}">${escapeHtml(province.contested ? 'Front' : province.occupied ? 'Occupation' : `Valeur ${province.strategicValue}`)}</text>
+        ${label.leaderNeeded ? `<path class="province-label-leader" d="M ${label.center.x} ${label.center.y} L ${label.x} ${label.y - 1.5}"></path>` : ''}
+        <rect class="province-label-plate" x="${label.rectX}" y="${label.rectY}" width="${label.width}" height="${label.height}" rx="1.4" ry="1.4"></rect>
+        <text class="province-label" x="${label.titleX}" y="${label.y}" text-anchor="${escapeHtml(label.align)}">${escapeHtml(province.label)}</text>
+        <text class="province-meta" x="${label.titleX}" y="${label.subtitleY}" text-anchor="${escapeHtml(label.align)}">${escapeHtml(province.contested ? 'Front' : province.occupied ? 'Occupation' : `Valeur ${province.strategicValue}`)}</text>
       </g>
     `;
   }).join('');
@@ -185,14 +236,18 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .map-panel { padding:18px; }
     svg { width:100%; height:auto; display:block; border-radius:18px; background:linear-gradient(160deg, rgba(15,35,60,0.96), rgba(8,13,25,0.98)); border:1px solid rgba(125, 211, 252, 0.14); }
     .grid-line { stroke:rgba(148,163,184,0.10); stroke-width:0.22; }
-    .relation-line { stroke:rgba(148, 163, 184, 0.5); stroke-width:0.75; stroke-dasharray:1.4 1.1; }
-    .relation-line.is-contested { stroke:#f59e0b; stroke-width:1.05; }
+    .relation-line, .relation-line-casing { fill:none; stroke-linecap:round; stroke-linejoin:round; }
+    .relation-line-casing { stroke:rgba(5, 10, 20, 0.78); stroke-width:1.7; opacity:0.9; }
+    .relation-line { stroke:rgba(148, 163, 184, 0.48); stroke-width:0.56; stroke-dasharray:1.3 1.15; }
+    .relation-line.is-contested { stroke:#f59e0b; stroke-width:0.82; }
     .relation-line.is-occupied { stroke:#38bdf8; }
-    .province-shape { fill:var(--fill); stroke:var(--border); stroke-width:0.9; filter:drop-shadow(0 0 0.7px rgba(255,255,255,0.4)); opacity:0.86; }
-    .province.is-contested .province-shape { stroke:#fbbf24; stroke-width:1.35; stroke-dasharray:2 1.2; }
-    .province.is-occupied .province-shape { opacity:0.72; }
-    .province-label { fill:#f8fafc; font-size:2.9px; font-weight:800; paint-order:stroke; stroke:#020617; stroke-width:0.7; stroke-linejoin:round; }
-    .province-meta { fill:#cbd5e1; font-size:1.95px; font-weight:700; paint-order:stroke; stroke:#020617; stroke-width:0.46; }
+    .province-shape { fill:var(--fill); stroke:var(--border); stroke-width:1.18; filter:drop-shadow(0 0 0.7px rgba(255,255,255,0.32)); opacity:0.88; }
+    .province.is-contested .province-shape { stroke:#fbbf24; stroke-width:1.45; stroke-dasharray:2 1.2; }
+    .province.is-occupied .province-shape { opacity:0.76; }
+    .province-label-leader { fill:none; stroke:rgba(226, 232, 240, 0.36); stroke-width:0.28; stroke-dasharray:0.7 0.85; }
+    .province-label-plate { fill:rgba(5,10,20,0.74); stroke:rgba(226,232,240,0.18); stroke-width:0.22; }
+    .province-label { fill:#f8fafc; font-size:2.75px; font-weight:900; paint-order:stroke; stroke:#020617; stroke-width:0.7; stroke-linejoin:round; letter-spacing:0.04em; }
+    .province-meta { fill:#cbd5e1; font-size:1.65px; font-weight:700; paint-order:stroke; stroke:#020617; stroke-width:0.46; letter-spacing:0.05em; }
     .side { padding:18px; display:grid; gap:18px; }
     .stats { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
     .stat-card { background:rgba(8, 13, 25, 0.76); border:1px solid rgba(148, 163, 184, 0.16); border-radius:16px; padding:12px; }
