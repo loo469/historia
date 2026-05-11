@@ -1219,6 +1219,70 @@ function renderSelectedProvinceActionQueue(province, shell, focusContext, intrig
   `;
 }
 
+function buildResolvedConflictDeltas(province, shell, actionQueue) {
+  if (actionQueue.length === 0) {
+    return {
+      empty: true,
+      summary: 'Aucun changement militaire résolu sur cette province au dernier tour.',
+      deltas: [],
+    };
+  }
+
+  const outcome = buildConflictOutcomePreview(province, shell);
+  const resolvedAction = actionQueue.find((entry) => entry.status === 'ready') ?? actionQueue[0];
+  const pressureDelta = outcome.tone === 'success' ? '-1 pression' : outcome.tone === 'danger' ? '+1 risque' : 'pression stable';
+  const controlDelta = province.contested ? 'front contesté maintenu' : province.occupied ? 'occupation stabilisée' : 'contrôle inchangé';
+  const lossDelta = resolvedAction.status === 'blocked' ? 'pertes évitées' : resolvedAction.status === 'risky' ? 'risque accru' : 'risque contenu';
+
+  return {
+    empty: false,
+    summary: `${resolvedAction.label}: ${outcome.title.toLowerCase()} pour ${province.label}.`,
+    resolvedActionCode: resolvedAction.actionCode,
+    impactedProvince: province.label,
+    deltas: [
+      { tone: outcome.tone, label: 'Contrôle / front', value: controlDelta },
+      { tone: outcome.tone === 'danger' ? 'danger' : 'warning', label: 'Pression', value: pressureDelta },
+      { tone: resolvedAction.status === 'ready' ? 'success' : resolvedAction.status === 'blocked' ? 'neutral' : 'danger', label: 'Pertes / risque', value: lossDelta },
+      { tone: resolvedAction.status === 'ready' ? 'success' : resolvedAction.status === 'blocked' ? 'neutral' : 'warning', label: 'Action résolue', value: resolvedAction.status === 'blocked' ? 'échec bloqué' : 'succès partiel' },
+    ],
+  };
+}
+
+function renderResolvedConflictDeltas(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const report = buildResolvedConflictDeltas(province, shell, actionQueue);
+
+  if (report.empty) {
+    return `
+      <section class="resolved-conflict-deltas is-empty" aria-label="Rapport de résolution militaire">
+        <strong>Rapport dernier tour</strong>
+        <p>${report.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="resolved-conflict-deltas" aria-label="Rapport de résolution militaire">
+      <div class="resolved-conflict-deltas__header">
+        <div>
+          <span>Rapport dernier tour</span>
+          <strong>${report.impactedProvince}</strong>
+        </div>
+        <code>${report.resolvedActionCode}</code>
+      </div>
+      <p>${report.summary}</p>
+      <div class="resolved-conflict-delta-list">
+        ${report.deltas.map((delta) => `
+          <article class="resolved-conflict-delta resolved-conflict-delta--${delta.tone}">
+            <span>${delta.label}</span>
+            <strong>${delta.value}</strong>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -1263,6 +1327,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
+      ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
