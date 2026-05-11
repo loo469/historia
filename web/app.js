@@ -1094,6 +1094,92 @@ function renderConflictOutcomePreview(province, shell) {
   `;
 }
 
+function buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView = null) {
+  const outcome = buildConflictOutcomePreview(province, shell);
+  const recommendations = buildProvinceActionRecommendations(province, focusContext, intrigueView);
+  const priorityByTone = { danger: 1, warning: 2, ready: 3, info: 4, neutral: 5 };
+  const statusByTone = { danger: 'blocked', warning: 'risky', ready: 'ready', info: 'ready', neutral: 'ready' };
+  const outcomeRisk = outcome.tone === 'danger' ? 'risque élevé' : outcome.tone === 'warning' ? 'issue disputée' : 'risque maîtrisé';
+
+  return recommendations
+    .map((recommendation, index) => ({
+      actionCode: `WAR-${province.provinceId.toUpperCase()}-${index + 1}`,
+      label: recommendation.title,
+      priority: priorityByTone[recommendation.tone] ?? index + 3,
+      orderCost: recommendation.tone === 'danger' ? '2 ordres + appui' : recommendation.tone === 'warning' ? '1 ordre + contrôle' : '1 ordre',
+      mainRisk: recommendation.tone === 'danger' || recommendation.tone === 'warning' ? recommendation.body : outcomeRisk,
+      expectedResult: outcome.tone === 'success'
+        ? `Résolution favorable: ${recommendation.title.toLowerCase()} peut consolider ${province.label}.`
+        : outcome.tone === 'danger'
+          ? `Résolution fragile: ${recommendation.title.toLowerCase()} doit attendre un appui.`
+          : `Résolution disputée: ${recommendation.title.toLowerCase()} prépare une bascule limitée.`,
+      status: statusByTone[recommendation.tone] ?? 'ready',
+      tone: recommendation.tone,
+    }))
+    .sort((left, right) => left.priority - right.priority || left.actionCode.localeCompare(right.actionCode));
+}
+
+function summarizeTurnResolutionPreview(province, actionQueue) {
+  const readyCount = actionQueue.filter((entry) => entry.status === 'ready').length;
+  const blockedCount = actionQueue.filter((entry) => entry.status === 'blocked').length;
+  const riskyCount = actionQueue.filter((entry) => entry.status === 'risky').length;
+  const topAction = actionQueue[0] ?? null;
+  const impactedFaction = factionMetaById[province.controllingFactionId]?.label ?? province.controllingFactionId;
+
+  return {
+    readyCount,
+    blockedCount,
+    riskyCount,
+    impactedProvince: province.label,
+    impactedFaction,
+    summary: blockedCount > 0
+      ? `${blockedCount} action bloquée: sécuriser ${province.label} avant résolution.`
+      : riskyCount > readyCount
+        ? `${riskyCount} action${riskyCount > 1 ? 's' : ''} risquée${riskyCount > 1 ? 's' : ''}: confirmer seulement avec réserve disponible.`
+        : `${readyCount} action${readyCount > 1 ? 's' : ''} prête${readyCount > 1 ? 's' : ''}: ${topAction?.label ?? 'ordre tactique'} peut partir au prochain tour.`,
+  };
+}
+
+function renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const resolution = summarizeTurnResolutionPreview(province, actionQueue);
+
+  return `
+    <section class="province-action-queue" aria-label="File d’actions préparées pour la province sélectionnée">
+      <div class="province-action-queue__header">
+        <div>
+          <span>File d’actions</span>
+          <strong>Résolution prochain tour</strong>
+        </div>
+        <small>${resolution.impactedProvince} · ${resolution.impactedFaction}</small>
+      </div>
+      <div class="province-action-queue__summary">
+        <span>${resolution.readyCount} prêtes</span>
+        <span>${resolution.riskyCount} risquées</span>
+        <span>${resolution.blockedCount} bloquées</span>
+      </div>
+      <p>${resolution.summary}</p>
+      <ol class="province-action-queue__list">
+        ${actionQueue.map((entry) => `
+          <li class="province-action-queue__item province-action-queue__item--${entry.status}">
+            <div>
+              <code>${entry.actionCode}</code>
+              <strong>${entry.label}</strong>
+              <p>${entry.expectedResult}</p>
+            </div>
+            <dl>
+              <div><dt>Priorité</dt><dd>${entry.priority}</dd></div>
+              <div><dt>Coût</dt><dd>${entry.orderCost}</dd></div>
+              <div><dt>Risque</dt><dd>${entry.mainRisk}</dd></div>
+              <div><dt>Statut</dt><dd>${entry.status}</dd></div>
+            </dl>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -1137,6 +1223,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       </div>
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
+      ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
