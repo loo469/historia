@@ -1027,13 +1027,79 @@ function renderSabotageGlyphTicks(entry, radius, tickCount) {
     const angle = ((Math.PI * 2) / tickCount) * index - (Math.PI / 2);
     const innerRadius = radius + 0.95;
     const outerRadius = radius + 1.95;
-    const x1 = entry.center.x + Math.cos(angle) * innerRadius;
-    const y1 = entry.center.y + Math.sin(angle) * innerRadius;
-    const x2 = entry.center.x + Math.cos(angle) * outerRadius;
-    const y2 = entry.center.y + Math.sin(angle) * outerRadius;
+    const x1 = entry.glyphCenter.x + Math.cos(angle) * innerRadius;
+    const y1 = entry.glyphCenter.y + Math.sin(angle) * innerRadius;
+    const x2 = entry.glyphCenter.x + Math.cos(angle) * outerRadius;
+    const y2 = entry.glyphCenter.y + Math.sin(angle) * outerRadius;
 
     return `<line class="intrigue-threat-glyph__tick" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%"></line>`;
   }).join('');
+}
+
+function clampVisualMetric(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getIntrigueOverlapPressure(entry, entries) {
+  return entries.reduce((pressure, candidate) => {
+    if (candidate.locationId === entry.locationId) {
+      return pressure;
+    }
+
+    const distance = Math.hypot(entry.center.x - candidate.center.x, entry.center.y - candidate.center.y);
+
+    if (distance >= 24) {
+      return pressure;
+    }
+
+    return pressure + ((24 - distance) / 24);
+  }, 0);
+}
+
+function buildIntrigueEntryVisuals(entries) {
+  return entries.map((entry, index) => {
+    const overlapPressure = getIntrigueOverlapPressure(entry, entries);
+    const isCritical = entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0;
+    const overlapScale = clampVisualMetric(1 - (overlapPressure * (isCritical ? 0.07 : 0.16)), isCritical ? 0.78 : 0.58, 1);
+    const baseHeatRadius = entry.sabotageRiskLevel === 'high'
+      ? 20
+      : entry.sabotageRiskLevel === 'medium'
+        ? 14
+        : entry.sabotageRiskLevel === 'low'
+          ? 9
+          : 6;
+    const baseGlyphRadius = entry.sabotageRiskLevel === 'high'
+      ? 6.6
+      : entry.sabotageRiskLevel === 'medium'
+        ? 5.4
+        : 4.3;
+    const offsetAngle = ((Math.PI * 2) / Math.max(1, entries.length)) * index - (Math.PI / 2);
+    const glyphOffset = overlapPressure > 0.2 ? clampVisualMetric(2.4 + (overlapPressure * 3.2), 2.4, 7.4) : 0;
+    const labelOffset = overlapPressure > 0.2 ? clampVisualMetric(10 + (overlapPressure * 3.8), 10, 16) : 10;
+
+    return {
+      ...entry,
+      overlapPressure,
+      heatRadius: Math.round(baseHeatRadius * overlapScale * 10) / 10,
+      heatIntensity: clampVisualMetric((entry.sabotageRiskScore / 100) * (isCritical ? 0.78 : 0.58) * overlapScale, 0.08, isCritical ? 0.62 : 0.42),
+      haloRadius: Math.round((8 + (entry.celluleCount * 2.4)) * overlapScale * 10) / 10,
+      coreRadius: Math.round((3.4 + (entry.celluleCount * 1.2)) * overlapScale * 10) / 10,
+      glyphRadius: Math.round(baseGlyphRadius * (isCritical ? Math.max(overlapScale, 0.86) : overlapScale) * 10) / 10,
+      glyphCenter: {
+        x: clampVisualMetric(entry.center.x + (Math.cos(offsetAngle) * glyphOffset), 4, 96),
+        y: clampVisualMetric(entry.center.y + (Math.sin(offsetAngle) * glyphOffset), 4, 96),
+      },
+      labelAnchor: {
+        x: clampVisualMetric(entry.center.x, 5, 95),
+        y: clampVisualMetric(entry.center.y - labelOffset, 5, 95),
+      },
+      metaAnchor: {
+        x: clampVisualMetric(entry.center.x, 5, 95),
+        y: clampVisualMetric(entry.center.y + labelOffset + 3.8, 5, 95),
+      },
+      showSecondaryDetails: isCritical || entry.isSelected || entry.isFocused || overlapPressure < 0.45,
+    };
+  });
 }
 
 function buildIntrigueLinkVisual(link, index) {
@@ -1042,7 +1108,7 @@ function buildIntrigueLinkVisual(link, index) {
   const length = Math.hypot(deltaX, deltaY) || 1;
   const normalX = -deltaY / length;
   const normalY = deltaX / length;
-  const curveLift = (link.riskLevel === 'high' ? 5.4 : link.riskLevel === 'medium' ? 4.2 : 3) + ((index % 2) * 1.1);
+  const curveLift = (link.riskLevel === 'high' ? 4.8 : link.riskLevel === 'medium' ? 3.6 : 2.5) + ((index % 2) * 1.5);
   const control = {
     x: ((link.origin.x + link.destination.x) / 2) + (normalX * curveLift),
     y: ((link.origin.y + link.destination.y) / 2) + (normalY * curveLift),
@@ -1050,6 +1116,8 @@ function buildIntrigueLinkVisual(link, index) {
 
   return {
     ...link,
+    strokeWidth: Math.round((0.65 + (Math.min(link.intensity, 3) * 0.34)) * 100) / 100,
+    relayRadius: Math.round((0.85 + (Math.min(link.intensity, 3) * 0.22)) * 100) / 100,
     pathD: `M ${link.origin.x} ${link.origin.y} Q ${control.x} ${control.y} ${link.destination.x} ${link.destination.y}`,
     control,
   };
@@ -1102,27 +1170,14 @@ function getIntrigueViewModel() {
     cellules: liveCellules,
     operations: liveOperations,
   }, { locationNames });
-  const entries = demo.map.entries.map((entry) => ({
+  const entries = buildIntrigueEntryVisuals(demo.map.entries.map((entry) => ({
     ...entry,
     center: getProvinceCenter(entry.locationId),
     isSelected: entry.locationId === state.selectedProvinceId,
     isFocused: entry.locationId === state.focusedProvinceId,
     celluleCount: entry.metrics.celluleCount,
-    heatRadius: entry.sabotageRiskLevel === 'high'
-      ? 22
-      : entry.sabotageRiskLevel === 'medium'
-        ? 16
-        : entry.sabotageRiskLevel === 'low'
-          ? 11
-          : 7,
-    heatIntensity: Math.max(0.14, entry.sabotageRiskScore / 100),
     threatGlyph: getSabotageGlyphLanguage(entry),
-    glyphRadius: entry.sabotageRiskLevel === 'high'
-      ? 7.2
-      : entry.sabotageRiskLevel === 'medium'
-        ? 6
-        : 4.9,
-  })).filter((entry) => entry.center);
+  })).filter((entry) => entry.center));
 
   const filters = state.intrigueFilters;
   const filteredEntries = entries.filter((entry) => {
@@ -1664,13 +1719,28 @@ function renderEconomyMapOverlay(economyView) {
 
 function renderIntrigueMapOverlay(intrigueView) {
   if (state.activeOverlaySlot !== 'intrigue-overlay') {
-    return '';
+    const criticalSignals = intrigueView.map.entries.filter((entry) => entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0);
+
+    if (criticalSignals.length === 0) {
+      return '';
+    }
+
+    return `
+      <svg class="intrigue-map-layer intrigue-map-layer--critical-only" viewBox="0 0 100 100" aria-label="Signaux intrigue critiques">
+        ${criticalSignals.map((entry) => `
+          <g class="intrigue-critical-signal intrigue-critical-signal--${entry.sabotageRiskLevel}" data-intrigue-location="${entry.locationId}">
+            <circle class="intrigue-critical-signal__pulse" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${Math.max(3.8, entry.coreRadius)}"></circle>
+            <text class="intrigue-critical-signal__code" x="${entry.center.x + 3.8}%" y="${entry.center.y - 2.6}%">${entry.threatGlyph.code}</text>
+          </g>
+        `).join('')}
+      </svg>
+    `;
   }
 
   const heatmapMarkup = intrigueView.map.entries.map((entry) => `
     <g class="intrigue-heat-node intrigue-heat-node--${entry.sabotageRiskLevel} ${entry.isSelected ? 'is-selected' : ''}">
-      <circle class="intrigue-heat-node__outer" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.heatRadius}" style="opacity:${Math.min(0.72, entry.heatIntensity)}"></circle>
-      <circle class="intrigue-heat-node__inner" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${Math.max(5, entry.heatRadius * 0.58)}" style="opacity:${Math.min(0.92, entry.heatIntensity + 0.12)}"></circle>
+      <circle class="intrigue-heat-node__outer" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.heatRadius}" style="opacity:${Math.min(0.62, entry.heatIntensity)}"></circle>
+      <circle class="intrigue-heat-node__inner" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${Math.max(3.8, entry.heatRadius * 0.52)}" style="opacity:${Math.min(0.76, entry.heatIntensity + 0.08)}"></circle>
     </g>
   `).join('');
 
@@ -1679,29 +1749,29 @@ function renderIntrigueMapOverlay(intrigueView) {
       <path
         class="intrigue-link intrigue-link--${link.riskLevel}"
         d="${link.pathD}"
-        stroke-width="${1 + (link.intensity * 0.55)}"
+        stroke-width="${link.strokeWidth}"
       />
-      <circle class="intrigue-link-node__relay" cx="${link.control.x}%" cy="${link.control.y}%" r="${1.2 + (link.intensity * 0.35)}"></circle>
+      <circle class="intrigue-link-node__relay" cx="${link.control.x}%" cy="${link.control.y}%" r="${link.relayRadius}"></circle>
     </g>
   `).join('');
 
   const threatGlyphMarkup = intrigueView.map.entries.map((entry) => `
     <g class="intrigue-threat-glyph intrigue-threat-glyph--${entry.sabotageRiskLevel} ${entry.isSelected ? 'is-selected' : ''}" data-intrigue-location="${entry.locationId}" aria-label="${entry.threatGlyph.label}">
-      <circle class="intrigue-threat-glyph__backplate" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.glyphRadius}"></circle>
-      <circle class="intrigue-threat-glyph__ring" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.glyphRadius - 1.15}"></circle>
+      <circle class="intrigue-threat-glyph__backplate" cx="${entry.glyphCenter.x}%" cy="${entry.glyphCenter.y}%" r="${entry.glyphRadius}"></circle>
+      <circle class="intrigue-threat-glyph__ring" cx="${entry.glyphCenter.x}%" cy="${entry.glyphCenter.y}%" r="${entry.glyphRadius - 1.15}"></circle>
       ${renderSabotageGlyphTicks(entry, entry.glyphRadius, entry.threatGlyph.tickCount)}
-      <path class="intrigue-threat-glyph__sigil" d="${entry.threatGlyph.glyph}" transform="translate(${entry.center.x} ${entry.center.y}) scale(${Math.max(2.3, entry.glyphRadius * 0.38)})"></path>
-      <text class="intrigue-threat-glyph__code" x="${entry.center.x + entry.glyphRadius + 2.2}%" y="${entry.center.y - 0.7}%" text-anchor="start">${entry.threatGlyph.code}</text>
+      <path class="intrigue-threat-glyph__sigil" d="${entry.threatGlyph.glyph}" transform="translate(${entry.glyphCenter.x} ${entry.glyphCenter.y}) scale(${Math.max(2.1, entry.glyphRadius * 0.36)})"></path>
+      <text class="intrigue-threat-glyph__code" x="${entry.glyphCenter.x + entry.glyphRadius + 1.4}%" y="${entry.glyphCenter.y - 0.7}%" text-anchor="start">${entry.threatGlyph.code}</text>
     </g>
   `).join('');
 
   const hotspotMarkup = intrigueView.map.entries.map((entry) => `
     <g class="intrigue-hotspot intrigue-hotspot--${entry.presenceLevel} ${entry.isSelected ? 'is-selected' : ''} ${entry.isFocused ? 'is-focused' : ''}" data-intrigue-location="${entry.locationId}">
-      <circle class="intrigue-hotspot__halo intrigue-hotspot__halo--${entry.sabotageRiskLevel}" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${10 + (entry.celluleCount * 4)}"></circle>
-      <circle class="intrigue-hotspot__core" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${4 + (entry.celluleCount * 2.2)}"></circle>
+      <circle class="intrigue-hotspot__halo intrigue-hotspot__halo--${entry.sabotageRiskLevel}" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.haloRadius}"></circle>
+      <circle class="intrigue-hotspot__core" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.coreRadius}"></circle>
       <text class="intrigue-hotspot__marker" x="${entry.center.x}%" y="${entry.center.y + 1.5}%" text-anchor="middle">${entry.style.presence.marker}</text>
-      <text class="intrigue-hotspot__label" x="${entry.center.x}%" y="${entry.center.y - (11 + (entry.celluleCount * 1.5))}%" text-anchor="middle">${entry.locationName}</text>
-      <text class="intrigue-hotspot__meta" x="${entry.center.x}%" y="${entry.center.y + (15 + (entry.celluleCount * 1.5))}%" text-anchor="middle">réseau ${entry.presenceLevel} · ${entry.threatGlyph.code} ${entry.sabotageRiskScore}</text>
+      ${entry.showSecondaryDetails ? `<text class="intrigue-hotspot__label" x="${entry.labelAnchor.x}%" y="${entry.labelAnchor.y}%" text-anchor="middle">${entry.locationName}</text>` : ''}
+      ${entry.showSecondaryDetails ? `<text class="intrigue-hotspot__meta" x="${entry.metaAnchor.x}%" y="${entry.metaAnchor.y}%" text-anchor="middle">réseau ${entry.presenceLevel} · ${entry.threatGlyph.code} ${entry.sabotageRiskScore}</text>` : ''}
     </g>
   `).join('');
 
