@@ -288,6 +288,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
       relevant: false,
       copy: 'Sélectionnez une province pour afficher le timing climat.',
     },
+    selectedClimateMitigationChoices: {
+      state: 'no-selection',
+      compact: true,
+      choices: [],
+      copy: 'Sélectionnez une province pour afficher les réponses climat.',
+    },
     legend: {
       title: 'Légende climat',
       compact: true,
@@ -952,5 +958,123 @@ test('buildClimateMapOverlay provides climate timing fallback recommendations', 
     urgency: 'normal',
     tone: 'neutral',
     copy: 'Timing climat normal: aucune contrainte notable pour cette province.',
+  });
+});
+
+test('buildClimateMapOverlay offers compact mitigation choices for selected at-risk provinces', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 34,
+      precipitationLevel: 10,
+      droughtIndex: 76,
+      anomaly: 'heatwave',
+    },
+  ], {
+    selectedRegionId: 'sunreach',
+    seasonLabels: { summer: 'Été', autumn: 'Automne' },
+    seasonPreview: {
+      season: 'autumn',
+      impactsByRegion: {
+        sunreach: { strategicImpact: 'critical', anomaly: 'drought' },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.selectedClimateMitigationChoices, {
+    state: 'ready',
+    compact: true,
+    regionId: 'sunreach',
+    choices: [
+      {
+        choiceId: 'evacuate-risk-zones',
+        label: 'Évacuer les zones exposées',
+        effect: 'Réduit les pertes civiles et l’instabilité si le risque culmine.',
+        timing: 'Automne: priorité immédiate avant aggravation saisonnière.',
+        tone: 'danger',
+        compact: true,
+        placement: 'province-panel-compact',
+        obscuresMap: false,
+        linkedSignals: {
+          legendKeys: ['season:summer', 'season-preview:autumn', 'anomaly:drought'],
+          previewSeason: 'autumn',
+          timingDirection: 'time-sensitive',
+        },
+      },
+      {
+        choiceId: 'irrigate-reserves',
+        label: 'Irriguer et rationner',
+        effect: 'Protège les récoltes et limite la pression logistique.',
+        timing: 'Automne: utile avant le pic de sécheresse/chaleur.',
+        tone: 'warning',
+        compact: true,
+        placement: 'province-panel-compact',
+        obscuresMap: false,
+        linkedSignals: {
+          legendKeys: ['season:summer', 'season-preview:autumn', 'anomaly:drought'],
+          previewSeason: 'autumn',
+          timingDirection: 'time-sensitive',
+        },
+      },
+      {
+        choiceId: 'fortify-routes',
+        label: 'Fortifier routes et abris',
+        effect: 'Réduit les ruptures de circulation et sécurise les marqueurs clés.',
+        timing: 'Automne: préparer avant les perturbations visibles sur la carte.',
+        tone: 'warning',
+        compact: true,
+        placement: 'province-panel-compact',
+        obscuresMap: false,
+        linkedSignals: {
+          legendKeys: ['season:summer', 'season-preview:autumn', 'anomaly:drought'],
+          previewSeason: 'autumn',
+          timingDirection: 'time-sensitive',
+        },
+      },
+    ],
+    copy: 'Évacuer les zones exposées · Irriguer et rationner · Fortifier routes et abris',
+  });
+});
+
+test('buildClimateMapOverlay keeps mitigation fallback deterministic for low or missing climate risk', () => {
+  assert.deepEqual(buildClimateMapOverlay([], { selectedRegionId: 'missing' }).selectedClimateMitigationChoices, {
+    state: 'missing-climate-data',
+    compact: true,
+    regionId: 'missing',
+    choices: [],
+    copy: 'Aucune mitigation climat proposée: données indisponibles.',
+  });
+
+  assert.deepEqual(buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+    },
+  ], { selectedRegionId: 'delta' }).selectedClimateMitigationChoices, {
+    state: 'not-needed',
+    compact: true,
+    regionId: 'delta',
+    choices: [
+      {
+        choiceId: 'wait-monitor',
+        label: 'Attendre et surveiller',
+        effect: 'Conserve les ressources tant que le risque reste bas.',
+        timing: 'winter: pas de mitigation active nécessaire.',
+        tone: 'neutral',
+        compact: true,
+        placement: 'province-panel-compact',
+        obscuresMap: false,
+        linkedSignals: {
+          legendKeys: ['season:winter'],
+          previewSeason: null,
+          timingDirection: 'steady',
+        },
+      },
+    ],
+    copy: 'Risque climat bas: surveiller sans mobiliser.',
   });
 });
