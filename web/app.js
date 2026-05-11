@@ -1,4 +1,5 @@
 import { GenerateStrategicMap } from '../src/application/war/GenerateStrategicMap.js';
+import { Province } from '../src/domain/war/Province.js';
 import { City } from '../src/domain/economy/City.js';
 import { TradeRoute } from '../src/domain/economy/TradeRoute.js';
 import { buildEconomySeedFromStrategicMap } from '../src/application/economy/BuildEconomySeedFromStrategicMap.js';
