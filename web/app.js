@@ -922,6 +922,83 @@ function renderProvinceEconomyConsequences(province, economyView) {
   `;
 }
 
+function buildProvinceLogisticsBottleneckComparison(province, economyView) {
+  if (!province || !economyView) {
+    return [];
+  }
+
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const provinceCities = economyView.overlay.cities.filter((city) => city.regionId === province.provinceId);
+  const provinceCityIds = new Set(provinceCities.map((city) => city.cityId));
+  const toneRank = { high: 3, medium: 2, low: 1 };
+
+  return economyView.overlay.routes
+    .filter((route) => route.cityIds.some((cityId) => provinceCityIds.has(cityId)))
+    .map((route) => {
+      const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
+      const localCityId = route.cityIds.find((cityId) => provinceCityIds.has(cityId)) ?? route.originCityId;
+      const otherCityId = route.cityIds.find((cityId) => !provinceCityIds.has(cityId)) ?? route.destinationCityId;
+      const localTension = tensionByCityId[localCityId]?.tensionLevel ?? 'low';
+      const mainResource = route.resources.slice().sort((left, right) => right.capacity - left.capacity || left.resourceId.localeCompare(right.resourceId))[0] ?? null;
+      const resourceLabel = mainResource ? `${getResourceHud(mainResource.resourceId).label} ${mainResource.capacity}` : 'capacité réservée';
+      const leverage = stress.tone === 'high'
+        ? 'Priorité: sécuriser ce flux avant action province.'
+        : stress.tone === 'medium'
+          ? 'Levier utile: renforcer si action coûteuse.'
+          : 'Levier secondaire: garder en observation.';
+
+      return {
+        routeId: route.routeId,
+        routeName: route.routeName,
+        tone: stress.tone,
+        headline: stress.headline,
+        capacity: route.totalCapacity,
+        tension: localTension,
+        resourceLabel,
+        impactedCity: cityNameById[localCityId] ?? cityNameById[otherCityId] ?? route.destinationCityId,
+        consequence: stress.summary,
+        leverage,
+        score: (toneRank[stress.tone] ?? 0) * 100 + route.riskLevel + route.totalCapacity,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
+    .slice(0, 3);
+}
+
+function renderProvinceLogisticsBottleneckComparison(province, economyView) {
+  const comparisons = buildProvinceLogisticsBottleneckComparison(province, economyView);
+
+  if (comparisons.length < 2) {
+    return '';
+  }
+
+  return `
+    <section class="province-logistics-comparison" aria-label="Comparatif des goulets logistiques">
+      <div class="province-logistics-comparison__header">
+        <strong>Goulets logistiques comparés</strong>
+        <span>${comparisons.length} routes liées</span>
+      </div>
+      ${comparisons.map((entry, index) => `
+        <article class="province-logistics-route province-logistics-route--${entry.tone} ${index === 0 ? 'is-priority' : ''}">
+          <div class="province-logistics-route__rank">${index === 0 ? 'Priorité' : `#${index + 1}`}</div>
+          <div>
+            <strong>${entry.routeName}</strong>
+            <p>${entry.consequence}</p>
+            <small>${entry.leverage}</small>
+          </div>
+          <dl>
+            <div><dt>Capacité</dt><dd>${entry.capacity}</dd></div>
+            <div><dt>Tension</dt><dd>${entry.tension}</dd></div>
+            <div><dt>Ressource</dt><dd>${entry.resourceLabel}</dd></div>
+            <div><dt>Ville</dt><dd>${entry.impactedCity}</dd></div>
+          </dl>
+        </article>
+      `).join('')}
+    </section>
+  `;
+}
+
 function buildConflictOutcomePreview(province, shell) {
   const neighbors = province.neighborIds
     .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId))
@@ -1030,6 +1107,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
       </div>
       ${renderProvinceEconomyConsequences(province, economyView)}
+      ${renderProvinceLogisticsBottleneckComparison(province, economyView)}
     </section>
   `;
 }
