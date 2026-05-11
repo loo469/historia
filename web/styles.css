@@ -111,6 +111,51 @@ button { font: inherit; }
   color: var(--muted);
   font-size: 13px;
 }
+.culture-turn-report {
+  margin-top: 12px;
+  max-width: 58ch;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+}
+.culture-turn-report > strong {
+  display: block;
+  color: #e0f2fe;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.culture-turn-report ul {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.culture-turn-report__delta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.36);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+}
+.culture-turn-report__delta span {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.culture-turn-report__delta b { color: #f8fafc; }
+.culture-turn-report__delta small {
+  grid-column: 2;
+  color: var(--muted);
+}
+.culture-turn-report__delta--risk { border-color: rgba(251, 113, 133, 0.26); }
+.culture-turn-report__delta--opportunity { border-color: rgba(251, 191, 36, 0.28); }
+.culture-turn-report__delta--research { border-color: rgba(34, 211, 238, 0.22); }
+.culture-turn-report--quiet > span { color: var(--muted); }
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

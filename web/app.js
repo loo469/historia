@@ -15,6 +15,7 @@ import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
+import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
 
 const culturePayload = {
   cultures: [
@@ -826,6 +827,52 @@ function buildProvinceActionRecommendations(province, focusContext, intrigueView
   return recommendations.slice(0, 3);
 }
 
+function getSelectedCultureContext(regionId = state.selectedProvinceId) {
+  const cultureView = getCultureViewModel();
+  const selectedMarker = cultureView.overlay.find((entry) => entry.regionId === regionId) ?? null;
+  const selectedCluster = buildCultureClusterSummaries(cultureView.overlay)
+    .find((cluster) => cluster.regionIds.includes(regionId)) ?? null;
+  const localTimeline = buildCultureLocalTimeline({
+    selectedRegionId: regionId,
+    selectedMarker,
+    selectedCluster,
+  });
+  const consequenceChips = buildCultureConsequenceChips({
+    province: { provinceId: regionId },
+    action: { title: state.lastTurnSummary },
+    selectedMarker,
+    selectedCluster,
+    localTimeline,
+  });
+
+  return {
+    cultureView,
+    selectedMarker,
+    selectedCluster,
+    localTimeline,
+    consequenceChips,
+  };
+}
+
+function renderCultureTurnReport(report) {
+  return `
+    <div class="culture-turn-report culture-turn-report--${report.state}" aria-label="Deltas culturels du tour">
+      <strong>${report.summary}</strong>
+      ${report.deltas.length > 0 ? `
+        <ul>
+          ${report.deltas.map((delta) => `
+            <li class="culture-turn-report__delta culture-turn-report__delta--${delta.tone}">
+              <span>${delta.label}</span>
+              <b>${delta.value}</b>
+              <small>${delta.cultureName} · ${delta.regionId} · ${delta.reason}</small>
+            </li>
+          `).join('')}
+        </ul>
+      ` : '<span>Culture stable: aucun événement, découverte ou tension nouvelle à remonter.</span>'}
+    </div>
+  `;
+}
+
 function renderCultureConsequenceChips(chips) {
   return `
     <div class="culture-consequence-chips" aria-label="Conséquences culturelles">
@@ -841,15 +888,7 @@ function renderCultureConsequenceChips(chips) {
 
 function renderProvinceActionRecommendations(province, focusContext, intrigueView = null) {
   const recommendations = buildProvinceActionRecommendations(province, focusContext, intrigueView);
-  const cultureView = getCultureViewModel();
-  const selectedMarker = cultureView.overlay.find((entry) => entry.regionId === province.provinceId) ?? null;
-  const selectedCluster = buildCultureClusterSummaries(cultureView.overlay)
-    .find((cluster) => cluster.regionIds.includes(province.provinceId)) ?? null;
-  const localTimeline = buildCultureLocalTimeline({
-    selectedRegionId: province.provinceId,
-    selectedMarker,
-    selectedCluster,
-  });
+  const { selectedMarker, selectedCluster, localTimeline } = getSelectedCultureContext(province.provinceId);
 
   return `
     <div class="province-action-recommendations" aria-label="Actions recommandées pour la province sélectionnée">
@@ -3731,6 +3770,15 @@ function render() {
   const focusContext = getFocusContext(shell);
   const intrigueView = getIntrigueViewModel();
   const cultureView = getCultureViewModel();
+  const selectedCultureContext = getSelectedCultureContext();
+  const cultureTurnReport = buildCultureTurnReportDeltas({
+    turn: state.turn,
+    selectedRegionId: state.selectedProvinceId,
+    selectedMarker: selectedCultureContext.selectedMarker,
+    selectedCluster: selectedCultureContext.selectedCluster,
+    localTimeline: selectedCultureContext.localTimeline,
+    consequenceChips: selectedCultureContext.consequenceChips,
+  });
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -3754,6 +3802,7 @@ function render() {
               <span>${economyView.pulse.city.name}, stock ${economyView.pulse.delta.stockDelta > 0 ? '+' : ''}${economyView.pulse.delta.stockDelta}, stabilité ${economyView.pulse.delta.stabilityDelta > 0 ? '+' : ''}${economyView.pulse.delta.stabilityDelta}, prospérité ${economyView.pulse.delta.prosperityDelta > 0 ? '+' : ''}${economyView.pulse.delta.prosperityDelta}</span>
             </div>
           ` : ''}
+          ${renderCultureTurnReport(cultureTurnReport)}
         </div>
         <div class="hero-stats">
           ${renderStat('Provinces', shell.stats.provinceCount, 'neutral')}
