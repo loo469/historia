@@ -11,6 +11,7 @@ import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonP
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
+import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 
 const culturePayload = {
   cultures: [
@@ -1836,6 +1837,26 @@ function renderCultureClusterSummary(cluster, active) {
   `;
 }
 
+function renderCultureRecommendationPanel(recommendationView) {
+  return `
+    <article class="culture-recommendation-panel culture-recommendation-panel--${recommendationView.state}">
+      <div class="culture-recommendation-panel__header">
+        <span>Conseil culture</span>
+        <strong>${recommendationView.summary}</strong>
+      </div>
+      <div class="culture-recommendation-panel__items">
+        ${recommendationView.recommendations.map((recommendation) => `
+          <section class="culture-recommendation culture-recommendation--${recommendation.tone}">
+            <b>${recommendation.title}</b>
+            <p>${recommendation.hook}</p>
+            <small>${recommendation.detail}</small>
+          </section>
+        `).join('')}
+      </div>
+    </article>
+  `;
+}
+
 function renderCultureClusterPinList(cluster) {
   if (!cluster) {
     return '';
@@ -1931,6 +1952,11 @@ function renderCultureSidePanel(cultureView) {
   const focusSeed = focus ? cultureView.seeds.find((seed) => seed.cultureId === focus.cultureId) : null;
   const selectedCluster = buildCultureClusterSummaries(cultureView.overlay)
     .find((cluster) => cluster.regionIds.includes(state.selectedProvinceId)) ?? null;
+  const recommendationView = buildCultureMapRecommendations({
+    selectedRegionId: state.selectedProvinceId,
+    selectedMarker: focus,
+    selectedCluster,
+  });
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -1946,6 +1972,7 @@ function renderCultureSidePanel(cultureView) {
         <div class="overlay-anchor"><span>Repères</span><strong>${cultureView.metrics.eventCount}</strong></div>
       </div>
       ${renderCultureLegendKey(cultureView)}
+      ${renderCultureRecommendationPanel(recommendationView)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">

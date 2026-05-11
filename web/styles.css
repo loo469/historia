@@ -3144,6 +3144,47 @@ button { font: inherit; }
   color: var(--muted);
   margin: 0;
 }
+.culture-recommendation-panel {
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(8, 47, 73, 0.42), rgba(2, 6, 23, 0.56)),
+    rgba(15, 23, 42, 0.46);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.culture-recommendation-panel__header {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 9px;
+}
+.culture-recommendation-panel__header span {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.culture-recommendation-panel__header strong { color: #f8fafc; }
+.culture-recommendation-panel__items {
+  display: grid;
+  gap: 8px;
+}
+.culture-recommendation {
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.64);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+}
+.culture-recommendation--event { border-color: rgba(251, 191, 36, 0.28); }
+.culture-recommendation--discovery { border-color: rgba(34, 211, 238, 0.24); }
+.culture-recommendation b { color: #e0f2fe; }
+.culture-recommendation--event b { color: #fde68a; }
+.culture-recommendation p {
+  color: #cbd5e1;
+  margin: 4px 0;
+  font-size: 13px;
+}
+.culture-recommendation small { color: var(--muted); }
 .culture-symbol-key {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
