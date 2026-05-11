@@ -520,6 +520,8 @@ test('buildClimateMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildClimateMapOverlay([], { seasonLabels: [] }), /seasonLabels must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { seasonStyleByType: [] }), /seasonStyleByType must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { anomalyStyleByType: [] }), /anomalyStyleByType must be an object/);
+  assert.throws(() => buildClimateMapOverlay([], { seasonPreview: [] }), /seasonPreview must be an object/);
+  assert.throws(() => buildClimateMapOverlay([], { seasonPreview: {} }), /seasonPreview.season is required/);
 });
 
 test('buildClimateMapOverlay can expose Pax Historia tactical dark styling tokens', () => {
@@ -700,4 +702,71 @@ test('buildClimateMapOverlay reduces climate effects when another overlay is sel
     priority: 'secondary',
   });
   assert.equal(overlay.visualEffects.find((effect) => effect.kind === 'atmospheric-signal').vector.density, 'sparse');
+});
+
+test('buildClimateMapOverlay exposes lightweight season preview controls and edge-safe effects', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'winter',
+      temperatureC: 2,
+      precipitationLevel: 40,
+      droughtIndex: 9,
+    },
+  ], {
+    visualEffects: true,
+    seasonLabels: { winter: 'Hiver', spring: 'Printemps' },
+    seasonPreview: { season: 'spring' },
+  });
+
+  assert.deepEqual(overlay.seasonPreview, {
+    mode: 'season-preview',
+    active: true,
+    currentSeasonLabels: ['Hiver'],
+    previewSeason: 'spring',
+    previewLabel: 'Printemps',
+    changedRegionCount: 1,
+    control: {
+      controlId: 'climate-season-preview',
+      label: 'Aperçu saison suivante: Printemps',
+      tone: 'renewal',
+      icon: '✿',
+      placement: 'hud-compact',
+      obscuresMap: false,
+    },
+    copy: 'Printemps preview on 1/1 regions',
+  });
+  assert.deepEqual(overlay.legend.items[1], {
+    key: 'season-preview:spring',
+    kind: 'season-preview',
+    season: 'spring',
+    label: 'Printemps',
+    tone: 'renewal',
+    icon: '✿',
+    accent: 'green',
+    description: 'Aperçu saisonnier projeté en halo léger sans couvrir les provinces.',
+  });
+  assert.deepEqual(overlay.visualEffects.find((effect) => effect.kind === 'season-preview'), {
+    effectId: 'delta:season-preview:spring',
+    regionId: 'delta',
+    kind: 'season-preview',
+    layer: 'atmosphere-preview',
+    currentSeason: 'winter',
+    previewSeason: 'spring',
+    tone: 'renewal',
+    accent: 'green',
+    vector: {
+      primitive: 'thin-edge-halo',
+      blendMode: 'screen',
+      opacity: 0.28,
+      strokeDasharray: '1.2 1.8',
+      labelSafe: true,
+      placement: {
+        anchor: 'province-edge',
+        avoid: ['province-label', 'province-marker', 'province-border'],
+        priority: 'tertiary',
+      },
+    },
+    summary: 'Hiver → Printemps',
+  });
 });

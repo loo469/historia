@@ -180,6 +180,63 @@ function buildSeasonSummary(states, seasonLabels, seasonStyleByType) {
   };
 }
 
+
+function normalizeSeasonPreview(options, seasonLabels, seasonStyleByType) {
+  const previewOption = options.seasonPreview ?? options.previewSeason;
+
+  if (previewOption === undefined || previewOption === null || previewOption === false) {
+    return null;
+  }
+
+  const preview = typeof previewOption === 'string'
+    ? { season: previewOption }
+    : requireObject(previewOption, 'ClimateMapOverlay seasonPreview');
+  const season = String(preview.season ?? preview.previewSeason ?? '').trim().toLowerCase();
+
+  if (!season) {
+    throw new RangeError('ClimateMapOverlay seasonPreview.season is required.');
+  }
+
+  const badge = normalizeSeasonStyle(seasonStyleByType, season);
+  const label = String(preview.label ?? seasonLabels[season] ?? season).trim() || season;
+
+  return {
+    mode: 'season-preview',
+    season,
+    label,
+    active: preview.active === undefined ? true : Boolean(preview.active),
+    badge,
+    copy: String(preview.copy ?? `Aperçu saison suivante: ${label}`).trim() || `Aperçu saison suivante: ${label}`,
+  };
+}
+
+function buildSeasonPreviewPanel(states, seasonPreview, seasonLabels) {
+  if (!seasonPreview?.active) {
+    return null;
+  }
+
+  const currentSeasons = [...new Set(states.map((state) => state.season))].sort();
+  const changedRegionCount = states.filter((state) => state.season !== seasonPreview.season).length;
+
+  return {
+    mode: seasonPreview.mode,
+    active: true,
+    currentSeasonLabels: currentSeasons.map((season) => seasonLabels[season] ?? season),
+    previewSeason: seasonPreview.season,
+    previewLabel: seasonPreview.label,
+    changedRegionCount,
+    control: {
+      controlId: 'climate-season-preview',
+      label: seasonPreview.copy,
+      tone: seasonPreview.badge.tone,
+      icon: seasonPreview.badge.icon,
+      placement: 'hud-compact',
+      obscuresMap: false,
+    },
+    copy: `${seasonPreview.label} preview on ${changedRegionCount}/${states.length} regions`,
+  };
+}
+
 function buildReadabilityProfile(options) {
   const selectedOverlayId = options.selectedOverlayId ?? options.activeOverlaySlot ?? options.activeOverlayId;
   const overlaySelected = options.overlaySelected
@@ -310,6 +367,37 @@ function buildSeasonVisualEffect(region, stateEntry, readabilityProfile) {
   };
 }
 
+
+function buildSeasonPreviewVisualEffect(region, seasonPreview, readabilityProfile) {
+  if (!seasonPreview?.active || region.season === seasonPreview.season) {
+    return null;
+  }
+
+  return {
+    effectId: `${region.regionId}:season-preview:${seasonPreview.season}`,
+    regionId: region.regionId,
+    kind: 'season-preview',
+    layer: 'atmosphere-preview',
+    currentSeason: region.season,
+    previewSeason: seasonPreview.season,
+    tone: seasonPreview.badge.tone,
+    accent: seasonPreview.badge.accent,
+    vector: {
+      primitive: 'thin-edge-halo',
+      blendMode: 'screen',
+      opacity: readabilityProfile.density === 'reduced' ? 0.18 : 0.28,
+      strokeDasharray: '1.2 1.8',
+      labelSafe: true,
+      placement: {
+        anchor: 'province-edge',
+        avoid: ['province-label', 'province-marker', 'province-border'],
+        priority: 'tertiary',
+      },
+    },
+    summary: `${region.seasonLabel} → ${seasonPreview.label}`,
+  };
+}
+
 function buildAnomalyVisualEffect(entry, readabilityProfile) {
   return {
     effectId: `${entry.regionId}:anomaly-glyph:${entry.label}`,
@@ -384,7 +472,7 @@ function buildAtmosphericSignal(region, readabilityProfile) {
   };
 }
 
-function buildClimateVisualEffects(regions, stateEntries, catastropheEntries, readabilityProfile) {
+function buildClimateVisualEffects(regions, stateEntries, catastropheEntries, readabilityProfile, seasonPreview) {
   const seasonEntriesByRegion = new Map(stateEntries
     .filter((entry) => entry.kind === 'season')
     .map((entry) => [entry.regionId, entry]));
@@ -399,6 +487,9 @@ function buildClimateVisualEffects(regions, stateEntries, catastropheEntries, re
       .filter((entry) => entry.kind === 'anomaly')
       .map((entry) => buildAnomalyVisualEffect(entry, readabilityProfile)),
     ...catastropheEntries.map((entry) => buildCatastropheVisualEffect(entry, readabilityProfile)),
+    ...regions
+      .map((region) => buildSeasonPreviewVisualEffect(region, seasonPreview, readabilityProfile))
+      .filter(Boolean),
     ...regions.map((region) => buildAtmosphericSignal(region, readabilityProfile)),
   ].sort((left, right) => {
     const regionComparison = left.regionId.localeCompare(right.regionId);
@@ -430,7 +521,7 @@ function buildRegionalRiskMode(regions) {
   }));
 }
 
-function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
+function buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview) {
   const seasonLegend = [...new Set(stateEntries
     .filter((entry) => entry.kind === 'season')
     .map((entry) => entry.season))]
@@ -479,11 +570,23 @@ function buildLegend(stateEntries, catastropheEntries, seasonLabels) {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([, legendEntry]) => legendEntry);
 
+  const previewLegend = seasonPreview?.active ? [{
+    key: `season-preview:${seasonPreview.season}`,
+    kind: 'season-preview',
+    season: seasonPreview.season,
+    label: seasonPreview.label,
+    tone: seasonPreview.badge.tone,
+    icon: seasonPreview.badge.icon,
+    accent: seasonPreview.badge.accent,
+    description: 'Aperçu saisonnier projeté en halo léger sans couvrir les provinces.',
+  }] : [];
+
   return {
     title: 'Légende climat',
     compact: true,
     items: [
       ...seasonLegend,
+      ...previewLegend,
       ...anomalyLegend,
       ...catastropheLegend,
     ],
@@ -506,6 +609,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   const tacticalHud = Boolean(normalizedOptions.tacticalHud);
   const visualEffects = Boolean(normalizedOptions.visualEffects);
   const readabilityProfile = buildReadabilityProfile(normalizedOptions);
+  const seasonPreview = normalizeSeasonPreview(normalizedOptions, seasonLabels, seasonStyleByType);
   const catastropheEntries = buildCatastropheMapOverlay(
     normalizedOptions.catastrophes ?? [],
     { styleBySeverity: normalizedOptions.styleBySeverity ?? {}, tacticalHud },
@@ -567,7 +671,8 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
-    legend: buildLegend(stateEntries, catastropheEntries, seasonLabels),
+    ...(seasonPreview?.active ? { seasonPreview: buildSeasonPreviewPanel(states, seasonPreview, seasonLabels) } : {}),
+    legend: buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview),
     ...(!readabilityProfile.overlaySelected ? {
       reducedState: {
         reason: 'climate-overlay-inactive',
@@ -576,7 +681,9 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       },
     } : {}),
     ...(tacticalHud ? { tacticalTheme: buildTacticalClimateTheme(regions, catastropheEntries, readabilityProfile) } : {}),
-    ...(visualEffects ? { visualEffects: buildClimateVisualEffects(regions, stateEntries, catastropheEntries, readabilityProfile) } : {}),
+    ...(visualEffects ? {
+      visualEffects: buildClimateVisualEffects(regions, stateEntries, catastropheEntries, readabilityProfile, seasonPreview),
+    } : {}),
     metrics: {
       regionCount: states.length,
       seasonCount: states.length,
