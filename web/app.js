@@ -2487,6 +2487,7 @@ function renderMapSelection() {
       <span class="launcher-map-card__subtitle">${map.subtitle}</span>
       <span class="launcher-map-card__description">${map.description}</span>
       <span class="launcher-map-card__stats">${renderLauncherMapStats(map.stats)}</span>
+      <span class="launcher-map-card__action">${map.playable ? (map.selected ? 'Cliquer encore pour lancer' : 'Sélectionner cette carte') : 'Non disponible'}</span>
     </button>
   `).join('');
 
@@ -2552,7 +2553,16 @@ function bindMapSelectionEvents() {
 
   document.querySelectorAll('[data-map-option]').forEach((element) => {
     element.addEventListener('click', () => {
-      state.selectedMapId = element.dataset.mapOption;
+      const mapId = element.dataset.mapOption;
+      const wasAlreadySelected = state.selectedMapId === mapId;
+      const scenario = mapScenarios.find((candidate) => candidate.id === mapId && candidate.playable !== false);
+
+      state.selectedMapId = mapId;
+
+      if (wasAlreadySelected && scenario) {
+        applyMapScenario(scenario);
+      }
+
       render();
     });
   });
