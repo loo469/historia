@@ -39,6 +39,37 @@ test('GenerateStrategicMap returns deterministic strategic provinces and UI busi
     map.provinceGeometryById['river-gate'].shape,
     'polygon(38% 38%, 54% 34%, 66% 40%, 68% 54%, 56% 66%, 40% 64%, 32% 52%, 34% 42%)',
   );
+  assert.deepEqual(map.provincePositionById['crown-heart'], { x: 49.5, y: 28 });
+  assert.deepEqual(map.regions.find((region) => region.id === 'river-gate'), {
+    id: 'river-gate',
+    name: 'Porte du Fleuve',
+    ownerFactionId: 'aurora',
+    controllingFactionId: 'ember',
+    supplyLevel: 'disrupted',
+    loyalty: 39,
+    strategicValue: 7,
+    neighborIds: ['crown-heart', 'iron-plain', 'north-watch', 'southern-reach'],
+    contested: true,
+    capturedAt: null,
+    provinceId: 'river-gate',
+    regionId: 'river-gate',
+    layout: { x: 22, y: 46, w: 24, h: 20 },
+    polygon: '38,38 54,34 66,40 68,54 56,66 40,64 32,52 34,42',
+    shape: 'polygon(38% 38%, 54% 34%, 66% 40%, 68% 54%, 56% 66%, 40% 64%, 32% 52%, 34% 42%)',
+    labelLayout: { x: 21, y: 45, align: 'start', tone: 'frontier' },
+    position: { x: 34, y: 56 },
+    center: { x: 34, y: 56 },
+    biome: 'coastal',
+    climateBiome: 'coastal',
+    terrain: 'river',
+    terrainType: 'river',
+    latitude: 35,
+    coastal: true,
+    hazards: [{ type: 'flood', riskLevel: 'high' }],
+    tags: ['frontier', 'river-crossing', 'occupied'],
+    resourceIds: ['fish', 'clay'],
+    cityPosition: { x: 34, y: 56 },
+  });
   assert.deepEqual(map.overlays.culture, []);
   assert.equal(map.panels.culture.focus, null);
   assert.deepEqual(map.businessData.cultureSeeds, []);
@@ -164,5 +195,7 @@ test('GenerateStrategicMap validates options, factions, blueprints and links', (
   assert.throws(() => generator.execute({ provinceBlueprints: [{}] }), /province id is required/);
   assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A', layout: { x: 'bad', y: 0, w: 1, h: 1 } }], links: [] }), /layout.x/);
   assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A', polygon: 'broken' }], links: [] }), /polygon must contain x,y point pairs/);
+  assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A' }, { id: 'a', name: 'A2' }] }), /duplicate id a/);
   assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A' }], links: [['a', 'missing']] }), /links must reference generated provinces/);
+  assert.throws(() => generator.execute({ provinceBlueprints: [{ id: 'a', name: 'A' }], links: [['a', 'a']] }), /cannot connect a province to itself/);
 });
