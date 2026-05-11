@@ -294,6 +294,12 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
       choices: [],
       copy: 'Sélectionnez une province pour afficher les réponses climat.',
     },
+    selectedClimateRecoveryForecast: {
+      state: 'no-selection',
+      compact: true,
+      forecasts: [],
+      copy: 'Sélectionnez une province pour voir la récupération climat.',
+    },
     legend: {
       title: 'Légende climat',
       compact: true,
@@ -1077,4 +1083,157 @@ test('buildClimateMapOverlay keeps mitigation fallback deterministic for low or 
     ],
     copy: 'Risque climat bas: surveiller sans mobiliser.',
   });
+});
+
+test('buildClimateMapOverlay forecasts recovery for dry anomaly mitigation choices sorted by recovery window', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 35,
+      precipitationLevel: 8,
+      droughtIndex: 78,
+      anomaly: 'heatwave',
+    },
+  ], {
+    selectedRegionId: 'sunreach',
+    seasonLabels: { summer: 'Été', autumn: 'Automne' },
+    seasonPreview: {
+      season: 'autumn',
+      impactsByRegion: {
+        sunreach: { strategicImpact: 'critical', anomaly: 'drought' },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.selectedClimateRecoveryForecast, {
+    state: 'ready',
+    compact: true,
+    regionId: 'sunreach',
+    confidence: 'medium',
+    summary: {
+      bestMitigation: 'evacuate-risk-zones',
+      prudentOption: 'fortify-routes',
+      riskyOption: 'fortify-routes',
+      confidence: 'medium',
+    },
+    forecasts: [
+      {
+        choiceId: 'evacuate-risk-zones',
+        label: 'Évacuer les zones exposées',
+        recoveryWindowDays: 20,
+        expectedStability: 'guarded',
+        harvestImpact: 'récoltes ralenties',
+        logisticsImpact: 'mobilité civile sécurisée',
+        relapseRisk: 'medium',
+        nextCriticalSeason: 'Automne',
+        confidence: 'high',
+        summary: 'Évacuer les zones exposées: récupération ~20j, rechute medium avant Automne.',
+      },
+      {
+        choiceId: 'irrigate-reserves',
+        label: 'Irriguer et rationner',
+        recoveryWindowDays: 24,
+        expectedStability: 'improving',
+        harvestImpact: 'récoltes protégées',
+        logisticsImpact: 'ravitaillement sous tension',
+        relapseRisk: 'medium',
+        nextCriticalSeason: 'Automne',
+        confidence: 'high',
+        summary: 'Irriguer et rationner: récupération ~24j, rechute medium avant Automne.',
+      },
+      {
+        choiceId: 'fortify-routes',
+        label: 'Fortifier routes et abris',
+        recoveryWindowDays: 28,
+        expectedStability: 'guarded',
+        harvestImpact: 'récoltes exposées',
+        logisticsImpact: 'routes stabilisées',
+        relapseRisk: 'medium',
+        nextCriticalSeason: 'Automne',
+        confidence: 'high',
+        summary: 'Fortifier routes et abris: récupération ~28j, rechute medium avant Automne.',
+      },
+    ],
+    copy: 'Récupération estimée: Évacuer les zones exposées en ~20j.',
+  });
+});
+
+test('buildClimateMapOverlay forecasts wet/catastrophe recovery with route fortification available', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'spring',
+      temperatureC: 18,
+      precipitationLevel: 88,
+      droughtIndex: 4,
+      anomaly: 'flood',
+    },
+  ], {
+    selectedRegionId: 'delta',
+    seasonLabels: { spring: 'Printemps' },
+    catastrophes: [
+      {
+        id: 'flood-1',
+        regionIds: ['delta'],
+        type: 'flood',
+        severity: 'major',
+        status: 'active',
+        startedAt: '2026-05-11T00:00:00.000Z',
+        impact: { logistics: -8 },
+      },
+    ],
+  });
+
+  assert.equal(overlay.selectedClimateMitigationChoices.choices.some((choice) => choice.choiceId === 'fortify-routes'), true);
+  assert.deepEqual(overlay.selectedClimateRecoveryForecast.forecasts.map((forecast) => forecast.choiceId), [
+    'evacuate-risk-zones',
+    'irrigate-reserves',
+    'fortify-routes',
+  ]);
+  assert.equal(overlay.selectedClimateRecoveryForecast.forecasts.find((forecast) => forecast.choiceId === 'fortify-routes').logisticsImpact, 'routes stabilisées');
+  assert.equal(overlay.selectedClimateRecoveryForecast.forecasts.find((forecast) => forecast.choiceId === 'fortify-routes').nextCriticalSeason, 'Printemps');
+});
+
+test('buildClimateMapOverlay keeps recovery forecast graceful for stable and missing climate data', () => {
+  assert.deepEqual(buildClimateMapOverlay([], { selectedRegionId: 'missing' }).selectedClimateRecoveryForecast, {
+    state: 'missing-climate-data',
+    compact: true,
+    regionId: 'missing',
+    forecasts: [],
+    copy: 'Forecast indisponible: données climat manquantes.',
+  });
+
+  const stableForecast = buildClimateMapOverlay([
+    {
+      regionId: 'plain',
+      season: 'winter',
+      temperatureC: 5,
+      precipitationLevel: 44,
+      droughtIndex: 8,
+    },
+  ], { selectedRegionId: 'plain' }).selectedClimateRecoveryForecast;
+
+  assert.equal(stableForecast.state, 'stable');
+  assert.equal(stableForecast.confidence, 'high');
+  assert.deepEqual(stableForecast.summary, {
+    bestMitigation: 'wait-monitor',
+    prudentOption: 'wait-monitor',
+    riskyOption: 'wait-monitor',
+    confidence: 'high',
+  });
+  assert.deepEqual(stableForecast.forecasts, [
+    {
+      choiceId: 'wait-monitor',
+      label: 'Attendre et surveiller',
+      recoveryWindowDays: 7,
+      expectedStability: 'stable',
+      harvestImpact: 'neutre',
+      logisticsImpact: 'neutre',
+      relapseRisk: 'low',
+      nextCriticalSeason: 'winter',
+      confidence: 'high',
+      summary: 'Attendre et surveiller: récupération ~7j, rechute low avant winter.',
+    },
+  ]);
 });

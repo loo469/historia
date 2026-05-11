@@ -504,6 +504,201 @@ function buildSelectedClimateMitigationChoices(comparison, timingRecommendation)
   };
 }
 
+const MITIGATION_RECOVERY_BASE_DAYS = Object.freeze({
+  'wait-monitor': 7,
+  'evacuate-risk-zones': 10,
+  'irrigate-reserves': 14,
+  'fortify-routes': 18,
+  'stockpile-supplies': 12,
+});
+
+const MITIGATION_RECOVERY_EFFECTS = Object.freeze({
+  'wait-monitor': {
+    stability: 'stable',
+    harvestImpact: 'neutre',
+    logisticsImpact: 'neutre',
+    relapseBias: 0,
+  },
+  'evacuate-risk-zones': {
+    stability: 'guarded',
+    harvestImpact: 'récoltes ralenties',
+    logisticsImpact: 'mobilité civile sécurisée',
+    relapseBias: -1,
+  },
+  'irrigate-reserves': {
+    stability: 'improving',
+    harvestImpact: 'récoltes protégées',
+    logisticsImpact: 'ravitaillement sous tension',
+    relapseBias: -2,
+  },
+  'fortify-routes': {
+    stability: 'guarded',
+    harvestImpact: 'récoltes exposées',
+    logisticsImpact: 'routes stabilisées',
+    relapseBias: -1,
+  },
+  'stockpile-supplies': {
+    stability: 'cautious',
+    harvestImpact: 'réserves amorties',
+    logisticsImpact: 'stock local renforcé',
+    relapseBias: 0,
+  },
+});
+
+function clampRecoveryDays(days) {
+  return Math.max(3, Math.min(30, days));
+}
+
+function getRelapseRisk(score) {
+  if (score >= 3) {
+    return 'high';
+  }
+
+  if (score >= 1) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+function getRecoveryConfidence(comparison, forecastEntries) {
+  if (comparison.state === 'not-needed') {
+    return 'high';
+  }
+
+  if (forecastEntries.some((entry) => entry.relapseRisk === 'high')) {
+    return 'medium';
+  }
+
+  return comparison.state === 'ready' ? 'medium' : 'high';
+}
+
+function buildRecoveryEntry(choice, comparison, timingRecommendation) {
+  const current = comparison.current;
+  const preview = comparison.preview ?? null;
+  const activeRiskLevel = preview?.riskLevel ?? current.riskLevel;
+  const activeAnomaly = preview?.anomaly ?? current.anomaly;
+  const riskScore = getClimateRiskScore(activeRiskLevel);
+  const effects = MITIGATION_RECOVERY_EFFECTS[choice.choiceId] ?? MITIGATION_RECOVERY_EFFECTS['stockpile-supplies'];
+  const baseDays = MITIGATION_RECOVERY_BASE_DAYS[choice.choiceId] ?? 12;
+  const anomalyDelay = activeAnomaly === 'drought' || activeAnomaly === 'flood' ? 4 : activeAnomaly ? 2 : 0;
+  const timingDelay = timingRecommendation.direction === 'riskier'
+    ? 3
+    : timingRecommendation.direction === 'safer'
+      ? -2
+      : 0;
+  const recoveryDays = clampRecoveryDays(baseDays + (riskScore * 3) + anomalyDelay + timingDelay);
+  const relapseRisk = getRelapseRisk(riskScore + anomalyDelay / 3 + effects.relapseBias);
+  const nextCriticalSeason = preview?.label ?? current.label;
+
+  return {
+    choiceId: choice.choiceId,
+    label: choice.label,
+    recoveryWindowDays: recoveryDays,
+    expectedStability: effects.stability,
+    harvestImpact: effects.harvestImpact,
+    logisticsImpact: effects.logisticsImpact,
+    relapseRisk,
+    nextCriticalSeason,
+    confidence: relapseRisk === 'high' ? 'medium' : 'high',
+    summary: `${choice.label}: récupération ~${recoveryDays}j, rechute ${relapseRisk} avant ${nextCriticalSeason}.`,
+  };
+}
+
+function pickRecoverySummary(forecastEntries) {
+  const relapseRank = { low: 0, medium: 1, high: 2 };
+  const stabilityRank = { stable: 0, improving: 1, cautious: 2, guarded: 3 };
+  const sortedBySafety = forecastEntries
+    .slice()
+    .sort((left, right) => {
+      const relapseComparison = relapseRank[left.relapseRisk] - relapseRank[right.relapseRisk];
+
+      if (relapseComparison !== 0) {
+        return relapseComparison;
+      }
+
+      return left.recoveryWindowDays - right.recoveryWindowDays;
+    });
+  const sortedByCaution = forecastEntries
+    .slice()
+    .sort((left, right) => {
+      const stabilityComparison = stabilityRank[right.expectedStability] - stabilityRank[left.expectedStability];
+
+      if (stabilityComparison !== 0) {
+        return stabilityComparison;
+      }
+
+      return right.recoveryWindowDays - left.recoveryWindowDays;
+    });
+  const sortedByRisk = forecastEntries
+    .slice()
+    .sort((left, right) => {
+      const relapseComparison = relapseRank[right.relapseRisk] - relapseRank[left.relapseRisk];
+
+      if (relapseComparison !== 0) {
+        return relapseComparison;
+      }
+
+      return right.recoveryWindowDays - left.recoveryWindowDays;
+    });
+
+  return {
+    bestMitigation: sortedBySafety[0]?.choiceId ?? null,
+    prudentOption: sortedByCaution[0]?.choiceId ?? null,
+    riskyOption: sortedByRisk[0]?.choiceId ?? null,
+  };
+}
+
+function buildSelectedClimateRecoveryForecast(comparison, timingRecommendation, mitigationChoices) {
+  if (mitigationChoices.state === 'no-selection') {
+    return {
+      state: 'no-selection',
+      compact: true,
+      forecasts: [],
+      copy: 'Sélectionnez une province pour voir la récupération climat.',
+    };
+  }
+
+  if (mitigationChoices.state === 'missing-climate-data') {
+    return {
+      state: 'missing-climate-data',
+      compact: true,
+      regionId: mitigationChoices.regionId,
+      forecasts: [],
+      copy: 'Forecast indisponible: données climat manquantes.',
+    };
+  }
+
+  const forecasts = mitigationChoices.choices
+    .map((choice) => buildRecoveryEntry(choice, comparison, timingRecommendation))
+    .sort((left, right) => {
+      if (left.recoveryWindowDays !== right.recoveryWindowDays) {
+        return left.recoveryWindowDays - right.recoveryWindowDays;
+      }
+
+      return left.choiceId.localeCompare(right.choiceId);
+    });
+  const summary = pickRecoverySummary(forecasts);
+  const confidence = mitigationChoices.state === 'not-needed'
+    ? 'high'
+    : getRecoveryConfidence(comparison, forecasts);
+
+  return {
+    state: mitigationChoices.state === 'not-needed' ? 'stable' : 'ready',
+    compact: true,
+    regionId: mitigationChoices.regionId,
+    confidence,
+    summary: {
+      ...summary,
+      confidence,
+    },
+    forecasts,
+    copy: forecasts.length > 0
+      ? `Récupération estimée: ${forecasts[0].label} en ~${forecasts[0].recoveryWindowDays}j.`
+      : 'Aucune récupération climat à prévoir.',
+  };
+}
+
 function buildSelectedClimateImpactComparison(regions, options, seasonPreview) {
   const selectedRegionId = normalizeSelectedRegionId(options);
 
@@ -998,6 +1193,10 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
 
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
+  const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
+    selectedClimateImpactComparison,
+    selectedClimateTimingRecommendation,
+  );
 
   return {
     title: 'Carte climat et catastrophes',
@@ -1017,9 +1216,11 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     regionalRiskMode: buildRegionalRiskMode(regions),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
-    selectedClimateMitigationChoices: buildSelectedClimateMitigationChoices(
+    selectedClimateMitigationChoices,
+    selectedClimateRecoveryForecast: buildSelectedClimateRecoveryForecast(
       selectedClimateImpactComparison,
       selectedClimateTimingRecommendation,
+      selectedClimateMitigationChoices,
     ),
     ...(seasonPreview?.active ? { seasonPreview: buildSeasonPreviewPanel(states, seasonPreview, seasonLabels) } : {}),
     legend: buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview),
