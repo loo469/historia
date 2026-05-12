@@ -85,6 +85,12 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
     ['Libère l’action province', 'Ligues des Forges reste sans signal exploitable', 'stable'],
   ]);
   assert.equal(report.reminders[0].tradeoff.summary, 'Gain: repère culturel protégé. Risque: événement ignoré (ce tour).');
+  assert.deepEqual(report.reminders.map((reminder) => reminder.rippleEffects.map((effect) => [effect.targetLabel, effect.tone])), [
+    [['Province river-gate', 'positive'], ['Timeline locale', 'positive']],
+    [['Province river-gate', 'uncertain'], ['Recherche locale', 'positive']],
+    [],
+  ]);
+  assert.equal(report.reminders[0].rippleCopy, 'Province river-gate: Ouverture des archives stabilise l’opportunité culturelle locale. | Timeline locale: Repère narratif maintenu dans la timeline locale.');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',

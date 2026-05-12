@@ -175,6 +175,67 @@ function buildActionTradeoff(hint, recommendedAction, focusTarget, urgency) {
   };
 }
 
+
+function buildRippleEffects(hint, recommendedAction, focusTarget, urgency) {
+  if (hint.status === 'missing') {
+    return [];
+  }
+
+  const source = recommendedAction.source ?? urgency.sourceLabel ?? focusTarget.label;
+  const regionId = focusTarget.regionId ?? hint.regionId;
+  const baseEffects = [{
+    targetId: regionId,
+    targetLabel: `Province ${regionId}`,
+    cultureName: hint.cultureName,
+    tone: urgency.level === 'soon' ? 'positive' : 'uncertain',
+    summary: urgency.level === 'soon'
+      ? `${source} stabilise l’opportunité culturelle locale.`
+      : `${source} garde la fenêtre culturelle ouverte.`,
+  }];
+
+  if (recommendedAction.code === 'accelerate-research') {
+    baseEffects.push({
+      targetId: `${regionId}:research`,
+      targetLabel: 'Recherche locale',
+      cultureName: hint.cultureName,
+      tone: 'positive',
+      summary: `Progression de recherche plus lisible au prochain choix.`,
+    });
+  }
+
+  if (recommendedAction.code === 'protect-site') {
+    baseEffects.push({
+      targetId: `${regionId}:site`,
+      targetLabel: focusTarget.label,
+      cultureName: hint.cultureName,
+      tone: 'uncertain',
+      summary: `Site protégé, mais diffusion encore dépendante du prochain tour.`,
+    });
+  }
+
+  if (recommendedAction.code === 'follow-event') {
+    baseEffects.push({
+      targetId: `${regionId}:timeline`,
+      targetLabel: 'Timeline locale',
+      cultureName: hint.cultureName,
+      tone: urgency.level === 'soon' ? 'positive' : 'uncertain',
+      summary: `Repère narratif maintenu dans la timeline locale.`,
+    });
+  }
+
+  if (hint.tone === 'risk') {
+    baseEffects.push({
+      targetId: `${regionId}:risk`,
+      targetLabel: 'Voisinage culturel',
+      cultureName: hint.cultureName,
+      tone: 'risky',
+      summary: `Propagation fragile si l’action est repoussée.`,
+    });
+  }
+
+  return baseEffects.slice(0, 3);
+}
+
 function summarizeHint(hint, actionLabel, urgency) {
   const provinceCopy = hint.regionId ? ` (${hint.regionId})` : '';
   const urgencyCopy = ` ${urgency.label.toLowerCase()} · ${urgency.window}.`;
@@ -204,6 +265,7 @@ function buildReminder(hint, actionLabel) {
   };
   const recommendedAction = buildRecommendedAction(hint, focusTargetWithUrgency, urgency, actionLabel);
   const tradeoff = buildActionTradeoff(hint, recommendedAction, focusTargetWithUrgency, urgency);
+  const rippleEffects = buildRippleEffects(hint, recommendedAction, focusTargetWithUrgency, urgency);
 
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
@@ -221,6 +283,10 @@ function buildReminder(hint, actionLabel) {
     actionCopy: `${recommendedAction.label} · ${recommendedAction.timing}`,
     tradeoff,
     tradeoffCopy: `${tradeoff.benefit} · ${tradeoff.risk}`,
+    rippleEffects,
+    rippleCopy: rippleEffects.length > 0
+      ? rippleEffects.map((effect) => `${effect.targetLabel}: ${effect.summary}`).join(' | ')
+      : 'Aucun effet de propagation culturel en file.',
     focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };
