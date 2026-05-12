@@ -2406,6 +2406,32 @@ button { font: inherit; }
   color: #bae6fd;
   font-size: 11px;
 }
+.military-response-option__feasibility {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.military-response-option__feasibility span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-response-option__feasibility strong {
+  font-size: 12px;
+}
+.military-response-option__feasibility small {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.military-response-option__feasibility--ready { border-color: rgba(74, 222, 128, 0.28); }
+.military-response-option__feasibility--dependent { border-color: rgba(125, 211, 252, 0.32); }
+.military-response-option__feasibility--risky { border-color: rgba(251, 191, 36, 0.34); }
+.military-response-option__feasibility--blocked { border-color: rgba(251, 113, 133, 0.4); }
 .military-response-option dl {
   display: grid;
   gap: 6px;
@@ -2423,6 +2449,7 @@ button { font: inherit; }
   line-height: 1.35;
 }
 .military-response-option--ready { border-color: rgba(74, 222, 128, 0.28); }
+.military-response-option--dependent { border-color: rgba(125, 211, 252, 0.32); }
 .military-response-option--risky { border-color: rgba(251, 191, 36, 0.34); }
 .military-response-option--blocked { border-color: rgba(251, 113, 133, 0.4); }
 .military-plan-impact {
