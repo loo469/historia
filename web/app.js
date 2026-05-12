@@ -3039,8 +3039,56 @@ function buildPostCommitClimateImpactMarkers(shell, queuedClimateInterventions =
   });
 
   return [...markerByProvince.values()]
-    .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel))
-    .slice(0, 4);
+    .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel));
+}
+
+function buildClimateMarkerDensityControl(markers, maxVisible = 4) {
+  const urgentMarkers = markers.filter((marker) => marker.status === 'cascade-active' || marker.status === 'hazard-unresolved');
+  const lowerPriorityMarkers = markers.filter((marker) => marker.status !== 'cascade-active' && marker.status !== 'hazard-unresolved');
+  const remainingSlots = Math.max(0, maxVisible - urgentMarkers.length);
+  const visibleMarkers = urgentMarkers.concat(lowerPriorityMarkers.slice(0, remainingSlots));
+  const visibleIds = new Set(visibleMarkers.map((marker) => marker.provinceId));
+  const groupedMarkers = markers.filter((marker) => !visibleIds.has(marker.provinceId));
+  const groupedByStatus = groupedMarkers.reduce((counts, marker) => {
+    counts[marker.status] = (counts[marker.status] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    state: groupedMarkers.length > 0 ? 'grouped' : markers.length > maxVisible ? 'dense' : 'clear',
+    visibleMarkers,
+    groupedMarkers,
+    urgentCount: urgentMarkers.length,
+    visibleCount: visibleMarkers.length,
+    groupedCount: groupedMarkers.length,
+    groupedByStatus,
+    summary: groupedMarkers.length > 0
+      ? `${visibleMarkers.length} marqueur${visibleMarkers.length > 1 ? 's' : ''} climat affiché${visibleMarkers.length > 1 ? 's' : ''}; ${groupedMarkers.length} réduit${groupedMarkers.length > 1 ? 's' : ''}/retardé${groupedMarkers.length > 1 ? 's' : ''} regroupé${groupedMarkers.length > 1 ? 's' : ''} pour préserver la lisibilité. ${urgentMarkers.length} urgence${urgentMarkers.length > 1 ? 's' : ''} cascade/aléa reste${urgentMarkers.length > 1 ? 'nt' : ''} visible${urgentMarkers.length > 1 ? 's' : ''}.`
+      : markers.length > 0
+        ? `${markers.length} marqueur${markers.length > 1 ? 's' : ''} climat affiché${markers.length > 1 ? 's' : ''}; aucune urgence masquée.`
+        : 'Aucun marqueur climat post-résolution à densifier.',
+  };
+}
+
+function renderClimateMarkerDensityRollup(control) {
+  if (control.visibleCount === 0 && control.groupedCount === 0) {
+    return '';
+  }
+
+  const groupedStatuses = Object.entries(control.groupedByStatus)
+    .map(([status, count]) => `${count} ${status}`)
+    .join(' · ');
+
+  return `
+    <section class="map-climate-density map-climate-density--${control.state}" aria-label="Contrôle de densité des marqueurs climat">
+      <div>
+        <strong>Densité marqueurs climat</strong>
+        <span>${control.visibleCount} visibles · ${control.groupedCount} regroupés</span>
+      </div>
+      <p>${control.summary}</p>
+      ${groupedStatuses ? `<small>Regroupés: ${groupedStatuses}. Priorité conservée aux cascades et aléas non résolus.</small>` : '<small>Cascades et aléas non résolus restent prioritaires sur la carte.</small>'}
+    </section>
+  `;
 }
 
 function renderPostCommitClimateMarkerDetail(province, markers = []) {
@@ -8253,6 +8301,7 @@ function render() {
   const climateInterventionWindows = buildMapClimateInterventionWindows(shell);
   const cumulativeClimateImpact = buildCumulativeClimateImpactSummary(shell, state.queuedClimateInterventions);
   const postCommitClimateMarkers = buildPostCommitClimateImpactMarkers(shell, state.queuedClimateInterventions);
+  const climateMarkerDensity = buildClimateMarkerDensityControl(postCommitClimateMarkers);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -8278,6 +8327,7 @@ function render() {
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
           ${renderMapClimateInterventionWindows(climateInterventionWindows)}
           ${renderCumulativeClimateImpactSummary(cumulativeClimateImpact)}
+          ${renderClimateMarkerDensityRollup(climateMarkerDensity)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
@@ -8310,7 +8360,7 @@ function render() {
             ${renderMapControls()}
             ${renderMilitaryOutcomeMarkerFilters(state.lastMilitaryOutcomeMarkers)}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
-              ${renderMapLayerStack(shell, economyView, focusContext, cultureView, postCommitClimateMarkers)}
+              ${renderMapLayerStack(shell, economyView, focusContext, cultureView, climateMarkerDensity.visibleMarkers)}
               ${renderIntrigueMapOverlay(intrigueView)}
             </div>
             ${renderBottomTray(economyView, intrigueView, cultureView)}

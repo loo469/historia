@@ -304,6 +304,35 @@ button { font: inherit; }
 .map-climate-cumulative__item b { color: #f8fafc; }
 .map-climate-cumulative__item small b { color: #fef3c7; }
 
+.map-climate-density {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  max-width: 72ch;
+  padding: 10px 12px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.54), rgba(8, 47, 73, 0.34));
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+.map-climate-density--grouped { border-color: rgba(251, 191, 36, 0.3); }
+.map-climate-density--dense { border-color: rgba(56, 189, 248, 0.28); }
+.map-climate-density div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-climate-density div span,
+.map-climate-density p,
+.map-climate-density small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-climate-density p { color: #dbeafe; }
+.map-climate-density small { color: #bae6fd; }
+
 .economy-turn-pulse {
   margin-top: 12px;
   display: inline-flex;
