@@ -9137,3 +9137,26 @@ button { font: inherit; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.culture-intervention-priority__blocker,
+.culture-intervention-priority__follow-up {
+  display: inline-flex;
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.culture-intervention-priority__blocker {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.26);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+.culture-intervention-priority__follow-up {
+  color: #bbf7d0;
+  background: rgba(20, 83, 45, 0.24);
+  border: 1px solid rgba(74, 222, 128, 0.24);
+}
