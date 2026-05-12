@@ -2954,9 +2954,64 @@ function buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigu
   };
 }
 
+function buildIntrigueQueueChangePreview(projection, cumulativeRisk) {
+  const lead = cumulativeRisk.contributions[0] ?? null;
+  const fallbackAction = projection.fallback?.empty ? lead?.fallback ?? 'différer' : projection.fallback.action.toLowerCase();
+  const currentScore = Number.parseInt(cumulativeRisk.totalLabel, 10) || 0;
+  const candidateScore = lead?.score ?? 0;
+  const addScore = Math.min(100, currentScore + Math.max(4, Math.round(candidateScore / 4)));
+  const removeScore = Math.max(0, currentScore - Math.max(6, Math.round(candidateScore / 3)));
+  const replaceScore = Math.max(0, currentScore - Math.max(4, Math.round(candidateScore / 4)));
+  const deltaLabel = (nextScore) => {
+    const delta = nextScore - currentScore;
+
+    return delta > 0 ? `+${delta}` : `${delta}`;
+  };
+  const strongestMover = lead
+    ? `${lead.provinceLabel}: ${lead.actionLabel}`
+    : 'Aucune action candidate visible';
+
+  return {
+    strongestMover,
+    safeAlternative: fallbackAction,
+    fogLimit: 'Prévisualisation fog-safe: seuls delta, province visible et type de réponse sont exposés.',
+    scenarios: [
+      {
+        code: 'ajout',
+        label: 'Ajouter',
+        before: currentScore,
+        after: addScore,
+        delta: deltaLabel(addScore),
+        detail: lead
+          ? `Ajout pressenti autour de ${lead.provinceLabel}; garder la source exacte masquée.`
+          : 'Aucun ajout risqué lisible dans la file actuelle.',
+      },
+      {
+        code: 'retrait',
+        label: 'Retirer',
+        before: currentScore,
+        after: removeScore,
+        delta: deltaLabel(removeScore),
+        detail: lead
+          ? `Retirer ${lead.actionLabel} réduit surtout la pression visible sur ${lead.provinceLabel}.`
+          : 'Retrait sans effet estimable tant que la file reste vide.',
+      },
+      {
+        code: 'remplacement',
+        label: 'Remplacer',
+        before: currentScore,
+        after: replaceScore,
+        delta: deltaLabel(replaceScore),
+        detail: `Remplacer par ${fallbackAction} conserve un repli prudent sans révéler cellule ou cible.`,
+      },
+    ],
+  };
+}
+
 function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const projection = buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
   const cumulativeRisk = buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigueView);
+  const queueChangePreview = buildIntrigueQueueChangePreview(projection, cumulativeRisk);
 
   return `
     <section class="province-intrigue-detection-projection province-intrigue-detection-projection--${projection.tone}" aria-label="Projection du risque de détection intrigue">
@@ -3001,6 +3056,23 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
         ` : ''}
         <small>${cumulativeRisk.mitigation}</small>
         <small>${cumulativeRisk.fogLimit}</small>
+      </div>
+      <div class="province-intrigue-queue-change-preview" aria-label="Aperçu avant confirmation des changements intrigue">
+        <div class="province-intrigue-queue-change-preview__header">
+          <span>Avant confirmation</span>
+          <strong>${queueChangePreview.strongestMover}</strong>
+        </div>
+        <div class="province-intrigue-queue-change-preview__grid">
+          ${queueChangePreview.scenarios.map((scenario) => `
+            <article class="province-intrigue-queue-change-preview__scenario province-intrigue-queue-change-preview__scenario--${scenario.code}">
+              <strong>${scenario.label}</strong>
+              <span>${scenario.before} → ${scenario.after} (${scenario.delta})</span>
+              <small>${scenario.detail}</small>
+            </article>
+          `).join('')}
+        </div>
+        <small>Alternative sûre: ${queueChangePreview.safeAlternative}.</small>
+        <small>${queueChangePreview.fogLimit}</small>
       </div>
       <small>${projection.fogLimit}</small>
     </section>
