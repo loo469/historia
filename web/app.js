@@ -4093,6 +4093,7 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
   return {
     empty: !recommendedAction,
     tone: criticalCount > 0 ? 'danger' : watchCount > 0 ? 'warning' : 'ready',
+    provinceId: province.provinceId,
     provinceLabel: province.label,
     actionCode: recommendedAction?.actionCode ?? 'WAR-HOLD',
     actionLabel: recommendedAction?.label ?? 'Aucune action militaire recommandée',
@@ -4139,6 +4140,68 @@ function renderRecommendedMilitaryActionPreview(shell, intrigueView = null) {
         <button type="button" data-queue-recommended-action="true" data-province-id="${preview.provinceId ?? ''}" data-action-code="${preview.actionCode}" ${preview.queueState.disabled ? 'disabled' : ''}>${preview.queueState.buttonLabel}</button>
       </div>
       <small class="recommended-action-preview__side-effect">${preview.sideEffect}</small>
+    </section>
+  `;
+}
+
+
+
+function buildQueuedMilitaryMapActionConfirmation(province, shell, intrigueView = null) {
+  const queuedAction = state.acceptedRecommendedMilitaryAction;
+
+  if (!queuedAction || queuedAction.provinceId !== province.provinceId) {
+    return null;
+  }
+
+  const focusContext = {
+    focusedProvinceId: province.provinceId,
+    focusedProvince: province,
+    neighborIds: new Set(province.neighborIds),
+  };
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const action = actionQueue.find((entry) => entry.actionCode === queuedAction.actionCode) ?? actionQueue[0] ?? null;
+  const projection = buildProjectedFrontStability(province, shell, actionQueue);
+  const stability = projection.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? projection.title;
+  const target = province.contested ? `Front contesté ${province.label}` : `Province ${province.label}`;
+
+  return {
+    actionCode: queuedAction.actionCode,
+    actionLabel: action?.label ?? queuedAction.actionCode,
+    target,
+    status: action?.status ?? 'ready',
+    mainEffect: action?.expectedResult ?? `Stabilité prévue: ${stability}.`,
+    risk: action?.mainRisk ?? 'risque contenu avant résolution',
+    queuedTurn: queuedAction.turn,
+    stability,
+  };
+}
+
+function renderQueuedMilitaryMapActionConfirmation(province, shell, intrigueView = null) {
+  const confirmation = buildQueuedMilitaryMapActionConfirmation(province, shell, intrigueView);
+
+  if (!confirmation) {
+    return '';
+  }
+
+  return `
+    <section class="queued-map-action-confirmation queued-map-action-confirmation--${confirmation.status}" aria-label="Confirmation de l’action militaire ajoutée depuis la carte">
+      <div class="queued-map-action-confirmation__header">
+        <div>
+          <span>Action carte en file</span>
+          <strong>${confirmation.actionLabel}</strong>
+        </div>
+        <code>${confirmation.actionCode}</code>
+      </div>
+      <dl>
+        <div><dt>Cible / front</dt><dd>${confirmation.target}</dd></div>
+        <div><dt>Effet prévu</dt><dd>${confirmation.mainEffect}</dd></div>
+        <div><dt>Stabilité</dt><dd>${confirmation.stability}</dd></div>
+        <div><dt>Risque principal</dt><dd>${confirmation.risk}</dd></div>
+      </dl>
+      <div class="queued-map-action-confirmation__footer">
+        <small>Ajoutée au tour ${confirmation.queuedTurn}, modifiable avant résolution.</small>
+        <button type="button" data-undo-recommended-action="true" data-province-id="${province.provinceId}">Retirer de la file</button>
+      </div>
     </section>
   `;
 }
@@ -4502,6 +4565,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView)}
+      ${renderQueuedMilitaryMapActionConfirmation(province, shell, intrigueView)}
       ${renderMilitaryResponseOptions(province, shell, focusContext, intrigueView)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
@@ -6979,6 +7043,7 @@ function advanceTurn() {
 
   state.queuedCultureActions = [];
   state.lastTurnSummary = summaries[(state.turn - 2) % summaries.length];
+  state.acceptedRecommendedMilitaryAction = null;
 }
 
 function renderMobileToolbar() {
@@ -7398,6 +7463,23 @@ function render() {
 
       const viewport = document.querySelector('.map-viewport');
       centerMapOnProvince(provinceId, viewport);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-undo-recommended-action]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.provinceId;
+      const queuedAction = state.acceptedRecommendedMilitaryAction;
+
+      if (!queuedAction || queuedAction.provinceId !== provinceId) {
+        return;
+      }
+
+      state.acceptedRecommendedMilitaryAction = null;
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.lastTurnSummary = `${queuedAction.actionCode} retiré de la file militaire avant résolution.`;
       render();
     });
   });
