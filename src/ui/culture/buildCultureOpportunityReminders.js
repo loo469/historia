@@ -596,6 +596,79 @@ function attachQueueConfirmation(reminders, confirmation) {
   }));
 }
 
+
+function buildCultureResolutionSummary(reminders, actionQueue) {
+  const queuedEntries = actionQueue
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => String(entry.actionCode ?? entry.code ?? '').startsWith('culture:'));
+
+  const queuedActions = queuedEntries.map(({ entry, index }) => {
+    const actionCode = String(entry.actionCode ?? entry.code ?? '');
+    const label = normalizeText(entry.label, entry.title ?? 'Action culturelle');
+    const reminder = reminders.find((candidate) => candidate.queueAction
+      && (candidate.queueAction.code === actionCode || candidate.queueAction.label === label));
+
+    if (!reminder) {
+      return {
+        queueIndex: index,
+        actionCode,
+        label,
+        cultureName: normalizeText(entry.cultureName, 'Culture locale'),
+        provinceId: entry.provinceId ?? null,
+        provinceLabel: normalizeText(entry.provinceLabel, entry.provinceId ?? 'province'),
+        outcome: 'ignoré',
+        tone: 'unmatched',
+        effect: normalizeText(entry.expectedResult, entry.mainRisk ?? 'Effet culturel à confirmer après résolution.'),
+        reason: 'Aucun rappel culturel actif ne correspond encore à cette entrée de file.',
+        summary: `${label}: effet culturel à confirmer.`
+      };
+    }
+
+    const stabilizes = reminder.stabilityPreview?.stabilityDelta ?? '+ stabilité locale';
+    const opportunity = reminder.stabilityPreview?.urgencyDelta ?? reminder.queueAction?.horizon ?? 'fenêtre suivie';
+    const cohesion = reminder.stabilityPreview?.dissentDelta ?? reminder.confidenceCue?.dissent ?? 'dissidence clarifiée';
+
+    return {
+      queueIndex: index,
+      actionCode: reminder.queueAction.code,
+      label: reminder.queueAction.label,
+      cultureName: reminder.cultureName,
+      provinceId: reminder.provinceId,
+      provinceLabel: reminder.focusTarget?.label ?? reminder.provinceId,
+      outcome: 'apaisé',
+      tone: reminder.stabilityPreview?.level ?? 'steady',
+      effect: `${stabilizes}; ${opportunity}; ${cohesion}`,
+      reason: reminder.stabilityPreview?.reason ?? reminder.reasonCopy,
+      summary: `${reminder.cultureName}: ${stabilizes}; ${opportunity}.`,
+    };
+  });
+
+  const coveredCodes = new Set(queuedActions.map((action) => action.actionCode));
+  const uncoveredUrgent = reminders
+    .filter((reminder) => reminder.queueAction && !coveredCodes.has(reminder.queueAction.code))
+    .filter((reminder) => reminder.urgency?.level === 'soon' || reminder.inactionCost?.level === 'closing' || reminder.confidenceCue?.level === 'risky')
+    .map((reminder) => ({
+      reminderId: reminder.reminderId,
+      cultureName: reminder.cultureName,
+      provinceId: reminder.provinceId,
+      label: reminder.queueAction.label,
+      tone: reminder.inactionCost?.level === 'closing' ? 'aggravated' : 'ignored',
+      expectedImpact: reminder.inactionCost?.summary ?? reminder.stabilityPreview?.reason ?? reminder.reasonCopy,
+      summary: `${reminder.cultureName}: ${reminder.inactionCost?.summary ?? 'recommandation urgente non couverte.'}`,
+    }));
+
+  const apaisées = queuedActions.filter((action) => action.outcome === 'apaisé').length;
+  const aggravées = uncoveredUrgent.filter((entry) => entry.tone === 'aggravated').length;
+  const ignorées = uncoveredUrgent.length - aggravées;
+
+  return {
+    state: queuedActions.length > 0 ? 'queued' : uncoveredUrgent.length > 0 ? 'uncovered' : 'clear',
+    queuedActions,
+    uncoveredUrgent,
+    summary: `${apaisées} tension${apaisées > 1 ? 's' : ''} apaisée${apaisées > 1 ? 's' : ''}, ${ignorées} ignorée${ignorées > 1 ? 's' : ''}, ${aggravées} aggravée${aggravées > 1 ? 's' : ''} après résolution.`,
+  };
+}
+
 function dedupeAndSort(reminders) {
   const remindersByKey = new Map();
 
@@ -646,6 +719,7 @@ export function buildCultureOpportunityReminders({
   const remindersWithQueueActions = attachQueueActions(remindersWithStabilityPreviews);
   const queuedCultureAction = findQueuedCultureConfirmation(remindersWithQueueActions, actionQueue);
   const remindersWithQueueConfirmation = attachQueueConfirmation(remindersWithQueueActions, queuedCultureAction);
+  const resolutionSummary = buildCultureResolutionSummary(remindersWithQueueActions, actionQueue);
 
   return {
     state: 'active',
@@ -654,5 +728,6 @@ export function buildCultureOpportunityReminders({
     reminders: remindersWithQueueConfirmation,
     priorityConflicts,
     queuedCultureAction,
+    resolutionSummary,
   };
 }
