@@ -73,6 +73,12 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
     ['possible', 'Recherche à suivre', 'Recherche culture (river-gate): garder en vue avant de clore le tour. nouveau signal · maintenant.', 'marker: Compact d’Aurora', 'Nouveau signal · maintenant'],
     ['missing', 'Condition à combler', 'Condition manquante (shared-bay): Ligues des Forges manque encore un signal exploitable. à préparer · stable.', 'province: Province liée', 'À préparer · stable'],
   ]);
+  assert.deepEqual(report.reminders.map((reminder) => [reminder.recommendedAction.code, reminder.recommendedAction.label, reminder.recommendedAction.timing]), [
+    ['follow-event', 'Suivre l’événement', 'ce tour'],
+    ['accelerate-research', 'Accélérer la recherche', 'maintenant'],
+    ['accept-risk', 'Ignorer avec risque assumé', 'stable'],
+  ]);
+  assert.equal(report.reminders[0].recommendedAction.summary, 'Suivre Ouverture des archives depuis river-gate; fenêtre ce tour.');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',
