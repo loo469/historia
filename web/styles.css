@@ -9769,3 +9769,78 @@ button { font: inherit; }
   line-height: 1.3;
   font-style: normal;
 }
+.atlas-world-economy-layer {
+  pointer-events: none;
+}
+.atlas-logistics-route path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 3 2;
+  opacity: 0.74;
+}
+.atlas-logistics-route--major path {
+  stroke: rgba(251, 113, 133, 0.92);
+  stroke-width: 0.78;
+  filter: drop-shadow(0 0 3px rgba(127, 29, 29, 0.55));
+}
+.atlas-logistics-route--medium path {
+  stroke: rgba(251, 191, 36, 0.78);
+  stroke-width: 0.58;
+}
+.atlas-logistics-route--minor path {
+  stroke: rgba(125, 211, 252, 0.58);
+  stroke-width: 0.38;
+  opacity: 0.48;
+}
+.atlas-logistics-route.is-inactive path {
+  stroke-dasharray: 1 1.4;
+  opacity: 0.38;
+}
+.atlas-logistics-route text {
+  fill: #dbeafe;
+  font-size: 1.7px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.84);
+  stroke-width: 0.42;
+}
+.atlas-economy-city__aura {
+  fill: rgba(15, 23, 42, 0.54);
+  stroke: rgba(226, 232, 240, 0.52);
+  stroke-width: 0.28;
+}
+.atlas-economy-city--high .atlas-economy-city__aura {
+  fill: rgba(127, 29, 29, 0.55);
+  stroke: rgba(248, 113, 113, 0.9);
+}
+.atlas-economy-city--medium .atlas-economy-city__aura {
+  fill: rgba(120, 53, 15, 0.46);
+  stroke: rgba(251, 191, 36, 0.82);
+}
+.atlas-economy-city__core {
+  fill: #f8fafc;
+  stroke: rgba(15, 23, 42, 0.9);
+  stroke-width: 0.25;
+}
+.atlas-economy-city--hub .atlas-economy-city__core,
+.atlas-economy-city--capital .atlas-economy-city__core {
+  fill: #bae6fd;
+}
+.atlas-economy-city__glyph {
+  fill: #0f172a;
+  font-size: 1.6px;
+  font-weight: 900;
+}
+.atlas-economy-city__resources,
+.atlas-economy-city__label {
+  fill: #e0f2fe;
+  font-size: 1.8px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.82);
+  stroke-width: 0.45;
+}
+.atlas-economy-city__label {
+  fill: #cbd5e1;
+  font-size: 1.55px;
+}
