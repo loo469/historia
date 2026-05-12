@@ -442,6 +442,7 @@ const state = {
     probable: false,
   },
   atlasClimateForecastMode: 'current',
+  atlasConflictPlaybackStep: 1,
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
   militaryOutcomeMarkerFilters: {
@@ -469,6 +470,7 @@ function applyMapScenario(scenario) {
   state.turn = 1;
   state.seasonIndex = 0;
   state.atlasClimateForecastMode = 'current';
+  state.atlasConflictPlaybackStep = 1;
   state.mapZoom = 1;
   state.mapPanX = 0;
   state.mapPanY = 0;
@@ -586,6 +588,85 @@ function getAtlasMilitaryRouteTone(route) {
   return route.pressure >= 74 ? 'risk' : 'watch';
 }
 
+function getAtlasConflictRouteTrend(route) {
+  if (route.contested) return 14;
+  if (route.occupied) return 8;
+  if (route.pressure >= 74) return 6;
+  return -5;
+}
+
+function buildAtlasConflictRoutePlaybackSteps(route) {
+  const trend = getAtlasConflictRouteTrend(route);
+  const previousPressure = Math.max(0, route.pressure - trend);
+  const projectedPressure = Math.max(0, route.pressure + Math.round(trend * 0.7));
+  const direction = projectedPressure > route.pressure ? 'rising' : projectedPressure < route.pressure ? 'falling' : 'steady';
+
+  return [
+    {
+      step: 0,
+      key: 'previous',
+      label: 'Tour -1',
+      pressure: previousPressure,
+      delta: route.pressure - previousPressure,
+      direction: route.pressure > previousPressure ? 'rising' : route.pressure < previousPressure ? 'falling' : 'steady',
+    },
+    {
+      step: 1,
+      key: 'current',
+      label: 'Actuel',
+      pressure: route.pressure,
+      delta: route.pressure - previousPressure,
+      direction,
+    },
+    {
+      step: 2,
+      key: 'projected',
+      label: 'Projection',
+      pressure: projectedPressure,
+      delta: projectedPressure - route.pressure,
+      direction,
+    },
+  ];
+}
+
+function buildAtlasConflictRoutePlayback(routes, activeStep = state.atlasConflictPlaybackStep) {
+  const safeStep = Math.max(0, Math.min(2, Number(activeStep) || 0));
+  const playbackRoutes = routes
+    .map((route) => {
+      const steps = buildAtlasConflictRoutePlaybackSteps(route);
+      const active = steps[safeStep] ?? steps[1];
+      return {
+        ...route,
+        playbackSteps: steps,
+        activePlayback: active,
+        playbackDirection: active.direction,
+      };
+    })
+    .filter((route) => route.playbackSteps.some((step) => step.delta !== 0));
+
+  return {
+    activeStep: safeStep,
+    steps: [
+      { step: 0, label: 'Tour -1' },
+      { step: 1, label: 'Actuel' },
+      { step: 2, label: 'Projection' },
+    ],
+    routes: playbackRoutes,
+    empty: playbackRoutes.length === 0,
+  };
+}
+
+function getAtlasConflictPlaybackSummary(playback) {
+  if (playback.empty) {
+    return 'Aucun historique de front actif à rejouer.';
+  }
+
+  const rising = playback.routes.filter((route) => route.activePlayback.direction === 'rising').length;
+  const falling = playback.routes.filter((route) => route.activePlayback.direction === 'falling').length;
+  const steady = playback.routes.length - rising - falling;
+  return `${playback.steps[playback.activeStep].label}: ${rising} pression${rising > 1 ? 's' : ''} en hausse, ${falling} en baisse, ${steady} stable${steady > 1 ? 's' : ''}.`;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
   const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
   const routes = buildProvinceRelations(shell)
@@ -646,31 +727,50 @@ function buildAtlasMilitaryFeatures(shell) {
 
 function renderAtlasMilitaryLayer(shell) {
   const features = buildAtlasMilitaryFeatures(shell);
+  const playback = buildAtlasConflictRoutePlayback(features.routes);
+  const playbackSummary = getAtlasConflictPlaybackSummary(playback);
 
   if (!features.routes.length && !features.riskZones.length) {
-    return '';
+    return `
+      <g class="atlas-military-layer atlas-military-layer--empty" aria-label="Lecture militaire atlas vide">
+        <text class="atlas-conflict-playback-empty" x="50" y="92" text-anchor="middle">Aucun front actif à rejouer</text>
+      </g>
+    `;
   }
 
   return `
     <g class="atlas-military-layer" aria-label="Axes militaires atlas: routes de campagne, pression directionnelle et risques résiduels">
+      <g class="atlas-conflict-playback" aria-label="Lecture courte des changements de pression: ${playbackSummary}">
+        <rect class="atlas-conflict-playback__panel" x="61" y="5" width="36" height="18" rx="2.4"></rect>
+        <text class="atlas-conflict-playback__title" x="63" y="9.2">Replay fronts</text>
+        <text class="atlas-conflict-playback__summary" x="63" y="20.1">${playbackSummary}</text>
+        ${playback.steps.map((step, index) => `
+          <g class="atlas-conflict-playback-step ${playback.activeStep === step.step ? 'is-active' : ''}" data-atlas-conflict-playback-step="${step.step}" aria-label="Afficher ${step.label}">
+            <rect x="${63 + index * 10.4}" y="11" width="9.2" height="4.7" rx="1.5"></rect>
+            <text x="${67.6 + index * 10.4}" y="14.1" text-anchor="middle">${step.label}</text>
+          </g>
+        `).join('')}
+      </g>
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
           <polygon points="${zone.polygon}"></polygon>
           <text x="${zone.center.x}%" y="${zone.center.y - 3.5}%" text-anchor="middle">${zone.tone === 'front' ? 'FRONT' : zone.tone === 'occupation' ? 'OCC' : 'RISQUE'}</text>
         </g>
       `).join('')}
-      ${features.routes.map((route) => {
+      ${playback.routes.map((route) => {
         const path = `M${route.origin.x},${route.origin.y} Q${route.control.x},${route.control.y} ${route.destination.x},${route.destination.y}`;
         const arrowX = (route.control.x + route.destination.x) / 2;
         const arrowY = (route.control.y + route.destination.y) / 2;
+        const deltaPrefix = route.activePlayback.delta > 0 ? '+' : '';
         return `
-          <g class="atlas-campaign-route atlas-campaign-route--${route.tone}" data-atlas-campaign-route="${route.routeId}" aria-label="Axe ${route.sourceLabel} vers ${route.targetLabel}: pression ${route.pressure}">
+          <g class="atlas-campaign-route atlas-campaign-route--${route.tone} atlas-campaign-route--${route.playbackDirection}" data-atlas-campaign-route="${route.routeId}" aria-label="Axe ${route.sourceLabel} vers ${route.targetLabel}: ${route.activePlayback.label}, pression ${route.activePlayback.pressure}, delta ${deltaPrefix}${route.activePlayback.delta}">
             <path d="${path}" pathLength="100"></path>
             <path class="atlas-campaign-route__arrow" d="M${arrowX - 1.15},${arrowY - 0.85} L${arrowX + 1.35},${arrowY} L${arrowX - 1.15},${arrowY + 0.85} Z"></path>
-            <text x="${route.control.x}" y="${route.control.y - 1.6}" text-anchor="middle">${route.contested ? 'Front' : route.occupied ? 'Occupation' : 'Pression'}</text>
+            <text x="${route.control.x}" y="${route.control.y - 1.6}" text-anchor="middle">${route.activePlayback.label} ${deltaPrefix}${route.activePlayback.delta}</text>
           </g>
         `;
       }).join('')}
+      ${playback.empty ? `<text class="atlas-conflict-playback-empty" x="50" y="92" text-anchor="middle">Aucun historique militaire pertinent</text>` : ''}
       ${features.overflowCount > 0 ? `<text class="atlas-military-overflow" x="82" y="88" text-anchor="middle">+${features.overflowCount} axes agrégés</text>` : ''}
     </g>
   `;
@@ -11884,6 +11984,13 @@ function render() {
     element.addEventListener('click', () => {
       state.atlasClimateForecastMode = element.dataset.atlasClimateForecastMode ?? 'current';
       state.activeOverlaySlot = 'climate-overlay';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-atlas-conflict-playback-step]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.atlasConflictPlaybackStep = Math.max(0, Math.min(2, Number(element.dataset.atlasConflictPlaybackStep) || 0));
       render();
     });
   });

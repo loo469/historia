@@ -9931,6 +9931,40 @@ button { font: inherit; }
   pointer-events: none;
   opacity: 0.9;
 }
+.atlas-conflict-playback {
+  pointer-events: auto;
+}
+.atlas-conflict-playback__panel {
+  fill: rgba(15, 23, 42, 0.78);
+  stroke: rgba(248, 113, 113, 0.32);
+  stroke-width: 0.35;
+}
+.atlas-conflict-playback__title,
+.atlas-conflict-playback__summary,
+.atlas-conflict-playback-step text,
+.atlas-conflict-playback-empty {
+  fill: #fee2e2;
+  font-size: 1.55px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.42;
+}
+.atlas-conflict-playback__summary {
+  fill: #fde68a;
+  font-size: 1.28px;
+}
+.atlas-conflict-playback-step rect {
+  fill: rgba(127, 29, 29, 0.42);
+  stroke: rgba(248, 113, 113, 0.38);
+  stroke-width: 0.28;
+  cursor: pointer;
+}
+.atlas-conflict-playback-step.is-active rect {
+  fill: rgba(248, 113, 113, 0.54);
+  stroke: rgba(254, 226, 226, 0.72);
+}
+.atlas-conflict-playback-step.is-active text { fill: #fff7ed; }
 .atlas-military-risk polygon {
   fill: rgba(251, 191, 36, 0.08);
   stroke: rgba(253, 230, 138, 0.26);
@@ -9975,6 +10009,9 @@ button { font: inherit; }
   stroke: rgba(125, 211, 252, 0.5);
   stroke-width: 0.52;
 }
+.atlas-campaign-route--rising path:first-child { stroke-dasharray: 5 1.5; }
+.atlas-campaign-route--falling path:first-child { opacity: 0.58; stroke-dasharray: 2 2.8; }
+.atlas-campaign-route--steady path:first-child { stroke-dasharray: 3 2.2; }
 .atlas-campaign-route__arrow {
   fill: #fecdd3;
   stroke: rgba(127, 29, 29, 0.88);
