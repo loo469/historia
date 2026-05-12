@@ -792,12 +792,25 @@ function getLogisticsOutcomeCode(status) {
   }[status] ?? '?';
 }
 
+function getLogisticsOutcomeSeverityRank(status) {
+  return {
+    unresolved: 4,
+    'new-bottleneck': 3,
+    reduced: 2,
+    resolved: 1,
+  }[status] ?? 0;
+}
+
+function sortLogisticsOutcomeDetails(details) {
+  return details.slice().sort((left, right) => getLogisticsOutcomeSeverityRank(right.status) - getLogisticsOutcomeSeverityRank(left.status) || left.routeLabel.localeCompare(right.routeLabel) || left.actionLabel.localeCompare(right.actionLabel));
+}
+
 function buildLogisticsOutcomeMarkers(shell, economyView, queuedLogisticsActions = state.queuedLogisticsActions) {
   if (!queuedLogisticsActions.length) {
     return [];
   }
 
-  return queuedLogisticsActions.map((entry) => {
+  const singleMarkers = queuedLogisticsActions.map((entry) => {
     const province = shell.provinces.find((candidate) => candidate.provinceId === entry.provinceId) ?? shell.provinces.find((candidate) => {
       const cityIds = new Set(economyView.overlay.cities.filter((city) => city.regionId === candidate.provinceId).map((city) => city.cityId));
       const route = economyView.overlay.routes.find((candidateRoute) => candidateRoute.routeId === entry.routeId);
@@ -817,6 +830,7 @@ function buildLogisticsOutcomeMarkers(shell, economyView, queuedLogisticsActions
             ? 'new-bottleneck'
             : 'unresolved';
     const label = getLogisticsOutcomeLabel(status);
+    const routeLabel = option?.routes[0] ?? entry.target ?? entry.routeId;
     const detail = shortage
       ? `${shortage.city} / ${shortage.route}: ${shortage.detail}`
       : entry.downstreamEffect ?? 'Effet aval estimé depuis la file logistique.';
@@ -828,11 +842,38 @@ function buildLogisticsOutcomeMarkers(shell, economyView, queuedLogisticsActions
       code: getLogisticsOutcomeCode(status),
       label,
       detail,
+      details: [{ status, tone: getLogisticsOutcomeTone(status), code: getLogisticsOutcomeCode(status), label, detail, routeLabel, actionLabel: entry.label }],
       provinceId: province?.provinceId ?? entry.provinceId,
       provinceLabel: province?.label ?? entry.provinceId,
       routeId: entry.routeId,
-      routeLabel: option?.routes[0] ?? entry.target ?? entry.routeId,
+      routeLabel,
       actionLabel: entry.label,
+      summaryLink: 'Synthèse pénuries restantes',
+    };
+  });
+
+  const groupedByCluster = new Map();
+  for (const marker of singleMarkers) {
+    const clusterKey = `${marker.routeId ?? 'route-inconnue'}:${marker.provinceId ?? 'province-inconnue'}`;
+    const existing = groupedByCluster.get(clusterKey) ?? { ...marker, markerId: `logistics-outcome-group:${clusterKey}`, details: [], actionLabel: '' };
+    existing.details.push(...marker.details);
+    existing.actionLabel = [...new Set([...existing.actionLabel.split(', ').filter(Boolean), marker.actionLabel])].join(', ');
+    groupedByCluster.set(clusterKey, existing);
+  }
+
+  return Array.from(groupedByCluster.values()).map((group) => {
+    const details = sortLogisticsOutcomeDetails(group.details);
+    const top = details[0];
+    const grouped = details.length > 1;
+    return {
+      ...group,
+      status: top.status,
+      tone: top.tone,
+      code: grouped ? `${top.code}+${details.length}` : top.code,
+      label: grouped ? `${top.label} · ${details.length} effets` : top.label,
+      detail: top.detail,
+      details,
+      grouped,
       summaryLink: 'Synthèse pénuries restantes',
     };
   });
@@ -867,6 +908,36 @@ function renderLogisticsOutcomeRouteBadge(marker, visual) {
     </g>
   `;
 }
+
+function renderFocusedLogisticsOutcomeGroup(province) {
+  const marker = getLogisticsOutcomeMarkerForProvince(province.provinceId);
+
+  if (!marker) {
+    return '';
+  }
+
+  const details = sortLogisticsOutcomeDetails(marker.details ?? [{ ...marker, routeLabel: marker.routeLabel, actionLabel: marker.actionLabel }]);
+
+  return `
+    <section class="province-logistics-outcome-group province-logistics-outcome-group--${marker.tone}" aria-label="Détails groupés des marqueurs logistiques post-commit">
+      <div class="province-logistics-outcome-group__header">
+        <span>Résultat logistique groupé</span>
+        <strong>${marker.label}</strong>
+        <small>${marker.routeLabel} · ${details.length} détail${details.length > 1 ? 's' : ''} trié${details.length > 1 ? 's' : ''} par gravité</small>
+      </div>
+      <ol>
+        ${details.map((detail) => `
+          <li class="province-logistics-outcome-group__item province-logistics-outcome-group__item--${detail.tone}">
+            <strong>${detail.label}</strong>
+            <span>${detail.routeLabel}: ${detail.detail}</span>
+            <small>${detail.actionLabel}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 
 function renderProvinceCard(province, focusContext, postCommitClimateMarkers = []) {
   const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
@@ -5333,6 +5404,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceEconomyConsequences(province, economyView)}
       ${renderProvinceEconomyTurnReport(province, economyView)}
       ${renderProvinceLogisticsBottleneckComparison(province, economyView)}
+      ${renderFocusedLogisticsOutcomeGroup(province)}
       ${renderProvinceLogisticsChoicePreview(province, economyView)}
     </section>
   `;
@@ -8261,7 +8333,7 @@ function render() {
       state.hoveredRouteId = marker.routeId;
       state.activeOverlaySlot = 'economy-overlay';
       state.mobilePanelSection = 'details';
-      state.lastTurnSummary = `${marker.label}: ${marker.detail} (${marker.summaryLink}).`;
+      state.lastTurnSummary = `${marker.label}: ${(marker.details ?? [marker]).map((detail) => detail.detail).join(' | ')} (${marker.summaryLink}).`;
       render();
     });
   });
