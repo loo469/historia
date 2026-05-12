@@ -403,6 +403,7 @@ const state = {
   queuedLogisticsActions: [],
   logisticsOutcomeMarkers: [],
   logisticsOutcomeSeverityFilter: 'all',
+  selectedLogisticsOutcomeRouteId: null,
   queuedCultureActions: [],
   cultureTensionMarkers: [],
   cultureTensionFilters: { eased: true, unresolved: true, escalated: true, opportunity: true },
@@ -469,6 +470,7 @@ function applyMapScenario(scenario) {
   state.economyReadinessFocus = null;
   state.hoveredRouteId = null;
   state.selectedRouteId = null;
+  state.selectedLogisticsOutcomeRouteId = null;
   state.economyFilters = {
     criticalRoutes: false,
     resourceMarkers: true,
@@ -1012,7 +1014,7 @@ function buildLogisticsOutcomeMarkers(shell, economyView, queuedLogisticsActions
       code: getLogisticsOutcomeCode(status),
       label,
       detail,
-      details: [{ status, tone: getLogisticsOutcomeTone(status), code: getLogisticsOutcomeCode(status), label, detail, routeLabel, actionLabel: entry.label }],
+      details: [{ status, tone: getLogisticsOutcomeTone(status), code: getLogisticsOutcomeCode(status), label, detail, routeId: entry.routeId, routeLabel, actionLabel: entry.label }],
       provinceId: province?.provinceId ?? entry.provinceId,
       provinceLabel: province?.label ?? entry.provinceId,
       routeId: entry.routeId,
@@ -1110,8 +1112,8 @@ function buildLogisticsRouteDecisionSummaries(marker) {
 
   const byRoute = new Map();
   for (const detail of sortLogisticsOutcomeDetails(marker.details ?? [{ ...marker, routeLabel: marker.routeLabel, actionLabel: marker.actionLabel }])) {
-    const key = detail.routeLabel ?? marker.routeLabel;
-    const existing = byRoute.get(key) ?? { routeLabel: key, details: [], top: null };
+    const key = detail.routeId ?? marker.routeId ?? detail.routeLabel ?? marker.routeLabel;
+    const existing = byRoute.get(key) ?? { routeId: detail.routeId ?? marker.routeId, routeLabel: detail.routeLabel ?? marker.routeLabel, details: [], top: null };
     existing.details.push(detail);
     existing.top = existing.top ?? detail;
     byRoute.set(key, existing);
@@ -1157,11 +1159,13 @@ function renderLogisticsRouteDecisionList(summaries, stateLabel) {
   return `
     <ol>
       ${summaries.map((summary) => `
-        <li class="province-logistics-route-decision province-logistics-route-decision--${summary.tone}">
-          <strong>${summary.routeLabel}</strong>
-          <span>${summary.label}: ${summary.dominantShortage}</span>
-          <small>Impact estimé: ${summary.estimatedImpact}</small>
-          <small>Action conseillée: ${summary.recommendedAction}</small>
+        <li class="province-logistics-route-decision province-logistics-route-decision--${summary.tone} ${state.selectedLogisticsOutcomeRouteId === summary.routeId ? 'is-selected' : ''}">
+          <button type="button" data-logistics-route-summary="${summary.routeId ?? ''}" data-logistics-route-label="${summary.routeLabel}">
+            <strong>${summary.routeLabel}</strong>
+            <span>${summary.label}: ${summary.dominantShortage}</span>
+            <small>Impact estimé: ${summary.estimatedImpact}</small>
+            <small>Action conseillée: ${summary.recommendedAction}</small>
+          </button>
         </li>
       `).join('')}
     </ol>
@@ -7497,9 +7501,11 @@ function renderEconomyMapOverlay(economyView) {
     const routeBlocker = economyBlockerFocus?.routeId === route.routeId ? economyBlockerFocus : null;
     const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
     const logisticsOutcomeMarker = getVisibleLogisticsOutcomeMarkers().find((marker) => marker.routeId === route.routeId) ?? null;
+    const logisticsRouteHighlighted = state.selectedLogisticsOutcomeRouteId === route.routeId;
+    const logisticsRouteDimmed = Boolean(state.selectedLogisticsOutcomeRouteId) && !logisticsRouteHighlighted;
 
     return `
-      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''} ${routeBlocker ? `has-economy-blocker has-economy-blocker--${routeBlocker.tone}` : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${routeBlocker ? `${routeBlocker.summary}. ${routeBlocker.effect}` : stress.summary}">
+      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''} ${logisticsRouteHighlighted ? 'is-logistics-outcome-highlighted' : ''} ${logisticsRouteDimmed ? 'is-logistics-outcome-dimmed' : ''} ${routeBlocker ? `has-economy-blocker has-economy-blocker--${routeBlocker.tone}` : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${logisticsRouteHighlighted ? 'route logistique sélectionnée depuis le résumé; ' : ''}${routeBlocker ? `${routeBlocker.summary}. ${routeBlocker.effect}` : stress.summary}">
         <title>${route.routeName}: ${routeBlocker ? `${routeBlocker.summary} — ${routeBlocker.effect}` : `${stress.headline} — ${stress.summary}`}</title>
         <path class="economy-route-hitbox" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
@@ -8899,6 +8905,21 @@ function render() {
     });
   });
 
+  document.querySelectorAll('[data-logistics-route-summary]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const routeId = element.dataset.logisticsRouteSummary;
+      if (!routeId) {
+        return;
+      }
+      state.selectedLogisticsOutcomeRouteId = routeId;
+      state.selectedRouteId = routeId;
+      state.hoveredRouteId = routeId;
+      state.activeOverlaySlot = 'economy-overlay';
+      state.lastTurnSummary = `Route logistique sélectionnée depuis le résumé: ${element.dataset.logisticsRouteLabel ?? routeId}. Les routes non concernées sont atténuées.`;
+      render();
+    });
+  });
+
   document.querySelectorAll('[data-logistics-outcome-marker]').forEach((element) => {
     element.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -8911,6 +8932,7 @@ function render() {
       state.popupProvinceId = marker.provinceId;
       state.selectedRouteId = marker.routeId;
       state.hoveredRouteId = marker.routeId;
+      state.selectedLogisticsOutcomeRouteId = marker.routeId;
       state.activeOverlaySlot = 'economy-overlay';
       state.mobilePanelSection = 'details';
       state.lastTurnSummary = `${marker.label}: ${(marker.details ?? [marker]).map((detail) => detail.detail).join(' | ')} (${marker.summaryLink}).`;

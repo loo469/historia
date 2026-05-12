@@ -8504,3 +8504,35 @@ button { font: inherit; }
   justify-content: space-between;
   gap: 6px;
 }
+.province-logistics-route-decision button {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+.province-logistics-route-decision.is-selected {
+  outline: 2px solid rgba(96, 165, 250, 0.72);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+.economy-route-group.is-logistics-outcome-highlighted .economy-route__halo {
+  stroke: rgba(96, 165, 250, 0.92);
+  stroke-width: 2.8;
+  opacity: 0.95;
+}
+.economy-route-group.is-logistics-outcome-highlighted .economy-route__flow {
+  opacity: 1;
+  stroke-width: 1.5;
+}
+.economy-route-group.is-logistics-outcome-dimmed {
+  opacity: 0.28;
+}
+.economy-route-group.is-logistics-outcome-dimmed .economy-route-hud,
+.economy-route-group.is-logistics-outcome-dimmed .economy-logistics-outcome {
+  opacity: 0.42;
+}
