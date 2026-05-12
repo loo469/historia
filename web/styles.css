@@ -5158,3 +5158,31 @@ button { font: inherit; }
   margin-top: 3px;
   color: var(--muted);
 }
+
+.map-intrigue-exposure-summary__item--confirmed { box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.32); }
+.map-intrigue-exposure-summary__item--probable { box-shadow: inset 3px 0 0 rgba(250, 204, 21, 0.28); }
+.map-intrigue-exposure-summary__item--masked { opacity: 0.86; }
+.map-intrigue-exposure-summary__item div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.map-intrigue-exposure-summary__item button,
+.map-intrigue-exposure-summary__item em {
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(88, 28, 135, 0.22);
+  color: #ddd6fe;
+  font-size: 0.72rem;
+  font-style: normal;
+}
+.map-intrigue-exposure-summary__item button {
+  cursor: pointer;
+}
+.map-intrigue-exposure-summary__item button:hover,
+.map-intrigue-exposure-summary__item button:focus-visible {
+  border-color: rgba(216, 180, 254, 0.62);
+  outline: none;
+}
