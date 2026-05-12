@@ -1088,12 +1088,17 @@ function buildAtlasCultureFeatures(cultureView) {
               ? 'arbitrer influence'
               : 'surveiller loyautés';
 
-      return {
+      const borderZone = {
         ...summary,
         borderId: `atlas-culture-border:${summary.regionId}`,
         mainDriver,
         stabilization,
         chips: [mainDriver, summary.drift.label, stabilization].slice(0, 3),
+      };
+
+      return {
+        ...borderZone,
+        mediation: buildAtlasCultureMediation(borderZone),
       };
     })
     .slice(0, 4);
@@ -1107,6 +1112,19 @@ function buildAtlasCultureFeatures(cultureView) {
     driftPreviews,
     borderZones,
   };
+}
+
+function buildAtlasCultureMediation(zone) {
+  const optionByDriver = {
+    migration: ['ouvrir médiation', 'passage stabilisé', 'friction accrue'],
+    'influence voisine': ['pacte de frontière', 'influence clarifiée', 'rivalité locale'],
+    événement: ['mandat d’écoute', 'repère apaisé', 'incident amplifié'],
+    découverte: ['protéger relais', 'découverte sécurisée', 'opportunité perdue'],
+    'pression politique': ['conseil local', 'loyauté suivie', 'tension latente'],
+  };
+  const [option, benefit, risk] = optionByDriver[zone.mainDriver] ?? optionByDriver['pression politique'];
+
+  return { option, benefit, risk };
 }
 
 function renderAtlasCultureLayer(cultureView) {
@@ -1136,17 +1154,25 @@ function renderAtlasCultureLayer(cultureView) {
         </g>
       `).join('')}
       ${features.borderZones.length > 0 ? `
-        <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables">
-          <rect x="3" y="58" width="25" height="${7 + (features.borderZones.length * 5.2)}" rx="1.8"></rect>
-          <text class="atlas-cultural-border-zones__title" x="5" y="61.4">Frontières instables</text>
+        <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
+          <rect x="3" y="55" width="30" height="${9 + (features.borderZones.length * 7.2)}" rx="1.8"></rect>
+          <text class="atlas-cultural-border-zones__title" x="5" y="58.4">Médiations culturelles</text>
           ${features.borderZones.map((zone, index) => `
-            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, piste ${zone.stabilization}">
-              <text x="5" y="${65 + index * 5.2}">${zone.cultureName}</text>
-              <text class="atlas-cultural-border-zone__chips" x="5" y="${67 + index * 5.2}">${zone.chips.join(' · ')}</text>
+            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, bénéfice ${zone.mediation.benefit}, risque ${zone.mediation.risk}">
+              <text x="5" y="${62 + index * 7.2}">${zone.cultureName}</text>
+              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 7.2}">${zone.chips.join(' · ')}</text>
+              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 7.2}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${67.8 + index * 7.2}">si ignorée: ${zone.mediation.risk}</text>
             </g>
           `).join('')}
         </g>
-      ` : ''}
+      ` : `
+        <g class="atlas-cultural-border-zones is-stable" aria-label="Frontières culturelles stables ou données insuffisantes">
+          <rect x="3" y="58" width="27" height="8.4" rx="1.8"></rect>
+          <text class="atlas-cultural-border-zones__title" x="5" y="61.4">Médiations culturelles</text>
+          <text class="atlas-cultural-border-zone__empty" x="5" y="64">frontières stables · données limitées</text>
+        </g>
+      `}
       ${features.cultureMarkers.map((marker) => `
         <g class="atlas-culture-marker atlas-culture-marker--${marker.tone}" data-atlas-culture-region="${marker.regionId}">
           <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="${marker.influenceTier === 'dominant' ? 2.35 : 1.85}"></circle>
