@@ -561,7 +561,7 @@ function buildAtlasTerrainShapes(shell) {
   };
 }
 
-function renderAtlasWorldCanvas(shell) {
+function renderAtlasWorldCanvas(shell, economyView = null) {
   const atlas = buildAtlasTerrainShapes(shell);
 
   return `
@@ -589,7 +589,71 @@ function renderAtlasWorldCanvas(shell) {
       ${atlas.islands.map((shape) => `
         <circle class="atlas-island atlas-island--${shape.terrain}" cx="${shape.center.x}" cy="${shape.center.y}" r="${shape.radius}" aria-label="Île ou archipel: ${shape.label}"></circle>
       `).join('')}
+      ${renderAtlasWorldEconomyLayer(economyView)}
     </svg>
+  `;
+}
+
+function renderAtlasWorldEconomyLayer(economyView) {
+  if (!economyView) {
+    return '';
+  }
+
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const routeLines = economyView.overlay.routes.map((route, index) => {
+    const origin = cityLayoutsById[route.originCityId];
+    const destination = cityLayoutsById[route.destinationCityId];
+
+    if (!origin || !destination) {
+      return '';
+    }
+
+    const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
+    const intensity = stress.tone === 'high' ? 'major' : stress.tone === 'medium' ? 'medium' : 'minor';
+    const laneOffset = ((index % 3) - 1) * 0.8;
+    const controlX = ((origin.x + destination.x) / 2) + laneOffset;
+    const controlY = ((origin.y + destination.y) / 2) - 3 - laneOffset;
+    const path = `M${origin.x},${origin.y} Q${controlX},${controlY} ${destination.x},${destination.y}`;
+
+    return `
+      <g class="atlas-logistics-route atlas-logistics-route--${intensity} ${route.active ? 'is-active' : 'is-inactive'}" aria-label="Route atlas ${route.routeName}: ${stress.summary}">
+        <path d="${path}" pathLength="100"></path>
+        <text x="${controlX}" y="${controlY - 1.2}" text-anchor="middle">${route.totalCapacity}</text>
+      </g>
+    `;
+  }).join('');
+
+  const cityNodes = economyView.overlay.cities.map((city) => {
+    const position = city.marker.position;
+    const tension = tensionByCityId[city.cityId]?.tensionLevel ?? 'low';
+    const resources = Object.entries(city.resources.stockByResource ?? {})
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 2)
+      .map(([resourceId, amount]) => `${getResourceHud(resourceId).glyph}${amount}`)
+      .join(' ');
+    const hubSize = city.tradeRouteIds.length >= 2 ? 'hub' : city.capital ? 'capital' : 'node';
+
+    if (!position) {
+      return '';
+    }
+
+    return `
+      <g class="atlas-economy-city atlas-economy-city--${tension} atlas-economy-city--${hubSize}" aria-label="Ville atlas ${city.cityName}: stock ${city.resources.totalStock}, ressources ${resources || 'aucune'}, logistique ${tension}">
+        <circle class="atlas-economy-city__aura" cx="${position.x}%" cy="${position.y}%" r="${tension === 'high' ? 4.2 : tension === 'medium' ? 3.2 : 2.4}"></circle>
+        <circle class="atlas-economy-city__core" cx="${position.x}%" cy="${position.y}%" r="${city.capital ? 1.6 : 1.2}"></circle>
+        <text class="atlas-economy-city__glyph" x="${position.x}%" y="${position.y + 0.55}%" text-anchor="middle">${city.capital ? '★' : city.tradeRouteIds.length >= 2 ? '◆' : '•'}</text>
+        <text class="atlas-economy-city__resources" x="${position.x + 2.4}%" y="${position.y - 1.1}%">${resources}</text>
+        <text class="atlas-economy-city__label" x="${position.x + 2.4}%" y="${position.y + 1.5}%">${city.cityName}</text>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <g class="atlas-world-economy-layer" aria-label="Villes, ressources et flux logistiques sur la carte monde">
+      <g class="atlas-world-logistics-routes">${routeLines}</g>
+      <g class="atlas-world-economy-cities">${cityNodes}</g>
+    </g>
   `;
 }
 
@@ -10209,7 +10273,7 @@ function renderTacticalCoordinateGrid() {
 function getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null) {
   return [
     { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
-    { key: 'atlas', className: 'map-layer map-layer--atlas', content: renderAtlasWorldCanvas(shell) },
+    { key: 'atlas', className: 'map-layer map-layer--atlas', content: renderAtlasWorldCanvas(shell, economyView) },
     { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
     { key: 'surface', className: 'map-layer map-layer--surface', content: renderProvinceSurface(shell, focusContext) },
     { key: 'relations', className: 'map-layer map-layer--relations', content: renderStrategicRelations(shell) },
