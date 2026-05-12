@@ -971,6 +971,37 @@ function buildAtlasCultureFeatures(cultureView) {
   const driftPreviews = regionSummaries
     .filter((summary) => summary.drift.state !== 'stable' || summary.selected || summary.drift.linkedToFocus)
     .slice(0, 5);
+  const borderZones = regionSummaries
+    .filter((summary) => summary.drift.state !== 'stable' || summary.influenceLabel.includes('contestée'))
+    .map((summary) => {
+      const mainDriver = summary.drift.state === 'migre'
+        ? 'migration'
+        : summary.influenceLabel.includes('contestée')
+          ? 'influence voisine'
+          : summary.drift.causes.includes('repère actif')
+            ? 'événement'
+            : summary.drift.causes.some((cause) => cause.includes('découverte'))
+              ? 'découverte'
+              : 'pression politique';
+      const stabilization = mainDriver === 'découverte'
+        ? 'protéger découverte'
+        : mainDriver === 'événement'
+          ? 'suivre repère'
+          : mainDriver === 'migration'
+            ? 'stabiliser passage'
+            : mainDriver === 'influence voisine'
+              ? 'arbitrer influence'
+              : 'surveiller loyautés';
+
+      return {
+        ...summary,
+        borderId: `atlas-culture-border:${summary.regionId}`,
+        mainDriver,
+        stabilization,
+        chips: [mainDriver, summary.drift.label, stabilization].slice(0, 3),
+      };
+    })
+    .slice(0, 4);
 
   return {
     influenceZones,
@@ -979,6 +1010,7 @@ function buildAtlasCultureFeatures(cultureView) {
     focusedDiscovery: discoverySites.find((site) => site.focused) ?? null,
     regionSummaries,
     driftPreviews,
+    borderZones,
   };
 }
 
@@ -1008,6 +1040,18 @@ function renderAtlasCultureLayer(cultureView) {
           <text x="${summary.center.x + 4.2}%" y="${summary.center.y + 4.3}%">${summary.drift.causes.join(' · ')}</text>
         </g>
       `).join('')}
+      ${features.borderZones.length > 0 ? `
+        <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables">
+          <rect x="3" y="58" width="25" height="${7 + (features.borderZones.length * 5.2)}" rx="1.8"></rect>
+          <text class="atlas-cultural-border-zones__title" x="5" y="61.4">Frontières instables</text>
+          ${features.borderZones.map((zone, index) => `
+            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, piste ${zone.stabilization}">
+              <text x="5" y="${65 + index * 5.2}">${zone.cultureName}</text>
+              <text class="atlas-cultural-border-zone__chips" x="5" y="${67 + index * 5.2}">${zone.chips.join(' · ')}</text>
+            </g>
+          `).join('')}
+        </g>
+      ` : ''}
       ${features.cultureMarkers.map((marker) => `
         <g class="atlas-culture-marker atlas-culture-marker--${marker.tone}" data-atlas-culture-region="${marker.regionId}">
           <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="${marker.influenceTier === 'dominant' ? 2.35 : 1.85}"></circle>
