@@ -17,12 +17,26 @@ test('critical front decision comparison reuses map priority and action data', (
   assert.match(webAppSource, /ignoredRisk/);
 });
 
+test('critical front decision comparison highlights immediate military and non-military dependencies', () => {
+  assert.match(webAppSource, /function buildFrontDecisionDependencies/);
+  assert.match(webAppSource, /kind: 'military'/);
+  assert.match(webAppSource, /Soutenir \$\{neighborFront\.label\}/);
+  assert.match(webAppSource, /Neutraliser marqueur adverse/);
+  assert.match(webAppSource, /kind: 'logistics'/);
+  assert.match(webAppSource, /Sécuriser ravitaillement/);
+  assert.match(webAppSource, /kind: 'stability'/);
+  assert.match(webAppSource, /dependencies\.slice\(0, 2\)/);
+});
+
 test('critical front decision comparison renders compact navigation cards without changing filters', () => {
   assert.match(webAppSource, /function renderCriticalFrontDecisionComparison/);
   assert.match(webAppSource, /data-province-id="\$\{decision\.provinceId\}"/);
   assert.match(webAppSource, /data-readiness-focus="\$\{decision\.provinceId\}"/);
   assert.match(webAppSource, /sans perdre les filtres carte/);
   assert.match(webAppSource, /renderCriticalFrontDecisionComparison\(shell, intrigueView\)/);
+  assert.match(webAppSource, /critical-front-decision__dependencies/);
   assert.match(stylesSource, /\.critical-front-decision-comparison/);
   assert.match(stylesSource, /\.critical-front-decision--danger/);
+  assert.match(stylesSource, /\.critical-front-decision__dependency--military/);
+  assert.match(stylesSource, /\.critical-front-decision__dependency--logistics/);
 });
