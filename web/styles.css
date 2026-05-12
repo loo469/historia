@@ -2483,6 +2483,13 @@ button { font: inherit; }
 .culture-opportunity-reminder__urgency--soon { border-color: rgba(74, 222, 128, 0.36); color: #bbf7d0; }
 .culture-opportunity-reminder__urgency--new { border-color: rgba(56, 189, 248, 0.34); color: #bae6fd; }
 .culture-opportunity-reminder__urgency--stable { border-color: rgba(251, 191, 36, 0.22); color: #fde68a; }
+.culture-opportunity-reminder__reason {
+  display: block;
+  margin-bottom: 5px;
+  color: #bae6fd;
+  font-size: 11px;
+  line-height: 1.25;
+}
 .culture-opportunity-reminder p {
   margin: 0;
   color: var(--muted);

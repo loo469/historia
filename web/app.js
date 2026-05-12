@@ -909,6 +909,7 @@ function renderCultureUnlockHints(hints) {
           <b>${hint.status}</b>
           <small>${hint.label} · ${hint.cultureName}</small>
           <em>${hint.urgency?.label ?? 'Fenêtre stable'} · ${hint.urgency?.window ?? 'stable'}</em>
+          <small>${hint.urgency?.reason ?? hint.urgency?.detail ?? hint.explanation}</small>
         </span>
       `).join('')}
     </div>
@@ -946,6 +947,7 @@ function renderCultureOpportunityReminders(report) {
               <span>${reminder.label}</span>
               <strong>${reminder.cultureName}</strong>
               <em class="culture-opportunity-reminder__urgency culture-opportunity-reminder__urgency--${reminder.urgency?.level ?? 'stable'}">${reminder.urgencyCopy ?? 'Fenêtre stable · stable'}</em>
+              <small class="culture-opportunity-reminder__reason">${reminder.reasonCopy ?? reminder.urgency?.detail ?? reminder.summary}</small>
               <p>${reminder.summary}</p>
               <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}" aria-label="Voir ${reminder.focusCopy}: ${reminder.urgency?.detail ?? reminder.summary}">
                 Voir ${reminder.focusCopy}

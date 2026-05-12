@@ -15,22 +15,33 @@ function buildFocusTarget({ type = 'province', id, regionId, label }) {
   };
 }
 
-function buildUrgency({ status, tone, focusTarget }) {
+function buildUrgency({ status, tone, focusTarget, sourceLabel, timingLabel }) {
+  const normalizedSource = normalizeText(sourceLabel, focusTarget.label);
+  const normalizedTiming = normalizeText(timingLabel, 'timing local stable');
+
   if (status === 'probable') {
     return {
       level: 'soon',
       label: 'Expire bientôt',
       window: 'ce tour',
-      detail: `${focusTarget.label}: fenêtre courte, à traiter avant de clore le tour.`,
+      sourceLabel: normalizedSource,
+      timingLabel: normalizedTiming,
+      reason: `${normalizedSource} · ${normalizedTiming}`,
+      detail: `${focusTarget.label}: fenêtre courte, liée à ${normalizedSource} (${normalizedTiming}).`,
     };
   }
 
   if (status === 'possible') {
+    const isFreshSignal = tone === 'research' || tone === 'discovery';
+
     return {
-      level: tone === 'research' || tone === 'discovery' ? 'new' : 'stable',
-      label: tone === 'research' || tone === 'discovery' ? 'Nouveau signal' : 'Fenêtre stable',
-      window: tone === 'research' || tone === 'discovery' ? 'maintenant' : '2+ tours',
-      detail: `${focusTarget.label}: opportunité disponible sans urgence immédiate.`,
+      level: isFreshSignal ? 'new' : 'stable',
+      label: isFreshSignal ? 'Nouveau signal' : 'Fenêtre stable',
+      window: isFreshSignal ? 'maintenant' : '2+ tours',
+      sourceLabel: normalizedSource,
+      timingLabel: normalizedTiming,
+      reason: `${normalizedSource} · ${normalizedTiming}`,
+      detail: `${focusTarget.label}: opportunité disponible via ${normalizedSource} (${normalizedTiming}).`,
     };
   }
 
@@ -38,13 +49,22 @@ function buildUrgency({ status, tone, focusTarget }) {
     level: 'stable',
     label: 'À préparer',
     window: 'stable',
-    detail: `${focusTarget.label}: signal incomplet, aucune expiration active.`,
+    sourceLabel: normalizedSource,
+    timingLabel: normalizedTiming,
+    reason: `${normalizedSource} · ${normalizedTiming}`,
+    detail: `${focusTarget.label}: signal incomplet autour de ${normalizedSource} (${normalizedTiming}).`,
   };
 }
 
-function buildHint({ status, tone, label, explanation, regionId, cultureName, sourceId, focusTarget }) {
+function buildHint({ status, tone, label, explanation, regionId, cultureName, sourceId, focusTarget, urgencySource, timingLabel }) {
   const normalizedFocusTarget = focusTarget ?? buildFocusTarget({ regionId, label: 'Province liée' });
-  const urgency = buildUrgency({ status, tone, focusTarget: normalizedFocusTarget });
+  const urgency = buildUrgency({
+    status,
+    tone,
+    focusTarget: normalizedFocusTarget,
+    sourceLabel: urgencySource,
+    timingLabel,
+  });
 
   return {
     hintId: `${status}:${regionId}:${cultureName}:${label}:${sourceId ?? 'source'}`,
@@ -58,7 +78,7 @@ function buildHint({ status, tone, label, explanation, regionId, cultureName, so
     urgency,
     focusTarget: {
       ...normalizedFocusTarget,
-      urgency,
+      urgency: { ...urgency },
     },
   };
 }
@@ -95,6 +115,8 @@ function hintsFromTimeline(localTimeline, actionTitle, fallbackRegionId) {
       regionId: normalizeText(item.regionId, fallbackRegionId),
       cultureName: normalizeText(item.cultureName, 'Culture locale'),
       sourceId: item.timelineId,
+      urgencySource: `${item.kind === 'event' ? 'Événement' : 'Découverte'}: ${normalizeText(item.title, label)}`,
+      timingLabel: item.date ? `chronologie locale ${item.date}` : 'chronologie locale maintenant',
       focusTarget: buildFocusTarget({
         type: 'timeline',
         id: item.timelineId,
@@ -123,6 +145,10 @@ function hintsFromMarker(marker, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: marker.overlayId,
+      urgencySource: (marker.unlockedResearchIds ?? []).length > 0
+        ? `Recherche: ${(marker.unlockedResearchIds ?? []).slice(0, 2).join(', ')}`
+        : `Recherche active: ${marker.activeResearchCount}`,
+      timingLabel: (marker.unlockedResearchIds ?? []).length > 0 ? 'débloquée maintenant' : 'progression locale en cours',
       focusTarget: buildFocusTarget({
         type: 'marker',
         id: marker.overlayId,
@@ -141,6 +167,8 @@ function hintsFromMarker(marker, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: marker.overlayId,
+      urgencySource: `Découverte: ${marker.discoveries.slice(0, 2).join(', ')}`,
+      timingLabel: 'disponible sur la carte locale',
       focusTarget: buildFocusTarget({
         type: 'marker',
         id: marker.overlayId,
@@ -174,6 +202,8 @@ function hintsFromCluster(cluster, actionTitle, fallbackRegionId) {
       regionId,
       cultureName: normalizeText(strongestEvent.cultureName, cultureName),
       sourceId: strongestEvent.pinId,
+      urgencySource: `Événement: ${strongestEvent.name}`,
+      timingLabel: (strongestEvent.importance ?? 0) >= 4 ? 'priorité du tour' : 'fenêtre locale stable',
       focusTarget: buildFocusTarget({
         type: 'cluster',
         id: cluster.clusterId,
@@ -192,6 +222,8 @@ function hintsFromCluster(cluster, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: cluster.clusterId,
+      urgencySource: `Découverte: ${discoveryPins.slice(0, 2).map((pin) => pin.name).join(', ')}`,
+      timingLabel: 'voisinage culturel disponible',
       focusTarget: buildFocusTarget({
         type: 'cluster',
         id: cluster.clusterId,
@@ -210,6 +242,8 @@ function hintsFromCluster(cluster, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: cluster.clusterId,
+      urgencySource: `Cluster: ${cultureName}`,
+      timingLabel: 'signal incomplet stable',
       focusTarget: buildFocusTarget({
         type: 'cluster',
         id: cluster.clusterId,
@@ -249,6 +283,8 @@ export function buildCultureUnlockHints({
     regionId,
     cultureName: 'Aucun signal',
     sourceId: actionTitle,
+    urgencySource: `Plan: ${actionTitle}`,
+    timingLabel: 'aucun signal local actif',
     focusTarget: buildFocusTarget({ regionId, label: 'Province sans unlock' }),
   })];
 }
