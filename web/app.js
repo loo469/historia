@@ -410,6 +410,7 @@ const state = {
   mapPanY: 0,
   lastTurnSummary: 'Le théâtre reste sous tension, sans bascule majeure.',
   selectedIntrigueOperationId: 'op-river-ashes',
+  queuedClimateInterventions: [],
   economyFilters: {
     criticalRoutes: false,
     resourceMarkers: true,
@@ -1842,7 +1843,70 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
   };
 }
 
-function renderProvinceClimateRiskReductionForecast(province, shell) {
+function buildClimateInterventionQueueEntry(province, plan) {
+  return {
+    actionCode: plan.actionCode,
+    label: plan.actionLabel,
+    priority: 2,
+    orderCost: '1 ordre climat',
+    mainRisk: plan.tradeoff,
+    expectedResult: `Réduction climat ${plan.riskReduction}; fenêtre ${plan.window}.`,
+    status: plan.missedDeadline ? 'risky' : 'ready',
+    tone: plan.missedDeadline ? 'warning' : 'ready',
+    provinceId: province.provinceId,
+    category: 'climate',
+  };
+}
+
+function buildClimateInterventionQueuePlan(province, forecast, actionQueue = [], queuedClimateInterventions = []) {
+  const alreadyQueued = actionQueue.some((entry) => /climat|climate|mitigation|réserves|reparation|réparation/i.test(`${entry.actionCode} ${entry.label} ${entry.expectedResult}`))
+    || queuedClimateInterventions.some((entry) => entry.provinceId === province.provinceId || entry.actionCode === `CLIMATE-${province.provinceId.toUpperCase()}`);
+  const overlap = alreadyQueued
+    ? 'Chevauchement: une intervention climat ou mitigation proche est déjà en file.'
+    : forecast.queuedAction
+      ? 'Aucun chevauchement détecté avec la file actuelle.'
+      : 'Aucune intervention climat planifiable pour cette sélection.';
+  const disabled = !forecast.queuedAction || alreadyQueued;
+  const missedDeadline = forecast.deadlineCoverage.state === 'missed'
+    ? `Deadline manquée: ${forecast.deadlineCoverage.label}. ${forecast.deadlineCoverage.residualRisk ?? 'Risque résiduel à surveiller.'}`
+    : null;
+
+  return {
+    disabled,
+    alreadyQueued,
+    actionCode: `CLIMATE-${province.provinceId.toUpperCase()}`,
+    actionLabel: forecast.queuedAction ?? 'Aucune intervention recommandée',
+    window: forecast.criticalDeadline,
+    riskReduction: `${forecast.currentRisk} → ${forecast.projectedRisk}`,
+    tradeoff: forecast.payoffTradeoff?.tradeoff ?? 'Tradeoff non confirmé par les données disponibles.',
+    overlap,
+    missedDeadline,
+    cta: disabled ? (alreadyQueued ? 'Déjà en file' : 'Aucune action climat') : 'Planifier intervention climat',
+  };
+}
+
+function renderClimateInterventionQueueAction(province, forecast, actionQueue = [], queuedClimateInterventions = []) {
+  const plan = buildClimateInterventionQueuePlan(province, forecast, actionQueue, queuedClimateInterventions);
+
+  return `
+    <div class="province-climate-risk-forecast__queue province-climate-risk-forecast__queue--${plan.disabled ? 'blocked' : 'ready'}" aria-label="Planification de l’intervention climat recommandée">
+      <div>
+        <strong>${plan.actionLabel}</strong>
+        <code>${plan.actionCode}</code>
+      </div>
+      <dl>
+        <div><dt>Fenêtre</dt><dd>${plan.window}</dd></div>
+        <div><dt>Réduction</dt><dd>${plan.riskReduction}</dd></div>
+        <div><dt>Tradeoff</dt><dd>${plan.tradeoff}</dd></div>
+      </dl>
+      ${plan.missedDeadline ? `<small><b>${plan.missedDeadline}</b></small>` : ''}
+      <small>${plan.overlap}</small>
+      <button type="button" data-queue-climate-intervention="true" data-province-id="${province.provinceId}" data-climate-action-code="${plan.actionCode}" ${plan.disabled ? 'disabled' : ''}>${plan.cta}</button>
+    </div>
+  `;
+}
+
+function renderProvinceClimateRiskReductionForecast(province, shell, actionQueue = [], queuedClimateInterventions = []) {
   const forecast = buildProvinceClimateRiskReductionForecast(province, shell);
 
   return `
@@ -1864,6 +1928,7 @@ function renderProvinceClimateRiskReductionForecast(province, shell) {
         </div>
       ` : ''}
       ${renderSelectedClimateInterventionRiskPreview(forecast.selectedInterventionPreview)}
+      ${renderClimateInterventionQueueAction(province, forecast, actionQueue, queuedClimateInterventions)}
       <div class="province-climate-risk-forecast__deadline province-climate-risk-forecast__deadline--${forecast.deadlineCoverage.state}">
         <span><b>Deadline</b> · ${forecast.deadlineCoverage.label}</span>
         <small>${forecast.deadlineCoverage.detail}</small>
@@ -2609,6 +2674,9 @@ function buildSelectedProvinceActionQueue(province, shell, focusContext, intrigu
   const priorityByTone = { danger: 1, warning: 2, ready: 3, info: 4, neutral: 5 };
   const statusByTone = { danger: 'blocked', warning: 'risky', ready: 'ready', info: 'ready', neutral: 'ready' };
   const outcomeRisk = outcome.tone === 'danger' ? 'risque élevé' : outcome.tone === 'warning' ? 'issue disputée' : 'risque maîtrisé';
+  const queuedClimateActions = state.queuedClimateInterventions
+    .filter((entry) => entry.provinceId === province.provinceId)
+    .map((entry) => ({ ...entry }));
 
   return recommendations
     .map((recommendation, index) => ({
@@ -2625,6 +2693,7 @@ function buildSelectedProvinceActionQueue(province, shell, focusContext, intrigu
       status: statusByTone[recommendation.tone] ?? 'ready',
       tone: recommendation.tone,
     }))
+    .concat(queuedClimateActions)
     .sort((left, right) => left.priority - right.priority || left.actionCode.localeCompare(right.actionCode));
 }
 
@@ -4345,7 +4414,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       ${renderProvinceClimateCountdownCues(province)}
       ${renderProvinceClimateMitigationPriorities(province)}
-      ${renderProvinceClimateRiskReductionForecast(province, shell)}
+      ${renderProvinceClimateRiskReductionForecast(province, shell, buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView), state.queuedClimateInterventions)}
       ${renderProvinceClimateCascadePreview(province, shell)}
       ${renderProvinceClimateTurnReport(province)}
       <div class="context-summary">
@@ -7255,6 +7324,31 @@ function render() {
       state.readinessFocusProvinceId = provinceId;
       state.readinessFocusTone = 'ready';
       state.lastTurnSummary = `${actionCode} ajouté à la file militaire depuis la carte pour ${province.label}.`;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-queue-climate-intervention]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.provinceId;
+      const actionCode = element.dataset.climateActionCode;
+      const shell = getShell();
+      const province = shell.provinces.find((candidate) => candidate.provinceId === provinceId);
+      if (!province || state.queuedClimateInterventions.some((entry) => entry.actionCode === actionCode || entry.provinceId === provinceId)) {
+        return;
+      }
+      const focusContext = { focusedProvinceId: provinceId, focusedProvince: province, neighborIds: new Set(province.neighborIds) };
+      const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, buildIntrigueView(shell));
+      const forecast = buildProvinceClimateRiskReductionForecast(province, shell);
+      const plan = buildClimateInterventionQueuePlan(province, forecast, actionQueue, state.queuedClimateInterventions);
+      if (plan.disabled) {
+        return;
+      }
+      state.queuedClimateInterventions = state.queuedClimateInterventions.concat(buildClimateInterventionQueueEntry(province, plan));
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.activeOverlaySlot = 'climate-overlay';
+      state.lastTurnSummary = `Intervention climat planifiée: ${actionCode} sur ${province.label}. Vérifiez deadline, tradeoff et risque résiduel avant validation du tour.`;
       render();
     });
   });
