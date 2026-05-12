@@ -1392,6 +1392,95 @@ function buildProvinceClimateCountdownCues(province, report = buildProvinceClima
     .slice(0, 3);
 }
 
+function buildProvinceClimateMitigationPriorities(province, report = buildProvinceClimateTurnReport(province)) {
+  const cues = buildProvinceClimateCountdownCues(province, report);
+  const primaryCue = cues[0] ?? null;
+  const riskLevel = getProvinceClimateRiskLevel(province);
+  const hazard = province.hazards?.[0] ?? null;
+  const immediate = primaryCue?.level === 'immediate';
+  const nextTurn = primaryCue?.level === 'next-turn';
+  const watch = primaryCue?.level === 'watch';
+  const mitigationContext = hazard
+    ? `${hazard.type} ${hazard.riskLevel ?? 'visible'}`
+    : report.deltas[0]?.label ?? primaryCue?.label ?? 'climat stable';
+  const priorities = [];
+
+  if (immediate || riskLevel === 'critical') {
+    priorities.push({
+      option: province.supplyLevel === 'collapsed' || province.contested ? 'Évacuer / mitiger' : 'Renforcer stabilité',
+      deadline: primaryCue?.countdown ?? 'Immédiat',
+      avoidedImpact: `Évite que ${mitigationContext} bloque le plan province ce tour.`,
+      tradeoff: province.supplyLevel === 'collapsed' ? 'Coût: abandon temporaire de rendement local.' : 'Coût: consommer une action de stabilisation.',
+      outcomeChange: true,
+      priority: 1,
+    });
+  }
+
+  if (immediate || nextTurn || riskLevel === 'strained') {
+    priorities.push({
+      option: 'Préparer réserves',
+      deadline: nextTurn ? 'Prochain tour' : primaryCue?.countdown ?? 'Surveiller',
+      avoidedImpact: `Réduit l’exposition avant ${primaryCue?.label ?? 'la prochaine saison à risque'}.`,
+      tradeoff: 'Coût: détourner ressources et logistique du plan principal.',
+      outcomeChange: immediate || nextTurn,
+      priority: 2,
+    });
+  }
+
+  if (immediate || watch || province.loyalty < 55) {
+    priorities.push({
+      option: 'Déplacer ressources / réparation',
+      deadline: watch ? 'Surveiller' : 'Ce tour',
+      avoidedImpact: 'Contient les pertes de stabilité et accélère la récupération visible.',
+      tradeoff: 'Compromis: retarde une action économique ou militaire concurrente.',
+      outcomeChange: immediate || riskLevel !== 'stable',
+      priority: 3,
+    });
+  }
+
+  priorities.push({
+    option: watch || riskLevel === 'stable' ? 'Observation / attente' : 'Observation active',
+    deadline: primaryCue?.countdown ?? 'Stable',
+    avoidedImpact: riskLevel === 'stable'
+      ? 'Confirme qu’aucune mitigation immédiate ne change le résultat.'
+      : 'Garde le risque lisible si aucune ressource ne peut être engagée.',
+    tradeoff: riskLevel === 'stable' ? 'Coût: aucun, mais pas de réduction proactive.' : 'Compromis: accepte le risque résiduel jusqu’au prochain signal.',
+    outcomeChange: false,
+    priority: 4,
+  });
+
+  return priorities
+    .sort((left, right) => Number(right.outcomeChange) - Number(left.outcomeChange) || left.priority - right.priority)
+    .slice(0, 3);
+}
+
+function renderProvinceClimateMitigationPriorities(province) {
+  const report = buildProvinceClimateTurnReport(province);
+  const priorities = buildProvinceClimateMitigationPriorities(province, report);
+  const decisiveCount = priorities.filter((priority) => priority.outcomeChange).length;
+
+  return `
+    <section class="province-climate-mitigation-priorities" aria-label="Comparaison des priorités de mitigation climat">
+      <div class="province-climate-mitigation-priorities__header">
+        <strong>Priorités mitigation climat</strong>
+        <span>${decisiveCount} change${decisiveCount > 1 ? 'nt' : ''} le résultat</span>
+      </div>
+      <div class="province-climate-mitigation-priority-list">
+        ${priorities.map((priority, index) => `
+          <article class="province-climate-mitigation-priority ${priority.outcomeChange ? 'is-decisive' : 'is-observation'}">
+            <div>
+              <b>${index + 1}. ${priority.option}</b>
+              <code>${priority.deadline}</code>
+            </div>
+            <p>${priority.avoidedImpact}</p>
+            <small>${priority.tradeoff}</small>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderProvinceClimateCountdownCues(province) {
   const report = buildProvinceClimateTurnReport(province);
   const cues = buildProvinceClimateCountdownCues(province, report);
@@ -2644,6 +2733,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       ${renderProvinceClimateCountdownCues(province)}
+      ${renderProvinceClimateMitigationPriorities(province)}
       ${renderProvinceClimateTurnReport(province)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
