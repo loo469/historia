@@ -1675,6 +1675,75 @@ function buildClimateMitigationDeadlineCoverage(province, queuedMitigation, cues
   };
 }
 
+function buildSelectedClimateInterventionRiskPreview(province, shell, selectedIntervention = null, report = buildProvinceClimateTurnReport(province)) {
+  const priorities = buildProvinceClimateMitigationPriorities(province, report);
+  const intervention = selectedIntervention ?? priorities.find((priority) => priority.outcomeChange) ?? priorities[0] ?? null;
+  const currentRisk = getProvinceClimateRiskLevel(province);
+  const projectedRisk = getProjectedClimateRiskAfterMitigation(currentRisk, Boolean(intervention?.outcomeChange));
+  const cues = buildProvinceClimateCountdownCues(province, report);
+  const cascades = buildProvinceClimateCascadePreview(province, shell, report);
+  const avoidedCascade = intervention?.outcomeChange
+    ? cascades.find((cascade) => cascade.changesThisTurn) ?? cascades[0] ?? null
+    : null;
+  const deadlineCoverage = buildClimateMitigationDeadlineCoverage(province, intervention, cues, cascades);
+  const timing = intervention && getClimateMitigationDeadlineRank(intervention.deadline) <= 0 ? 'gain immédiat' : 'gain différé';
+  const remainsUrgent = deadlineCoverage.state === 'missed' || (deadlineCoverage.state === 'just-in-time' && projectedRisk === 'critical');
+  const candidateComparisons = priorities.slice(0, 2).map((candidate) => ({
+    option: candidate.option,
+    timing: getClimateMitigationDeadlineRank(candidate.deadline) <= 0 ? 'immédiat' : 'différé',
+    projectedRisk: getProjectedClimateRiskAfterMitigation(currentRisk, Boolean(candidate.outcomeChange)),
+    deadline: candidate.deadline,
+  }));
+
+  if (!intervention) {
+    return {
+      state: 'empty',
+      option: 'Aucune intervention sélectionnée',
+      deadline: cues.find((cue) => cue.level !== 'stable')?.countdown ?? 'Aucune deadline fiable',
+      currentRisk,
+      projectedRisk: currentRisk,
+      timing: 'gain non confirmé',
+      avoidedCascade: 'Cascade évitée non disponible',
+      remainsUrgent: false,
+      deadlineCoverage,
+      candidateComparisons,
+    };
+  }
+
+  return {
+    state: remainsUrgent ? 'urgent' : intervention.outcomeChange ? 'reduced' : 'unchanged',
+    option: intervention.option,
+    deadline: intervention.deadline ?? deadlineCoverage.label ?? 'Deadline absente',
+    currentRisk,
+    projectedRisk,
+    timing,
+    avoidedCascade: avoidedCascade
+      ? `${avoidedCascade.type}: ${avoidedCascade.avoidedImpact}`
+      : 'Cascade évitée non disponible',
+    remainsUrgent,
+    deadlineCoverage,
+    candidateComparisons,
+  };
+}
+
+function renderSelectedClimateInterventionRiskPreview(preview) {
+  return `
+    <div class="province-climate-risk-forecast__selected province-climate-risk-forecast__selected--${preview.state}" aria-label="Aperçu de réduction du risque pour l’intervention climat sélectionnée">
+      <div>
+        <strong>Intervention sélectionnée · ${preview.option}</strong>
+        <span>${preview.deadline} · ${preview.timing}</span>
+      </div>
+      <p><b>${preview.currentRisk}</b> → <b>${preview.projectedRisk}</b> · ${preview.avoidedCascade}</p>
+      ${preview.remainsUrgent ? `<small><b>Urgence persistante</b> · ${preview.deadlineCoverage.detail}</small>` : ''}
+      <ul>
+        ${preview.candidateComparisons.map((candidate) => `
+          <li>${candidate.option}: ${candidate.timing}, risque ${candidate.projectedRisk} (${candidate.deadline})</li>
+        `).join('')}
+      </ul>
+    </div>
+  `;
+}
+
 function buildProvinceClimateRiskReductionForecast(province, shell, report = buildProvinceClimateTurnReport(province)) {
   const priorities = buildProvinceClimateMitigationPriorities(province, report);
   const queuedMitigation = priorities.find((priority) => priority.outcomeChange) ?? null;
@@ -1687,6 +1756,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
     .filter((cascade) => !queuedMitigation || !cascade.changesThisTurn)
     .slice(0, 2);
   const deadlineCoverage = buildClimateMitigationDeadlineCoverage(province, queuedMitigation, cues, remainingCascades);
+  const selectedInterventionPreview = buildSelectedClimateInterventionRiskPreview(province, shell, queuedMitigation, report);
 
   if (!queuedMitigation) {
     return {
@@ -1697,6 +1767,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
       queuedAction: null,
       payoffTradeoff: null,
       deadlineCoverage,
+      selectedInterventionPreview,
       summary: 'Aucune mitigation climat décisive en file: la réduction de risque projetée reste inchangée.',
       remainingCascades,
     };
@@ -1710,6 +1781,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
     queuedAction: queuedMitigation.option,
     payoffTradeoff,
     deadlineCoverage,
+    selectedInterventionPreview,
     summary: `${queuedMitigation.option} projette ${currentRisk} → ${projectedRisk} avant ${criticalDeadline}.`,
     remainingCascades: remainingCascades.length > 0 ? remainingCascades : [{
       type: 'surveillance résiduelle',
@@ -1742,6 +1814,7 @@ function renderProvinceClimateRiskReductionForecast(province, shell) {
           <small><b>${forecast.payoffTradeoff.tradeoffType}</b> · ${forecast.payoffTradeoff.tradeoff}</small>
         </div>
       ` : ''}
+      ${renderSelectedClimateInterventionRiskPreview(forecast.selectedInterventionPreview)}
       <div class="province-climate-risk-forecast__deadline province-climate-risk-forecast__deadline--${forecast.deadlineCoverage.state}">
         <span><b>Deadline</b> · ${forecast.deadlineCoverage.label}</span>
         <small>${forecast.deadlineCoverage.detail}</small>
