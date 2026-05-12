@@ -3335,12 +3335,47 @@ function buildConfirmedQueuedIntrigueMapResponse(province, projection, mapQueueA
   };
 }
 
+function buildFinalIntrigueExposureCommitSummary(province, projection, cumulativeRisk, confirmation) {
+  const pendingResponses = cumulativeRisk.contributions.map((contribution) => ({
+    context: `Cellule masquée · ${contribution.provinceLabel}`,
+    response: contribution.actionLabel,
+    exposureAfter: Math.min(100, contribution.score),
+    riskState: contribution.score >= 70 ? 'trop risqué' : contribution.score >= 45 ? 'à surveiller' : 'contenu',
+  }));
+  const localDuplicates = pendingResponses.filter((response) => response.context.includes(province.label)).length;
+  const interference = localDuplicates > 1 || cumulativeRisk.level === 'critique' || cumulativeRisk.level === 'élevé'
+    ? 'Combinaison gênante: plusieurs réponses visibles peuvent cumuler chaleur et réduire la couverture.'
+    : 'Aucune combinaison gênante majeure dans les signaux visibles.';
+  const riskyCells = pendingResponses.filter((response) => response.riskState === 'trop risqué');
+
+  return {
+    empty: pendingResponses.length === 0,
+    level: cumulativeRisk.level,
+    tone: cumulativeRisk.tone,
+    exposureAfter: cumulativeRisk.totalLabel,
+    summary: pendingResponses.length === 0
+      ? 'Synthèse finale indisponible: aucune réponse intrigue confirmée avant résolution.'
+      : `${pendingResponses.length} réponse${pendingResponses.length > 1 ? 's' : ''} intrigue en attente; exposition estimée après résolution ${cumulativeRisk.totalLabel}.`,
+    pendingResponses,
+    riskyCells,
+    interference,
+    confirmationHint: confirmation.confirmed
+      ? 'Dernière confirmation conservée; undo encore possible avant commit du tour.'
+      : 'Confirmer une réponse carte pour verrouiller la synthèse finale.',
+    fogLimit: 'Synthèse finale fog-safe: cellule, cible et relais restent masqués; seules province visible et tendance d’exposition sont listées.',
+    residualWarning: projection.tone === 'danger'
+      ? 'Risque résiduel élevé: différer ou remplacer avant résolution.'
+      : 'Risque résiduel lisible; conserver les détails existants pour arbitrage final.',
+  };
+}
+
 function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const projection = buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
   const cumulativeRisk = buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigueView);
   const queueChangePreview = buildIntrigueQueueChangePreview(projection, cumulativeRisk);
   const mapQueueAction = buildMapIntrigueSafeQueueAction(province, projection, cumulativeRisk, queueChangePreview);
   const confirmation = buildConfirmedQueuedIntrigueMapResponse(province, projection, mapQueueAction);
+  const finalCommitSummary = buildFinalIntrigueExposureCommitSummary(province, projection, cumulativeRisk, confirmation);
 
   return `
     <section class="province-intrigue-detection-projection province-intrigue-detection-projection--${projection.tone}" aria-label="Projection du risque de détection intrigue">
@@ -3430,6 +3465,28 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
         </dl>
         <button type="button" class="province-intrigue-map-confirmation__undo" data-action="undo-last-intrigue-response" data-province-id="${province.provinceId}" ${confirmation.confirmed ? '' : 'disabled'}>${confirmation.undoLabel}</button>
         <small>${confirmation.undoDetail}</small>
+      </div>
+      <div class="province-intrigue-final-commit-summary province-intrigue-final-commit-summary--${finalCommitSummary.tone}" aria-label="Synthèse finale exposition intrigue avant commit du tour">
+        <div class="province-intrigue-final-commit-summary__header">
+          <span>Avant commit du tour</span>
+          <strong>${finalCommitSummary.level} · ${finalCommitSummary.exposureAfter}</strong>
+        </div>
+        <p>${finalCommitSummary.summary}</p>
+        ${finalCommitSummary.pendingResponses.length > 0 ? `
+          <ol>
+            ${finalCommitSummary.pendingResponses.map((response) => `
+              <li class="province-intrigue-final-commit-summary__item province-intrigue-final-commit-summary__item--${response.riskState.replaceAll(' ', '-')}">
+                <strong>${response.context}</strong>
+                <span>${response.response} · exposition après ${response.exposureAfter} · ${response.riskState}</span>
+              </li>
+            `).join('')}
+          </ol>
+        ` : ''}
+        <small>${finalCommitSummary.interference}</small>
+        <small>${finalCommitSummary.riskyCells.length > 0 ? `${finalCommitSummary.riskyCells.length} cellule${finalCommitSummary.riskyCells.length > 1 ? 's' : ''} encore trop risquée${finalCommitSummary.riskyCells.length > 1 ? 's' : ''}.` : 'Aucune cellule visible encore trop risquée.'}</small>
+        <small>${finalCommitSummary.residualWarning}</small>
+        <small>${finalCommitSummary.confirmationHint}</small>
+        <small>${finalCommitSummary.fogLimit}</small>
       </div>
       <small>${projection.fogLimit}</small>
     </section>
