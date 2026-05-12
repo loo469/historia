@@ -418,7 +418,12 @@ button { font: inherit; }
 }
 .map-climate-severity-legend__sequence-step b,
 .map-climate-severity-legend__sequence-step span,
-.map-climate-severity-legend__sequence-step small { font-size: 12px; }
+.map-climate-severity-legend__sequence-step small,
+.map-climate-severity-legend__sequence-step em { font-size: 12px; }
+.map-climate-severity-legend__sequence-step em {
+  color: #bfdbfe;
+  font-style: normal;
+}
 .map-climate-severity-legend__sequence-step--cascade-active { border-color: rgba(248, 113, 113, 0.46); }
 .map-climate-severity-legend__sequence-step--hazard-unresolved { border-color: rgba(251, 191, 36, 0.42); }
 

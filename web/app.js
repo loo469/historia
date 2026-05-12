@@ -3636,6 +3636,29 @@ function getClimateSeverityRank(status) {
   }[status] ?? 5;
 }
 
+function buildClimateMitigationSecondaryBenefits(province, forecast, linkedNeighbors = [], selectedGroupIds = new Set()) {
+  const benefits = [];
+  const cascadeText = `${forecast.selectedInterventionPreview.avoidedCascade} ${forecast.remainingCascades.map((cascade) => `${cascade.type} ${cascade.scope}`).join(' ')}`;
+
+  if (/route|logistique|frontali/i.test(cascadeText)) {
+    benefits.push('Route logistique préservée: la cascade route/connexion perd de la pression.');
+  }
+
+  if (province.contested || province.occupied) {
+    benefits.push('Front stabilisé: la mitigation réduit une pression météo sur une zone militaire fragile.');
+  }
+
+  if (province.loyalty < 55 || /famine|migration/i.test(cascadeText)) {
+    benefits.push('Tension culturelle évitée: moins de stress population/ressources après mitigation.');
+  }
+
+  if (linkedNeighbors.length > 0 || selectedGroupIds.has(province.provinceId)) {
+    benefits.push(`Cascade voisine réduite: ${linkedNeighbors.length > 0 ? linkedNeighbors.map((neighbor) => neighbor.provinceLabel).join(', ') : 'groupe sélectionné'} profite de la même priorité.`);
+  }
+
+  return benefits.slice(0, 2);
+}
+
 function buildClimateMitigationSequenceFromSeverity(markers = [], shell, densityControl = null) {
   if (!shell || markers.length === 0) {
     return [];
@@ -3659,6 +3682,7 @@ function buildClimateMitigationSequenceFromSeverity(markers = [], shell, density
         .sort((left, right) => getClimateSeverityRank(left.status) - getClimateSeverityRank(right.status) || left.provinceLabel.localeCompare(right.provinceLabel))
         .slice(0, 2);
       const severityRank = getClimateSeverityRank(marker.status);
+      const secondaryBenefits = buildClimateMitigationSecondaryBenefits(province, forecast, linkedNeighbors, selectedGroupIds);
 
       return {
         provinceId: province.provinceId,
@@ -3675,6 +3699,7 @@ function buildClimateMitigationSequenceFromSeverity(markers = [], shell, density
           : selectedGroupIds.has(marker.provinceId)
             ? 'Réduit la pression du groupe cascade sélectionné.'
             : 'Effet surtout local; surveiller les voisins après résolution.',
+        secondaryBenefits,
         disabled: plan.disabled,
       };
     })
@@ -3746,6 +3771,7 @@ function renderClimateSeverityLegend(legend) {
               <b>${index + 1}. ${step.provinceLabel} · ${step.severityLabel}</b>
               <span>${step.action} · fenêtre ${step.window}</span>
               <small>${step.cascade} · ${step.neighborRelief}</small>
+              <em>${step.secondaryBenefits.length > 0 ? step.secondaryBenefits.join(' · ') : 'Aucun bénéfice secondaire confirmé.'}</em>
             </li>
           `).join('')}
         </ol>
