@@ -1214,6 +1214,7 @@ button { font: inherit; }
 }
 .military-front-marker-summary__item strong { color: #f8fafc; }
 .military-front-marker-summary__item small { color: var(--muted); font-size: 10px; }
+.military-front-marker-summary__item em { color: #fde68a; font-size: 10px; font-style: normal; }
 .military-front-marker-summary__item--hidden { opacity: 0.66; }
 .military-front-marker-summary__item--stabilized { border-color: rgba(74, 222, 128, 0.32); }
 .military-front-marker-summary__item--worsened { border-color: rgba(251, 113, 133, 0.4); }
