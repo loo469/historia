@@ -28,6 +28,13 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /Aperçu de stabilité culturelle/);
   assert.match(webAppSource, /culture-opportunity-reminder__queue-action/);
   assert.match(webAppSource, /data-culture-queue-action/);
+  assert.match(webAppSource, /culture-opportunity-queued-action/);
+  assert.match(webAppSource, /culture-opportunity-reminder__queue-confirmation/);
+  assert.match(webAppSource, /data-culture-undo-action/);
+  assert.match(webAppSource, /queuedCultureActions/);
+  assert.match(webAppSource, /cultureQueueAction/);
+  assert.match(webAppSource, /cultureUndoAction/);
+  assert.match(webAppSource, /Action culturelle en file/);
   assert.match(webAppSource, /Mettre en file/);
   assert.match(webAppSource, /Aucune action culturelle pertinente/);
   assert.match(webAppSource, /Pas de perte culturelle claire/);
@@ -45,6 +52,8 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(stylesSource, /\.culture-opportunity-reminder__stability-preview--urgent/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__stability-preview--steady/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-action/);
+  assert.match(stylesSource, /\.culture-opportunity-queued-action/);
+  assert.match(stylesSource, /\.culture-opportunity-reminder__queue-confirmation/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-empty/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--positive/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--uncertain/);

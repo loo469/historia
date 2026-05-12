@@ -143,6 +143,42 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
   });
 });
 
+test('buildCultureOpportunityReminders confirms queued culture actions and exposes undo', () => {
+  const report = buildCultureOpportunityReminders({
+    province: { provinceId: 'river-gate', label: 'Porte du Fleuve' },
+    actionQueue: [
+      { actionCode: 'culture:follow-event:river-gate', label: 'Suivre l’événement' },
+    ],
+    unlockHintsByAction: [
+      {
+        action: { label: 'Suivre l’événement' },
+        hints: [
+          {
+            status: 'probable',
+            tone: 'event',
+            label: 'Événement cluster',
+            regionId: 'river-gate',
+            cultureName: 'Compact d’Aurora',
+            focusTarget: {
+              type: 'cluster',
+              id: 'river-gate:culture-cluster',
+              regionId: 'river-gate',
+              label: 'Ouverture des archives',
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(report.queuedCultureAction.label, 'Suivre l’événement');
+  assert.equal(report.queuedCultureAction.reason, 'Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
+  assert.equal(report.queuedCultureAction.undoAction.code, 'undo:culture:follow-event:river-gate');
+  assert.equal(report.queuedCultureAction.undoAction.label, 'Retirer de la file');
+  assert.equal(report.reminders[0].queueConfirmation.actionCode, 'culture:follow-event:river-gate');
+  assert.equal(report.reminders[0].queueConfirmation.summary, 'Suivre l’événement est en file: + stabilité locale; urgence baisse si action validée; dissidence faible. Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
+});
+
 test('buildCultureOpportunityReminders returns a compact quiet summary without hints', () => {
   assert.deepEqual(buildCultureOpportunityReminders({
     province: { provinceId: 'quiet-field', label: 'Champ Calme' },

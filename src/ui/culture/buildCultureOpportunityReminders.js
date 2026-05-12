@@ -548,6 +548,54 @@ function attachQueueActions(reminders) {
   }));
 }
 
+
+function findQueuedCultureConfirmation(reminders, actionQueue) {
+  const queuedEntries = actionQueue
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => String(entry.actionCode ?? entry.code ?? '').startsWith('culture:')
+      || String(entry.label ?? '').match(/culture|Suivre l’événement|Accélérer la recherche|Protéger le site|Surveiller la fenêtre/i));
+
+  for (const { entry, index } of queuedEntries.reverse()) {
+    const actionCode = String(entry.actionCode ?? entry.code ?? '');
+    const label = normalizeText(entry.label, entry.title ?? 'Action culturelle');
+    const reminder = reminders.find((candidate) => candidate.queueAction
+      && (candidate.queueAction.code === actionCode || candidate.queueAction.label === label));
+
+    if (reminder) {
+      return {
+        queueIndex: index,
+        actionCode: reminder.queueAction.code,
+        label: reminder.queueAction.label,
+        provinceId: reminder.provinceId,
+        cultureName: reminder.cultureName,
+        effect: reminder.queueAction.effect,
+        reason: reminder.stabilityPreview?.reason ?? reminder.reasonCopy,
+        opportunityCost: reminder.queueAction.opportunityCost,
+        horizon: reminder.queueAction.horizon,
+        undoAction: {
+          code: `undo:${reminder.queueAction.code}`,
+          label: 'Retirer de la file',
+          summary: `Retirer ${reminder.queueAction.label} avant résolution du tour.`,
+        },
+        summary: `${reminder.queueAction.label} est en file: ${reminder.queueAction.effect}`,
+      };
+    }
+  }
+
+  return null;
+}
+
+function attachQueueConfirmation(reminders, confirmation) {
+  if (!confirmation) {
+    return reminders;
+  }
+
+  return reminders.map((reminder) => ({
+    ...reminder,
+    queueConfirmation: reminder.queueAction?.code === confirmation.actionCode ? confirmation : null,
+  }));
+}
+
 function dedupeAndSort(reminders) {
   const remindersByKey = new Map();
 
@@ -596,12 +644,15 @@ export function buildCultureOpportunityReminders({
   const priorityConflicts = buildPriorityConflicts(reminders);
   const remindersWithStabilityPreviews = attachStabilityPreviews(reminders, priorityConflicts);
   const remindersWithQueueActions = attachQueueActions(remindersWithStabilityPreviews);
+  const queuedCultureAction = findQueuedCultureConfirmation(remindersWithQueueActions, actionQueue);
+  const remindersWithQueueConfirmation = attachQueueConfirmation(remindersWithQueueActions, queuedCultureAction);
 
   return {
     state: 'active',
     provinceLabel,
     summary: `${provinceLabel}: ${probableCount} opportunité${probableCount > 1 ? 's' : ''} probable${probableCount > 1 ? 's' : ''}, ${missingCount} condition${missingCount > 1 ? 's' : ''} à surveiller.`,
-    reminders: remindersWithQueueActions,
+    reminders: remindersWithQueueConfirmation,
     priorityConflicts,
+    queuedCultureAction,
   };
 }
