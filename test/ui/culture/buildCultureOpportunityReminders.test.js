@@ -79,6 +79,12 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
     ['accept-risk', 'Ignorer avec risque assumé', 'stable'],
   ]);
   assert.equal(report.reminders[0].recommendedAction.summary, 'Suivre Ouverture des archives depuis river-gate; fenêtre ce tour.');
+  assert.deepEqual(report.reminders.map((reminder) => [reminder.tradeoff.benefit, reminder.tradeoff.risk, reminder.tradeoff.window]), [
+    ['Protège Ouverture des archives', 'Événement ignoré si ce tour passe', 'ce tour'],
+    ['Accélère Compact d’Aurora', 'Recherche retardée si l’action reste en attente', 'maintenant'],
+    ['Libère l’action province', 'Ligues des Forges reste sans signal exploitable', 'stable'],
+  ]);
+  assert.equal(report.reminders[0].tradeoff.summary, 'Gain: repère culturel protégé. Risque: événement ignoré (ce tour).');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',

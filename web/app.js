@@ -950,6 +950,7 @@ function renderCultureOpportunityReminders(report) {
               <small class="culture-opportunity-reminder__reason">${reminder.reasonCopy ?? reminder.urgency?.detail ?? reminder.summary}</small>
               <p>${reminder.summary}</p>
               <p class="culture-opportunity-reminder__action"><b>${reminder.recommendedAction?.label ?? 'Surveiller la fenêtre'}</b> · ${reminder.recommendedAction?.summary ?? reminder.actionCopy ?? reminder.summary}</p>
+              <p class="culture-opportunity-reminder__tradeoff"><b>Compromis</b> · ${reminder.tradeoff?.summary ?? reminder.tradeoffCopy ?? 'Bénéfice culturel contre risque narratif.'}</p>
               <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}" aria-label="Voir ${reminder.focusCopy}: ${reminder.urgency?.detail ?? reminder.summary}">
                 Voir ${reminder.focusCopy}
               </button>
