@@ -111,6 +111,7 @@ function buildReminder(hint, actionLabel) {
     actionLabel,
     urgency,
     urgencyCopy: `${urgency.label} · ${urgency.window}`,
+    reasonCopy: urgency.reason ?? `${urgency.sourceLabel ?? focusTarget.label} · ${urgency.timingLabel ?? urgency.window}`,
     focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };

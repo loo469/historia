@@ -66,6 +66,7 @@ test('buildCultureUnlockHints ranks probable, possible, and missing unlock signa
   assert.deepEqual(hints.map((hint) => hint.focusTarget.type), ['timeline', 'cluster', 'marker']);
   assert.equal(hints[0].urgency.label, 'Expire bientôt');
   assert.equal(hints[0].urgency.window, 'ce tour');
+  assert.equal(hints[0].urgency.reason, 'Événement: Ouverture des archives · chronologie locale maintenant');
   assert.deepEqual(hints[0].focusTarget, {
     type: 'timeline',
     id: 'river-gate:event:archives-open',
@@ -75,7 +76,10 @@ test('buildCultureUnlockHints ranks probable, possible, and missing unlock signa
       level: 'soon',
       label: 'Expire bientôt',
       window: 'ce tour',
-      detail: 'Ouverture des archives: fenêtre courte, à traiter avant de clore le tour.',
+      sourceLabel: 'Événement: Ouverture des archives',
+      timingLabel: 'chronologie locale maintenant',
+      reason: 'Événement: Ouverture des archives · chronologie locale maintenant',
+      detail: 'Ouverture des archives: fenêtre courte, liée à Événement: Ouverture des archives (chronologie locale maintenant).',
     },
   });
 });
@@ -98,7 +102,10 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
         level: 'stable',
         label: 'À préparer',
         window: 'stable',
-        detail: 'Province sans unlock: signal incomplet, aucune expiration active.',
+        sourceLabel: 'Plan: Garder en observation',
+        timingLabel: 'aucun signal local actif',
+        reason: 'Plan: Garder en observation · aucun signal local actif',
+        detail: 'Province sans unlock: signal incomplet autour de Plan: Garder en observation (aucun signal local actif).',
       },
       focusTarget: {
         type: 'province',
@@ -109,7 +116,10 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
           level: 'stable',
           label: 'À préparer',
           window: 'stable',
-          detail: 'Province sans unlock: signal incomplet, aucune expiration active.',
+          sourceLabel: 'Plan: Garder en observation',
+        timingLabel: 'aucun signal local actif',
+        reason: 'Plan: Garder en observation · aucun signal local actif',
+        detail: 'Province sans unlock: signal incomplet autour de Plan: Garder en observation (aucun signal local actif).',
         },
       },
     },
@@ -137,7 +147,10 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
       level: 'stable',
       label: 'À préparer',
       window: 'stable',
-      detail: 'Delta Scribes, Harbor Compact: signal incomplet, aucune expiration active.',
+      sourceLabel: 'Cluster: Delta Scribes, Harbor Compact',
+      timingLabel: 'signal incomplet stable',
+      reason: 'Cluster: Delta Scribes, Harbor Compact · signal incomplet stable',
+      detail: 'Delta Scribes, Harbor Compact: signal incomplet autour de Cluster: Delta Scribes, Harbor Compact (signal incomplet stable).',
     },
     focusTarget: {
       type: 'cluster',
@@ -148,7 +161,10 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
         level: 'stable',
         label: 'À préparer',
         window: 'stable',
-        detail: 'Delta Scribes, Harbor Compact: signal incomplet, aucune expiration active.',
+        sourceLabel: 'Cluster: Delta Scribes, Harbor Compact',
+      timingLabel: 'signal incomplet stable',
+      reason: 'Cluster: Delta Scribes, Harbor Compact · signal incomplet stable',
+      detail: 'Delta Scribes, Harbor Compact: signal incomplet autour de Cluster: Delta Scribes, Harbor Compact (signal incomplet stable).',
       },
     },
   });
