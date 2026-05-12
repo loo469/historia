@@ -1176,25 +1176,27 @@ function buildProvinceLogisticsChoicePreviewView(province, economyView) {
 function renderProvinceLogisticsChoicePreview(province, economyView) {
   const preview = buildProvinceLogisticsChoicePreviewView(province, economyView);
 
-  if (preview.options.length === 0) {
-    return '';
-  }
-
   return `
     <section class="province-logistics-choice-preview" aria-label="Aperçu reroutage et réparation logistique">
       <div class="province-logistics-choice-preview__header">
         <strong>Aperçu choix logistiques</strong>
-        <span>${preview.options.length} options</span>
+        <span>${preview.options.length > 0 ? `${preview.options.length} options` : 'stable'}</span>
       </div>
       <p>${preview.summary}</p>
-      <div class="province-logistics-choice-list">
-        ${preview.options.map((option) => `
+      <div class="province-logistics-cause-summary province-logistics-cause-summary--${preview.status ?? 'stable'}">
+        <b>Cause locale</b>
+        <span>${preview.options[0]?.cause ?? 'logistique stable'}</span>
+      </div>
+      ${preview.options.length > 0 ? `
+        <div class="province-logistics-choice-list">
+          ${preview.options.map((option) => `
           <article class="province-logistics-choice province-logistics-choice--${option.tone} ${option.recommended ? 'is-recommended' : ''}">
             <div class="province-logistics-choice__title">
               <strong>${option.action}</strong>
               <span>${option.recommended ? 'recommandé' : option.delay}</span>
             </div>
             <p>${option.impact}</p>
+            <small class="province-logistics-choice__cause">${option.causeLabel}: ${option.cause}</small>
             <dl>
               <div><dt>Coût</dt><dd>${option.cost}</dd></div>
               <div><dt>Délai</dt><dd>${option.delay}</dd></div>
@@ -1204,7 +1206,8 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
             </dl>
           </article>
         `).join('')}
-      </div>
+        </div>
+      ` : ''}
     </section>
   `;
 }

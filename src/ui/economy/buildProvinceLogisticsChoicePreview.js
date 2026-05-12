@@ -35,9 +35,59 @@ function getMainResource(route, resourceLabelById) {
   };
 }
 
+function getRouteCause(route, localCity, localTension, mainResource) {
+  if (!route.active) {
+    return {
+      label: 'route inactive',
+      detail: `${route.routeName}: route interrompue vers ${localCity.cityName}, ${mainResource.label} doit attendre une réparation.`,
+    };
+  }
+
+  if (route.riskLevel >= 70) {
+    return {
+      label: 'risque élevé',
+      detail: `${route.routeName}: risque ${route.riskLevel} autour de ${localCity.cityName}, escorte requise pour sécuriser ${mainResource.label}.`,
+    };
+  }
+
+  if (localTension === 'high') {
+    return {
+      label: 'stock critique',
+      detail: `${localCity.cityName}: stock critique, ${route.routeName} doit prioriser ${mainResource.label}.`,
+    };
+  }
+
+  if (route.totalCapacity >= 9) {
+    return {
+      label: 'capacité insuffisante',
+      detail: `${route.routeName}: capacité ${route.totalCapacity} saturée, relais nécessaire avant surcharge de ${localCity.cityName}.`,
+    };
+  }
+
+  if (route.riskLevel >= 55) {
+    return {
+      label: 'risque élevé',
+      detail: `${route.routeName}: risque ${route.riskLevel} sur ${mainResource.label}, convoi à sécuriser.`,
+    };
+  }
+
+  if (localTension === 'medium') {
+    return {
+      label: 'stock sous tension',
+      detail: `${localCity.cityName}: stock sous tension, ${route.routeName} reste à surveiller.`,
+    };
+  }
+
+  return {
+    label: 'logistique stable',
+    detail: `${route.routeName}: logistique stable vers ${localCity.cityName}, ${mainResource.label} couvert.`,
+  };
+}
+
 function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) {
   const mainResource = getMainResource(route, resourceLabelById);
   const tone = getRouteTone(route, localTension);
+  const routeCause = getRouteCause(route, localCity, localTension, mainResource);
   const overloaded = route.totalCapacity >= 9;
   const risky = route.riskLevel >= 55;
   const inactive = !route.active;
@@ -74,6 +124,8 @@ function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) 
     routes: [route.routeName],
     resources: [mainResource.label],
     affectedCity: localCity.cityName,
+    causeLabel: routeCause.label,
+    cause: routeCause.detail,
     residualRisk,
     impact,
     score: (TONE_RANK[tone] ?? 0) * 100 + route.riskLevel + route.totalCapacity + (localTension === 'high' ? 20 : localTension === 'medium' ? 10 : 0),
@@ -85,7 +137,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const resourceLabelById = requireObject(normalizedOptions.resourceLabelById ?? {}, 'ProvinceLogisticsChoicePreview resourceLabelById');
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -114,15 +166,21 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   if (routeChoices.length === 0) {
     return {
       recommendedOptionId: null,
-      summary: 'Aucun reroutage utile: aucune route liée à la province sélectionnée.',
+      status: 'stable',
+      summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
       options: [],
     };
   }
 
   const recommended = routeChoices[0];
+  const hasBlocker = routeChoices.some((choice) => choice.tone === 'high' || choice.tone === 'medium');
+
   return {
     recommendedOptionId: recommended.optionId,
-    summary: `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.impact}`,
+    status: hasBlocker ? recommended.tone : 'stable',
+    summary: hasBlocker
+      ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause}`
+      : `Logistique stable: ${recommended.routes[0]} et ${recommended.affectedCity} restent couverts.`,
     options: routeChoices,
   };
 }

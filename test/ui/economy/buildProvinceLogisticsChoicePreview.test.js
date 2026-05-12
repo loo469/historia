@@ -56,6 +56,10 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.options[0].action, 'Sécuriser convoi');
   assert.deepEqual(preview.options[0].resources, ['Outils']);
   assert.match(preview.summary, /Ember Line/);
+  assert.equal(preview.status, 'high');
+  assert.equal(preview.options[0].causeLabel, 'stock critique');
+  assert.match(preview.options[0].cause, /River Gate/);
+  assert.match(preview.options[0].cause, /Ember Line/);
 });
 
 test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and impact labels', () => {
@@ -67,6 +71,7 @@ test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and i
   assert.equal(typeof option.residualRisk, 'number');
   assert.ok(option.impact.includes('tools') || option.impact.includes('ressource'));
   assert.deepEqual(option.routes, ['Ember Line']);
+  assert.ok(option.cause.length > 0);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
@@ -74,7 +79,24 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
 
   assert.equal(preview.recommendedOptionId, null);
   assert.deepEqual(preview.options, []);
-  assert.match(preview.summary, /Aucun reroutage utile/);
+  assert.equal(preview.status, 'stable');
+  assert.match(preview.summary, /Logistique stable/);
+});
+
+test('buildProvinceLogisticsChoicePreview exposes stable local route causes', () => {
+  const stableView = buildEconomyView();
+  stableView.overlay.routes = [stableView.overlay.routes[0]];
+  stableView.comparison.rows = stableView.comparison.rows.map((row) => ({ ...row, tensionLevel: 'low' }));
+
+  const preview = buildProvinceLogisticsChoicePreview(province, stableView, {
+    resourceLabelById: { grain: 'Grain' },
+  });
+
+  assert.equal(preview.status, 'stable');
+  assert.match(preview.summary, /Logistique stable/);
+  assert.equal(preview.options[0].causeLabel, 'logistique stable');
+  assert.match(preview.options[0].cause, /Safe Road/);
+  assert.match(preview.options[0].cause, /River Gate/);
 });
 
 test('buildProvinceLogisticsChoicePreview validates options', () => {
