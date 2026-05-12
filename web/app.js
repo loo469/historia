@@ -18,6 +18,7 @@ import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js
 import { buildIntrigueTurnReportDeltas } from '../src/ui/intrigue/buildIntrigueTurnReportDeltas.js';
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
+import { buildCultureDiscoveryUrgencyGroups } from '../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
 import { buildCultureUnlockHints } from '../src/ui/culture/buildCultureUnlockHints.js';
@@ -7323,6 +7324,38 @@ function renderCultureLocalTimeline(timelineView) {
   `;
 }
 
+function renderCultureDiscoveryUrgencyGroups(groupView) {
+  if (!groupView || groupView.state !== 'active') {
+    return '';
+  }
+
+  return `
+    <article class="culture-discovery-urgency-groups" aria-label="Découvertes culturelles groupées par urgence">
+      <div class="culture-discovery-urgency-groups__header">
+        <span>Signaux culturels</span>
+        <strong>${groupView.summary}</strong>
+      </div>
+      ${groupView.groups.map((group) => `
+        <section class="culture-discovery-urgency-group culture-discovery-urgency-group--${group.key}">
+          <div class="culture-discovery-urgency-group__title">
+            <b>${group.label}</b>
+            <small>${group.summary}</small>
+          </div>
+          <ul>
+            ${group.items.map((item) => `
+              <li class="culture-discovery-urgency-item culture-discovery-urgency-item--${item.kind}">
+                <span>${item.shortLabel}</span>
+                <b>${item.cause}</b>
+                <small>${item.cultureName}${item.regionId ? ` · ${item.regionId}` : ''} · ${item.detail}</small>
+              </li>
+            `).join('')}
+          </ul>
+        </section>
+      `).join('')}
+    </article>
+  `;
+}
+
 function renderCultureClusterPinList(cluster) {
   if (!cluster) {
     return '';
@@ -7681,6 +7714,10 @@ function renderCultureSidePanel(cultureView) {
   const focusSeed = focus ? cultureView.seeds.find((seed) => seed.cultureId === focus.cultureId) : null;
   const selectedCluster = buildCultureClusterSummaries(cultureView.overlay)
     .find((cluster) => cluster.regionIds.includes(state.selectedProvinceId)) ?? null;
+  const discoveryUrgencyGroups = buildCultureDiscoveryUrgencyGroups({
+    selectedMarker: focus,
+    selectedCluster,
+  });
   const recommendationView = buildCultureMapRecommendations({
     selectedRegionId: state.selectedProvinceId,
     selectedMarker: focus,
@@ -7711,6 +7748,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureTensionMarkerPanel(cultureView.selectedTensionMarkers ?? [])}
       ${renderCultureRecommendationPanel(recommendationView)}
       ${renderCultureLocalTimeline(localTimelineView)}
+      ${renderCultureDiscoveryUrgencyGroups(discoveryUrgencyGroups)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">

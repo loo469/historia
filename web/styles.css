@@ -8704,3 +8704,60 @@ button { font: inherit; }
   border-color: rgba(245, 158, 11, 0.42);
   background: linear-gradient(135deg, rgba(120, 53, 15, 0.24), rgba(15, 23, 42, 0.58));
 }
+.culture-discovery-urgency-groups {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+}
+.culture-discovery-urgency-groups__header {
+  display: grid;
+  gap: 2px;
+}
+.culture-discovery-urgency-groups__header span {
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-discovery-urgency-groups__header strong { color: #f8fafc; font-size: 12px; line-height: 1.3; }
+.culture-discovery-urgency-group {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.culture-discovery-urgency-group--urgent { border-color: rgba(248, 113, 113, 0.34); }
+.culture-discovery-urgency-group--active { border-color: rgba(56, 189, 248, 0.28); }
+.culture-discovery-urgency-group--background { border-color: rgba(148, 163, 184, 0.14); }
+.culture-discovery-urgency-group__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.culture-discovery-urgency-group__title b { color: #f8fafc; font-size: 12px; }
+.culture-discovery-urgency-group__title small { color: #94a3b8; font-size: 10px; text-align: right; }
+.culture-discovery-urgency-group ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.culture-discovery-urgency-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 7px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.42);
+}
+.culture-discovery-urgency-item span { color: #e0f2fe; font-size: 12px; font-weight: 800; }
+.culture-discovery-urgency-item b { color: #fde68a; font-size: 10px; text-transform: uppercase; }
+.culture-discovery-urgency-item small { grid-column: 1 / -1; color: #cbd5e1; font-size: 11px; line-height: 1.25; }
