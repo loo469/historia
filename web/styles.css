@@ -5068,3 +5068,54 @@ button { font: inherit; }
   margin: 5px 0 0;
   color: var(--muted);
 }
+
+
+.map-intrigue-exposure-summary {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+.map-intrigue-exposure-summary--warning { border-color: rgba(248, 113, 113, 0.34); }
+.map-intrigue-exposure-summary--mitigated { border-color: rgba(34, 197, 94, 0.32); }
+.map-intrigue-exposure-summary--clear { border-color: rgba(148, 163, 184, 0.16); }
+.map-intrigue-exposure-summary__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.map-intrigue-exposure-summary p,
+.map-intrigue-exposure-summary__header span {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+.map-intrigue-exposure-summary__list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.map-intrigue-exposure-summary__item {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.28);
+  border-left: 3px solid rgba(148, 163, 184, 0.46);
+}
+.map-intrigue-exposure-summary__item--danger,
+.map-intrigue-exposure-summary__item--warning { border-left-color: rgba(248, 113, 113, 0.76); }
+.map-intrigue-exposure-summary__item--watch { border-left-color: rgba(96, 165, 250, 0.7); }
+.map-intrigue-exposure-summary__item--mitigated { border-left-color: rgba(34, 197, 94, 0.72); }
+.map-intrigue-exposure-summary__item--masked { border-left-color: rgba(148, 163, 184, 0.52); }
+.map-intrigue-exposure-summary__item b,
+.map-intrigue-exposure-summary__item span,
+.map-intrigue-exposure-summary__item small {
+  display: block;
+}
+.map-intrigue-exposure-summary__item span,
+.map-intrigue-exposure-summary__item small {
+  margin-top: 3px;
+  color: var(--muted);
+}

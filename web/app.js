@@ -2032,6 +2032,91 @@ function renderConflictReadinessWarnings(shell, intrigueView = null) {
   `;
 }
 
+
+function buildMapIntrigueExposureSummary(shell, intrigueView = null) {
+  const warnings = shell.provinces
+    .map((province) => {
+      const focusContext = {
+        focusedProvinceId: province.provinceId,
+        focusedProvince: province,
+        neighborIds: new Set(province.neighborIds),
+      };
+      const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+      const localWarnings = buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView);
+      const lead = localWarnings[0] ?? null;
+      const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
+      const response = drillDown?.quickResponses?.find((candidate) => candidate.code === drillDown.recommendedResponseCode)
+        ?? drillDown?.quickResponses?.[0]
+        ?? null;
+
+      if (!lead && !response) {
+        return null;
+      }
+
+      const mitigated = response && ['contenir', 'exposer'].includes(response.code) && response.escalationProbability !== 'élevée';
+
+      return {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        tone: mitigated ? 'mitigated' : lead?.tone ?? 'masked',
+        label: mitigated ? 'Exposition réduite' : lead.label,
+        risk: mitigated ? response.label : lead.label,
+        consequence: mitigated
+          ? `${response.label}: ${response.aftermathSummary ?? response.summary}`
+          : lead.detail,
+        trigger: mitigated ? response.code : lead.trigger,
+        priority: mitigated ? 4 : lead.priority,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 4);
+  const residualCount = warnings.filter((warning) => warning.tone !== 'mitigated').length;
+  const mitigatedCount = warnings.filter((warning) => warning.tone === 'mitigated').length;
+
+  return {
+    state: residualCount > 0 ? 'warning' : mitigatedCount > 0 ? 'mitigated' : 'clear',
+    residualCount,
+    mitigatedCount,
+    warnings,
+    summary: residualCount > 0
+      ? `${residualCount} risque${residualCount > 1 ? 's' : ''} intrigue reste${residualCount > 1 ? 'nt' : ''} actif${residualCount > 1 ? 's' : ''} avant fin de tour.`
+      : mitigatedCount > 0
+        ? `${mitigatedCount} exposition${mitigatedCount > 1 ? 's' : ''} intrigue fortement réduite${mitigatedCount > 1 ? 's' : ''} par le plan actuel.`
+        : 'Récap intrigue clair: aucun hotspot ou cooldown critique laissé ouvert.',
+  };
+}
+
+function renderMapIntrigueExposureSummary(summary) {
+  if (summary.warnings.length === 0) {
+    return `
+      <section class="map-intrigue-exposure-summary map-intrigue-exposure-summary--clear" aria-label="Résumé intrigue de fin de tour">
+        <strong>Intrigue fin de tour</strong>
+        <p>${summary.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-intrigue-exposure-summary map-intrigue-exposure-summary--${summary.state}" aria-label="Résumé intrigue de fin de tour">
+      <div class="map-intrigue-exposure-summary__header">
+        <strong>Intrigue fin de tour</strong>
+        <span>${summary.residualCount} résiduel${summary.residualCount > 1 ? 's' : ''} · ${summary.mitigatedCount} réduit${summary.mitigatedCount > 1 ? 's' : ''}</span>
+      </div>
+      <p>${summary.summary}</p>
+      <ul class="map-intrigue-exposure-summary__list">
+        ${summary.warnings.map((warning) => `
+          <li class="map-intrigue-exposure-summary__item map-intrigue-exposure-summary__item--${warning.tone}">
+            <b>${warning.provinceLabel}</b>
+            <span>${warning.risk}</span>
+            <small>${warning.trigger} · ${warning.consequence}</small>
+          </li>
+        `).join('')}
+      </ul>
+    </section>
+  `;
+}
+
 function renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const cultureContext = getSelectedCultureContext(province.provinceId);
@@ -4523,6 +4608,7 @@ function render() {
     consequenceChips: selectedCultureContext.consequenceChips,
   });
   const climatePreparednessSummary = buildMapClimatePreparednessSummary(shell, focusContext, intrigueView);
+  const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -4542,6 +4628,7 @@ function render() {
           <p class="turn-summary">${state.lastTurnSummary}</p>
           ${renderConflictReadinessWarnings(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
+          ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
               <strong>Variation visible</strong>
