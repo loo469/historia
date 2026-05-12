@@ -8272,3 +8272,61 @@ button { font: inherit; }
 .culture-tension-jump--escalated { border-color: rgba(248, 113, 113, 0.3); }
 .culture-tension-jump:hover,
 .culture-tension-filter:hover { border-color: rgba(125, 211, 252, 0.5); }
+.province-logistics-outcome-group--empty { opacity: 0.84; }
+.province-logistics-outcome-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.province-logistics-outcome-filter {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.44);
+  color: #dbeafe;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.province-logistics-outcome-filter.is-active {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(37, 99, 235, 0.3);
+  color: #eff6ff;
+}
+.province-logistics-route-decisions {
+  display: grid;
+  gap: 7px;
+}
+.province-logistics-route-decisions h4 {
+  margin: 3px 0 0;
+  color: #bfdbfe;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.province-logistics-route-decisions ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.province-logistics-route-decision {
+  padding: 8px;
+  border-radius: 11px;
+  background: rgba(2, 6, 23, 0.36);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.province-logistics-route-decision strong,
+.province-logistics-route-decision span,
+.province-logistics-route-decision small { display: block; }
+.province-logistics-route-decision strong { color: #f8fafc; font-size: 12px; }
+.province-logistics-route-decision span { color: #dbeafe; font-size: 12px; line-height: 1.35; }
+.province-logistics-route-decision small { color: #93c5fd; font-size: 11px; }
+.province-logistics-route-decision--unresolved { border-color: rgba(245, 158, 11, 0.44); }
+.province-logistics-route-decision--new-bottleneck { border-color: rgba(251, 113, 133, 0.5); }
+.province-logistics-route-decision--reduced { border-color: rgba(56, 189, 248, 0.42); }
+.province-logistics-route-decision--resolved { border-color: rgba(74, 222, 128, 0.42); }
+.province-logistics-route-decisions__empty {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+}

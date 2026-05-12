@@ -402,6 +402,7 @@ const state = {
   selectedRouteId: null,
   queuedLogisticsActions: [],
   logisticsOutcomeMarkers: [],
+  logisticsOutcomeSeverityFilter: 'all',
   queuedCultureActions: [],
   cultureTensionMarkers: [],
   cultureTensionFilters: { eased: true, unresolved: true, escalated: true, opportunity: true },
@@ -950,7 +951,31 @@ function buildLogisticsOutcomeMarkers(shell, economyView, queuedLogisticsActions
   });
 }
 
+function isLogisticsOutcomeVisible(marker, filter = state.logisticsOutcomeSeverityFilter) {
+  if (!marker) {
+    return false;
+  }
+
+  if (filter === 'critical') {
+    return marker.status === 'unresolved' || marker.status === 'new-bottleneck';
+  }
+
+  if (filter === 'improved') {
+    return marker.status === 'reduced' || marker.status === 'resolved';
+  }
+
+  return true;
+}
+
+function getVisibleLogisticsOutcomeMarkers() {
+  return state.logisticsOutcomeMarkers.filter((marker) => isLogisticsOutcomeVisible(marker));
+}
+
 function getLogisticsOutcomeMarkerForProvince(provinceId) {
+  return getVisibleLogisticsOutcomeMarkers().find((marker) => marker.provinceId === provinceId) ?? null;
+}
+
+function getLogisticsOutcomeMarkerForFocusedProvince(provinceId) {
   return state.logisticsOutcomeMarkers.find((marker) => marker.provinceId === provinceId) ?? null;
 }
 
@@ -980,31 +1005,104 @@ function renderLogisticsOutcomeRouteBadge(marker, visual) {
   `;
 }
 
+function buildLogisticsRouteDecisionSummaries(marker) {
+  if (!marker) {
+    return { visible: [], hidden: [], all: [] };
+  }
+
+  const byRoute = new Map();
+  for (const detail of sortLogisticsOutcomeDetails(marker.details ?? [{ ...marker, routeLabel: marker.routeLabel, actionLabel: marker.actionLabel }])) {
+    const key = detail.routeLabel ?? marker.routeLabel;
+    const existing = byRoute.get(key) ?? { routeLabel: key, details: [], top: null };
+    existing.details.push(detail);
+    existing.top = existing.top ?? detail;
+    byRoute.set(key, existing);
+  }
+
+  const all = Array.from(byRoute.values()).map((summary) => ({
+    ...summary,
+    status: summary.top.status,
+    tone: summary.top.tone,
+    label: summary.top.label,
+    dominantShortage: summary.top.detail,
+    estimatedImpact: summary.details.length > 1 ? `${summary.details.length} effets groupés, priorité au plus grave.` : summary.top.detail,
+    recommendedAction: summary.top.actionLabel ?? marker.actionLabel ?? 'Action à confirmer',
+    visible: isLogisticsOutcomeVisible(summary.top),
+  }));
+
+  return {
+    all,
+    visible: all.filter((summary) => summary.visible),
+    hidden: all.filter((summary) => !summary.visible),
+  };
+}
+
+function renderLogisticsOutcomeFilterControls() {
+  const filters = [
+    ['all', 'Toutes'],
+    ['critical', 'Critiques'],
+    ['improved', 'Améliorées'],
+  ];
+
+  return `
+    <div class="province-logistics-outcome-filters" aria-label="Filtres de sévérité logistique">
+      ${filters.map(([filter, label]) => `<button type="button" class="province-logistics-outcome-filter ${state.logisticsOutcomeSeverityFilter === filter ? 'is-active' : ''}" data-logistics-outcome-filter="${filter}">${label}</button>`).join('')}
+    </div>
+  `;
+}
+
+function renderLogisticsRouteDecisionList(summaries, stateLabel) {
+  if (summaries.length === 0) {
+    return `<p class="province-logistics-route-decisions__empty">Aucune route ${stateLabel} pour ce filtre.</p>`;
+  }
+
+  return `
+    <ol>
+      ${summaries.map((summary) => `
+        <li class="province-logistics-route-decision province-logistics-route-decision--${summary.tone}">
+          <strong>${summary.routeLabel}</strong>
+          <span>${summary.label}: ${summary.dominantShortage}</span>
+          <small>Impact estimé: ${summary.estimatedImpact}</small>
+          <small>Action conseillée: ${summary.recommendedAction}</small>
+        </li>
+      `).join('')}
+    </ol>
+  `;
+}
+
 function renderFocusedLogisticsOutcomeGroup(province) {
-  const marker = getLogisticsOutcomeMarkerForProvince(province.provinceId);
+  const marker = getLogisticsOutcomeMarkerForFocusedProvince(province.provinceId);
 
   if (!marker) {
-    return '';
+    return `
+      <section class="province-logistics-outcome-group province-logistics-outcome-group--empty" aria-label="Détails groupés des marqueurs logistiques post-commit">
+        <div class="province-logistics-outcome-group__header">
+          <span>Résultat logistique groupé</span>
+          <strong>Aucun problème logistique post-commit</strong>
+          <small>Routes visibles: 0 · routes masquées: 0</small>
+        </div>
+        ${renderLogisticsOutcomeFilterControls()}
+      </section>
+    `;
   }
 
   const details = sortLogisticsOutcomeDetails(marker.details ?? [{ ...marker, routeLabel: marker.routeLabel, actionLabel: marker.actionLabel }]);
+  const routeSummaries = buildLogisticsRouteDecisionSummaries(marker);
 
   return `
     <section class="province-logistics-outcome-group province-logistics-outcome-group--${marker.tone}" aria-label="Détails groupés des marqueurs logistiques post-commit">
       <div class="province-logistics-outcome-group__header">
         <span>Résultat logistique groupé</span>
         <strong>${marker.label}</strong>
-        <small>${marker.routeLabel} · ${details.length} détail${details.length > 1 ? 's' : ''} trié${details.length > 1 ? 's' : ''} par gravité</small>
+        <small>${marker.routeLabel} · ${details.length} détail${details.length > 1 ? 's' : ''} trié${details.length > 1 ? 's' : ''} par gravité · routes visibles ${routeSummaries.visible.length}, masquées ${routeSummaries.hidden.length}</small>
       </div>
-      <ol>
-        ${details.map((detail) => `
-          <li class="province-logistics-outcome-group__item province-logistics-outcome-group__item--${detail.tone}">
-            <strong>${detail.label}</strong>
-            <span>${detail.routeLabel}: ${detail.detail}</span>
-            <small>${detail.actionLabel}</small>
-          </li>
-        `).join('')}
-      </ol>
+      ${renderLogisticsOutcomeFilterControls()}
+      <div class="province-logistics-route-decisions" aria-label="Résumé décisionnel des routes logistiques">
+        <h4>Routes visibles</h4>
+        ${renderLogisticsRouteDecisionList(routeSummaries.visible, 'visible')}
+        <h4>Routes masquées par filtre</h4>
+        ${renderLogisticsRouteDecisionList(routeSummaries.hidden, 'masquée')}
+      </div>
     </section>
   `;
 }
@@ -7199,7 +7297,7 @@ function renderEconomyMapOverlay(economyView) {
     const routeFocused = state.hoveredRouteId === route.routeId || state.selectedRouteId === route.routeId;
     const routeBlocker = economyBlockerFocus?.routeId === route.routeId ? economyBlockerFocus : null;
     const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
-    const logisticsOutcomeMarker = state.logisticsOutcomeMarkers.find((marker) => marker.routeId === route.routeId) ?? null;
+    const logisticsOutcomeMarker = getVisibleLogisticsOutcomeMarkers().find((marker) => marker.routeId === route.routeId) ?? null;
 
     return `
       <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''} ${routeBlocker ? `has-economy-blocker has-economy-blocker--${routeBlocker.tone}` : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${routeBlocker ? `${routeBlocker.summary}. ${routeBlocker.effect}` : stress.summary}">
@@ -8584,6 +8682,13 @@ function render() {
       state.focusedProvinceId = element.dataset.provinceId;
       state.selectedProvinceId = element.dataset.provinceId;
       state.popupProvinceId = element.dataset.provinceId;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-logistics-outcome-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.logisticsOutcomeSeverityFilter = element.dataset.logisticsOutcomeFilter ?? 'all';
       render();
     });
   });
