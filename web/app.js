@@ -989,6 +989,102 @@ function getAtlasEconomyCorridor(origin, destination) {
   return 'Carrefour central';
 }
 
+function buildAtlasSupplyRouteCapacityForecast(route, stress, tensionByCityId) {
+  const cityTensions = route.cityIds.map((cityId) => tensionByCityId[cityId]?.tensionLevel ?? 'low');
+  const highHubs = cityTensions.filter((level) => level === 'high').length;
+  const mediumHubs = cityTensions.filter((level) => level === 'medium').length;
+  const resourceLoad = route.resources.reduce((total, resource) => total + resource.capacity, 0);
+  const currentCapacity = route.totalCapacity;
+  const capacityDrag = (highHubs * 2) + Math.min(2, mediumHubs) + (stress.tone === 'high' ? 1 : 0);
+  const recoveryLift = stress.tone === 'low' && highHubs === 0 ? 1 : 0;
+  const projectedCapacity = Math.max(0, currentCapacity - capacityDrag + recoveryLift);
+  const delta = projectedCapacity - currentCapacity;
+  const uncertain = route.cityIds.length < 2 || route.resources.length === 0 || resourceLoad === 0;
+  const tone = uncertain
+    ? 'uncertain'
+    : delta <= -2 || (stress.tone === 'high' && projectedCapacity <= currentCapacity)
+      ? 'overload'
+      : delta >= 1 || (stress.tone === 'low' && projectedCapacity >= currentCapacity)
+        ? 'recovery'
+        : 'watch';
+
+  return {
+    routeId: route.routeId,
+    routeName: route.routeName,
+    currentCapacity,
+    projectedCapacity,
+    delta,
+    tone,
+    uncertain,
+    label: uncertain
+      ? `${route.routeName}: prévision incertaine`
+      : `${route.routeName}: ${currentCapacity}→${projectedCapacity}`,
+    status: uncertain
+      ? 'prévision incertaine'
+      : tone === 'overload'
+        ? 'risque surcharge prochain tour'
+        : tone === 'recovery'
+          ? 'capacité sous contrôle'
+          : 'capacité à surveiller',
+    action: uncertain
+      ? 'Confirmer flux et ressource avant arbitrage.'
+      : tone === 'overload'
+        ? 'Préparer délestage ou stock tampon.'
+        : tone === 'recovery'
+          ? 'Maintenir corridor ouvert.'
+          : 'Surveiller avant engagement lourd.',
+  };
+}
+
+function buildAtlasSupplyCapacityForecasts(economyView) {
+  if (!economyView) {
+    return { routes: [], byRouteId: new Map(), byCorridor: new Map() };
+  }
+
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const byCorridor = new Map();
+  const routes = economyView.overlay.routes
+    .map((route) => {
+      const origin = cityLayoutsById[route.originCityId];
+      const destination = cityLayoutsById[route.destinationCityId];
+
+      if (!origin || !destination) {
+        return null;
+      }
+
+      const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
+      const forecast = buildAtlasSupplyRouteCapacityForecast(route, stress, tensionByCityId);
+      const corridor = getAtlasEconomyCorridor(origin, destination);
+      const score = forecast.tone === 'overload'
+        ? 40 + Math.abs(forecast.delta) + route.totalCapacity
+        : forecast.tone === 'uncertain'
+          ? 26 + route.totalCapacity
+          : forecast.tone === 'watch'
+            ? 18 + route.totalCapacity
+            : 10 + route.totalCapacity;
+
+      return { ...forecast, corridor, score };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName));
+
+  for (const forecast of routes) {
+    const current = byCorridor.get(forecast.corridor) ?? { overload: 0, recovery: 0, watch: 0, uncertain: 0, labels: [] };
+    current[forecast.tone] += 1;
+    if (forecast.tone !== 'recovery' || current.labels.length < 1) {
+      current.labels.push(forecast.label);
+    }
+    byCorridor.set(forecast.corridor, current);
+  }
+
+  return {
+    routes: routes.slice(0, 4),
+    byRouteId: new Map(routes.map((forecast) => [forecast.routeId, forecast])),
+    byCorridor,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -997,6 +1093,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
   const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
   const corridorMap = new Map();
+  const supplyForecasts = buildAtlasSupplyCapacityForecasts(economyView);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -1044,6 +1141,17 @@ function buildAtlasEconomyStressRollups(economyView) {
       const topResource = [...entry.resources.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0];
       const resourceLabel = topResource ? `${getResourceHud(topResource[0]).label} ${topResource[1]}` : 'ressource stable';
       const hubLabel = [...entry.criticalHubs].slice(0, 2).join(', ') || 'hubs stables';
+      const corridorForecast = supplyForecasts.byCorridor.get(entry.corridor);
+      const forecastTone = corridorForecast?.overload > 0
+        ? 'overload'
+        : corridorForecast?.uncertain > 0
+          ? 'uncertain'
+          : corridorForecast?.watch > 0
+            ? 'watch'
+            : 'recovery';
+      const forecastLabel = corridorForecast
+        ? `${corridorForecast.overload} surcharge · ${corridorForecast.recovery} reprise · ${corridorForecast.uncertain} incertain`
+        : 'prévision indisponible';
 
       return {
         corridor: entry.corridor,
@@ -1052,6 +1160,8 @@ function buildAtlasEconomyStressRollups(economyView) {
         saturatedRoutes: entry.saturatedRoutes,
         hubLabel,
         resourceLabel,
+        forecastTone,
+        forecastLabel,
         summary: entry.summaries[0] ?? 'Flux lisible sans tension majeure.',
         action: entry.tone === 'critical'
           ? 'Sécuriser hub critique avant extension.'
@@ -1076,6 +1186,7 @@ function buildAtlasEconomyStressRollups(economyView) {
       { tone: 'healthy', label: 'Saine', detail: `${counts.healthy} région${counts.healthy > 1 ? 's' : ''}: trafic stable` },
     ],
     regions,
+    forecasts: supplyForecasts.routes,
   };
 }
 
@@ -1088,7 +1199,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${16 + (rollup.regions.length * 7.5)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${20 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -1097,13 +1208,25 @@ function renderAtlasEconomyStressLegend(economyView) {
         </g>
       `).join('')}
       ${rollup.regions.map((region, index) => {
-        const y = 18 + (index * 7.5);
+        const y = 18 + (index * 8.1);
         return `
           <g class="atlas-economy-region-rollup atlas-economy-region-rollup--${region.tone}">
-            <rect x="5" y="${y - 2.9}" width="30.5" height="6.4" rx="1.4"></rect>
+            <rect x="5" y="${y - 2.9}" width="30.5" height="7.6" rx="1.4"></rect>
             <text class="atlas-economy-region-rollup__name" x="6.2" y="${y - 0.4}">${region.corridor} · ${region.tone === 'critical' ? 'critique' : region.tone === 'strained' ? 'tendue' : 'saine'}</text>
-            <text class="atlas-economy-region-rollup__detail" x="6.2" y="${y + 1.9}">${region.saturatedRoutes}/${region.routeCount} routes · ${region.hubLabel} · ${region.resourceLabel}</text>
-            <text class="atlas-economy-region-rollup__action" x="6.2" y="${y + 4.0}">${region.action}</text>
+            <text class="atlas-economy-region-rollup__detail" x="6.2" y="${y + 1.6}">${region.saturatedRoutes}/${region.routeCount} routes · ${region.hubLabel} · ${region.resourceLabel}</text>
+            <text class="atlas-economy-region-rollup__forecast atlas-economy-region-rollup__forecast--${region.forecastTone}" x="6.2" y="${y + 3.7}">Prévision: ${region.forecastLabel}</text>
+            <text class="atlas-economy-region-rollup__action" x="6.2" y="${y + 5.8}">${region.action}</text>
+          </g>
+        `;
+      }).join('')}
+      <text class="atlas-supply-forecast__title" x="5" y="${20 + (rollup.regions.length * 8.1)}">Capacité prochain tour</text>
+      ${rollup.forecasts.map((forecast, index) => {
+        const y = 23.8 + (rollup.regions.length * 8.1) + (index * 5.4);
+        return `
+          <g class="atlas-supply-forecast atlas-supply-forecast--${forecast.tone}" aria-label="Prévision ${forecast.routeName}: ${forecast.status}">
+            <rect x="5" y="${y - 2.8}" width="30.5" height="4.7" rx="1.2"></rect>
+            <text class="atlas-supply-forecast__route" x="6.2" y="${y - 0.6}">${forecast.label} · ${forecast.status}</text>
+            <text class="atlas-supply-forecast__action" x="6.2" y="${y + 1.2}">${forecast.action}</text>
           </g>
         `;
       }).join('')}
@@ -1118,6 +1241,7 @@ function renderAtlasWorldEconomyLayer(economyView) {
 
   const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
   const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const supplyForecasts = buildAtlasSupplyCapacityForecasts(economyView);
   const routeLines = economyView.overlay.routes.map((route, index) => {
     const origin = cityLayoutsById[route.originCityId];
     const destination = cityLayoutsById[route.destinationCityId];
@@ -1132,11 +1256,12 @@ function renderAtlasWorldEconomyLayer(economyView) {
     const controlX = ((origin.x + destination.x) / 2) + laneOffset;
     const controlY = ((origin.y + destination.y) / 2) - 3 - laneOffset;
     const path = `M${origin.x},${origin.y} Q${controlX},${controlY} ${destination.x},${destination.y}`;
+    const forecast = supplyForecasts.byRouteId.get(route.routeId);
 
     return `
-      <g class="atlas-logistics-route atlas-logistics-route--${intensity} ${route.active ? 'is-active' : 'is-inactive'}" aria-label="Route atlas ${route.routeName}: ${stress.summary}">
+      <g class="atlas-logistics-route atlas-logistics-route--${intensity} atlas-logistics-route--forecast-${forecast?.tone ?? 'unknown'} ${route.active ? 'is-active' : 'is-inactive'}" aria-label="Route atlas ${route.routeName}: ${stress.summary}; prévision capacité ${forecast?.status ?? 'indisponible'}">
         <path d="${path}" pathLength="100"></path>
-        <text x="${controlX}" y="${controlY - 1.2}" text-anchor="middle">${route.totalCapacity}</text>
+        <text x="${controlX}" y="${controlY - 1.2}" text-anchor="middle">${forecast && !forecast.uncertain ? `${route.totalCapacity}→${forecast.projectedCapacity}` : `${route.totalCapacity}?`}</text>
       </g>
     `;
   }).join('');

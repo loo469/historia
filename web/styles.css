@@ -10216,6 +10216,7 @@ button { font: inherit; }
   stroke: rgba(2, 6, 23, 0.86);
   stroke-width: 0.38;
 }
+
 .atlas-culture-summary__drift {
   fill: #a7f3d0;
   font-size: 1.22px;
@@ -10245,3 +10246,49 @@ button { font: inherit; }
   stroke: rgba(2, 6, 23, 0.86);
   stroke-width: 0.34;
 }
+
+.atlas-logistics-route--forecast-overload path {
+  stroke: #fb7185;
+  stroke-width: 0.82;
+  stroke-dasharray: 4 1.2;
+}
+.atlas-logistics-route--forecast-recovery path {
+  stroke: #67e8f9;
+}
+.atlas-logistics-route--forecast-watch path {
+  stroke: #fbbf24;
+}
+.atlas-logistics-route--forecast-uncertain path {
+  stroke: #c4b5fd;
+  stroke-dasharray: 1.4 1.4;
+}
+.atlas-supply-forecast__title {
+  fill: #f8fafc;
+  font-size: 1.65px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.atlas-supply-forecast rect {
+  fill: rgba(15, 23, 42, 0.58);
+  stroke: rgba(148, 163, 184, 0.22);
+  stroke-width: 0.24;
+}
+.atlas-supply-forecast--overload rect { stroke: rgba(251, 113, 133, 0.76); fill: rgba(127, 29, 29, 0.38); }
+.atlas-supply-forecast--recovery rect { stroke: rgba(103, 232, 249, 0.48); fill: rgba(14, 116, 144, 0.28); }
+.atlas-supply-forecast--watch rect { stroke: rgba(251, 191, 36, 0.58); fill: rgba(120, 53, 15, 0.3); }
+.atlas-supply-forecast--uncertain rect { stroke: rgba(196, 181, 253, 0.68); fill: rgba(76, 29, 149, 0.3); }
+.atlas-supply-forecast__route {
+  fill: #e0f2fe;
+  font-size: 1.14px;
+  font-weight: 900;
+}
+.atlas-supply-forecast__action,
+.atlas-economy-region-rollup__forecast {
+  fill: #bae6fd;
+  font-size: 1.05px;
+  font-weight: 750;
+}
+.atlas-economy-region-rollup__forecast--overload { fill: #fecdd3; }
+.atlas-economy-region-rollup__forecast--recovery { fill: #a5f3fc; }
+.atlas-economy-region-rollup__forecast--watch { fill: #fde68a; }
+.atlas-economy-region-rollup__forecast--uncertain { fill: #ddd6fe; }
