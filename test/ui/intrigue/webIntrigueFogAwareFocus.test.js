@@ -37,3 +37,19 @@ test('selected intrigue province detail explains fog reasons with safe action hi
   assert.match(stylesSource, /intrigue-fog-hint--warning/);
   assert.match(stylesSource, /intrigue-fog-hint--watch/);
 });
+
+test('selected intrigue province compares safe responses under fog', () => {
+  assert.match(webAppSource, /function buildSelectedProvinceIntrigueResponseChoices/);
+  assert.match(webAppSource, /Choix sous brouillard/);
+  assert.match(webAppSource, /Agir ou attendre/);
+  assert.match(webAppSource, /risque d'exposition/);
+  assert.match(webAppSource, /Info manquante/);
+  assert.match(webAppSource, /Transforme le soupçon en renseignement exploitable sans nommer la cible/);
+  assert.match(webAppSource, /Surveiller: garder la province en observation/);
+  assert.match(webAppSource, /privilégier une réponse prudente avant toute neutralisation visible/);
+  assert.match(webAppSource, /Surveiller sans escalade: attendre/);
+  assert.match(stylesSource, /intrigue-response-comparison/);
+  assert.match(stylesSource, /intrigue-response-choice--danger/);
+  assert.match(stylesSource, /intrigue-response-choice--warning/);
+  assert.match(stylesSource, /intrigue-response-choice--watch/);
+});

@@ -3184,6 +3184,73 @@ function buildSelectedProvinceIntrigueFogHint(entry, selectedCellules, selectedO
   };
 }
 
+function buildSelectedProvinceIntrigueResponseChoices(entry, selectedCellules, selectedOperations, fogHint = null) {
+  if (!entry) {
+    return [];
+  }
+
+  const compromisedCount = selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length;
+  const exposedCount = entry.metrics.exposedCellCount + compromisedCount;
+  const hasActiveOperation = selectedOperations.length > 0;
+  const heatedOperation = selectedOperations.find((operation) => operation.detectionRisk >= 50 || operation.heat >= 50) ?? null;
+  const riskIsHigh = entry.sabotageRiskLevel === 'high' || exposedCount > 0 || Boolean(heatedOperation);
+  const baseMissingInfo = exposedCount > 0
+    ? 'identité de cellule et relais précis masqués'
+    : hasActiveOperation
+      ? 'objectif exact et relais opérationnel masqués'
+      : 'source du signal et loyautés locales inconnues';
+  const choices = [
+    {
+      code: 'surveiller',
+      label: 'Surveiller',
+      tone: 'watch',
+      exposureRisk: 'faible',
+      missingInfo: baseMissingInfo,
+      gain: 'Maintient le signal visible sans forcer la révélation du brouillard.',
+      summary: 'Surveiller: garder la province en observation et attendre un signal plus net.',
+      recommended: !riskIsHigh,
+    },
+    {
+      code: 'infiltrer',
+      label: 'Infiltrer',
+      tone: riskIsHigh ? 'warning' : 'watch',
+      exposureRisk: riskIsHigh ? 'modéré' : 'faible à modéré',
+      missingInfo: exposedCount > 0 ? 'canal sûr pour approcher la cellule exposée' : 'confirmation du hotspot avant contact direct',
+      gain: 'Transforme le soupçon en renseignement exploitable sans nommer la cible.',
+      summary: 'Collecter renseignement: approcher le réseau sans révéler cellule, relais ou objectif.',
+      recommended: !heatedOperation && entry.presenceLevel !== 'low',
+    },
+  ];
+
+  if (riskIsHigh) {
+    choices.push({
+      code: exposedCount > 0 ? 'reduire-chaleur' : 'temporiser',
+      label: exposedCount > 0 ? 'Réduire chaleur' : 'Temporiser',
+      tone: exposedCount > 0 ? 'danger' : 'warning',
+      exposureRisk: exposedCount > 0 ? 'élevé si action directe' : 'modéré tant que la sécurité cible reste haute',
+      missingInfo: fogHint?.reason ?? baseMissingInfo,
+      gain: exposedCount > 0
+        ? 'Diminue la pression avant une neutralisation publique ou ciblée.'
+        : 'Laisse passer la fenêtre risquée tout en gardant le théâtre sous contrôle.',
+      summary: `${exposedCount > 0 ? 'Réduire chaleur' : 'Temporiser'}: privilégier une réponse prudente avant toute neutralisation visible.`,
+      recommended: true,
+    });
+  } else {
+    choices.push({
+      code: 'attendre',
+      label: 'Attendre',
+      tone: 'watch',
+      exposureRisk: 'très faible',
+      missingInfo: baseMissingInfo,
+      gain: 'Préserve totalement le brouillard mais reporte le gain de renseignement.',
+      summary: 'Surveiller sans escalade: attendre si le tour ne peut pas absorber de chaleur intrigue.',
+      recommended: false,
+    });
+  }
+
+  return choices.slice(0, 3);
+}
+
 function getIntrigueViewModel() {
   const liveCellules = intrigueCellules.map(getIntrigueCelluleStateByTurn);
   const liveOperations = intrigueOperations.map(getIntrigueOperationStateByTurn);
@@ -3236,6 +3303,8 @@ function getIntrigueViewModel() {
       ? `${selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length} cellule${selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length > 1 ? 's' : ''} compromise${selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length > 1 ? 's' : ''}`
       : null,
   ].filter(Boolean);
+  const selectedFogHint = buildSelectedProvinceIntrigueFogHint(selectedEntry, selectedCellules, selectedOperations);
+  const selectedResponseChoices = buildSelectedProvinceIntrigueResponseChoices(selectedEntry, selectedCellules, selectedOperations, selectedFogHint);
   const incidents = [
     {
       id: 'incident-locks',
@@ -3284,7 +3353,8 @@ function getIntrigueViewModel() {
       sleeperCellCount: selectedEntry.metrics.sleeperCellCount,
       activeOperationCount: selectedOperations.length,
       drillDown: selectedEntry.drillDown,
-      fogHint: buildSelectedProvinceIntrigueFogHint(selectedEntry, selectedCellules, selectedOperations),
+      fogHint: selectedFogHint,
+      responseChoices: selectedResponseChoices,
       reasons: selectedRiskReasons.length > 0 ? selectedRiskReasons : ['Aucun signal Delta notable'],
       guidance: selectedEntry.sabotageRiskLevel === 'high'
         ? 'Priorite a la surveillance locale, les marqueurs rouges concentrent le risque actif.'
@@ -4122,6 +4192,30 @@ function renderIntrigueSidePanel(intrigueView) {
               <p>${intrigueView.selectedProvince.fogHint.reason}</p>
               <small>${intrigueView.selectedProvince.fogHint.actionHint}</small>
             </aside>
+          ` : ''}
+          ${intrigueView.selectedProvince.responseChoices?.length ? `
+            <section class="intrigue-response-comparison" aria-label="Comparer les réponses intrigue sûres sous brouillard">
+              <div class="intrigue-response-comparison__header">
+                <span>Choix sous brouillard</span>
+                <strong>Agir ou attendre</strong>
+              </div>
+              <div class="intrigue-response-comparison__list">
+                ${intrigueView.selectedProvince.responseChoices.map((choice) => `
+                  <article class="intrigue-response-choice intrigue-response-choice--${choice.tone} ${choice.recommended ? 'is-recommended' : ''}" aria-label="${choice.label}: risque d'exposition ${choice.exposureRisk}">
+                    <div>
+                      <strong>${choice.label}</strong>
+                      ${choice.recommended ? '<b>prudente</b>' : ''}
+                    </div>
+                    <p>${choice.summary}</p>
+                    <dl>
+                      <div><dt>Exposition</dt><dd>${choice.exposureRisk}</dd></div>
+                      <div><dt>Info manquante</dt><dd>${choice.missingInfo}</dd></div>
+                      <div><dt>Gain</dt><dd>${choice.gain}</dd></div>
+                    </dl>
+                  </article>
+                `).join('')}
+              </div>
+            </section>
           ` : ''}
           <div class="intrigue-province-focus__stats">
             <span>${intrigueView.selectedProvince.celluleCount} cellules</span>
