@@ -115,3 +115,17 @@ test('risky queued intrigue responses suggest fog-safe fallback actions', () => 
   assert.match(stylesSource, /province-intrigue-detection-fallback--ready/);
   assert.match(stylesSource, /province-intrigue-detection-fallback--empty/);
 });
+
+test('queued intrigue actions show cumulative exposure risk and mitigations', () => {
+  assert.match(webAppSource, /function buildCumulativeQueuedIntrigueExposureRisk/);
+  assert.match(webAppSource, /Risque d’exposition cumulé intrigue/);
+  assert.match(webAppSource, /Risque cumulé/);
+  assert.match(webAppSource, /contribution\$\{contributions\.length > 1 \? 's' : ''\} intrigue agrégée/);
+  assert.match(webAppSource, /détails par action conservés ci-dessus/);
+  assert.match(webAppSource, /remplacer \$\{contributions\[0\]\.actionLabel\} sur \$\{contributions\[0\]\.provinceLabel\} par \$\{contributions\[0\]\.fallback\}/);
+  assert.match(webAppSource, /différer une action exposée/);
+  assert.match(webAppSource, /Agrégation prudente: provinces et tendances visibles seulement, sans révéler cellule, canal ou menace réelle/);
+  assert.match(stylesSource, /province-intrigue-cumulative-risk/);
+  assert.match(stylesSource, /province-intrigue-cumulative-risk--danger/);
+  assert.match(stylesSource, /province-intrigue-cumulative-risk--warning/);
+});

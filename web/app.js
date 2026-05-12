@@ -2692,8 +2692,65 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
   };
 }
 
+function buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigueView) {
+  const riskBandScore = { low: 8, medium: 16, high: 26 };
+  const escalationScore = { faible: 4, moyenne: 9, élevée: 16 };
+  const currentContribution = projection.empty ? null : {
+    provinceLabel: province.label,
+    actionLabel: projection.label,
+    score: Math.max(0, Number.parseInt(projection.afterLabel, 10) || 0),
+    reason: projection.sources[0]?.label ?? 'Projection locale',
+    fallback: projection.fallback.empty ? 'différer' : projection.fallback.action.toLowerCase(),
+  };
+  const proposedContributions = (intrigueView?.map?.entries ?? [])
+    .filter((entry) => entry.locationId !== province.provinceId && entry.drillDown?.quickResponses?.length)
+    .map((entry) => {
+      const response = entry.drillDown.quickResponses.find((candidate) => candidate.code === entry.drillDown.recommendedResponseCode)
+        ?? entry.drillDown.quickResponses[0];
+      const score = (riskBandScore[entry.drillDown.riskBand] ?? 10)
+        + (escalationScore[response.escalationProbability] ?? 6)
+        + Math.min(16, response.heatGenerated ?? 0);
+      const provinceLabel = provinces.find((candidate) => candidate.id === entry.locationId)?.name
+        ?? entry.locationName
+        ?? entry.locationId;
+
+      return {
+        provinceLabel,
+        actionLabel: response.label,
+        score,
+        reason: entry.drillDown.criticality === 'critical' ? 'Signal critique' : response.risk ?? 'Réponse proposée',
+        fallback: response.code === 'exposer' ? 'réduire chaleur' : response.code === 'infiltrer' ? 'collecter renseignement' : 'surveiller',
+      };
+    });
+  const contributions = [currentContribution, ...proposedContributions]
+    .filter(Boolean)
+    .sort((left, right) => right.score - left.score || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+  const totalScore = contributions.reduce((sum, contribution) => sum + contribution.score, 0);
+  const level = totalScore >= 110 ? 'critique' : totalScore >= 75 ? 'élevé' : totalScore >= 40 ? 'modéré' : contributions.length > 0 ? 'faible' : 'vide';
+  const tone = level === 'critique' ? 'danger' : level === 'élevé' ? 'warning' : level === 'modéré' ? 'watch' : 'masked';
+  const mitigation = contributions.length === 0
+    ? 'Aucune mitigation cumulée: attendre une réponse intrigue en file ou proposée.'
+    : level === 'critique' || level === 'élevé'
+      ? `Mitigation: remplacer ${contributions[0].actionLabel} sur ${contributions[0].provinceLabel} par ${contributions[0].fallback}, ou différer une action exposée.`
+      : `Mitigation simple: conserver ${contributions[0].fallback} comme repli si un nouveau signal accroît l’exposition.`;
+
+  return {
+    level,
+    tone,
+    totalLabel: contributions.length === 0 ? '—' : `${Math.min(100, totalScore)}`,
+    summary: contributions.length === 0
+      ? 'Aucun risque cumulé lisible: les détails par action restent disponibles dès qu’une réponse intrigue est en file.'
+      : `${contributions.length} contribution${contributions.length > 1 ? 's' : ''} intrigue agrégée${contributions.length > 1 ? 's' : ''}; détails par action conservés ci-dessus.`,
+    mitigation,
+    contributions,
+    fogLimit: 'Agrégation prudente: provinces et tendances visibles seulement, sans révéler cellule, canal ou menace réelle.',
+  };
+}
+
 function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const projection = buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
+  const cumulativeRisk = buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigueView);
 
   return `
     <section class="province-intrigue-detection-projection province-intrigue-detection-projection--${projection.tone}" aria-label="Projection du risque de détection intrigue">
@@ -2719,6 +2776,25 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
         <span>Fallback prudent</span>
         <strong>${projection.fallback.action}</strong>
         <small>${projection.fallback.detail}</small>
+      </div>
+      <div class="province-intrigue-cumulative-risk province-intrigue-cumulative-risk--${cumulativeRisk.tone}" aria-label="Risque d’exposition cumulé intrigue">
+        <div class="province-intrigue-cumulative-risk__header">
+          <span>Risque cumulé</span>
+          <strong>${cumulativeRisk.level} · ${cumulativeRisk.totalLabel}</strong>
+        </div>
+        <p>${cumulativeRisk.summary}</p>
+        ${cumulativeRisk.contributions.length > 0 ? `
+          <ol>
+            ${cumulativeRisk.contributions.map((contribution) => `
+              <li>
+                <strong>${contribution.provinceLabel}</strong>
+                <span>${contribution.actionLabel} · ${contribution.reason}</span>
+              </li>
+            `).join('')}
+          </ol>
+        ` : ''}
+        <small>${cumulativeRisk.mitigation}</small>
+        <small>${cumulativeRisk.fogLimit}</small>
       </div>
       <small>${projection.fogLimit}</small>
     </section>
