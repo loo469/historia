@@ -391,6 +391,8 @@ const state = {
   focusedProvinceId: 'crown-heart',
   selectedProvinceId: 'river-gate',
   hoveredProvinceId: null,
+  readinessFocusProvinceId: null,
+  readinessFocusTone: null,
   activeOverlaySlot: 'culture-overlay',
   popupProvinceId: 'river-gate',
   hoveredCityId: 'river-gate-city',
@@ -440,6 +442,8 @@ function applyMapScenario(scenario) {
   state.mobilePanelSection = 'details';
   state.mobileMapExpanded = true;
   state.hoveredProvinceId = null;
+  state.readinessFocusProvinceId = null;
+  state.readinessFocusTone = null;
   state.hoveredRouteId = null;
   state.selectedRouteId = null;
   state.economyFilters = {
@@ -652,9 +656,11 @@ function renderProvinceSurface(shell, focusContext) {
         const isSelected = province.selectionState.selected;
         const isFocused = province.selectionState.focused;
         const isHovered = province.selectionState.hovered;
-        const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince);
+        const readinessTone = state.readinessFocusProvinceId === province.provinceId ? state.readinessFocusTone : null;
+        const isReadinessHighlight = Boolean(readinessTone);
+        const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
         return `
-          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isHovered ? 'is-hovered' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
+          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isHovered ? 'is-hovered' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isReadinessHighlight ? 'is-readiness-highlight' : ''} ${readinessTone ? `is-readiness-${readinessTone}` : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
             <polygon class="province-surface__glow" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
             <polygon class="province-surface__core" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
             <polygon class="province-surface__hairline" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
@@ -672,15 +678,20 @@ function renderProvinceCard(province, focusContext) {
   const isSelected = province.selectionState.selected;
   const isFocused = province.selectionState.focused;
   const isHovered = province.selectionState.hovered;
-  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince);
+  const readinessTone = state.readinessFocusProvinceId === province.provinceId ? state.readinessFocusTone : null;
+  const isReadinessHighlight = Boolean(readinessTone);
+  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
-  const selectionSignal = isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
+  const readinessLabel = readinessTone === 'danger' ? 'menace immédiate' : readinessTone === 'warning' ? 'préparation insuffisante' : readinessTone === 'ready' ? 'opportunité tactique' : null;
+  const selectionSignal = isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
     isFocused ? 'is-focused' : '',
     isHovered ? 'is-hovered' : '',
     isNeighbor ? 'is-neighbor' : '',
+    isReadinessHighlight ? 'is-readiness-highlight' : '',
+    readinessTone ? `is-readiness-${readinessTone}` : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
     province.occupied ? 'is-occupied' : '',
@@ -691,10 +702,11 @@ function renderProvinceCard(province, focusContext) {
       class="${classes}"
       type="button"
       data-province-id="${province.provinceId}"
-      data-tactical-state="${tacticalState}"
+      data-tactical-state="${readinessLabel ?? tacticalState}"
+      data-readiness-highlight="${readinessTone ?? ''}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
-      aria-label="${province.label}, ${tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
+      aria-label="${province.label}, ${readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
     >
       <span class="province-node__terrain"></span>
       <span class="province-node__focus-rail"></span>
@@ -2068,22 +2080,24 @@ function buildConflictReadinessWarnings(shell, intrigueView = null) {
 
 function renderConflictReadinessWarnings(shell, intrigueView = null) {
   const warnings = buildConflictReadinessWarnings(shell, intrigueView);
+  const primaryWarning = warnings[0] ?? null;
 
   return `
-    <div class="conflict-readiness-summary" aria-label="Préparation conflit avant fin de tour">
+    <div class="conflict-readiness-summary" tabindex="0" data-readiness-summary="true" data-readiness-default-province="${primaryWarning?.provinceId ?? ''}" data-readiness-default-tone="${primaryWarning?.tone ?? ''}" aria-label="Préparation conflit avant fin de tour">
       <div class="conflict-readiness-summary__header">
         <strong>Préparation conflit</strong>
         <span>${warnings.length} points clés</span>
       </div>
       <div class="conflict-readiness-summary__list">
         ${warnings.map((warning) => `
-          <button class="conflict-readiness-warning conflict-readiness-warning--${warning.tone}" type="button" data-province-id="${warning.provinceId}" data-readiness-focus="${warning.provinceId}" aria-label="Focaliser ${warning.focusTargetLabel}: ${warning.priorityLabel}">
+          <button class="conflict-readiness-warning conflict-readiness-warning--${warning.tone}" type="button" data-province-id="${warning.provinceId}" data-readiness-focus="${warning.provinceId}" data-readiness-tone="${warning.tone}" aria-label="Focaliser ${warning.focusTargetLabel}: ${warning.priorityLabel}">
             <div>
               <strong>${warning.provinceLabel}</strong>
               <span>${warning.priorityLabel} · ${warning.focusTargetLabel}</span>
             </div>
             <small>${warning.actionCode} · ${warning.actionLabel}</small>
             <p>${warning.detail}</p>
+            <small class="conflict-readiness-warning__tooltip">Carte: ${warning.focusTargetLabel} · ${warning.tone === 'danger' ? 'menace immédiate' : warning.tone === 'warning' ? 'préparation insuffisante' : 'opportunité tactique'}</small>
           </button>
         `).join('')}
       </div>
@@ -4806,21 +4820,54 @@ function render() {
     </main>
   `;
 
-  document.querySelectorAll('[data-province-id]').forEach((element) => {
-    element.addEventListener('mouseenter', () => {
-      state.hoveredProvinceId = element.dataset.provinceId;
-      state.focusedProvinceId = element.dataset.provinceId;
+  document.querySelectorAll('[data-readiness-summary]').forEach((element) => {
+    element.addEventListener('focus', () => {
+      if (!element.dataset.readinessDefaultProvince) {
+        return;
+      }
+
+      state.readinessFocusProvinceId = element.dataset.readinessDefaultProvince;
+      state.readinessFocusTone = element.dataset.readinessDefaultTone ?? 'ready';
       render();
     });
 
-    element.addEventListener('mouseleave', () => {
-      state.hoveredProvinceId = null;
-      state.focusedProvinceId = state.selectedProvinceId;
+    element.addEventListener('blur', () => {
+      state.readinessFocusProvinceId = null;
+      state.readinessFocusTone = null;
       render();
     });
+  });
+
+  document.querySelectorAll('[data-province-id]').forEach((element) => {
+    const applyProvinceFocus = () => {
+      state.hoveredProvinceId = element.dataset.provinceId;
+      state.focusedProvinceId = element.dataset.provinceId;
+      if (element.dataset.readinessFocus) {
+        state.readinessFocusProvinceId = element.dataset.readinessFocus;
+        state.readinessFocusTone = element.dataset.readinessTone ?? 'ready';
+      }
+      render();
+    };
+    const clearProvinceFocus = () => {
+      state.hoveredProvinceId = null;
+      state.focusedProvinceId = state.selectedProvinceId;
+      if (element.dataset.readinessFocus) {
+        state.readinessFocusProvinceId = null;
+        state.readinessFocusTone = null;
+      }
+      render();
+    };
+
+    element.addEventListener('mouseenter', applyProvinceFocus);
+    element.addEventListener('focus', applyProvinceFocus);
+
+    element.addEventListener('mouseleave', clearProvinceFocus);
+    element.addEventListener('blur', clearProvinceFocus);
 
     element.addEventListener('click', () => {
       state.hoveredProvinceId = null;
+      state.readinessFocusProvinceId = element.dataset.readinessFocus ?? null;
+      state.readinessFocusTone = element.dataset.readinessFocus ? (element.dataset.readinessTone ?? 'ready') : null;
       state.focusedProvinceId = element.dataset.provinceId;
       state.selectedProvinceId = element.dataset.provinceId;
       state.popupProvinceId = element.dataset.provinceId;
