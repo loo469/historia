@@ -561,11 +561,82 @@ function buildAtlasTerrainShapes(shell) {
   };
 }
 
-function renderAtlasWorldCanvas(shell, economyView = null) {
+function buildAtlasCultureFeatures(cultureView) {
+  const entries = cultureView?.overlay ?? [];
+  const dominantByRegion = new Map();
+
+  entries.forEach((entry) => {
+    const current = dominantByRegion.get(entry.regionId);
+    if (!current || entry.influenceScore > current.influenceScore) {
+      dominantByRegion.set(entry.regionId, entry);
+    }
+  });
+
+  const influenceZones = [...dominantByRegion.values()].map((entry) => ({
+    regionId: entry.regionId,
+    cultureName: entry.cultureName,
+    influenceTier: entry.influenceTier,
+    tone: getCultureTone(entry),
+    polygon: getProvincePolygon(entry.regionId),
+    center: getProvinceCenter(entry.regionId),
+    score: entry.influenceScore,
+  }));
+
+  const discoverySites = entries.flatMap((entry) => entry.regionalDiscoveryLinks.slice(0, 2).map((link, index) => ({
+    siteId: `${entry.regionId}:${entry.cultureId}:${link.discoveryId}:${index}`,
+    regionId: entry.regionId,
+    cultureName: entry.cultureName,
+    discoveryId: link.discoveryId,
+    tone: getCultureTone(entry),
+    center: getProvinceCenter(entry.regionId),
+    offset: (index - 0.5) * 2.8,
+  })));
+
+  return {
+    influenceZones,
+    cultureMarkers: influenceZones.filter((zone) => zone.influenceTier === 'dominant' || zone.influenceTier === 'strong'),
+    discoverySites,
+  };
+}
+
+function renderAtlasCultureLayer(cultureView) {
+  const features = buildAtlasCultureFeatures(cultureView);
+  const active = state.activeOverlaySlot === 'culture-overlay';
+
+  if (!features.influenceZones.length) {
+    return '';
+  }
+
+  return `
+    <g class="atlas-culture-layer ${active ? 'is-active' : 'is-muted'}" aria-label="Couche atlas culture et découvertes">
+      ${features.influenceZones.map((zone) => `
+        <polygon class="atlas-culture-zone atlas-culture-zone--${zone.tone} atlas-culture-zone--${zone.influenceTier}" points="${zone.polygon}" aria-label="Zone d’influence ${zone.cultureName}: ${zone.influenceTier}"></polygon>
+      `).join('')}
+      ${features.cultureMarkers.map((marker) => `
+        <g class="atlas-culture-marker atlas-culture-marker--${marker.tone}" data-atlas-culture-region="${marker.regionId}">
+          <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="${marker.influenceTier === 'dominant' ? 2.35 : 1.85}"></circle>
+          <text x="${marker.center.x}%" y="${marker.center.y + 0.82}%" text-anchor="middle">C</text>
+        </g>
+      `).join('')}
+      ${features.discoverySites.map((site) => {
+        const x = site.center.x + site.offset;
+        const y = site.center.y - 4.8;
+        return `
+          <g class="atlas-discovery-site atlas-discovery-site--${site.tone}" data-atlas-discovery="${site.discoveryId}">
+            <path d="M ${x} ${y - 1.05} L ${x + 1.05} ${y} L ${x} ${y + 1.05} L ${x - 1.05} ${y} Z"></path>
+            <title>${site.discoveryId} · ${site.cultureName}</title>
+          </g>
+        `;
+      }).join('')}
+    </g>
+  `;
+}
+
+function renderAtlasWorldCanvas(shell, economyView = null, cultureView = null) {
   const atlas = buildAtlasTerrainShapes(shell);
 
   return `
-    <svg class="atlas-world-canvas" viewBox="0 0 100 100" aria-label="Canevas atlas: océans, continents, îles et relief">
+    <svg class="atlas-world-canvas" viewBox="0 0 100 100" aria-label="Canevas atlas: océans, continents, îles, relief, cultures et découvertes">
       <defs>
         <linearGradient id="atlasOceanGradient" x1="0" x2="1" y1="0" y2="1">
           <stop offset="0%" stop-color="#0f3b57"></stop>
@@ -590,6 +661,7 @@ function renderAtlasWorldCanvas(shell, economyView = null) {
         <circle class="atlas-island atlas-island--${shape.terrain}" cx="${shape.center.x}" cy="${shape.center.y}" r="${shape.radius}" aria-label="Île ou archipel: ${shape.label}"></circle>
       `).join('')}
       ${renderAtlasWorldEconomyLayer(economyView)}
+      ${renderAtlasCultureLayer(cultureView)}
     </svg>
   `;
 }
@@ -10372,7 +10444,7 @@ function renderTacticalCoordinateGrid() {
 function getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null, worldClimateLayer = null) {
   return [
     { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
-    { key: 'atlas', className: 'map-layer map-layer--atlas', content: renderAtlasWorldCanvas(shell, economyView) },
+    { key: 'atlas', className: 'map-layer map-layer--atlas', content: renderAtlasWorldCanvas(shell, economyView, cultureView) },
     { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
     { key: 'surface', className: 'map-layer map-layer--surface', content: renderProvinceSurface(shell, focusContext) },
     { key: 'relations', className: 'map-layer map-layer--relations', content: renderStrategicRelations(shell) },

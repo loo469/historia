@@ -20,7 +20,7 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /atlasOceanGradient/);
   assert.match(webAppSource, /atlas-region--\$\{shape\.terrain\}/);
   assert.match(webAppSource, /map-layer--atlas/);
-  assert.match(webAppSource, /renderAtlasWorldCanvas\(shell, economyView\)/);
+  assert.match(webAppSource, /renderAtlasWorldCanvas\(shell, economyView, cultureView\)/);
   assert.match(webAppSource, /function renderAtlasWorldEconomyLayer/);
   assert.match(webAppSource, /atlas-world-economy-layer/);
   assert.match(webAppSource, /atlas-logistics-route/);

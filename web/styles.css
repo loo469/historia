@@ -9844,3 +9844,40 @@ button { font: inherit; }
   fill: #cbd5e1;
   font-size: 1.55px;
 }
+
+.atlas-culture-layer {
+  pointer-events: none;
+  opacity: 0.74;
+}
+.atlas-culture-layer.is-muted { opacity: 0.34; }
+.atlas-culture-zone {
+  fill: rgba(45, 212, 191, 0.12);
+  stroke: rgba(94, 234, 212, 0.2);
+  stroke-width: 0.38;
+  stroke-dasharray: 2 1.6;
+}
+.atlas-culture-zone--amber { fill: rgba(251, 191, 36, 0.12); stroke: rgba(251, 191, 36, 0.26); }
+.atlas-culture-zone--rose { fill: rgba(251, 113, 133, 0.1); stroke: rgba(251, 113, 133, 0.24); }
+.atlas-culture-zone--cyan { fill: rgba(34, 211, 238, 0.12); stroke: rgba(103, 232, 249, 0.26); }
+.atlas-culture-zone--dominant { stroke-width: 0.58; opacity: 0.92; }
+.atlas-culture-marker circle {
+  fill: rgba(15, 23, 42, 0.82);
+  stroke: rgba(167, 243, 208, 0.82);
+  stroke-width: 0.5;
+}
+.atlas-culture-marker text {
+  fill: #d1fae5;
+  font-size: 2.05px;
+  font-weight: 900;
+}
+.atlas-culture-marker--amber circle { stroke: rgba(253, 230, 138, 0.9); }
+.atlas-culture-marker--rose circle { stroke: rgba(254, 205, 211, 0.9); }
+.atlas-culture-marker--cyan circle { stroke: rgba(165, 243, 252, 0.9); }
+.atlas-discovery-site path {
+  fill: rgba(224, 242, 254, 0.86);
+  stroke: rgba(8, 47, 73, 0.9);
+  stroke-width: 0.32;
+}
+.atlas-discovery-site--amber path { fill: #fde68a; }
+.atlas-discovery-site--rose path { fill: #fecdd3; }
+.atlas-discovery-site--cyan path { fill: #a5f3fc; }
