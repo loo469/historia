@@ -1238,6 +1238,53 @@ function renderFocusedLogisticsOutcomeGroup(province) {
 }
 
 
+function buildProvinceWarOverlayOverflowSummary(province, overlays = {}, displayLimit = 2) {
+  const warOverlays = [
+    province.contested ? { kind: 'front', label: 'Front actif' } : null,
+    overlays.readinessTone ? { kind: 'front', label: 'Alerte préparation' } : null,
+    overlays.militaryOutcomeMarker ? { kind: 'front', label: overlays.militaryOutcomeMarker.label } : null,
+    overlays.logisticsOutcomeMarker ? { kind: 'supply', label: overlays.logisticsOutcomeMarker.label } : null,
+    ['collapsed', 'disrupted', 'strained'].includes(province.supplyLevel) ? { kind: 'supply', label: `Ravitaillement ${province.supplyTone}` } : null,
+  ].filter(Boolean);
+  const hidden = warOverlays.slice(displayLimit);
+
+  if (hidden.length === 0) {
+    return null;
+  }
+
+  const frontCount = hidden.filter((entry) => entry.kind === 'front').length;
+  const supplyCount = hidden.filter((entry) => entry.kind === 'supply').length;
+  const parts = [
+    frontCount > 0 ? `${frontCount} front${frontCount > 1 ? 's' : ''}` : null,
+    supplyCount > 0 ? `${supplyCount} alerte${supplyCount > 1 ? 's' : ''} ravitaillement` : null,
+  ].filter(Boolean);
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  return {
+    hiddenCount: hidden.length,
+    frontCount,
+    supplyCount,
+    label: parts.join(' / '),
+    detail: `${hidden.length} signal${hidden.length > 1 ? 'aux' : ''} militaire${hidden.length > 1 ? 's' : ''} masqué${hidden.length > 1 ? 's' : ''} par la carte compacte.`,
+  };
+}
+
+function renderProvinceWarOverlayOverflowSummary(summary) {
+  if (!summary) {
+    return '';
+  }
+
+  return `
+    <span class="province-node__war-overflow" aria-label="Résumé des signaux militaires masqués: ${summary.detail}">
+      <b>${summary.label}</b>
+      <small>${summary.detail}</small>
+    </span>
+  `;
+}
+
 function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null) {
   const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
@@ -1251,6 +1298,7 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
   const logisticsOutcomeMarker = getLogisticsOutcomeMarkerForProvince(province.provinceId);
   const climateMarker = postCommitClimateMarkers.find((marker) => marker.provinceId === province.provinceId) ?? null;
   const climateCascadeGroupMarker = selectedClimateCascadeGroup?.markers.find((marker) => marker.provinceId === province.provinceId) ?? null;
+  const warOverlayOverflow = buildProvinceWarOverlayOverflowSummary(province, { readinessTone, militaryOutcomeMarker, logisticsOutcomeMarker });
   const isReadinessHighlight = Boolean(readinessTone);
   const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
   const isLogisticsOutcomeHighlight = Boolean(logisticsOutcomeMarker);
@@ -1310,6 +1358,7 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
       ${climateMarker ? `<span class="province-node__climate-marker"><b>${climateMarker.label}</b>${climateMarker.summary}<small>${climateMarker.detail}</small></span>` : ''}
       <span class="province-node__badges">${badges}</span>
       ${renderPostCommitMilitaryOutcomeMarker(militaryOutcomeMarker)}
+      ${renderProvinceWarOverlayOverflowSummary(warOverlayOverflow)}
       ${isNeighbor ? '<span class="province-node__link">Voisine directe</span>' : ''}
     </button>
   `;
