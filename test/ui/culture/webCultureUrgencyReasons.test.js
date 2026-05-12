@@ -18,6 +18,9 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /reminder\.rippleEffects/);
   assert.match(webAppSource, /culture-opportunity-reminder__confidence/);
   assert.match(webAppSource, /reminder\.confidenceCue\?\.summary/);
+  assert.match(webAppSource, /culture-opportunity-reminder__inaction/);
+  assert.match(webAppSource, /reminder\.inactionCost\?\.summary/);
+  assert.match(webAppSource, /Pas de perte culturelle claire/);
   assert.match(webAppSource, /Aucun effet de propagation culturel en file/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__reason/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__action/);
@@ -25,6 +28,8 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(stylesSource, /\.culture-opportunity-reminder__confidence--high/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__confidence--mixed/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__confidence--risky/);
+  assert.match(stylesSource, /\.culture-opportunity-reminder__inaction--closing/);
+  assert.match(stylesSource, /\.culture-opportunity-reminder__inaction--low/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--positive/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--uncertain/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--risky/);

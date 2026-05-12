@@ -952,6 +952,7 @@ function renderCultureOpportunityReminders(report) {
               <p class="culture-opportunity-reminder__action"><b>${reminder.recommendedAction?.label ?? 'Surveiller la fenêtre'}</b> · ${reminder.recommendedAction?.summary ?? reminder.actionCopy ?? reminder.summary}</p>
               <p class="culture-opportunity-reminder__tradeoff"><b>Compromis</b> · ${reminder.tradeoff?.summary ?? reminder.tradeoffCopy ?? 'Bénéfice culturel contre risque narratif.'}</p>
               <p class="culture-opportunity-reminder__confidence culture-opportunity-reminder__confidence--${reminder.confidenceCue?.level ?? 'mixed'}"><b>${reminder.confidenceCue?.label ?? 'Confiance mixte'}</b> · ${reminder.confidenceCue?.summary ?? reminder.confidenceCopy ?? 'Effet culturel à confirmer.'}</p>
+              <p class="culture-opportunity-reminder__inaction culture-opportunity-reminder__inaction--${reminder.inactionCost?.level ?? 'low'}"><b>Inaction</b> · ${reminder.inactionCost?.summary ?? reminder.inactionCopy ?? 'Pas de perte culturelle claire si la recommandation attend.'}</p>
               <div class="culture-opportunity-reminder__ripples" aria-label="Effets de propagation culturelle">
                 <b>Propagation</b>
                 ${(reminder.rippleEffects ?? []).length > 0 ? `
