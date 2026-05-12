@@ -2647,6 +2647,84 @@ function renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigue
   `;
 }
 
+function buildProjectedFrontStability(province, shell, actionQueue) {
+  const outcome = buildConflictOutcomePreview(province, shell);
+  const queuedAction = actionQueue.find((entry) => entry.status === 'ready') ?? actionQueue[0] ?? null;
+  const hostileNeighbors = province.neighborIds
+    .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId))
+    .filter((neighbor) => neighbor && neighbor.controllingFactionId !== province.controllingFactionId);
+  const sensitiveNeighbor = hostileNeighbors
+    .sort((left, right) => (right.strategicValue - left.strategicValue) || left.label.localeCompare(right.label))[0] ?? null;
+
+  if (!queuedAction) {
+    return {
+      empty: true,
+      tone: 'neutral',
+      title: 'Projection front non engagée',
+      summary: 'Aucune action militaire en file: la stabilité du front reste inchangée pour ce tour.',
+      lines: [
+        { label: 'Stabilité attendue', value: province.contested ? 'front encore contesté' : 'position maintenue' },
+        { label: 'Risque restant', value: outcome.summary },
+        { label: 'Voisine sensible', value: sensitiveNeighbor?.label ?? 'aucune menace adjacente prioritaire' },
+      ],
+    };
+  }
+
+  const stability = queuedAction.status === 'blocked'
+    ? 'instable après résolution'
+    : queuedAction.status === 'risky'
+      ? 'stabilité partielle'
+      : outcome.tone === 'success'
+        ? 'front stabilisé'
+        : 'front sous contrôle prudent';
+  const residualRisk = queuedAction.status === 'blocked'
+    ? queuedAction.mainRisk
+    : queuedAction.status === 'risky'
+      ? 'risque résiduel si appui ou timing échoue'
+      : outcome.tone === 'danger'
+        ? 'pression ennemie encore élevée'
+        : 'risque contenu au prochain tour';
+
+  return {
+    empty: false,
+    tone: queuedAction.status === 'blocked' ? 'danger' : queuedAction.status === 'risky' ? 'warning' : 'ready',
+    title: queuedAction.label,
+    summary: `${queuedAction.actionCode}: projection après validation de l’action en file.`,
+    lines: [
+      { label: 'Stabilité attendue', value: stability },
+      { label: 'Risque restant', value: residualRisk },
+      { label: 'Voisine sensible', value: sensitiveNeighbor ? `${sensitiveNeighbor.label} · valeur ${sensitiveNeighbor.strategicValue}` : 'aucune menace adjacente prioritaire' },
+    ],
+  };
+}
+
+function renderProjectedFrontStability(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const projection = buildProjectedFrontStability(province, shell, actionQueue);
+
+  return `
+    <section class="projected-front-stability projected-front-stability--${projection.tone} ${projection.empty ? 'is-empty' : ''}" aria-label="Projection de stabilité du front après actions en file">
+      <div class="projected-front-stability__header">
+        <div>
+          <span>Projection stabilité front</span>
+          <strong>${projection.title}</strong>
+        </div>
+        <small>${projection.empty ? 'aucune action en file' : 'après action'}</small>
+      </div>
+      <p>${projection.summary}</p>
+      <div class="projected-front-stability__lines">
+        ${projection.lines.map((line) => `
+          <article class="projected-front-stability__line">
+            <span>${line.label}</span>
+            <strong>${line.value}</strong>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+
 function buildConflictReadinessWarnings(shell, intrigueView = null) {
   return shell.provinces
     .map((province) => {
@@ -3007,6 +3085,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderMilitaryResponseOptions(province, shell, focusContext, intrigueView)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
+      ${renderProjectedFrontStability(province, shell, focusContext, intrigueView)}
       ${renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView)}
       ${renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
