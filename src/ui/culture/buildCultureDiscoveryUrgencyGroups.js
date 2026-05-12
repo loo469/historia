@@ -127,6 +127,91 @@ function dedupeItems(items) {
   return [...byKey.values()];
 }
 
+function buildInterventionAction(item) {
+  if (item.group === 'urgent') {
+    return item.kind === 'event'
+      ? 'Suivre le repère maintenant'
+      : 'Stabiliser la découverte';
+  }
+
+  if (item.group === 'active') {
+    return item.kind === 'discovery'
+      ? 'Planifier l’exploitation'
+      : 'Garder dans la file culturelle';
+  }
+
+  return 'Surveiller en arrière-plan';
+}
+
+function buildInterventionRisk(item) {
+  if (item.group === 'urgent') {
+    return item.cause === 'Tension locale'
+      ? 'La tension locale peut masquer la découverte au prochain arbitrage.'
+      : 'Le signal prioritaire risque de glisser derrière les urgences province.';
+  }
+
+  if (item.group === 'active') {
+    return 'La recherche ou le repère reste lisible, mais perd sa priorité si la file se remplit.';
+  }
+
+  return 'Risque faible: conserver comme contexte tant qu’aucune urgence ne remonte.';
+}
+
+function buildInterventionDependency(item, items) {
+  const relatedProvince = items.find((candidate) => candidate.regionId && candidate.regionId !== item.regionId
+    && (candidate.cultureName === item.cultureName || candidate.label === item.label));
+
+  if (relatedProvince) {
+    return `Dépend aussi de ${relatedProvince.regionId}`;
+  }
+
+  const sameProvinceConflict = items.find((candidate) => candidate.itemId !== item.itemId
+    && candidate.regionId === item.regionId
+    && candidate.group === item.group
+    && candidate.cultureName !== item.cultureName);
+
+  if (sameProvinceConflict) {
+    return `Conflit local avec ${sameProvinceConflict.cultureName}`;
+  }
+
+  return item.group === 'background' ? 'Aucune dépendance prioritaire' : 'Dépendance non bloquante';
+}
+
+function buildInterventionPriority(item, items, index) {
+  const dependency = buildInterventionDependency(item, items);
+  const conflict = dependency.startsWith('Conflit local');
+  const action = buildInterventionAction(item);
+
+  return {
+    priorityId: `culture-intervention:${item.itemId}`,
+    rank: index + 1,
+    urgency: item.group,
+    urgencyLabel: GROUP_DEFINITIONS[item.group]?.label ?? 'Signal',
+    action,
+    effect: `${item.shortLabel}: ${item.cause} rendu actionnable pour ${item.cultureName}.`,
+    waitRisk: buildInterventionRisk(item),
+    dependency,
+    conflict,
+    cultureName: item.cultureName,
+    regionId: item.regionId,
+    sourceLabel: item.shortLabel,
+    summary: `${action} · ${GROUP_DEFINITIONS[item.group]?.label ?? 'Signal'} · ${item.cause}`,
+  };
+}
+
+function buildInterventionConflicts(priorities) {
+  return priorities
+    .flatMap((priority, index) => priorities.slice(index + 1).map((candidate) => [priority, candidate]))
+    .filter(([left, right]) => left.conflict || right.conflict || (left.regionId === right.regionId && left.urgency === right.urgency))
+    .map(([left, right]) => ({
+      conflictId: `${left.priorityId}|${right.priorityId}`,
+      label: left.regionId === right.regionId ? 'Même province' : 'Dépendance croisée',
+      summary: `${left.action} concurrence ${right.action}: choisir d’abord ${left.urgency === 'urgent' ? left.cultureName : right.cultureName}.`,
+      priorityIds: [left.priorityId, right.priorityId],
+    }))
+    .slice(0, 2);
+}
+
 export function buildCultureDiscoveryUrgencyGroups({
   selectedMarker = null,
   selectedCluster = null,
@@ -152,5 +237,26 @@ export function buildCultureDiscoveryUrgencyGroups({
       ? `${items.length} signal${items.length > 1 ? 's' : ''} culturel${items.length > 1 ? 's' : ''} groupé${items.length > 1 ? 's' : ''} par urgence.`
       : 'Aucun signal culturel détaillé à grouper pour cette province.',
     groups,
+  };
+}
+
+
+export function buildCultureInterventionPriorities(groupView = {}) {
+  const items = (groupView.groups ?? [])
+    .flatMap((group) => (group.items ?? []).map((item) => ({ ...item, group: item.group ?? group.key })))
+    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label));
+  const priorities = items
+    .filter((item) => item.group !== 'background' || item.priority >= GROUP_DEFINITIONS.background.rank * 100)
+    .slice(0, 4)
+    .map((item, index) => buildInterventionPriority(item, items, index));
+  const conflicts = buildInterventionConflicts(priorities);
+
+  return {
+    state: priorities.length > 0 ? 'active' : 'quiet',
+    summary: priorities.length > 0
+      ? `${priorities.length} intervention${priorities.length > 1 ? 's' : ''} culturelle${priorities.length > 1 ? 's' : ''} priorisée${priorities.length > 1 ? 's' : ''}.`
+      : 'Aucune intervention culturelle prioritaire à mettre en file.',
+    priorities,
+    conflicts,
   };
 }

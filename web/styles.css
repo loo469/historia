@@ -9003,3 +9003,63 @@ button { font: inherit; }
 }
 .province-logistics-bottleneck-priority small { color: #93c5fd; font-size: 11px; }
 .province-logistics-bottleneck-priority em { margin-top: 4px; color: #fde68a; font-size: 11px; font-style: normal; }
+
+.culture-intervention-priorities {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(250, 204, 21, 0.18);
+}
+.culture-intervention-priorities__header {
+  display: grid;
+  gap: 2px;
+}
+.culture-intervention-priorities__header span {
+  color: #fde68a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-intervention-priorities__header strong { color: #f8fafc; font-size: 12px; line-height: 1.3; }
+.culture-intervention-priorities ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.culture-intervention-priority {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.culture-intervention-priority--urgent { border-color: rgba(248, 113, 113, 0.38); }
+.culture-intervention-priority--active { border-color: rgba(56, 189, 248, 0.3); }
+.culture-intervention-priority--background { border-color: rgba(148, 163, 184, 0.16); }
+.culture-intervention-priority.has-conflict { box-shadow: inset 3px 0 rgba(251, 191, 36, 0.78); }
+.culture-intervention-priority div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.culture-intervention-priority b { color: #f8fafc; font-size: 12px; }
+.culture-intervention-priority span { color: #bae6fd; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.culture-intervention-priority p { margin: 0; color: #e2e8f0; font-size: 12px; line-height: 1.35; }
+.culture-intervention-priority small { color: #cbd5e1; font-size: 11px; line-height: 1.3; }
+.culture-intervention-conflicts {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(120, 53, 15, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+}
+.culture-intervention-conflicts b { color: #fde68a; font-size: 11px; }
+.culture-intervention-conflicts p { margin: 0; color: #fef3c7; font-size: 11px; line-height: 1.3; }
