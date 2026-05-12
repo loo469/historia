@@ -705,6 +705,104 @@ function buildMilitaryOutcomeMarkerFilterState(markers = state.lastMilitaryOutco
   });
 }
 
+const militaryOutcomeSeverityRank = {
+  worsened: 4,
+  blocked: 3,
+  risk: 2,
+  stabilized: 1,
+};
+
+function getMilitaryOutcomeUrgentAction(tone) {
+  return {
+    worsened: 'Renforcer ce front en priorité au prochain tour.',
+    blocked: 'Lever le blocage avant de relancer l’ordre.',
+    risk: 'Surveiller le risque restant et préparer un appui ciblé.',
+    stabilized: 'Maintenir la pression sans détourner la réserve.',
+  }[tone] ?? 'Réévaluer le front au prochain tour.';
+}
+
+function buildMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeMarkers) {
+  if (markers.length === 0) {
+    return [];
+  }
+
+  const groups = new Map();
+
+  for (const marker of markers) {
+    const frontKey = marker.provinceId;
+    const existing = groups.get(frontKey) ?? {
+      frontKey,
+      frontLabel: marker.provinceLabel ?? marker.provinceId,
+      markers: [],
+      visibleCount: 0,
+      hiddenCount: 0,
+      dominantTone: marker.tone,
+      dominantLabel: marker.label,
+      urgentAction: getMilitaryOutcomeUrgentAction(marker.tone),
+    };
+    const visible = isMilitaryOutcomeMarkerVisible(marker);
+
+    existing.markers.push(marker);
+    existing.visibleCount += visible ? 1 : 0;
+    existing.hiddenCount += visible ? 0 : 1;
+
+    if ((militaryOutcomeSeverityRank[marker.tone] ?? 0) > (militaryOutcomeSeverityRank[existing.dominantTone] ?? 0)) {
+      existing.dominantTone = marker.tone;
+      existing.dominantLabel = marker.label;
+      existing.urgentAction = getMilitaryOutcomeUrgentAction(marker.tone);
+    }
+
+    groups.set(frontKey, existing);
+  }
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      totalCount: group.markers.length,
+      status: group.visibleCount > 0 ? 'visible' : 'hidden',
+    }))
+    .sort((left, right) => {
+      const severityDelta = (militaryOutcomeSeverityRank[right.dominantTone] ?? 0) - (militaryOutcomeSeverityRank[left.dominantTone] ?? 0);
+      return severityDelta || right.visibleCount - left.visibleCount || left.frontLabel.localeCompare(right.frontLabel);
+    });
+}
+
+function renderMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeMarkers) {
+  const summaries = buildMilitaryFrontMarkerSummaries(markers);
+
+  if (summaries.length === 0) {
+    return `
+      <section class="military-front-marker-summary is-empty" aria-label="Résumé compact des fronts militaires marqués">
+        <div class="military-front-marker-summary__header">
+          <span>Lecture fronts</span>
+          <strong>Aucun marqueur militaire</strong>
+        </div>
+        <p>Aucune issue militaire post-commit visible ou masquée pour ce tour.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="military-front-marker-summary" aria-label="Résumé compact des fronts militaires marqués">
+      <div class="military-front-marker-summary__header">
+        <span>Lecture fronts</span>
+        <strong>${summaries.length} zone${summaries.length > 1 ? 's' : ''}</strong>
+      </div>
+      <div class="military-front-marker-summary__list">
+        ${summaries.map((summary) => `
+          <article class="military-front-marker-summary__item military-front-marker-summary__item--${summary.dominantTone} military-front-marker-summary__item--${summary.status}">
+            <div>
+              <strong>${summary.frontLabel}</strong>
+              <small>${summary.visibleCount} visible${summary.visibleCount > 1 ? 's' : ''} · ${summary.hiddenCount} masqué${summary.hiddenCount > 1 ? 's' : ''}</small>
+            </div>
+            <p><b>${summary.dominantLabel}</b> · ${summary.urgentAction}</p>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderMilitaryOutcomeMarkerFilters(markers = state.lastMilitaryOutcomeMarkers) {
   const filters = buildMilitaryOutcomeMarkerFilterState(markers);
   const total = markers.length;
@@ -8513,6 +8611,7 @@ function render() {
           <div class="map-stage" data-map-stage="true" tabindex="0" aria-label="Carte opérationnelle zoomable. Utilisez plus, moins, zéro ou C pour naviguer.">
             ${renderMapControls()}
             ${renderMilitaryOutcomeMarkerFilters(state.lastMilitaryOutcomeMarkers)}
+            ${renderMilitaryFrontMarkerSummaries(state.lastMilitaryOutcomeMarkers)}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
               ${renderMapLayerStack(shell, economyView, focusContext, cultureView, climateMarkerDensity.visibleMarkers)}
               ${renderIntrigueMapOverlay(intrigueView)}
