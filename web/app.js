@@ -776,7 +776,153 @@ function renderAtlasWorldCanvas(shell, economyView = null, cultureView = null) {
       ${renderAtlasWorldEconomyLayer(economyView)}
       ${renderAtlasCultureLayer(cultureView)}
       ${renderAtlasMilitaryLayer(shell)}
+      ${renderAtlasEconomyStressLegend(economyView)}
     </svg>
+  `;
+}
+
+function getAtlasEconomyCorridor(origin, destination) {
+  const midX = (origin.x + destination.x) / 2;
+  const midY = (origin.y + destination.y) / 2;
+
+  if (midY < 38) {
+    return 'Arc nord';
+  }
+
+  if (midY > 66) {
+    return 'Corridor sud';
+  }
+
+  if (midX < 42) {
+    return 'Bassin ouest';
+  }
+
+  if (midX > 58) {
+    return 'Marches est';
+  }
+
+  return 'Carrefour central';
+}
+
+function buildAtlasEconomyStressRollups(economyView) {
+  if (!economyView) {
+    return { legend: [], regions: [] };
+  }
+
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
+  const corridorMap = new Map();
+  const toneRank = { critical: 3, strained: 2, healthy: 1 };
+
+  for (const route of economyView.overlay.routes) {
+    const origin = cityLayoutsById[route.originCityId];
+    const destination = cityLayoutsById[route.destinationCityId];
+
+    if (!origin || !destination) {
+      continue;
+    }
+
+    const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
+    const tone = stress.tone === 'high' ? 'critical' : stress.tone === 'medium' ? 'strained' : 'healthy';
+    const corridor = getAtlasEconomyCorridor(origin, destination);
+    const current = corridorMap.get(corridor) ?? {
+      corridor,
+      tone: 'healthy',
+      routeCount: 0,
+      saturatedRoutes: 0,
+      criticalHubs: new Set(),
+      resources: new Map(),
+      summaries: [],
+      score: 0,
+    };
+
+    current.routeCount += 1;
+    current.score += toneRank[tone] + Math.max(0, route.totalCapacity - 5) / 3;
+    current.tone = toneRank[tone] > toneRank[current.tone] ? tone : current.tone;
+    if (tone !== 'healthy' || route.totalCapacity >= 9) {
+      current.saturatedRoutes += 1;
+      current.summaries.push(`${route.routeName}: ${stress.summary}`);
+    }
+    for (const cityId of route.cityIds) {
+      if (tensionByCityId[cityId]?.tensionLevel === 'high') {
+        current.criticalHubs.add(cityNameById[cityId] ?? cityId);
+      }
+    }
+    for (const resource of route.resources) {
+      current.resources.set(resource.resourceId, (current.resources.get(resource.resourceId) ?? 0) + resource.capacity);
+    }
+    corridorMap.set(corridor, current);
+  }
+
+  const regions = [...corridorMap.values()]
+    .map((entry) => {
+      const topResource = [...entry.resources.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0];
+      const resourceLabel = topResource ? `${getResourceHud(topResource[0]).label} ${topResource[1]}` : 'ressource stable';
+      const hubLabel = [...entry.criticalHubs].slice(0, 2).join(', ') || 'hubs stables';
+
+      return {
+        corridor: entry.corridor,
+        tone: entry.tone,
+        routeCount: entry.routeCount,
+        saturatedRoutes: entry.saturatedRoutes,
+        hubLabel,
+        resourceLabel,
+        summary: entry.summaries[0] ?? 'Flux lisible sans tension majeure.',
+        action: entry.tone === 'critical'
+          ? 'Sécuriser hub critique avant extension.'
+          : entry.tone === 'strained'
+            ? 'Surveiller saturation et ressource clé.'
+            : 'Maintenir routes ouvertes.',
+        score: entry.score,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.corridor.localeCompare(right.corridor))
+    .slice(0, 4);
+
+  const counts = regions.reduce((acc, region) => {
+    acc[region.tone] = (acc[region.tone] ?? 0) + 1;
+    return acc;
+  }, { critical: 0, strained: 0, healthy: 0 });
+
+  return {
+    legend: [
+      { tone: 'critical', label: 'Critique', detail: `${counts.critical} région${counts.critical > 1 ? 's' : ''}: hubs/routes saturés` },
+      { tone: 'strained', label: 'Tendue', detail: `${counts.strained} région${counts.strained > 1 ? 's' : ''}: flux à surveiller` },
+      { tone: 'healthy', label: 'Saine', detail: `${counts.healthy} région${counts.healthy > 1 ? 's' : ''}: trafic stable` },
+    ],
+    regions,
+  };
+}
+
+function renderAtlasEconomyStressLegend(economyView) {
+  const rollup = buildAtlasEconomyStressRollups(economyView);
+
+  if (rollup.regions.length === 0) {
+    return '';
+  }
+
+  return `
+    <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${16 + (rollup.regions.length * 7.5)}" rx="2.4"></rect>
+      <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
+      ${rollup.legend.map((entry, index) => `
+        <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
+          <circle cx="${6 + (index * 10.8)}" cy="12.2" r="1.15"></circle>
+          <text x="${8 + (index * 10.8)}" y="12.8">${entry.label}</text>
+        </g>
+      `).join('')}
+      ${rollup.regions.map((region, index) => {
+        const y = 18 + (index * 7.5);
+        return `
+          <g class="atlas-economy-region-rollup atlas-economy-region-rollup--${region.tone}">
+            <rect x="5" y="${y - 2.9}" width="30.5" height="6.4" rx="1.4"></rect>
+            <text class="atlas-economy-region-rollup__name" x="6.2" y="${y - 0.4}">${region.corridor} · ${region.tone === 'critical' ? 'critique' : region.tone === 'strained' ? 'tendue' : 'saine'}</text>
+            <text class="atlas-economy-region-rollup__detail" x="6.2" y="${y + 1.9}">${region.saturatedRoutes}/${region.routeCount} routes · ${region.hubLabel} · ${region.resourceLabel}</text>
+            <text class="atlas-economy-region-rollup__action" x="6.2" y="${y + 4.0}">${region.action}</text>
+          </g>
+        `;
+      }).join('')}
+    </g>
   `;
 }
 

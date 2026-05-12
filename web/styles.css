@@ -9907,6 +9907,7 @@ button { font: inherit; }
 .atlas-discovery-site--amber path { fill: #fde68a; }
 .atlas-discovery-site--rose path { fill: #fecdd3; }
 .atlas-discovery-site--cyan path { fill: #a5f3fc; }
+
 .atlas-military-layer {
   pointer-events: none;
   opacity: 0.9;
@@ -9965,3 +9966,48 @@ button { font: inherit; }
 .atlas-military-overflow {
   fill: #fde68a;
 }
+
+.atlas-economy-stress-rollup {
+  pointer-events: none;
+}
+.atlas-economy-stress-rollup__panel {
+  fill: rgba(2, 6, 23, 0.72);
+  stroke: rgba(125, 211, 252, 0.3);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-economy-stress-rollup__title {
+  fill: #f8fafc;
+  font-size: 2.1px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+.atlas-economy-stress-legend circle { stroke: rgba(15, 23, 42, 0.9); stroke-width: 0.25; }
+.atlas-economy-stress-legend--critical circle { fill: #fb7185; }
+.atlas-economy-stress-legend--strained circle { fill: #fbbf24; }
+.atlas-economy-stress-legend--healthy circle { fill: #67e8f9; }
+.atlas-economy-stress-legend text {
+  fill: #dbeafe;
+  font-size: 1.45px;
+  font-weight: 800;
+}
+.atlas-economy-region-rollup rect {
+  fill: rgba(15, 23, 42, 0.58);
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 0.25;
+}
+.atlas-economy-region-rollup--critical rect { stroke: rgba(251, 113, 133, 0.68); fill: rgba(127, 29, 29, 0.42); }
+.atlas-economy-region-rollup--strained rect { stroke: rgba(251, 191, 36, 0.58); fill: rgba(120, 53, 15, 0.34); }
+.atlas-economy-region-rollup--healthy rect { stroke: rgba(103, 232, 249, 0.34); }
+.atlas-economy-region-rollup__name {
+  fill: #e0f2fe;
+  font-size: 1.42px;
+  font-weight: 900;
+}
+.atlas-economy-region-rollup__detail,
+.atlas-economy-region-rollup__action {
+  fill: #cbd5e1;
+  font-size: 1.12px;
+  font-weight: 700;
+}
+.atlas-economy-region-rollup__action { fill: #bae6fd; }
