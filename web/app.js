@@ -443,6 +443,7 @@ const state = {
   },
   atlasClimateForecastMode: 'current',
   atlasConflictPlaybackStep: 1,
+  atlasConflictComparisonMode: 'current',
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
   militaryOutcomeMarkerFilters: {
@@ -471,6 +472,7 @@ function applyMapScenario(scenario) {
   state.seasonIndex = 0;
   state.atlasClimateForecastMode = 'current';
   state.atlasConflictPlaybackStep = 1;
+  state.atlasConflictComparisonMode = 'current';
   state.mapZoom = 1;
   state.mapPanX = 0;
   state.mapPanY = 0;
@@ -667,6 +669,105 @@ function getAtlasConflictPlaybackSummary(playback) {
   return `${playback.steps[playback.activeStep].label}: ${rising} pression${rising > 1 ? 's' : ''} en hausse, ${falling} en baisse, ${steady} stable${steady > 1 ? 's' : ''}.`;
 }
 
+function getAtlasConflictComparisonLabel(delta, route, mode) {
+  if (mode === 'initial') {
+    return 'état initial';
+  }
+  if (route.occupied && route.activePlayback.pressure >= 70) {
+    return 'route coupée';
+  }
+  if (delta >= 10) {
+    return 'pression gagnée';
+  }
+  if (delta <= -8) {
+    return 'front stabilisé';
+  }
+  if (delta > 0) {
+    return 'front menacé';
+  }
+  if (delta < 0) {
+    return 'pression perdue';
+  }
+  return 'stable';
+}
+
+function buildAtlasConflictRouteComparison(playback, mode = state.atlasConflictComparisonMode) {
+  const modes = {
+    initial: { label: 'État initial', step: 0 },
+    current: { label: 'Plan courant', step: 1 },
+    final: { label: 'Projection finale', step: 2 },
+  };
+  const selectedMode = modes[mode] ? mode : 'current';
+  const selected = modes[selectedMode];
+
+  if (!playback || playback.empty) {
+    return {
+      mode: selectedMode,
+      modes,
+      rows: [],
+      summary: 'Comparaison indisponible: aucune route militaire récente.',
+      empty: true,
+    };
+  }
+
+  const rows = playback.routes
+    .map((route) => {
+      const initial = route.playbackSteps[0] ?? null;
+      const current = route.playbackSteps.find((step) => step.step === selected.step) ?? route.activePlayback ?? initial;
+      if (!initial || !current) {
+        return null;
+      }
+      const delta = current.pressure - initial.pressure;
+      const label = getAtlasConflictComparisonLabel(delta, { ...route, activePlayback: current }, selectedMode);
+      return {
+        routeId: route.routeId,
+        routeLabel: `${route.sourceLabel} → ${route.targetLabel}`,
+        initialPressure: initial.pressure,
+        currentPressure: current.pressure,
+        delta,
+        label,
+        tone: label === 'route coupée' || label === 'front menacé' ? 'danger' : label === 'front stabilisé' || label === 'pression perdue' ? 'relief' : 'neutral',
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta) || left.routeLabel.localeCompare(right.routeLabel))
+    .slice(0, 3);
+
+  const summary = rows.length > 0
+    ? `${selected.label}: ${rows.map((row) => `${row.label} ${row.delta > 0 ? '+' : ''}${row.delta}`).join(' · ')}`
+    : 'Comparaison indisponible: données de pression incomplètes.';
+
+  return {
+    mode: selectedMode,
+    modes,
+    rows,
+    summary,
+    empty: rows.length === 0,
+  };
+}
+
+function renderAtlasConflictRouteComparison(comparison) {
+  return `
+    <g class="atlas-conflict-comparison" aria-label="Comparaison avant après des routes militaires: ${comparison.summary}">
+      <rect class="atlas-conflict-comparison__panel" x="61" y="24.5" width="36" height="${comparison.empty ? 10 : 13 + (comparison.rows.length * 4.6)}" rx="2.4"></rect>
+      <text class="atlas-conflict-comparison__title" x="63" y="28.8">Avant / après</text>
+      ${Object.entries(comparison.modes).map(([mode, config], index) => `
+        <g class="atlas-conflict-comparison-mode ${comparison.mode === mode ? 'is-active' : ''}" data-atlas-conflict-comparison-mode="${mode}" aria-label="Comparer ${config.label}">
+          <rect x="${63 + index * 10.5}" y="30.6" width="9.4" height="4.4" rx="1.4"></rect>
+          <text x="${67.7 + index * 10.5}" y="33.5" text-anchor="middle">${mode === 'initial' ? 'Initial' : mode === 'current' ? 'Plan' : 'Final'}</text>
+        </g>
+      `).join('')}
+      ${comparison.empty ? `<text class="atlas-conflict-comparison__empty" x="63" y="39.2">${comparison.summary}</text>` : comparison.rows.map((row, index) => `
+        <g class="atlas-conflict-comparison-row atlas-conflict-comparison-row--${row.tone}">
+          <text x="63" y="${39.6 + index * 4.6}">${row.label}</text>
+          <text class="atlas-conflict-comparison-row__delta" x="94" y="${39.6 + index * 4.6}" text-anchor="end">${row.delta > 0 ? '+' : ''}${row.delta}</text>
+          <text class="atlas-conflict-comparison-row__route" x="63" y="${41.8 + index * 4.6}">${row.routeLabel}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
   const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
   const routes = buildProvinceRelations(shell)
@@ -729,6 +830,7 @@ function renderAtlasMilitaryLayer(shell) {
   const features = buildAtlasMilitaryFeatures(shell);
   const playback = buildAtlasConflictRoutePlayback(features.routes);
   const playbackSummary = getAtlasConflictPlaybackSummary(playback);
+  const comparison = buildAtlasConflictRouteComparison(playback);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -751,6 +853,7 @@ function renderAtlasMilitaryLayer(shell) {
           </g>
         `).join('')}
       </g>
+      ${renderAtlasConflictRouteComparison(comparison)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
           <polygon points="${zone.polygon}"></polygon>
@@ -12350,6 +12453,13 @@ function render() {
   document.querySelectorAll('[data-atlas-conflict-playback-step]').forEach((element) => {
     element.addEventListener('click', () => {
       state.atlasConflictPlaybackStep = Math.max(0, Math.min(2, Number(element.dataset.atlasConflictPlaybackStep) || 0));
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-atlas-conflict-comparison-mode]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.atlasConflictComparisonMode = element.dataset.atlasConflictComparisonMode ?? 'current';
       render();
     });
   });
