@@ -2512,6 +2512,56 @@ button { font: inherit; }
   stroke-width: 0.72;
   filter: drop-shadow(0 0 10px rgba(216, 180, 254, 0.68));
 }
+.world-map-intrigue-signal { cursor: help; }
+.world-map-intrigue-signal__aura {
+  fill: rgba(15, 23, 42, 0.86);
+  stroke: rgba(226, 232, 240, 0.72);
+  stroke-width: 0.34;
+  filter: drop-shadow(0 0 7px rgba(129, 140, 248, 0.28));
+}
+.world-map-intrigue-signal--danger .world-map-intrigue-signal__aura { stroke: rgba(248, 113, 113, 0.9); fill: rgba(127, 29, 29, 0.58); }
+.world-map-intrigue-signal--warning .world-map-intrigue-signal__aura { stroke: rgba(251, 191, 36, 0.88); fill: rgba(120, 53, 15, 0.52); }
+.world-map-intrigue-signal--shadow .world-map-intrigue-signal__aura { stroke: rgba(148, 163, 184, 0.7); stroke-dasharray: 1.2 1.1; }
+.world-map-intrigue-signal--watch .world-map-intrigue-signal__aura { stroke: rgba(96, 165, 250, 0.72); }
+.world-map-intrigue-signal.has-shadow-zone .world-map-intrigue-signal__aura { filter: drop-shadow(0 0 8px rgba(148, 163, 184, 0.32)); }
+.world-map-intrigue-signal__glyph {
+  fill: #f8fafc;
+  font-size: 2.9px;
+  font-weight: 900;
+  pointer-events: none;
+}
+.world-map-intrigue-signal__label {
+  fill: #f8fafc;
+  font-size: 2.35px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.72);
+  stroke-width: 0.45px;
+}
+.world-map-intrigue-signal__copy {
+  fill: #dbeafe;
+  font-size: 1.95px;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.72);
+  stroke-width: 0.4px;
+}
+.world-map-intrigue-rollup {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  background: rgba(30, 41, 59, 0.48);
+}
+.world-map-intrigue-rollup__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.world-map-intrigue-rollup__header span,
+.world-map-intrigue-rollup p,
+.world-map-intrigue-rollup small { color: #cbd5e1; }
 .intrigue-exposure-marker-rollup {
   display: grid;
   gap: 8px;

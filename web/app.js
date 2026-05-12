@@ -7106,6 +7106,120 @@ function renderPostCommitIntrigueExposureMarkers(markers) {
   `;
 }
 
+
+function buildWorldMapIntrigueSignals(intrigueView = null) {
+  const entries = intrigueView?.map?.entries ?? [];
+
+  return entries.map((entry) => {
+    const presenceLabels = {
+      high: 'présence forte',
+      medium: 'présence probable',
+      low: 'présence faible',
+      none: 'présence inconnue',
+    };
+    const riskLabels = {
+      high: 'risque sabotage probable',
+      medium: 'risque sabotage possible',
+      low: 'risque sabotage faible',
+      none: 'risque non confirmé',
+    };
+    const hasSabotageSignal = entry.metrics.sabotageOperationCount > 0 || ['high', 'medium'].includes(entry.sabotageRiskLevel);
+    const shadowZone = !entry.showSecondaryDetails || (entry.metrics.exposedCellCount === 0 && entry.presenceLevel !== 'high');
+    const assurance = entry.metrics.exposedCellCount > 0 || entry.showSecondaryDetails
+      ? 'confirmé'
+      : hasSabotageSignal
+        ? 'probable'
+        : 'zone d’ombre';
+    const glyph = hasSabotageSignal
+      ? 'S?'
+      : shadowZone
+        ? '??'
+        : 'I';
+    const tone = entry.sabotageRiskLevel === 'high'
+      ? 'danger'
+      : entry.sabotageRiskLevel === 'medium' || entry.presenceLevel === 'high'
+        ? 'warning'
+        : shadowZone
+          ? 'shadow'
+          : 'watch';
+
+    return {
+      locationId: entry.locationId,
+      locationName: entry.locationName,
+      center: {
+        x: clampVisualMetric(entry.center.x - 4.8, 4, 94),
+        y: clampVisualMetric(entry.center.y - 5.1, 6, 94),
+      },
+      tone,
+      glyph,
+      assurance,
+      presenceLabel: presenceLabels[entry.presenceLevel] ?? presenceLabels.none,
+      riskLabel: riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none,
+      shadowZone,
+      probableSabotage: hasSabotageSignal,
+      copy: `${presenceLabels[entry.presenceLevel] ?? presenceLabels.none} · ${riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none} · assurance ${assurance}${shadowZone ? ' · zone d’ombre conservée' : ''}`,
+      ariaLabel: `Signal intrigue monde en ${entry.locationName}: ${presenceLabels[entry.presenceLevel] ?? presenceLabels.none}; ${riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none}; assurance ${assurance}; aucun détail caché révélé`,
+    };
+  }).sort((left, right) => {
+    const rank = { danger: 1, warning: 2, shadow: 3, watch: 4 };
+    return rank[left.tone] - rank[right.tone] || left.locationName.localeCompare(right.locationName);
+  }).slice(0, 6);
+}
+
+function buildWorldMapIntrigueSignalRollup(signals) {
+  const counts = {
+    danger: signals.filter((signal) => signal.tone === 'danger').length,
+    warning: signals.filter((signal) => signal.tone === 'warning').length,
+    shadow: signals.filter((signal) => signal.shadowZone).length,
+    probableSabotage: signals.filter((signal) => signal.probableSabotage).length,
+  };
+
+  return {
+    counts,
+    totalCount: signals.length,
+    summary: signals.length > 0
+      ? `${signals.length} signal${signals.length > 1 ? 's' : ''} intrigue monde visible${signals.length > 1 ? 's' : ''}: ${counts.probableSabotage} sabotage${counts.probableSabotage > 1 ? 's' : ''} probable${counts.probableSabotage > 1 ? 's' : ''}, ${counts.shadow} zone${counts.shadow > 1 ? 's' : ''} d’ombre.`
+      : 'Aucun signal intrigue monde visible avec les filtres actuels.',
+  };
+}
+
+function renderWorldMapIntrigueSignals(signals) {
+  if (!signals.length) {
+    return '';
+  }
+
+  return `
+    <g class="world-map-intrigue-signal-layer" aria-label="Signaux intrigue sur la carte monde fog-safe">
+      ${signals.map((signal) => `
+        <g class="world-map-intrigue-signal world-map-intrigue-signal--${signal.tone} ${signal.shadowZone ? 'has-shadow-zone' : ''}" data-intrigue-location="${signal.locationId}" tabindex="0" aria-label="${signal.ariaLabel}">
+          <title>${signal.copy}</title>
+          <circle class="world-map-intrigue-signal__aura" cx="${signal.center.x}%" cy="${signal.center.y}%" r="${signal.probableSabotage ? 4.9 : 3.9}"></circle>
+          <text class="world-map-intrigue-signal__glyph" x="${signal.center.x}%" y="${signal.center.y + 1.05}%" text-anchor="middle">${signal.glyph}</text>
+          <text class="world-map-intrigue-signal__label" x="${signal.center.x + 4.2}%" y="${signal.center.y - 1.2}%" text-anchor="start">${signal.riskLabel}</text>
+          <text class="world-map-intrigue-signal__copy" x="${signal.center.x + 4.2}%" y="${signal.center.y + 2.0}%" text-anchor="start">${signal.presenceLabel} · ${signal.assurance}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
+function renderWorldMapIntrigueSignalRollup(rollup) {
+  if (rollup.totalCount === 0) {
+    return '';
+  }
+
+  return `
+    <section class="world-map-intrigue-rollup" aria-label="Résumé intrigue carte monde fog-safe">
+      <div class="world-map-intrigue-rollup__header">
+        <strong>Intrigue carte monde</strong>
+        <span>${rollup.counts.probableSabotage} sabotage${rollup.counts.probableSabotage > 1 ? 's' : ''} probable${rollup.counts.probableSabotage > 1 ? 's' : ''}</span>
+      </div>
+      <p>${rollup.summary}</p>
+      <small>${rollup.counts.shadow} zone${rollup.counts.shadow > 1 ? 's' : ''} d’ombre conservée${rollup.counts.shadow > 1 ? 's' : ''}; les cellules, relais, objectifs et causes cachées restent masqués.</small>
+    </section>
+  `;
+}
+
 function renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const cultureContext = getSelectedCultureContext(province.provinceId);
@@ -9041,11 +9155,12 @@ function renderEconomyMapOverlay(economyView) {
 
 function renderIntrigueMapOverlay(intrigueView) {
   const postCommitMarkers = buildPostCommitIntrigueExposureMarkers(intrigueView);
+  const worldMapSignals = buildWorldMapIntrigueSignals(intrigueView);
 
   if (state.activeOverlaySlot !== 'intrigue-overlay') {
     const criticalSignals = intrigueView.map.entries.filter((entry) => entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0);
 
-    if (criticalSignals.length === 0 && postCommitMarkers.length === 0) {
+    if (criticalSignals.length === 0 && postCommitMarkers.length === 0 && worldMapSignals.every((signal) => signal.tone === 'watch')) {
       return '';
     }
 
@@ -9057,6 +9172,7 @@ function renderIntrigueMapOverlay(intrigueView) {
             <text class="intrigue-critical-signal__code" x="${entry.center.x + 3.8}%" y="${entry.center.y - 2.6}%">${entry.threatGlyph.code}</text>
           </g>
         `).join('')}
+        ${renderWorldMapIntrigueSignals(worldMapSignals.filter((signal) => signal.tone !== 'watch'))}
         ${renderPostCommitIntrigueExposureMarkers(postCommitMarkers)}
       </svg>
     `;
@@ -9112,6 +9228,7 @@ function renderIntrigueMapOverlay(intrigueView) {
         ${threatGlyphMarkup}
       </g>
       ${hotspotMarkup}
+      ${renderWorldMapIntrigueSignals(worldMapSignals)}
       ${renderPostCommitIntrigueExposureMarkers(postCommitMarkers)}
     </svg>
   `;
@@ -9124,6 +9241,8 @@ function renderIntrigueSidePanel(intrigueView) {
 
   const exposureMarkers = buildPostCommitIntrigueExposureMarkers(intrigueView, { ignoreFilters: true });
   const exposureMarkerRollup = buildIntrigueExposureMarkerRollup(exposureMarkers);
+  const worldMapSignals = buildWorldMapIntrigueSignals(intrigueView);
+  const worldMapSignalRollup = buildWorldMapIntrigueSignalRollup(worldMapSignals);
 
   return `
     <section class="panel overlay-panel overlay-panel--intrigue">
@@ -9142,6 +9261,7 @@ function renderIntrigueSidePanel(intrigueView) {
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.alerts ? 'is-active' : ''}" data-intrigue-filter="alerts">Alertes</button>
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.sabotage ? 'is-active' : ''}" data-intrigue-filter="sabotage">Sabotage</button>
       </section>
+      ${renderWorldMapIntrigueSignalRollup(worldMapSignalRollup)}
       ${renderIntrigueExposureMarkerRollup(exposureMarkerRollup)}
       <section class="intrigue-alert-panel intrigue-alert-panel--${intrigueView.alertPanel.tone}" aria-label="Lecture du niveau d'alerte">
         <div class="intrigue-alert-panel__header">
