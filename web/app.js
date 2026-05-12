@@ -1557,6 +1557,94 @@ function buildClimateMitigationPayoffTradeoff(province, queuedMitigation, curren
   };
 }
 
+function getClimateMitigationDeadlineRank(deadline) {
+  if (deadline === 'Immédiat' || deadline === 'Ce tour') {
+    return 0;
+  }
+
+  if (deadline === 'Prochain tour') {
+    return 1;
+  }
+
+  if (deadline === 'Surveiller') {
+    return 2;
+  }
+
+  return 3;
+}
+
+function getClimateDeadlineResidualRisk(province, cue, cascades) {
+  const cascade = cascades[0] ?? null;
+
+  if (cascade) {
+    return `${cascade.type}: ${cascade.scope}`;
+  }
+
+  if (province.supplyLevel === 'collapsed') {
+    return 'récolte: rupture de vivres locale probable';
+  }
+
+  if (province.contested || province.occupied) {
+    return 'route: exposition logistique et militaire prolongée';
+  }
+
+  if (province.loyalty < 55) {
+    return 'stabilité: friction locale prolongée';
+  }
+
+  return cue?.label ? `anomalie prolongée: ${cue.label}` : 'anomalie prolongée: surveillance climat requise';
+}
+
+function buildClimateMitigationDeadlineCoverage(province, queuedMitigation, cues, cascades) {
+  const criticalCue = cues.find((cue) => cue.level === 'immediate' || cue.level === 'next-turn') ?? null;
+
+  if (!criticalCue) {
+    return {
+      state: 'calm',
+      label: 'Aucune deadline critique active',
+      detail: 'Le plan peut rester en surveillance sans urgence temporelle confirmée.',
+      residualRisk: null,
+    };
+  }
+
+  if (!queuedMitigation) {
+    return {
+      state: 'missed',
+      label: `${criticalCue.countdown}: aucune mitigation en file`,
+      detail: 'La deadline climat reste non couverte par le plan actuel.',
+      residualRisk: getClimateDeadlineResidualRisk(province, criticalCue, cascades),
+    };
+  }
+
+  const urgencyRank = criticalCue.level === 'immediate' ? 0 : 1;
+  const mitigationRank = getClimateMitigationDeadlineRank(queuedMitigation.deadline);
+
+  if (mitigationRank < urgencyRank) {
+    return {
+      state: 'covered',
+      label: `${queuedMitigation.deadline}: avant ${criticalCue.countdown}`,
+      detail: 'La mitigation arrive avant l’échéance climat visible.',
+      residualRisk: null,
+    };
+  }
+
+  if (mitigationRank === urgencyRank) {
+    return {
+      state: 'just-in-time',
+      label: `${queuedMitigation.deadline}: juste à temps`,
+      detail: 'Le plan couvre l’urgence, mais sans marge si un autre risque se dégrade.',
+      residualRisk: getClimateDeadlineResidualRisk(province, criticalCue, cascades),
+    };
+  }
+
+  return {
+    state: 'missed',
+    label: `${queuedMitigation.deadline}: trop tard pour ${criticalCue.countdown}`,
+    detail: 'La mitigation réduit le risque ensuite, mais ne couvre pas la deadline critique actuelle.',
+    residualRisk: getClimateDeadlineResidualRisk(province, criticalCue, cascades),
+  };
+}
+
 function buildProvinceClimateRiskReductionForecast(province, shell, report = buildProvinceClimateTurnReport(province)) {
   const priorities = buildProvinceClimateMitigationPriorities(province, report);
   const queuedMitigation = priorities.find((priority) => priority.outcomeChange) ?? null;
@@ -1568,6 +1656,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
   const remainingCascades = buildProvinceClimateCascadePreview(province, shell, report)
     .filter((cascade) => !queuedMitigation || !cascade.changesThisTurn)
     .slice(0, 2);
+  const deadlineCoverage = buildClimateMitigationDeadlineCoverage(province, queuedMitigation, cues, remainingCascades);
 
   if (!queuedMitigation) {
     return {
@@ -1577,6 +1666,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
       criticalDeadline,
       queuedAction: null,
       payoffTradeoff: null,
+      deadlineCoverage,
       summary: 'Aucune mitigation climat décisive en file: la réduction de risque projetée reste inchangée.',
       remainingCascades,
     };
@@ -1589,6 +1679,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
     criticalDeadline,
     queuedAction: queuedMitigation.option,
     payoffTradeoff,
+    deadlineCoverage,
     summary: `${queuedMitigation.option} projette ${currentRisk} → ${projectedRisk} avant ${criticalDeadline}.`,
     remainingCascades: remainingCascades.length > 0 ? remainingCascades : [{
       type: 'surveillance résiduelle',
@@ -1621,6 +1712,11 @@ function renderProvinceClimateRiskReductionForecast(province, shell) {
           <small><b>${forecast.payoffTradeoff.tradeoffType}</b> · ${forecast.payoffTradeoff.tradeoff}</small>
         </div>
       ` : ''}
+      <div class="province-climate-risk-forecast__deadline province-climate-risk-forecast__deadline--${forecast.deadlineCoverage.state}">
+        <span><b>Deadline</b> · ${forecast.deadlineCoverage.label}</span>
+        <small>${forecast.deadlineCoverage.detail}</small>
+        ${forecast.deadlineCoverage.residualRisk ? `<small><b>Risque résiduel</b> · ${forecast.deadlineCoverage.residualRisk}</small>` : ''}
+      </div>
       <div class="province-climate-risk-forecast__residuals">
         ${forecast.remainingCascades.map((cascade) => `
           <small><b>${cascade.type}</b> · ${cascade.scope}</small>

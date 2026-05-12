@@ -8,6 +8,8 @@ const stylesSource = readFileSync(new URL('../../../web/styles.css', import.meta
 test('selected province panel forecasts climate risk reduction after queued mitigation', () => {
   assert.match(webAppSource, /function getProjectedClimateRiskAfterMitigation/);
   assert.match(webAppSource, /function buildClimateMitigationPayoffTradeoff/);
+  assert.match(webAppSource, /function buildClimateMitigationDeadlineCoverage/);
+  assert.match(webAppSource, /function getClimateDeadlineResidualRisk/);
   assert.match(webAppSource, /function buildProvinceClimateRiskReductionForecast/);
   assert.match(webAppSource, /function renderProvinceClimateRiskReductionForecast/);
   assert.match(webAppSource, /Prévision de réduction du risque climatique après mitigation en file/);
@@ -22,6 +24,14 @@ test('selected province panel forecasts climate risk reduction after queued miti
   assert.match(webAppSource, /friction culturelle/);
   assert.match(webAppSource, /exposition militaire/);
   assert.match(webAppSource, /coût d’opportunité/);
+  assert.match(webAppSource, /deadlineCoverage/);
+  assert.match(webAppSource, /Aucune deadline critique active/);
+  assert.match(webAppSource, /juste à temps/);
+  assert.match(webAppSource, /trop tard pour/);
+  assert.match(webAppSource, /Risque résiduel/);
+  assert.match(webAppSource, /récolte: rupture de vivres locale probable/);
+  assert.match(webAppSource, /route: exposition logistique et militaire prolongée/);
+  assert.match(webAppSource, /stabilité: friction locale prolongée/);
   assert.match(webAppSource, /remainingCascades/);
   assert.match(webAppSource, /Aucune mitigation climat décisive en file/);
   assert.match(webAppSource, /surveillance résiduelle/);
@@ -33,5 +43,10 @@ test('selected province panel forecasts climate risk reduction after queued miti
   assert.match(stylesSource, /\.province-climate-risk-forecast--reduced/);
   assert.match(stylesSource, /\.province-climate-risk-forecast__meter/);
   assert.match(stylesSource, /\.province-climate-risk-forecast__payoff/);
+  assert.match(stylesSource, /\.province-climate-risk-forecast__deadline/);
+  assert.match(stylesSource, /\.province-climate-risk-forecast__deadline--covered/);
+  assert.match(stylesSource, /\.province-climate-risk-forecast__deadline--just-in-time/);
+  assert.match(stylesSource, /\.province-climate-risk-forecast__deadline--missed/);
+  assert.match(stylesSource, /\.province-climate-risk-forecast__deadline--calm/);
   assert.match(stylesSource, /\.province-climate-risk-forecast__residuals/);
 });
