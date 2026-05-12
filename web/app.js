@@ -5482,6 +5482,132 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
     sideEffect,
   };
 }
+function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
+  const priorities = buildFrontPriorityRanking(shell, intrigueView)
+    .filter((priority) => priority.tone !== 'ready')
+    .slice(0, 4);
+
+  if (priorities.length === 0) {
+    return {
+      empty: true,
+      title: 'Comparaison décisions fronts',
+      summary: 'Aucun front critique visible à comparer pour ce tour.',
+      decisions: [],
+    };
+  }
+
+  const decisions = priorities.map((priority, index) => {
+    const province = shell.provinces.find((candidate) => candidate.provinceId === priority.provinceId) ?? null;
+    const focusContext = province ? {
+      focusedProvinceId: province.provinceId,
+      focusedProvince: province,
+      neighborIds: new Set(province.neighborIds),
+    } : null;
+    const actionQueue = province && focusContext
+      ? buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)
+      : [];
+    const projection = province && focusContext
+      ? buildProjectedFrontStability(province, shell, actionQueue)
+      : null;
+    const risks = province && projection
+      ? buildCriticalFrontRiskWarnings(province, projection)
+      : [];
+    const recommendedAction = actionQueue[0] ?? null;
+    const leadRisk = risks[0] ?? { label: priority.leadRisk, driver: 'Projection', tone: priority.tone === 'danger' ? 'critical' : 'watch' };
+    const stabilityValue = projection?.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? 'stabilité non calculée';
+    const blockedCount = actionQueue.filter((entry) => entry.status === 'blocked').length;
+    const riskyCount = actionQueue.filter((entry) => entry.status === 'risky').length;
+    const dominantCause = leadRisk.driver === 'Fatigue / supply'
+      ? `Ravitaillement ${province?.supplyTone ?? 'fragile'}`
+      : leadRisk.driver === 'Front voisin'
+        ? 'Pression front voisin'
+        : leadRisk.driver === 'Pression'
+          ? 'Pression ennemie visible'
+          : leadRisk.label;
+    const ignoredRisk = leadRisk.tone === 'critical' || priority.tone === 'danger'
+      ? `Ignorer: brèche probable (${stabilityValue}).`
+      : leadRisk.tone === 'watch' || priority.tone === 'warning'
+        ? `Ignorer: suivi nécessaire au prochain tour (${stabilityValue}).`
+        : `Ignorer: surveillance suffisante (${stabilityValue}).`;
+    const costRisk = recommendedAction
+      ? `${recommendedAction.orderCost} · ${recommendedAction.mainRisk}`
+      : blockedCount > 0
+        ? `${blockedCount} option${blockedCount > 1 ? 's' : ''} bloquée${blockedCount > 1 ? 's' : ''}; arbitrage manuel requis.`
+        : riskyCount > 0
+          ? `${riskyCount} option${riskyCount > 1 ? 's' : ''} risquée${riskyCount > 1 ? 's' : ''}; garder une réserve.`
+          : ignoredRisk;
+
+    return {
+      rank: index + 1,
+      provinceId: priority.provinceId,
+      provinceLabel: priority.provinceLabel,
+      tone: priority.tone,
+      threatLevel: priority.tone === 'danger' ? 'Critique' : priority.tone === 'warning' ? 'Sous tension' : 'À surveiller',
+      dominantCause,
+      recommendedAction: recommendedAction?.label ?? priority.actionCode,
+      actionCode: recommendedAction?.actionCode ?? priority.actionCode,
+      costRisk,
+      ignoredRisk,
+      comparison: index === 0
+        ? 'Choix recommandé en premier: menace cumulée maximale.'
+        : `Comparer après ${priorities[index - 1].provinceLabel}: menace ${priority.score} vs ${priorities[index - 1].score}.`,
+    };
+  });
+
+  return {
+    empty: false,
+    title: 'Comparaison décisions fronts',
+    summary: `${decisions.length} front${decisions.length > 1 ? 's' : ''} critique${decisions.length > 1 ? 's' : ''} visible${decisions.length > 1 ? 's' : ''}: choisir la prochaine action sans perdre les filtres carte.`,
+    decisions,
+  };
+}
+
+function renderCriticalFrontDecisionComparison(shell, intrigueView = null) {
+  const comparison = buildCriticalFrontDecisionComparison(shell, intrigueView);
+
+  if (comparison.empty) {
+    return `
+      <section class="critical-front-decision-comparison is-empty" aria-label="Comparaison des décisions de fronts critiques">
+        <div class="critical-front-decision-comparison__header">
+          <strong>${comparison.title}</strong>
+          <span>calme</span>
+        </div>
+        <p>${comparison.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="critical-front-decision-comparison" aria-label="Comparaison des décisions de fronts critiques">
+      <div class="critical-front-decision-comparison__header">
+        <div>
+          <strong>${comparison.title}</strong>
+          <p>${comparison.summary}</p>
+        </div>
+        <span>navigation rapide</span>
+      </div>
+      <div class="critical-front-decision-comparison__grid">
+        ${comparison.decisions.map((decision) => `
+          <button class="critical-front-decision critical-front-decision--${decision.tone}" type="button" data-province-id="${decision.provinceId}" data-readiness-focus="${decision.provinceId}" aria-label="Comparer ${decision.provinceLabel}: ${decision.threatLevel}">
+            <div class="critical-front-decision__title">
+              <strong>#${decision.rank} ${decision.provinceLabel}</strong>
+              <code>${decision.actionCode}</code>
+            </div>
+            <dl>
+              <div><dt>Menace</dt><dd>${decision.threatLevel}</dd></div>
+              <div><dt>Cause</dt><dd>${decision.dominantCause}</dd></div>
+              <div><dt>Action</dt><dd>${decision.recommendedAction}</dd></div>
+              <div><dt>Coût / risque</dt><dd>${decision.costRisk}</dd></div>
+            </dl>
+            <small>${decision.ignoredRisk} ${decision.comparison}</small>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+
 
 function renderRecommendedMilitaryActionPreview(shell, intrigueView = null) {
   const preview = buildRecommendedMilitaryActionPreview(shell, intrigueView);
@@ -9324,6 +9450,7 @@ function render() {
           <p class="turn-summary">${state.lastTurnSummary}</p>
           ${renderConflictReadinessWarnings(shell, intrigueView)}
           ${renderFrontPriorityRanking(shell, intrigueView)}
+          ${renderCriticalFrontDecisionComparison(shell, intrigueView)}
           ${renderRecommendedMilitaryActionPreview(shell, intrigueView)}
           ${renderQueuedMilitaryResolutionSummary(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}

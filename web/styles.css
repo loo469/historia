@@ -558,6 +558,94 @@ button { font: inherit; }
 .front-priority--ready { border-color: rgba(74, 222, 128, 0.24); }
 .front-priority--warning { border-color: rgba(251, 191, 36, 0.32); }
 .front-priority--danger { border-color: rgba(251, 113, 133, 0.38); }
+.critical-front-decision-comparison {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+  max-width: 72ch;
+  padding: 11px 12px;
+  border-radius: 15px;
+  background: rgba(15, 23, 42, 0.68);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+}
+.critical-front-decision-comparison__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+.critical-front-decision-comparison__header strong { color: #fde68a; font-size: 13px; }
+.critical-front-decision-comparison__header p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.critical-front-decision-comparison__header span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.critical-front-decision-comparison__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 7px;
+}
+.critical-front-decision {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  text-align: left;
+  cursor: pointer;
+}
+.critical-front-decision:hover,
+.critical-front-decision:focus-visible {
+  border-color: rgba(251, 191, 36, 0.52);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.14);
+  outline: none;
+}
+.critical-front-decision__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.critical-front-decision strong { color: #f8fafc; }
+.critical-front-decision code { color: #fde68a; font-size: 11px; }
+.critical-front-decision dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.critical-front-decision dl div {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 6px;
+}
+.critical-front-decision dt {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.critical-front-decision dd {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.critical-front-decision small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.critical-front-decision--warning { border-color: rgba(251, 191, 36, 0.34); }
+.critical-front-decision--danger { border-color: rgba(251, 113, 133, 0.42); }
 .recommended-action-preview {
   display: grid;
   gap: 9px;
