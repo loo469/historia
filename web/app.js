@@ -5365,6 +5365,89 @@ function buildAtlasClimateMitigationSynergies(shell, cascadePreview, worldClimat
   };
 }
 
+function buildAtlasSeasonalMitigationWindows(synergyView, worldClimateLayer) {
+  if (!synergyView || synergyView.synergies.length === 0) {
+    return {
+      state: 'empty',
+      windows: [],
+      summary: 'Aucune fenêtre saisonnière critique: pas de synergie notable à prioriser.',
+    };
+  }
+
+  const timelineByProvinceId = new Map(worldClimateLayer.timeline.entries.map((entry) => [entry.provinceId, entry]));
+  const windows = synergyView.synergies
+    .map((synergy) => {
+      const timelineEntry = timelineByProvinceId.get(synergy.provinceId);
+      const criticalSeason = synergy.season ?? timelineEntry?.season ?? worldClimateLayer.timeline.targetSeason;
+      const urgencyRank = synergy.intensity === 'critical' ? 0 : synergy.intensity === 'elevated' ? 1 : 2;
+      const deferredConsequence = synergy.intensity === 'critical'
+        ? `Report: ${synergy.routeImpact} peut subir la cascade suivante avant ${criticalSeason}.`
+        : synergy.intensity === 'elevated'
+          ? `Report: l’anomalie de ${criticalSeason} réduit la marge de mitigation sur ${synergy.protectedRegions}.`
+          : `Report: fenêtre utile mais non critique; relire au prochain toggle saison.`;
+
+      return {
+        provinceId: synergy.provinceId,
+        provinceLabel: synergy.provinceLabel,
+        action: synergy.action,
+        intensity: synergy.intensity,
+        urgencyRank,
+        criticalSeason,
+        avoidedImpact: synergy.avoidedCascade,
+        protectedRegions: synergy.protectedRegions,
+        deferredConsequence,
+        badges: ['fenêtre saisonnière', ...synergy.badges].slice(0, 4),
+      };
+    })
+    .filter((entry) => entry.criticalSeason && entry.avoidedImpact)
+    .sort((left, right) => left.urgencyRank - right.urgencyRank || left.criticalSeason.localeCompare(right.criticalSeason) || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+
+  return {
+    state: windows.length === 0 ? 'quiet' : windows.some((window) => window.intensity === 'critical') ? 'urgent' : 'ready',
+    windows,
+    summary: windows.length === 0
+      ? 'Les synergies existent mais aucune saison critique nette ne justifie un panneau supplémentaire.'
+      : `${windows.length} fenêtre${windows.length > 1 ? 's' : ''} saisonnière${windows.length > 1 ? 's' : ''} lie${windows.length > 1 ? 'nt' : ''} mitigation, impact évité et conséquence du report.`,
+  };
+}
+
+function renderAtlasSeasonalMitigationWindows(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  if (view.state === 'quiet') {
+    return `
+      <section class="map-world-climate-window map-world-climate-window--quiet" aria-label="Fenêtres saisonnières de mitigation climat atlas">
+        <strong>Fenêtres saisonnières</strong>
+        <p>${view.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-world-climate-window map-world-climate-window--${view.state}" aria-label="Fenêtres saisonnières de mitigation climat atlas">
+      <div class="map-world-climate-window__header">
+        <strong>Fenêtres saisonnières</strong>
+        <span>${view.windows.length} priorité${view.windows.length > 1 ? 's' : ''} climat</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-window__list">
+        ${view.windows.map((window) => `
+          <li class="map-world-climate-window__item map-world-climate-window__item--${window.intensity}">
+            <b>${window.provinceLabel}</b>
+            <span>${window.action} · saison critique: ${window.criticalSeason}</span>
+            <small><b>Impact évité</b> · ${window.avoidedImpact}</small>
+            <small><b>Si reportée</b> · ${window.deferredConsequence}</small>
+            <div class="map-world-climate-window__badges">${window.badges.map((badge) => `<small>${badge}</small>`).join('')}</div>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateMitigationSynergies(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -12207,6 +12290,7 @@ function render() {
   const worldClimateLayer = buildWorldClimateLayer(shell, state.seasonIndex, state.atlasClimateForecastMode);
   const atlasClimateCascadeImpact = buildAtlasClimateCascadeImpactPreview(shell, worldClimateLayer);
   const atlasClimateMitigationSynergies = buildAtlasClimateMitigationSynergies(shell, atlasClimateCascadeImpact, worldClimateLayer);
+  const atlasSeasonalMitigationWindows = buildAtlasSeasonalMitigationWindows(atlasClimateMitigationSynergies, worldClimateLayer);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -12239,6 +12323,7 @@ function render() {
           ${renderWorldClimateLayerSummary(worldClimateLayer)}
           ${renderAtlasClimateCascadeImpactPreview(atlasClimateCascadeImpact)}
           ${renderAtlasClimateMitigationSynergies(atlasClimateMitigationSynergies)}
+          ${renderAtlasSeasonalMitigationWindows(atlasSeasonalMitigationWindows)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
