@@ -2357,6 +2357,74 @@ button { font: inherit; }
 .province-conflict-next-action--ready { border-color: rgba(74, 222, 128, 0.28); }
 .province-conflict-next-action--warning { border-color: rgba(251, 191, 36, 0.34); }
 .province-conflict-next-action--danger { border-color: rgba(251, 113, 133, 0.4); }
+.military-response-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(49, 46, 129, 0.26));
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+.military-response-options__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.military-response-options__header span,
+.military-response-options__header small,
+.military-response-option__title span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-response-options__header strong {
+  display: block;
+  margin-top: 3px;
+}
+.military-response-options__grid {
+  display: grid;
+  gap: 8px;
+}
+.military-response-option {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.44);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.military-response-option__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.military-response-option__title code {
+  color: #bae6fd;
+  font-size: 11px;
+}
+.military-response-option dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.military-response-option dt {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.military-response-option dd {
+  margin: 2px 0 0;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.military-response-option--ready { border-color: rgba(74, 222, 128, 0.28); }
+.military-response-option--risky { border-color: rgba(251, 191, 36, 0.34); }
+.military-response-option--blocked { border-color: rgba(251, 113, 133, 0.4); }
 .military-plan-impact {
   display: grid;
   gap: 10px;

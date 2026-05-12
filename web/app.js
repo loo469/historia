@@ -2052,6 +2052,69 @@ function renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView)
   `;
 }
 
+function buildMilitaryResponseOptions(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const outcome = buildConflictOutcomePreview(province, shell);
+  const readinessWarning = buildConflictReadinessWarnings(shell, intrigueView)
+    .find((warning) => warning.provinceId === province.provinceId || province.neighborIds.includes(warning.provinceId)) ?? null;
+  const localReason = readinessWarning?.provinceId === province.provinceId
+    ? readinessWarning.detail
+    : readinessWarning
+      ? `Voisinage sous tension: ${readinessWarning.focusTargetLabel}.`
+      : outcome.summary;
+
+  if (outcome.tone === 'success' && !readinessWarning && actionQueue.every((entry) => entry.status === 'ready')) {
+    return [];
+  }
+
+  return actionQueue.slice(0, 3).map((entry, index) => ({
+    ...entry,
+    optionLabel: index === 0 ? 'Option prioritaire' : index === 1 ? 'Option prudente' : 'Option de réserve',
+    localReason: index === 0
+      ? localReason
+      : entry.status === 'ready'
+        ? `Appui local disponible: ${province.supplyLevel}, loyauté ${province.loyalty}.`
+        : entry.mainRisk,
+    expectedNextTurn: entry.expectedResult,
+  }));
+}
+
+function renderMilitaryResponseOptions(province, shell, focusContext, intrigueView = null) {
+  const options = buildMilitaryResponseOptions(province, shell, focusContext, intrigueView);
+
+  if (options.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="military-response-options" aria-label="Comparaison des réponses militaires">
+      <div class="military-response-options__header">
+        <div>
+          <span>Réponses militaires</span>
+          <strong>Comparer avant d’engager</strong>
+        </div>
+        <small>${options.length} option${options.length > 1 ? 's' : ''}</small>
+      </div>
+      <div class="military-response-options__grid">
+        ${options.map((option) => `
+          <article class="military-response-option military-response-option--${option.status}">
+            <div class="military-response-option__title">
+              <span>${option.optionLabel}</span>
+              <code>${option.actionCode}</code>
+            </div>
+            <strong>${option.label}</strong>
+            <dl>
+              <div><dt>Coût / risque</dt><dd>${option.orderCost} · ${option.mainRisk}</dd></div>
+              <div><dt>Effet prochain tour</dt><dd>${option.expectedNextTurn}</dd></div>
+              <div><dt>Raison locale</dt><dd>${option.localReason}</dd></div>
+            </dl>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const resolution = summarizeTurnResolutionPreview(province, actionQueue);
@@ -2573,6 +2636,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView)}
+      ${renderMilitaryResponseOptions(province, shell, focusContext, intrigueView)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
       ${renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView)}
