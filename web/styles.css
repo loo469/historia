@@ -334,6 +334,32 @@ button { font: inherit; }
 .map-climate-density p { color: #dbeafe; }
 .map-climate-density small { color: #bae6fd; }
 
+.map-climate-cascade-group {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+  max-width: 72ch;
+  padding: 10px 12px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(127, 29, 29, 0.34), rgba(67, 56, 202, 0.18));
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+.map-climate-cascade-group div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-climate-cascade-group p,
+.map-climate-cascade-group span,
+.map-climate-cascade-group small {
+  color: #fecaca;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-climate-cascade-group small { color: #fde68a; }
+
 .economy-turn-pulse {
   margin-top: 12px;
   display: inline-flex;
@@ -851,6 +877,14 @@ button { font: inherit; }
 .province-node.has-climate-post-commit--cascade-active::before { border-color: rgba(248, 113, 113, 0.82); }
 .province-node.has-climate-post-commit--hazard-delayed::before { border-color: rgba(251, 191, 36, 0.8); }
 .province-node.has-climate-post-commit--risk-reduced::before { border-color: rgba(74, 222, 128, 0.82); }
+.province-node.has-climate-cascade-group::after {
+  border-color: rgba(251, 146, 60, 0.6);
+  box-shadow: 0 0 16px rgba(251, 146, 60, 0.2);
+}
+.province-node.is-climate-cascade-group-primary::after {
+  border-color: rgba(248, 113, 113, 0.88);
+  box-shadow: 0 0 22px rgba(248, 113, 113, 0.32);
+}
 .province-node__climate-marker {
   position: relative;
   z-index: 1;

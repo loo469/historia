@@ -14,11 +14,11 @@ test('map exposes compact post-commit climate impact markers and detail copy', (
   assert.match(webAppSource, /cascade-active/);
   assert.match(webAppSource, /Lié au résumé climat cumulé/);
   assert.match(webAppSource, /Aucune intervention climat confirmée ne couvre encore cet aléa/);
-  assert.match(webAppSource, /slice\(0, 4\)/);
+  assert.match(webAppSource, /buildClimateMarkerDensityControl/);
   assert.match(webAppSource, /has-climate-post-commit/);
   assert.match(webAppSource, /province-node__climate-marker/);
   assert.match(webAppSource, /marqueur climat post-résolution/);
-  assert.match(webAppSource, /renderProvinceCard\(province, focusContext, postCommitClimateMarkers\)/);
+  assert.match(webAppSource, /renderProvinceCard\(province, focusContext, postCommitClimateMarkers, selectedClimateCascadeGroup\)/);
   assert.match(webAppSource, /renderPostCommitClimateMarkerDetail\(province, buildPostCommitClimateImpactMarkers/);
 
   assert.match(stylesSource, /\.province-node\.has-climate-post-commit/);
