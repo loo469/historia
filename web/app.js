@@ -5618,6 +5618,57 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
     sideEffect,
   };
 }
+function buildFrontDecisionDependencies(province, shell, projection, actionQueue, risks) {
+  if (!province || !projection) {
+    return [];
+  }
+
+  const dependencies = [];
+  const hasDriver = (label) => projection.drivers.some((driver) => driver.label === label);
+  const neighborFront = shell.provinces.find((candidate) => province.neighborIds.includes(candidate.provinceId) && (candidate.contested || candidate.occupied));
+  const blockedAction = actionQueue.find((entry) => entry.status === 'blocked');
+  const riskyAction = actionQueue.find((entry) => entry.status === 'risky');
+  const stabilityValue = projection.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? projection.title;
+
+  if (hasDriver('Front voisin') && neighborFront) {
+    dependencies.push({
+      kind: 'military',
+      label: `Soutenir ${neighborFront.label}`,
+      reason: 'Front voisin conditionne la pression locale.',
+    });
+  } else if (hasDriver('Pression')) {
+    dependencies.push({
+      kind: 'military',
+      label: 'Neutraliser marqueur adverse',
+      reason: risks[0]?.summary ?? 'Pression ennemie visible avant engagement.',
+    });
+  }
+
+  if (blockedAction) {
+    dependencies.push({
+      kind: 'logistics',
+      label: 'Débloquer contrainte logistique',
+      reason: `${blockedAction.label} reste bloquée avant succès probable.`,
+    });
+  } else if (hasDriver('Fatigue / supply') || ['collapsed', 'disrupted', 'strained'].includes(province.supplyLevel)) {
+    dependencies.push({
+      kind: 'logistics',
+      label: `Sécuriser ravitaillement ${province.supplyTone}`,
+      reason: 'La contrainte supply conditionne le coût réel de l’action.',
+    });
+  }
+
+  if (dependencies.length < 2 && (projection.tone !== 'ready' || riskyAction)) {
+    dependencies.push({
+      kind: 'stability',
+      label: 'Confirmer stabilité projetée',
+      reason: `${stabilityValue}; ${riskyAction ? `${riskyAction.label} reste risquée.` : 'suivi nécessaire avant commit.'}`,
+    });
+  }
+
+  return dependencies.slice(0, 2);
+}
+
 function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
   const priorities = buildFrontPriorityRanking(shell, intrigueView)
     .filter((priority) => priority.tone !== 'ready')
@@ -5672,6 +5723,7 @@ function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
         : riskyCount > 0
           ? `${riskyCount} option${riskyCount > 1 ? 's' : ''} risquée${riskyCount > 1 ? 's' : ''}; garder une réserve.`
           : ignoredRisk;
+    const dependencies = buildFrontDecisionDependencies(province, shell, projection, actionQueue, risks);
 
     return {
       rank: index + 1,
@@ -5684,6 +5736,7 @@ function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
       actionCode: recommendedAction?.actionCode ?? priority.actionCode,
       costRisk,
       ignoredRisk,
+      dependencies,
       comparison: index === 0
         ? 'Choix recommandé en premier: menace cumulée maximale.'
         : `Comparer après ${priorities[index - 1].provinceLabel}: menace ${priority.score} vs ${priorities[index - 1].score}.`,
@@ -5735,6 +5788,14 @@ function renderCriticalFrontDecisionComparison(shell, intrigueView = null) {
               <div><dt>Action</dt><dd>${decision.recommendedAction}</dd></div>
               <div><dt>Coût / risque</dt><dd>${decision.costRisk}</dd></div>
             </dl>
+            ${decision.dependencies.length > 0 ? `
+              <div class="critical-front-decision__dependencies" aria-label="Dépendances avant engagement">
+                <span>Dépendances</span>
+                ${decision.dependencies.map((dependency) => `
+                  <em class="critical-front-decision__dependency critical-front-decision__dependency--${dependency.kind}"><b>${dependency.label}</b>${dependency.reason}</em>
+                `).join('')}
+              </div>
+            ` : ''}
             <small>${decision.ignoredRisk} ${decision.comparison}</small>
           </button>
         `).join('')}
