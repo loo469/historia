@@ -2118,6 +2118,11 @@ function buildIntrigueExposureFocusTarget(province, drillDown, leadWarning, resp
         ? `Cellule ${drillDown.primaryCelluleId ?? 'locale'} confirmée`
         : `Hotspot confirmé ${drillDown.locationName}`,
       hint: 'focus confirmé',
+      visibilityLabel: 'Révélé',
+      privacyReason: 'Renseignement confirmé: le focus peut afficher la cible précise.',
+      ariaLabel: response.code === 'exposer'
+        ? `Focaliser cellule confirmée en ${province.label}`
+        : `Focaliser hotspot confirmé en ${province.label}`,
       focusable: true,
     };
   }
@@ -2130,6 +2135,9 @@ function buildIntrigueExposureFocusTarget(province, drillDown, leadWarning, resp
       targetId: drillDown.primaryCelluleId,
       label: `Cellule ${drillDown.primaryCelluleId}`,
       hint: 'cible confirmée',
+      visibilityLabel: 'Révélé',
+      privacyReason: 'Cellule identifiée par le drilldown: aucun brouillard restant sur cette cible.',
+      ariaLabel: `Focaliser cellule confirmée en ${province.label}`,
       focusable: true,
     };
   }
@@ -2142,6 +2150,9 @@ function buildIntrigueExposureFocusTarget(province, drillDown, leadWarning, resp
       targetId: drillDown.locationId,
       label: `Hotspot ${drillDown.locationName}`,
       hint: 'hotspot confirmé',
+      visibilityLabel: 'Révélé',
+      privacyReason: 'Hotspot local confirmé: le focus peut afficher la province sans masquer la source.',
+      ariaLabel: `Focaliser hotspot confirmé en ${province.label}`,
       focusable: true,
     };
   }
@@ -2149,23 +2160,29 @@ function buildIntrigueExposureFocusTarget(province, drillDown, leadWarning, resp
   if (leadWarning?.tone !== 'masked') {
     return {
       state: 'probable',
-      kind: 'province',
+      kind: 'province-fog',
       provinceId: province.provinceId,
       targetId: province.provinceId,
       label: `Zone probable ${province.label}`,
       hint: 'zone probable',
+      visibilityLabel: 'Partiellement révélé',
+      privacyReason: 'Signal agrégé par le brouillard: seules la province et la raison de soupçon sont affichées.',
+      ariaLabel: `Focaliser zone probable sans révéler cellule ou opération en ${province.label}`,
       focusable: true,
     };
   }
 
   return {
     state: 'masked',
-    kind: 'fog',
-    provinceId: null,
-    targetId: null,
-    label: 'Information masquée',
-    hint: 'brouillard préservé',
-    focusable: false,
+    kind: 'province-fog',
+    provinceId: province.provinceId,
+    targetId: province.provinceId,
+    label: `Cible masquée par le brouillard en ${province.label}`,
+    hint: 'voir zone masquée',
+    visibilityLabel: 'Masqué',
+    privacyReason: 'Brouillard préservé: focus limité à la province, cellule et opération restent cachées.',
+    ariaLabel: `Focaliser zone masquée sans révéler cible intrigue en ${province.label}`,
+    focusable: true,
   };
 }
 
@@ -2248,10 +2265,10 @@ function renderMapIntrigueExposureSummary(summary) {
           <li class="map-intrigue-exposure-summary__item map-intrigue-exposure-summary__item--${warning.tone} map-intrigue-exposure-summary__item--${warning.focusTarget.state}">
             <div>
               <b>${warning.provinceLabel}</b>
-              ${warning.focusTarget.focusable ? `<button type="button" data-province-id="${warning.focusTarget.provinceId}" data-intrigue-focus-target="${warning.focusTarget.kind}:${warning.focusTarget.targetId}" aria-label="Focaliser ${warning.focusTarget.label}">${warning.focusTarget.hint}</button>` : `<em>${warning.focusTarget.hint}</em>`}
+              ${warning.focusTarget.focusable ? `<button type="button" data-province-id="${warning.focusTarget.provinceId}" data-intrigue-focus-target="${warning.focusTarget.kind}:${warning.focusTarget.targetId}" data-intrigue-fog-state="${warning.focusTarget.state}" aria-label="${warning.focusTarget.ariaLabel}">${warning.focusTarget.hint}</button>` : `<em>${warning.focusTarget.hint}</em>`}
             </div>
             <span>${warning.risk}</span>
-            <small>${warning.focusTarget.label} · ${warning.trigger} · ${warning.consequence}</small>
+            <small><b>${warning.focusTarget.visibilityLabel}</b> · ${warning.focusTarget.label} · ${warning.trigger} · ${warning.focusTarget.privacyReason} · ${warning.consequence}</small>
           </li>
         `).join('')}
       </ul>
