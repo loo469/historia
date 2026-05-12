@@ -444,6 +444,7 @@ const state = {
   atlasClimateForecastMode: 'current',
   atlasConflictPlaybackStep: 1,
   atlasConflictComparisonMode: 'current',
+  selectedAtlasMilitaryOutcomeOptionId: null,
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
   militaryOutcomeMarkerFilters: {
@@ -473,6 +474,7 @@ function applyMapScenario(scenario) {
   state.atlasClimateForecastMode = 'current';
   state.atlasConflictPlaybackStep = 1;
   state.atlasConflictComparisonMode = 'current';
+  state.selectedAtlasMilitaryOutcomeOptionId = null;
   state.mapZoom = 1;
   state.mapPanX = 0;
   state.mapPanY = 0;
@@ -905,12 +907,13 @@ function buildAtlasMilitaryOperationOutcomeForecasts(sequence) {
 
 function renderAtlasMilitaryOperationOutcomeForecasts(forecasts) {
   const height = forecasts.empty ? 9 : 11 + (forecasts.options.length * 4.8);
+  const selectedOptionId = state.selectedAtlasMilitaryOutcomeOptionId ?? forecasts.options[0]?.optionId ?? null;
   return `
     <g class="atlas-military-outcome-forecasts" aria-label="Prévisions comparées des opérations militaires: ${forecasts.summary}">
       <rect class="atlas-military-outcome-forecasts__panel" x="42" y="54" width="55" height="${height}" rx="2.5"></rect>
       <text class="atlas-military-outcome-forecasts__title" x="44" y="58.3">Issues probables</text>
       ${forecasts.empty ? `<text class="atlas-military-outcome-forecasts__empty" x="44" y="63">${forecasts.summary}</text>` : forecasts.options.map((option, index) => `
-        <g class="atlas-military-outcome-option atlas-military-outcome-option--${option.tone}" data-atlas-military-outcome-option="${option.optionId}" tabindex="0" aria-label="${option.label}: ${option.frontChange}, ${option.risk}, délai ${option.delay}. ${option.detail}">
+        <g class="atlas-military-outcome-option atlas-military-outcome-option--${option.tone} ${selectedOptionId === option.optionId ? 'is-selected' : ''}" data-atlas-military-outcome-option="${option.optionId}" tabindex="0" aria-label="${option.label}: ${option.frontChange}, ${option.risk}, délai ${option.delay}. ${option.detail}">
           <circle cx="45.1" cy="${63 + index * 4.8}" r="1.15"></circle>
           <text class="atlas-military-outcome-option__line" x="47" y="${62.4 + index * 4.8}">${option.label}: ${option.frontChange} · ${option.risk}</text>
           <text class="atlas-military-outcome-option__detail" x="47" y="${64.5 + index * 4.8}">délai ${option.delay} · ${option.detail}</text>
@@ -921,7 +924,81 @@ function renderAtlasMilitaryOperationOutcomeForecasts(forecasts) {
   `;
 }
 
+function buildAtlasMilitaryStagedCommitment(forecasts, selectedOptionId = state.selectedAtlasMilitaryOutcomeOptionId) {
+  if (!forecasts || forecasts.empty || !forecasts.options.length) {
+    return {
+      selectedOption: null,
+      stages: [],
+      summary: 'Engagement indisponible: aucune prévision militaire pertinente.',
+      empty: true,
+    };
+  }
+
+  const selectedOption = forecasts.options.find((option) => option.optionId === selectedOptionId) ?? forecasts.options[0];
+  const stages = [
+    {
+      stageId: `${selectedOption.optionId}:recon`,
+      status: 'prévisionnel',
+      label: 'Repérer',
+      costRisk: 'coût faible / risque lecture incomplète',
+      territory: selectedOption.target,
+      effect: `confirmer ${selectedOption.frontChange}`,
+    },
+    {
+      stageId: `${selectedOption.optionId}:commit`,
+      status: 'à engager',
+      label: 'Engager',
+      costRisk: `${selectedOption.overextension} / ${selectedOption.risk}`,
+      territory: selectedOption.target,
+      effect: selectedOption.label,
+    },
+    selectedOption.delay === 'long'
+      ? {
+        stageId: `${selectedOption.optionId}:reserve`,
+        status: 'prévisionnel',
+        label: 'Réserve',
+        costRisk: 'coût moyen / délai long',
+        territory: selectedOption.target,
+        effect: 'tenir la fenêtre ouverte',
+      }
+      : {
+        stageId: `${selectedOption.optionId}:followup`,
+        status: 'prévisionnel',
+        label: 'Suivi',
+        costRisk: `risque ${selectedOption.risk}`,
+        territory: selectedOption.target,
+        effect: `vérifier ${selectedOption.frontChange}`,
+      },
+  ].slice(0, 3);
+
+  return {
+    selectedOption,
+    stages,
+    summary: `Engagement préparé: ${selectedOption.label} sur ${selectedOption.target}; ${stages.length} étapes, ${selectedOption.delay}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryStagedCommitment(commitment) {
+  const height = commitment.empty ? 8 : 7 + (commitment.stages.length * 4.1);
+  return `
+    <g class="atlas-military-staged-commitment" aria-label="Engagement militaire par étapes: ${commitment.summary}">
+      <rect class="atlas-military-staged-commitment__panel" x="42" y="80" width="55" height="${height}" rx="2.5"></rect>
+      <text class="atlas-military-staged-commitment__title" x="44" y="83.3">Engagement préparé</text>
+      ${commitment.empty ? `<text class="atlas-military-staged-commitment__empty" x="44" y="86.5">${commitment.summary}</text>` : commitment.stages.map((stage, index) => `
+        <g class="atlas-military-commitment-stage atlas-military-commitment-stage--${stage.status === 'à engager' ? 'commit' : 'preview'}" data-atlas-commitment-stage="${stage.stageId}" aria-label="${stage.label}: ${stage.status}, ${stage.territory}, ${stage.effect}, ${stage.costRisk}">
+          <rect x="44" y="${84.8 + index * 4.1}" width="4.4" height="2.7" rx="0.9"></rect>
+          <text class="atlas-military-commitment-stage__label" x="49.5" y="${85.9 + index * 4.1}">${index + 1}. ${stage.label} · ${stage.status}</text>
+          <text class="atlas-military-commitment-stage__detail" x="49.5" y="${87.4 + index * 4.1}">${stage.territory}: ${stage.effect}</text>
+          <text class="atlas-military-commitment-stage__risk" x="49.5" y="${88.9 + index * 4.1}">${stage.costRisk}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
+
 
 
   const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
@@ -988,6 +1065,7 @@ function renderAtlasMilitaryLayer(shell) {
   const comparison = buildAtlasConflictRouteComparison(playback);
   const operationSequence = buildAtlasMilitaryOperationSequence(playback, comparison);
   const outcomeForecasts = buildAtlasMilitaryOperationOutcomeForecasts(operationSequence);
+  const stagedCommitment = buildAtlasMilitaryStagedCommitment(outcomeForecasts);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -1013,6 +1091,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasConflictRouteComparison(comparison)}
       ${renderAtlasMilitaryOperationSequence(operationSequence)}
       ${renderAtlasMilitaryOperationOutcomeForecasts(outcomeForecasts)}
+      ${renderAtlasMilitaryStagedCommitment(stagedCommitment)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
           <polygon points="${zone.polygon}"></polygon>
@@ -13311,6 +13390,13 @@ function render() {
   document.querySelectorAll('[data-atlas-conflict-comparison-mode]').forEach((element) => {
     element.addEventListener('click', () => {
       state.atlasConflictComparisonMode = element.dataset.atlasConflictComparisonMode ?? 'current';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-atlas-military-outcome-option]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.selectedAtlasMilitaryOutcomeOptionId = element.dataset.atlasMilitaryOutcomeOption ?? null;
       render();
     });
   });

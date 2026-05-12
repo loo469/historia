@@ -10246,7 +10246,8 @@ button { font: inherit; }
 }
 .atlas-conflict-playback,
 .atlas-conflict-comparison,
-.atlas-military-outcome-forecasts {
+.atlas-military-outcome-forecasts,
+.atlas-military-staged-commitment {
   pointer-events: auto;
 }
 .atlas-conflict-playback__panel {
@@ -10372,6 +10373,10 @@ button { font: inherit; }
 .atlas-military-outcome-option--danger circle { fill: rgba(248, 113, 113, 0.78); }
 .atlas-military-outcome-option--gain circle { fill: rgba(74, 222, 128, 0.76); }
 .atlas-military-outcome-option--delay circle { fill: rgba(251, 191, 36, 0.76); }
+.atlas-military-outcome-option.is-selected circle {
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 0.44;
+}
 .atlas-military-outcome-option__detail,
 .atlas-military-outcome-forecasts__empty {
   fill: #cbd5e1;
@@ -10380,6 +10385,40 @@ button { font: inherit; }
 .atlas-military-outcome-option:focus .atlas-military-outcome-option__detail,
 .atlas-military-outcome-option:hover .atlas-military-outcome-option__detail {
   fill: #f8fafc;
+}
+.atlas-military-staged-commitment__panel {
+  fill: rgba(12, 74, 110, 0.74);
+  stroke: rgba(56, 189, 248, 0.34);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-staged-commitment__title,
+.atlas-military-commitment-stage text,
+.atlas-military-staged-commitment__empty {
+  fill: #e0f2fe;
+  font-size: 1.36px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.36;
+}
+.atlas-military-commitment-stage rect {
+  fill: rgba(125, 211, 252, 0.46);
+  stroke: rgba(224, 242, 254, 0.58);
+  stroke-width: 0.22;
+}
+.atlas-military-commitment-stage--commit rect {
+  fill: rgba(74, 222, 128, 0.58);
+  stroke: rgba(187, 247, 208, 0.72);
+}
+.atlas-military-commitment-stage__detail {
+  fill: #bae6fd;
+  font-size: 1.04px;
+}
+.atlas-military-commitment-stage__risk,
+.atlas-military-staged-commitment__empty {
+  fill: #cbd5e1;
+  font-size: 0.96px;
 }
 .atlas-military-risk polygon {
   fill: rgba(251, 191, 36, 0.08);
