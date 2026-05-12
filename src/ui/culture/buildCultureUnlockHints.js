@@ -15,7 +15,37 @@ function buildFocusTarget({ type = 'province', id, regionId, label }) {
   };
 }
 
+function buildUrgency({ status, tone, focusTarget }) {
+  if (status === 'probable') {
+    return {
+      level: 'soon',
+      label: 'Expire bientôt',
+      window: 'ce tour',
+      detail: `${focusTarget.label}: fenêtre courte, à traiter avant de clore le tour.`,
+    };
+  }
+
+  if (status === 'possible') {
+    return {
+      level: tone === 'research' || tone === 'discovery' ? 'new' : 'stable',
+      label: tone === 'research' || tone === 'discovery' ? 'Nouveau signal' : 'Fenêtre stable',
+      window: tone === 'research' || tone === 'discovery' ? 'maintenant' : '2+ tours',
+      detail: `${focusTarget.label}: opportunité disponible sans urgence immédiate.`,
+    };
+  }
+
+  return {
+    level: 'stable',
+    label: 'À préparer',
+    window: 'stable',
+    detail: `${focusTarget.label}: signal incomplet, aucune expiration active.`,
+  };
+}
+
 function buildHint({ status, tone, label, explanation, regionId, cultureName, sourceId, focusTarget }) {
+  const normalizedFocusTarget = focusTarget ?? buildFocusTarget({ regionId, label: 'Province liée' });
+  const urgency = buildUrgency({ status, tone, focusTarget: normalizedFocusTarget });
+
   return {
     hintId: `${status}:${regionId}:${cultureName}:${label}:${sourceId ?? 'source'}`,
     status,
@@ -25,7 +55,11 @@ function buildHint({ status, tone, label, explanation, regionId, cultureName, so
     regionId,
     cultureName,
     sourceId: sourceId ?? null,
-    focusTarget: focusTarget ?? buildFocusTarget({ regionId, label: 'Province liée' }),
+    urgency,
+    focusTarget: {
+      ...normalizedFocusTarget,
+      urgency,
+    },
   };
 }
 

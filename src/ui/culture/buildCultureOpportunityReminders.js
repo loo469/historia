@@ -37,18 +37,54 @@ function reminderLabel(hint) {
   return 'Condition à combler';
 }
 
-function summarizeHint(hint, actionLabel) {
-  const provinceCopy = hint.regionId ? ` (${hint.regionId})` : '';
+function buildFallbackUrgency(hint, focusTarget) {
+  if (hint.urgency) {
+    return hint.urgency;
+  }
+
+  if (focusTarget.urgency) {
+    return focusTarget.urgency;
+  }
 
   if (hint.status === 'probable') {
-    return `${hint.label}${provinceCopy}: à exploiter après ${actionLabel}.`;
+    return {
+      level: 'soon',
+      label: 'Expire bientôt',
+      window: 'ce tour',
+      detail: `${focusTarget.label}: fenêtre courte, à traiter avant de clore le tour.`,
+    };
   }
 
   if (hint.status === 'possible') {
-    return `${hint.label}${provinceCopy}: garder en vue avant de clore le tour.`;
+    return {
+      level: hint.tone === 'research' || hint.tone === 'discovery' ? 'new' : 'stable',
+      label: hint.tone === 'research' || hint.tone === 'discovery' ? 'Nouveau signal' : 'Fenêtre stable',
+      window: hint.tone === 'research' || hint.tone === 'discovery' ? 'maintenant' : '2+ tours',
+      detail: `${focusTarget.label}: opportunité disponible sans urgence immédiate.`,
+    };
   }
 
-  return `${hint.label}${provinceCopy}: ${hint.cultureName} manque encore un signal exploitable.`;
+  return {
+    level: 'stable',
+    label: 'À préparer',
+    window: 'stable',
+    detail: `${focusTarget.label}: signal incomplet, aucune expiration active.`,
+  };
+}
+
+function summarizeHint(hint, actionLabel, urgency) {
+  const provinceCopy = hint.regionId ? ` (${hint.regionId})` : '';
+  const urgencyCopy = ` ${urgency.label.toLowerCase()} · ${urgency.window}.`;
+
+  if (hint.status === 'probable') {
+    return `${hint.label}${provinceCopy}: à exploiter après ${actionLabel}.${urgencyCopy}`;
+  }
+
+  if (hint.status === 'possible') {
+    return `${hint.label}${provinceCopy}: garder en vue avant de clore le tour.${urgencyCopy}`;
+  }
+
+  return `${hint.label}${provinceCopy}: ${hint.cultureName} manque encore un signal exploitable.${urgencyCopy}`;
 }
 
 function buildReminder(hint, actionLabel) {
@@ -58,17 +94,24 @@ function buildReminder(hint, actionLabel) {
     regionId: hint.regionId,
     label: 'Province liée',
   };
+  const urgency = buildFallbackUrgency(hint, focusTarget);
+  const focusTargetWithUrgency = {
+    ...focusTarget,
+    urgency,
+  };
 
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
     tone: reminderTone(hint),
     status: hint.status,
     label: reminderLabel(hint),
-    summary: summarizeHint(hint, actionLabel),
+    summary: summarizeHint(hint, actionLabel, urgency),
     provinceId: hint.regionId,
     cultureName: hint.cultureName,
     actionLabel,
-    focusTarget,
+    urgency,
+    urgencyCopy: `${urgency.label} · ${urgency.window}`,
+    focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };
 }

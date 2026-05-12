@@ -68,16 +68,28 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
 
   assert.equal(report.state, 'active');
   assert.equal(report.summary, 'Porte du Fleuve: 1 opportunité probable, 1 condition à surveiller.');
-  assert.deepEqual(report.reminders.map((reminder) => [reminder.status, reminder.label, reminder.summary, reminder.focusCopy]), [
-    ['probable', 'Prochain repère', 'Événement cluster (river-gate): à exploiter après Sécuriser les archives.', 'cluster: Ouverture des archives'],
-    ['possible', 'Recherche à suivre', 'Recherche culture (river-gate): garder en vue avant de clore le tour.', 'marker: Compact d’Aurora'],
-    ['missing', 'Condition à combler', 'Condition manquante (shared-bay): Ligues des Forges manque encore un signal exploitable.', 'province: Province liée'],
+  assert.deepEqual(report.reminders.map((reminder) => [reminder.status, reminder.label, reminder.summary, reminder.focusCopy, reminder.urgencyCopy]), [
+    ['probable', 'Prochain repère', 'Événement cluster (river-gate): à exploiter après Sécuriser les archives. expire bientôt · ce tour.', 'cluster: Ouverture des archives', 'Expire bientôt · ce tour'],
+    ['possible', 'Recherche à suivre', 'Recherche culture (river-gate): garder en vue avant de clore le tour. nouveau signal · maintenant.', 'marker: Compact d’Aurora', 'Nouveau signal · maintenant'],
+    ['missing', 'Condition à combler', 'Condition manquante (shared-bay): Ligues des Forges manque encore un signal exploitable. à préparer · stable.', 'province: Province liée', 'À préparer · stable'],
   ]);
+  assert.deepEqual(report.reminders[0].urgency, {
+    level: 'soon',
+    label: 'Expire bientôt',
+    window: 'ce tour',
+    detail: 'Ouverture des archives: fenêtre courte, à traiter avant de clore le tour.',
+  });
   assert.deepEqual(report.reminders[0].focusTarget, {
     type: 'cluster',
     id: 'river-gate:culture-cluster',
     regionId: 'river-gate',
     label: 'Ouverture des archives',
+    urgency: {
+      level: 'soon',
+      label: 'Expire bientôt',
+      window: 'ce tour',
+      detail: 'Ouverture des archives: fenêtre courte, à traiter avant de clore le tour.',
+    },
   });
 });
 

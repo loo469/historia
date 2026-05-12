@@ -896,9 +896,10 @@ function renderCultureUnlockHints(hints) {
   return `
     <div class="culture-unlock-hints" aria-label="Unlocks culture potentiels">
       ${hints.map((hint) => `
-        <span class="culture-unlock-hint culture-unlock-hint--${hint.status} culture-unlock-hint--${hint.tone}" title="${hint.explanation}">
+        <span class="culture-unlock-hint culture-unlock-hint--${hint.status} culture-unlock-hint--${hint.tone} culture-unlock-hint--urgency-${hint.urgency?.level ?? 'stable'}" title="${hint.explanation} ${hint.urgency?.detail ?? ''}">
           <b>${hint.status}</b>
           <small>${hint.label} · ${hint.cultureName}</small>
+          <em>${hint.urgency?.label ?? 'Fenêtre stable'} · ${hint.urgency?.window ?? 'stable'}</em>
         </span>
       `).join('')}
     </div>
@@ -935,8 +936,9 @@ function renderCultureOpportunityReminders(report) {
             <article class="culture-opportunity-reminder culture-opportunity-reminder--${reminder.tone}">
               <span>${reminder.label}</span>
               <strong>${reminder.cultureName}</strong>
+              <em class="culture-opportunity-reminder__urgency culture-opportunity-reminder__urgency--${reminder.urgency?.level ?? 'stable'}">${reminder.urgencyCopy ?? 'Fenêtre stable · stable'}</em>
               <p>${reminder.summary}</p>
-              <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}">
+              <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}" aria-label="Voir ${reminder.focusCopy}: ${reminder.urgency?.detail ?? reminder.summary}">
                 Voir ${reminder.focusCopy}
               </button>
             </article>
