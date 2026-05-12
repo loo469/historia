@@ -2564,6 +2564,15 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.35;
 }
+.culture-opportunity-reminder__action {
+  margin-top: 6px !important;
+  padding: 6px 7px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  color: #dbeafe !important;
+}
+.culture-opportunity-reminder__action b { color: #bfdbfe; }
 .culture-opportunity-reminder button {
   margin-top: 7px;
   padding: 5px 8px;

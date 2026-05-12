@@ -72,6 +72,60 @@ function buildFallbackUrgency(hint, focusTarget) {
   };
 }
 
+
+function buildRecommendedAction(hint, focusTarget, urgency, actionLabel) {
+  const timing = urgency.timingLabel ?? urgency.window;
+  const source = urgency.sourceLabel ?? focusTarget.label;
+
+  if (hint.status === 'missing') {
+    return {
+      code: 'accept-risk',
+      label: 'Ignorer avec risque assumé',
+      summary: `Ignorer ${focusTarget.label} si ${hint.cultureName} peut attendre; ${timing}.`,
+      timing,
+      source,
+    };
+  }
+
+  if (hint.tone === 'research') {
+    return {
+      code: 'accelerate-research',
+      label: 'Accélérer la recherche',
+      summary: `Accélérer ${source} après ${actionLabel}; fenêtre ${timing}.`,
+      timing,
+      source,
+    };
+  }
+
+  if (hint.tone === 'event' || hint.tone === 'opportunity') {
+    return {
+      code: 'follow-event',
+      label: 'Suivre l’événement',
+      summary: `Suivre ${source} depuis ${focusTarget.regionId ?? hint.regionId}; fenêtre ${timing}.`,
+      timing,
+      source,
+    };
+  }
+
+  if (hint.tone === 'discovery') {
+    return {
+      code: 'protect-site',
+      label: 'Protéger le site',
+      summary: `Protéger ${focusTarget.label} pour exploiter ${source}; fenêtre ${timing}.`,
+      timing,
+      source,
+    };
+  }
+
+  return {
+    code: 'watch-window',
+    label: 'Surveiller la fenêtre',
+    summary: `Surveiller ${focusTarget.label}: ${source}; fenêtre ${timing}.`,
+    timing,
+    source,
+  };
+}
+
 function summarizeHint(hint, actionLabel, urgency) {
   const provinceCopy = hint.regionId ? ` (${hint.regionId})` : '';
   const urgencyCopy = ` ${urgency.label.toLowerCase()} · ${urgency.window}.`;
@@ -99,6 +153,7 @@ function buildReminder(hint, actionLabel) {
     ...focusTarget,
     urgency,
   };
+  const recommendedAction = buildRecommendedAction(hint, focusTargetWithUrgency, urgency, actionLabel);
 
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
@@ -112,6 +167,8 @@ function buildReminder(hint, actionLabel) {
     urgency,
     urgencyCopy: `${urgency.label} · ${urgency.window}`,
     reasonCopy: urgency.reason ?? `${urgency.sourceLabel ?? focusTarget.label} · ${urgency.timingLabel ?? urgency.window}`,
+    recommendedAction,
+    actionCopy: `${recommendedAction.label} · ${recommendedAction.timing}`,
     focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };

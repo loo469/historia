@@ -949,6 +949,7 @@ function renderCultureOpportunityReminders(report) {
               <em class="culture-opportunity-reminder__urgency culture-opportunity-reminder__urgency--${reminder.urgency?.level ?? 'stable'}">${reminder.urgencyCopy ?? 'Fenêtre stable · stable'}</em>
               <small class="culture-opportunity-reminder__reason">${reminder.reasonCopy ?? reminder.urgency?.detail ?? reminder.summary}</small>
               <p>${reminder.summary}</p>
+              <p class="culture-opportunity-reminder__action"><b>${reminder.recommendedAction?.label ?? 'Surveiller la fenêtre'}</b> · ${reminder.recommendedAction?.summary ?? reminder.actionCopy ?? reminder.summary}</p>
               <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}" aria-label="Voir ${reminder.focusCopy}: ${reminder.urgency?.detail ?? reminder.summary}">
                 Voir ${reminder.focusCopy}
               </button>
