@@ -46,6 +46,12 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /data-culture-tension-filter/);
   assert.match(webAppSource, /data-culture-tension-jump/);
   assert.match(webAppSource, /Accès rapide aux tensions culturelles prioritaires/);
+  assert.match(webAppSource, /getCultureTensionTrendVisual/);
+  assert.match(webAppSource, /inferCultureTensionTrend/);
+  assert.match(webAppSource, /cultureTensionTrendPriority/);
+  assert.match(webAppSource, /urgence puis tendance/);
+  assert.match(webAppSource, /Tendance inconnue/);
+  assert.match(webAppSource, /unknown/);
   assert.match(webAppSource, /Mettre en file/);
   assert.match(webAppSource, /Aucune action culturelle pertinente/);
   assert.match(webAppSource, /Pas de perte culturelle claire/);
@@ -70,6 +76,9 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(stylesSource, /\.culture-tension-marker-card--escalated/);
   assert.match(stylesSource, /\.culture-tension-filters/);
   assert.match(stylesSource, /\.culture-tension-quick-jump/);
+  assert.match(stylesSource, /\.culture-tension-marker__trend/);
+  assert.match(stylesSource, /\.culture-tension-marker-card--trend-rising/);
+  assert.match(stylesSource, /\.culture-tension-marker-card--trend-unknown/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-confirmation/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-empty/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--positive/);
