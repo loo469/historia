@@ -28,6 +28,7 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /function buildAtlasCorridorInterventionOptions/);
   assert.match(webAppSource, /function buildAtlasCorridorActionBudget/);
   assert.match(webAppSource, /function buildAtlasCorridorBudgetShortfalls/);
+  assert.match(webAppSource, /function buildAtlasFundedLogisticsPlans/);
   assert.match(webAppSource, /function renderAtlasEconomyStressLegend/);
   assert.match(webAppSource, /atlas-world-economy-layer/);
   assert.match(webAppSource, /atlas-economy-stress-rollup/);
@@ -57,6 +58,11 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /action minimale/);
   assert.match(webAppSource, /rediriger ressources/);
   assert.match(webAppSource, /réduire objectif/);
+  assert.match(webAppSource, /Plan financé/);
+  assert.match(webAppSource, /budget engagé/);
+  assert.match(webAppSource, /reste à financer/);
+  assert.match(webAppSource, /Aucun corridor finançable/);
+  assert.match(webAppSource, /routes\/cités stabilisées/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);
   assert.match(stylesSource, /\.atlas-world-canvas/);
@@ -76,6 +82,8 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(stylesSource, /\.atlas-corridor-budget__tradeoff/);
   assert.match(stylesSource, /\.atlas-corridor-shortfall/);
   assert.match(stylesSource, /\.atlas-corridor-shortfall-item--overload/);
+  assert.match(stylesSource, /\.atlas-funded-logistics-plan/);
+  assert.match(stylesSource, /\.atlas-funded-logistics-plan-item--partiel/);
   assert.match(stylesSource, /\.atlas-logistics-route--major/);
   assert.match(stylesSource, /\.atlas-economy-city--high/);
   assert.match(stylesSource, /\.atlas-economy-city__resources/);

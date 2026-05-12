@@ -10866,3 +10866,34 @@ button { font: inherit; }
 .atlas-cultural-border-zone--confidence-sûre .atlas-cultural-border-zone__confidence { fill: #bbf7d0; }
 .atlas-cultural-border-zone--confidence-incertaine .atlas-cultural-border-zone__confidence { fill: #fde68a; }
 .atlas-cultural-border-zone--confidence-inconnue .atlas-cultural-border-zone__confidence { fill: #ddd6fe; }
+.atlas-funded-logistics-plan rect {
+  fill: rgba(6, 78, 59, 0.5);
+  stroke: rgba(110, 231, 183, 0.42);
+  stroke-width: 0.28;
+}
+.atlas-funded-logistics-plan.is-empty rect {
+  fill: rgba(15, 23, 42, 0.44);
+  stroke: rgba(148, 163, 184, 0.26);
+}
+.atlas-funded-logistics-plan__title {
+  fill: #bbf7d0;
+  font-size: 1.18px;
+  font-weight: 950;
+}
+.atlas-funded-logistics-plan__empty {
+  fill: #cbd5e1;
+  font-size: 1px;
+  font-weight: 780;
+}
+.atlas-funded-logistics-plan-item__route {
+  fill: #f8fafc;
+  font-size: 1.08px;
+  font-weight: 920;
+}
+.atlas-funded-logistics-plan-item__benefit {
+  fill: #a7f3d0;
+  font-size: 0.98px;
+  font-weight: 780;
+}
+.atlas-funded-logistics-plan-item--partiel .atlas-funded-logistics-plan-item__benefit { fill: #fde68a; }
+.atlas-funded-logistics-plan-item--finançable .atlas-funded-logistics-plan-item__benefit { fill: #bfdbfe; }
