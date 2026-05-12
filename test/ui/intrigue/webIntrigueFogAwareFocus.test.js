@@ -53,3 +53,17 @@ test('selected intrigue province compares safe responses under fog', () => {
   assert.match(stylesSource, /intrigue-response-choice--warning/);
   assert.match(stylesSource, /intrigue-response-choice--watch/);
 });
+
+test('selected intrigue province adds fog-safe confidence levels to responses', () => {
+  assert.match(webAppSource, /confidence: riskIsHigh \? 'incertain' : 'fiable'/);
+  assert.match(webAppSource, /confidence: heatedOperation \? 'dangereux' : entry\.presenceLevel === 'low' \? 'information-insuffisante' : 'incertain'/);
+  assert.match(webAppSource, /Le brouillard masque encore la source du signal; ne pas inférer une menace réelle/);
+  assert.match(webAppSource, /L’exposition visible rend toute neutralisation directe risquée sans révéler les détails masqués/);
+  assert.match(webAppSource, /Collecter renseignement discret avant infiltration ou basculer en surveillance/);
+  assert.match(webAppSource, /choice\.confidenceLabel/);
+  assert.match(webAppSource, /choice\.confidenceReason/);
+  assert.match(stylesSource, /intrigue-response-choice__confidence--fiable/);
+  assert.match(stylesSource, /intrigue-response-choice__confidence--incertain/);
+  assert.match(stylesSource, /intrigue-response-choice__confidence--dangereux/);
+  assert.match(stylesSource, /intrigue-response-choice__confidence--information-insuffisante/);
+});
