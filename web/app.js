@@ -8647,6 +8647,21 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
         : signal.certainty === 'probable'
           ? 'incertitude moyenne: cause et relais restent masqués'
           : 'incertitude limitée aux détails non visibles';
+      const coverageLevel = signal.tone === 'danger' || signal.certainty === 'confirmed'
+        ? 'covered'
+        : signal.certainty === 'probable' || signal.tone === 'warning'
+          ? 'partial'
+          : 'uncertain';
+      const coverageLabel = coverageLevel === 'covered'
+        ? 'couverture probable'
+        : coverageLevel === 'partial'
+          ? 'couverture partielle'
+          : 'couverture incertaine';
+      const exposureCooldownRisk = signal.tone === 'danger'
+        ? 'exposition haute · cooldown long'
+        : signal.tone === 'warning' || signal.certainty === 'probable'
+          ? 'exposition modérée · cooldown moyen'
+          : 'exposition faible · cooldown court';
 
       return {
         ...signal,
@@ -8655,16 +8670,32 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
         expectedReduction,
         costDelay,
         uncertainty,
+        coverageLevel,
+        coverageLabel,
+        exposureCooldownRisk,
       };
     })
     .filter((signal) => signal.score >= 28 || signal.freshness !== 'stale' || signal.certainty === 'probable')
     .sort((left, right) => right.score - left.score || left.locationName.localeCompare(right.locationName))
     .slice(0, 3);
 
+  const candidateIds = new Set(sweepCandidates.map((candidate) => candidate.locationId));
+  const coveragePreview = {
+    covered: sweepCandidates.filter((candidate) => candidate.coverageLevel === 'covered'),
+    partial: sweepCandidates.filter((candidate) => candidate.coverageLevel === 'partial'),
+    uncertain: sweepCandidates.filter((candidate) => candidate.coverageLevel === 'uncertain'),
+    uncovered: filteredSignals.filter((signal) => !candidateIds.has(signal.locationId)),
+  };
+  const exposureCooldownSummary = sweepCandidates.length > 0
+    ? `${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length} risque${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''} d’exposition haut${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''}; cooldown visible estimé sans cause cachée.`
+    : 'Aucun risque d’exposition ou cooldown supplémentaire proposé.';
+
   return {
     empty: sweepCandidates.length === 0,
     totalFiltered: filteredSignals.length,
     candidates: sweepCandidates,
+    coveragePreview,
+    exposureCooldownSummary,
     summary: sweepCandidates.length > 0
       ? `${sweepCandidates.length} zone${sweepCandidates.length > 1 ? 's' : ''} de balayage contre-espionnage proposée${sweepCandidates.length > 1 ? 's' : ''} depuis les filtres atlas actifs.`
       : 'Aucun signal filtré ne justifie un balayage contre-espionnage ce tour.',
@@ -8681,6 +8712,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         </div>
         <p>${plan.summary}</p>
         <small>Activez un filtre récent, ancien, incertain ou probable pour préparer une vérification sans révéler de cause cachée.</small>
+        <small>${plan.exposureCooldownSummary}</small>
       </section>
     `;
   }
@@ -8692,6 +8724,12 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <span>${plan.candidates.length}/${plan.totalFiltered} priorités</span>
       </div>
       <p>${plan.summary}</p>
+      <div class="atlas-counterintelligence-coverage-preview" aria-label="Prévisualisation de couverture fog-safe avant confirmation">
+        <span><b>${plan.coveragePreview.covered.length}</b> couvert${plan.coveragePreview.covered.length > 1 ? 's' : ''} probable${plan.coveragePreview.covered.length > 1 ? 's' : ''}</span>
+        <span><b>${plan.coveragePreview.partial.length + plan.coveragePreview.uncertain.length}</b> partiel${plan.coveragePreview.partial.length + plan.coveragePreview.uncertain.length > 1 ? 's' : ''} ou incertain${plan.coveragePreview.partial.length + plan.coveragePreview.uncertain.length > 1 ? 's' : ''}</span>
+        <span><b>${plan.coveragePreview.uncovered.length}</b> non couvert${plan.coveragePreview.uncovered.length > 1 ? 's' : ''}</span>
+      </div>
+      <small>${plan.exposureCooldownSummary}</small>
       <div class="atlas-counterintelligence-plan__list">
         ${plan.candidates.map((candidate, index) => `
           <button type="button" class="atlas-counterintelligence-card atlas-counterintelligence-card--${candidate.tone}" data-province-id="${candidate.locationId}" aria-label="Choisir ${candidate.locationName} pour ${candidate.sweepMode}: ${candidate.uncertainty}">
@@ -8703,6 +8741,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
               <div><dt>Effet</dt><dd>${candidate.expectedReduction}</dd></div>
               <div><dt>Coût / délai</dt><dd>${candidate.costDelay}</dd></div>
               <div><dt>Incertitude</dt><dd>${candidate.uncertainty}</dd></div>
+              <div><dt>Couverture</dt><dd>${candidate.coverageLabel} · ${candidate.exposureCooldownRisk}</dd></div>
             </dl>
             <small>${candidate.priorityReason}; cellule, relais, cible et cause restent masqués.</small>
           </button>

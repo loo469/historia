@@ -2851,6 +2851,24 @@ button { font: inherit; }
   display: grid;
   gap: 8px;
 }
+.atlas-counterintelligence-coverage-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.atlas-counterintelligence-coverage-preview span {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  background: rgba(2, 6, 23, 0.24);
+  color: #cbd5e1;
+}
+.atlas-counterintelligence-coverage-preview b {
+  color: #f8fafc;
+  font-size: 1rem;
+}
 .atlas-counterintelligence-card {
   display: grid;
   gap: 7px;
