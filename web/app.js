@@ -766,7 +766,6 @@ function renderProvinceSurface(shell, focusContext) {
   `;
 }
 
-
 function getLogisticsOutcomeTone(status) {
   if (status === 'resolved') return 'resolved';
   if (status === 'reduced') return 'reduced';
@@ -868,7 +867,7 @@ function renderLogisticsOutcomeRouteBadge(marker, visual) {
   `;
 }
 
-function renderProvinceCard(province, focusContext) {
+function renderProvinceCard(province, focusContext, postCommitClimateMarkers = []) {
   const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
   const isNeighbor = focusContext.neighborIds.has(province.provinceId);
@@ -879,14 +878,16 @@ function renderProvinceCard(province, focusContext) {
   const economyBlocker = state.economyReadinessFocus?.provinceId === province.provinceId ? state.economyReadinessFocus : null;
   const militaryOutcomeMarker = getMilitaryOutcomeMarkerForProvince(province.provinceId);
   const logisticsOutcomeMarker = getLogisticsOutcomeMarkerForProvince(province.provinceId);
+  const climateMarker = postCommitClimateMarkers.find((marker) => marker.provinceId === province.provinceId) ?? null;
   const isReadinessHighlight = Boolean(readinessTone);
   const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
   const isLogisticsOutcomeHighlight = Boolean(logisticsOutcomeMarker);
-  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && !isLogisticsOutcomeHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
+  const isClimateOutcomeHighlight = Boolean(climateMarker);
+  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && !isLogisticsOutcomeHighlight && !isClimateOutcomeHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
   const readinessLabel = readinessTone === 'danger' ? 'menace immédiate' : readinessTone === 'warning' ? 'préparation insuffisante' : readinessTone === 'ready' ? 'opportunité tactique' : null;
   const economyBlockerLabel = economyBlocker ? `${economyBlocker.blocker}: ${economyBlocker.summary}` : null;
-  const selectionSignal = economyBlocker ? 'BLOCAGE' : isMilitaryOutcomeHighlight ? 'RÉSOLU' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
+  const selectionSignal = climateMarker ? 'CLIMAT' : economyBlocker ? 'BLOCAGE' : isMilitaryOutcomeHighlight ? 'RÉSOLU' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
@@ -900,6 +901,8 @@ function renderProvinceCard(province, focusContext) {
     militaryOutcomeMarker ? `has-military-outcome--${militaryOutcomeMarker.tone}` : '',
     logisticsOutcomeMarker ? 'has-logistics-outcome' : '',
     logisticsOutcomeMarker ? `has-logistics-outcome--${logisticsOutcomeMarker.tone}` : '',
+    climateMarker ? 'has-climate-post-commit' : '',
+    climateMarker ? `has-climate-post-commit--${climateMarker.status}` : '',
     readinessTone ? `is-readiness-${readinessTone}` : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
@@ -916,10 +919,11 @@ function renderProvinceCard(province, focusContext) {
       data-economy-blocker="${economyBlockerLabel ?? ''}"
       data-military-outcome="${militaryOutcomeMarker?.label ?? ''}"
       data-logistics-outcome="${logisticsOutcomeMarker?.label ?? ''}"
-      title="${logisticsOutcomeMarker ? `${logisticsOutcomeMarker.label}: ${logisticsOutcomeMarker.detail}` : economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
+      data-climate-outcome="${climateMarker?.label ?? ''}"
+      title="${climateMarker ? `${climateMarker.label} — ${climateMarker.summary}` : logisticsOutcomeMarker ? `${logisticsOutcomeMarker.label}: ${logisticsOutcomeMarker.detail}` : economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
-      aria-label="${province.label}, ${logisticsOutcomeMarker ? `résultat logistique post-commit: ${logisticsOutcomeMarker.label}, ${logisticsOutcomeMarker.detail}` : economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : militaryOutcomeMarker ? `issue militaire post-commit: ${militaryOutcomeMarker.label}, ${militaryOutcomeMarker.changed}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
+      aria-label="${province.label}, ${climateMarker ? `marqueur climat post-résolution: ${climateMarker.label}, ${climateMarker.summary}` : logisticsOutcomeMarker ? `résultat logistique post-commit: ${logisticsOutcomeMarker.label}, ${logisticsOutcomeMarker.detail}` : economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : militaryOutcomeMarker ? `issue militaire post-commit: ${militaryOutcomeMarker.label}, ${militaryOutcomeMarker.changed}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
     >
       <span class="province-node__terrain"></span>
       <span class="province-node__focus-rail"></span>
@@ -928,6 +932,7 @@ function renderProvinceCard(province, focusContext) {
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
       ${economyBlocker ? `<span class="province-node__economy-blocker"><b>${economyBlocker.blocker}</b>${economyBlocker.summary}<small>${economyBlocker.effect}</small></span>` : ''}
       ${renderProvinceLogisticsOutcomeMarker(logisticsOutcomeMarker)}
+      ${climateMarker ? `<span class="province-node__climate-marker"><b>${climateMarker.label}</b>${climateMarker.summary}<small>${climateMarker.detail}</small></span>` : ''}
       <span class="province-node__badges">${badges}</span>
       ${renderPostCommitMilitaryOutcomeMarker(militaryOutcomeMarker)}
       ${isNeighbor ? '<span class="province-node__link">Voisine directe</span>' : ''}
@@ -2836,6 +2841,87 @@ function renderCumulativeClimateImpactSummary(view) {
           </li>
         `).join('')}
       </ol>
+    </section>
+  `;
+}
+
+function buildPostCommitClimateImpactMarkers(shell, queuedClimateInterventions = []) {
+  const cumulative = buildCumulativeClimateImpactSummary(shell, queuedClimateInterventions);
+  const queuedProvinceIds = new Set(cumulative.interventions.map((entry) => entry.provinceId));
+  const markerByProvince = new Map();
+
+  cumulative.interventions.forEach((entry) => {
+    const status = entry.tooLate
+      ? 'hazard-unresolved'
+      : entry.deadlineState === 'just-in-time'
+        ? 'hazard-delayed'
+        : 'risk-reduced';
+    markerByProvince.set(entry.provinceId, {
+      provinceId: entry.provinceId,
+      provinceLabel: entry.provinceLabel,
+      status,
+      label: status === 'risk-reduced' ? 'Risque réduit' : status === 'hazard-delayed' ? 'Aléa retardé' : 'Aléa non résolu',
+      summary: `${entry.label}: ${entry.riskReduction} après résolution.`,
+      detail: `Lié au résumé climat cumulé: délai ${entry.deadlineWindow}, tradeoff ${entry.tradeoff}.`,
+      source: 'cumulative-summary',
+      priority: status === 'hazard-unresolved' ? 1 : status === 'hazard-delayed' ? 2 : 3,
+    });
+  });
+
+  shell.provinces.forEach((province) => {
+    if (queuedProvinceIds.has(province.provinceId)) {
+      return;
+    }
+
+    const forecast = buildProvinceClimateRiskReductionForecast(province, shell);
+    const hazard = province.hazards?.find((candidate) => candidate.riskLevel === 'high' || candidate.riskLevel === 'moderate') ?? null;
+    const activeCascade = forecast.remainingCascades.find((cascade) => cascade.changesThisTurn) ?? null;
+
+    if (activeCascade) {
+      markerByProvince.set(province.provinceId, {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        status: 'cascade-active',
+        label: 'Cascade active',
+        summary: `${activeCascade.type}: ${activeCascade.scope}.`,
+        detail: `Risque encore actif après commit: ${activeCascade.avoidedImpact}`,
+        source: 'remaining-hazard',
+        priority: 1,
+      });
+    } else if (hazard) {
+      markerByProvince.set(province.provinceId, {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        status: 'hazard-unresolved',
+        label: 'Aléa non résolu',
+        summary: `${hazard.type}: risque ${hazard.riskLevel}.`,
+        detail: 'Aucune intervention climat confirmée ne couvre encore cet aléa.',
+        source: 'remaining-hazard',
+        priority: hazard.riskLevel === 'high' ? 1 : 4,
+      });
+    }
+  });
+
+  return [...markerByProvince.values()]
+    .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 4);
+}
+
+function renderPostCommitClimateMarkerDetail(province, markers = []) {
+  const marker = markers.find((entry) => entry.provinceId === province.provinceId) ?? null;
+
+  if (!marker) {
+    return '';
+  }
+
+  return `
+    <section class="province-climate-post-commit province-climate-post-commit--${marker.status}" aria-label="Marqueur climat post-résolution">
+      <div>
+        <strong>${marker.label}</strong>
+        <span>${marker.source === 'cumulative-summary' ? 'résumé cumulé' : 'aléa restant'}</span>
+      </div>
+      <p>${marker.summary}</p>
+      <small>${marker.detail}</small>
     </section>
   `;
 }
@@ -5238,6 +5324,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceClimateRiskReductionForecast(province, shell, buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView), state.queuedClimateInterventions)}
       ${renderProvinceClimateCascadePreview(province, shell)}
       ${renderProvinceClimateTurnReport(province)}
+      ${renderPostCommitClimateMarkerDetail(province, buildPostCommitClimateImpactMarkers(shell, state.queuedClimateInterventions))}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
@@ -7649,7 +7736,7 @@ function renderTacticalCoordinateGrid() {
   `;
 }
 
-function getMapRenderLayers(shell, economyView, focusContext, cultureView) {
+function getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = []) {
   return [
     { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
     { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
@@ -7659,12 +7746,12 @@ function getMapRenderLayers(shell, economyView, focusContext, cultureView) {
     { key: 'anchors', className: 'map-layer map-layer--anchors', content: renderMapAnchorShells() },
     { key: 'economy', className: 'map-layer map-layer--economy', content: `${renderEconomyMapOverlay(economyView)}${renderCultureMapOverlay(cultureView)}` },
     { key: 'hud', className: 'map-layer map-layer--hud', content: `${renderCityQuickPanel(economyView)}<div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>` },
-    { key: 'interactions', className: 'map-layer map-layer--interactions', content: `${shell.provinces.map((province) => renderProvinceCard(province, focusContext)).join('')}${renderProvincePopup(shell)}` },
+    { key: 'interactions', className: 'map-layer map-layer--interactions', content: `${shell.provinces.map((province) => renderProvinceCard(province, focusContext, postCommitClimateMarkers)).join('')}${renderProvincePopup(shell)}` },
   ];
 }
 
-function renderMapLayerStack(shell, economyView, focusContext, cultureView) {
-  return getMapRenderLayers(shell, economyView, focusContext, cultureView)
+function renderMapLayerStack(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = []) {
+  return getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers)
     .map((layer) => `<div class="${layer.className}" data-map-layer="${layer.key}">${layer.content}</div>`)
     .join('');
 }
@@ -7912,6 +7999,7 @@ function render() {
   const climatePreparednessSummary = buildMapClimatePreparednessSummary(shell, focusContext, intrigueView);
   const climateInterventionWindows = buildMapClimateInterventionWindows(shell);
   const cumulativeClimateImpact = buildCumulativeClimateImpactSummary(shell, state.queuedClimateInterventions);
+  const postCommitClimateMarkers = buildPostCommitClimateImpactMarkers(shell, state.queuedClimateInterventions);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -7968,7 +8056,7 @@ function render() {
           <div class="map-stage" data-map-stage="true" tabindex="0" aria-label="Carte opérationnelle zoomable. Utilisez plus, moins, zéro ou C pour naviguer.">
             ${renderMapControls()}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
-              ${renderMapLayerStack(shell, economyView, focusContext, cultureView)}
+              ${renderMapLayerStack(shell, economyView, focusContext, cultureView, postCommitClimateMarkers)}
               ${renderIntrigueMapOverlay(intrigueView)}
             </div>
             ${renderBottomTray(economyView, intrigueView, cultureView)}
