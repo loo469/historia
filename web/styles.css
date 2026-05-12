@@ -8447,3 +8447,41 @@ button { font: inherit; }
   color: #94a3b8;
   font-size: 12px;
 }
+.culture-tension-marker__trend {
+  fill: #e0f2fe;
+  stroke: rgba(15, 23, 42, 0.84);
+  stroke-width: 0.18;
+  paint-order: stroke;
+  font-size: 2.45px;
+}
+.culture-tension-marker--trend-rising .culture-tension-marker__trend { fill: #fecaca; }
+.culture-tension-marker--trend-falling .culture-tension-marker__trend { fill: #bbf7d0; }
+.culture-tension-marker--trend-stable .culture-tension-marker__trend { fill: #fde68a; }
+.culture-tension-marker--trend-unknown .culture-tension-marker__trend { fill: #cbd5e1; }
+.culture-tension-marker-card b {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.culture-tension-marker-card b i,
+.culture-tension-jump span i {
+  color: #bae6fd;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 900;
+}
+.culture-tension-marker-card--trend-rising b i,
+.culture-tension-jump--trend-rising span i { color: #fecaca; }
+.culture-tension-marker-card--trend-falling b i,
+.culture-tension-jump--trend-falling span i { color: #bbf7d0; }
+.culture-tension-marker-card--trend-stable b i,
+.culture-tension-jump--trend-stable span i { color: #fde68a; }
+.culture-tension-marker-card--trend-unknown b i,
+.culture-tension-jump--trend-unknown span i { color: #cbd5e1; }
+.culture-tension-jump span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}

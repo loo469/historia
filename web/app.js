@@ -7029,6 +7029,34 @@ function getCultureTensionMarkerVisual(marker) {
   return visuals[marker.state] ?? visuals.unresolved;
 }
 
+function getCultureTensionTrendVisual(marker) {
+  const trend = marker.trend ?? 'unknown';
+  const visuals = {
+    rising: { code: '↗', label: 'Tendance hausse', shortLabel: 'hausse', priority: 4 },
+    stable: { code: '→', label: 'Tendance stable', shortLabel: 'stable', priority: 2 },
+    falling: { code: '↘', label: 'Tendance baisse', shortLabel: 'baisse', priority: 1 },
+    unknown: { code: '?', label: 'Tendance inconnue', shortLabel: 'inconnue', priority: 0 },
+  };
+
+  return visuals[trend] ?? visuals.unknown;
+}
+
+function inferCultureTensionTrend(marker) {
+  if (marker.state === 'escalated') {
+    return 'rising';
+  }
+
+  if (marker.state === 'eased') {
+    return 'falling';
+  }
+
+  if (marker.state === 'unresolved') {
+    return 'stable';
+  }
+
+  return 'unknown';
+}
+
 function buildCulturePostCommitTensionMarkers(province, report) {
   if (!province || !report?.resolutionSummary) {
     return [];
@@ -7046,6 +7074,7 @@ function buildCulturePostCommitTensionMarkers(province, report) {
       summary: action.summary ?? `${action.cultureName}: ${action.effect}`,
       detail: `${action.label}: ${action.effect}. ${action.reason}`,
       source: 'Action culturelle résolue',
+      trend: inferCultureTensionTrend({ state }),
     };
   });
 
@@ -7061,6 +7090,7 @@ function buildCulturePostCommitTensionMarkers(province, report) {
       summary: entry.summary,
       detail: entry.expectedImpact,
       source: 'Recommandation urgente non couverte',
+      trend: inferCultureTensionTrend({ state }),
     };
   });
 
@@ -7093,6 +7123,10 @@ function cultureTensionPriority(marker) {
   return { escalated: 4, unresolved: 3, opportunity: 2, eased: 1 }[marker.state] ?? 0;
 }
 
+function cultureTensionTrendPriority(marker) {
+  return getCultureTensionTrendVisual(marker).priority;
+}
+
 function renderCultureTensionFilters(cultureView) {
   const markers = cultureView.allTensionMarkers ?? [];
 
@@ -7117,7 +7151,9 @@ function renderCultureTensionFilters(cultureView) {
 
 function renderCultureTensionQuickJump(markers) {
   const entries = [...markers]
-    .sort((left, right) => cultureTensionPriority(right) - cultureTensionPriority(left) || left.provinceLabel.localeCompare(right.provinceLabel))
+    .sort((left, right) => cultureTensionPriority(right) - cultureTensionPriority(left)
+      || cultureTensionTrendPriority(right) - cultureTensionTrendPriority(left)
+      || left.provinceLabel.localeCompare(right.provinceLabel))
     .slice(0, 4);
 
   if (!entries.length) {
@@ -7128,15 +7164,16 @@ function renderCultureTensionQuickJump(markers) {
     <div class="culture-tension-quick-jump" aria-label="Accès rapide aux tensions culturelles prioritaires">
       <div class="culture-tension-quick-jump__header">
         <span>À vérifier</span>
-        <strong>${entries.length} repère${entries.length > 1 ? 's' : ''}</strong>
+        <strong>${entries.length} repère${entries.length > 1 ? 's' : ''} · urgence puis tendance</strong>
       </div>
       ${entries.map((marker) => {
         const visual = getCultureTensionMarkerVisual(marker);
+        const trend = getCultureTensionTrendVisual(marker);
         return `
-          <button type="button" class="culture-tension-jump culture-tension-jump--${marker.state}" data-culture-tension-jump="${marker.provinceId}" aria-label="Aller à ${marker.provinceLabel}: ${marker.label}">
+          <button type="button" class="culture-tension-jump culture-tension-jump--${marker.state} culture-tension-jump--trend-${marker.trend ?? 'unknown'}" data-culture-tension-jump="${marker.provinceId}" aria-label="Aller à ${marker.provinceLabel}: ${marker.label}, tendance ${trend.shortLabel}">
             <b>${visual.icon}</b>
-            <span>${marker.provinceLabel}</span>
-            <small>${marker.label} · ${marker.cultureName}</small>
+            <span>${marker.provinceLabel}<i>${trend.code}</i></span>
+            <small>${marker.label} · ${trend.shortLabel} · ${marker.cultureName}</small>
           </button>
         `;
       }).join('')}
@@ -7152,15 +7189,17 @@ function renderCultureTensionMarker(marker, active) {
   }
 
   const visual = getCultureTensionMarkerVisual(marker);
+  const trend = getCultureTensionTrendVisual(marker);
   const selected = marker.provinceId === state.selectedProvinceId;
   const y = center.y - 9.2;
 
   return `
-    <g class="culture-tension-marker culture-tension-marker--${marker.state} ${selected ? 'is-selected' : ''}" data-culture-tension-region="${marker.provinceId}">
-      <title>${visual.label} · ${marker.cultureName} · ${marker.detail}</title>
+    <g class="culture-tension-marker culture-tension-marker--${marker.state} culture-tension-marker--trend-${marker.trend ?? 'unknown'} ${selected ? 'is-selected' : ''}" data-culture-tension-region="${marker.provinceId}">
+      <title>${visual.label} · ${trend.label} · ${marker.cultureName} · ${marker.detail}</title>
       <circle class="culture-tension-marker__pulse" cx="${center.x}%" cy="${y}%" r="3.5"></circle>
       <rect x="${center.x - 3.2}%" y="${y - 2.35}%" width="6.4%" height="4.7%" rx="1.5%"></rect>
       <text x="${center.x}%" y="${y + 0.62}%" text-anchor="middle">${visual.code}</text>
+      <text class="culture-tension-marker__trend" x="${center.x + 3.7}%" y="${y - 2.65}%" text-anchor="middle">${trend.code}</text>
     </g>
   `;
 }
@@ -7178,11 +7217,12 @@ function renderCultureTensionMarkerPanel(markers) {
       </div>
       ${markers.map((marker) => {
         const visual = getCultureTensionMarkerVisual(marker);
+        const trend = getCultureTensionTrendVisual(marker);
         return `
-          <section class="culture-tension-marker-card culture-tension-marker-card--${marker.state}">
-            <b>${visual.icon} ${marker.label}</b>
+          <section class="culture-tension-marker-card culture-tension-marker-card--${marker.state} culture-tension-marker-card--trend-${marker.trend ?? 'unknown'}">
+            <b>${visual.icon} ${marker.label}<i>${trend.code} ${trend.shortLabel}</i></b>
             <p>${marker.summary}</p>
-            <small>${marker.cultureName} · ${marker.provinceLabel} · ${marker.source} · ${marker.detail}</small>
+            <small>${marker.cultureName} · ${marker.provinceLabel} · ${marker.source} · ${trend.label} · ${marker.detail}</small>
           </section>
         `;
       }).join('')}
