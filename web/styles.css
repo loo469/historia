@@ -3235,6 +3235,64 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.35;
 }
+.province-logistics-priority-summary {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(8, 15, 28, 0.46);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+.province-logistics-priority-summary b {
+  color: #bfdbfe;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.province-logistics-priority-summary span {
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-logistics-priority-list {
+  display: grid;
+  gap: 7px;
+}
+.province-logistics-priority {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.38);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-logistics-priority.is-recommended {
+  background: rgba(12, 74, 110, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.16);
+}
+.province-logistics-priority--high { border-color: rgba(251, 113, 133, 0.34); }
+.province-logistics-priority--medium { border-color: rgba(245, 158, 11, 0.3); }
+.province-logistics-priority--low { border-color: rgba(74, 222, 128, 0.22); }
+.province-logistics-priority div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.province-logistics-priority strong { color: #f8fafc; font-size: 12px; }
+.province-logistics-priority span,
+.province-logistics-priority small {
+  color: #bfdbfe;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.province-logistics-priority p {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .province-logistics-cause-summary--high { border-color: rgba(251, 113, 133, 0.38); }
 .province-logistics-cause-summary--medium { border-color: rgba(245, 158, 11, 0.34); }
 .province-logistics-cause-summary--stable,

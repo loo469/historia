@@ -77,6 +77,11 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.timelineSummary, /goulot/);
   assert.match(preview.downstreamSummary, /manquer|pression|pénurie|aval/);
   assert.ok(['aggravée', 'déplacée', 'résolue', 'inconnue'].includes(preview.downstreamStatus));
+  assert.ok(preview.priorityActions.length >= 2);
+  assert.equal(preview.priorityActions[0].recommended, true);
+  assert.match(preview.prioritySummary, /recommandée/);
+  assert.ok(preview.priorityActions.some((action) => /rapide mais limitée|plus lente mais structurante|équilibrée/.test(action.tradeoff)));
+  assert.ok(preview.priorityActions.every((action) => action.impact.length > 0 && action.reason.length > 0 && action.delay.length > 0));
   assert.ok(preview.options[0].recoveryChoices.length >= 2);
   assert.equal(preview.options[0].recoveryChoices[0].recommended, true);
   assert.match(preview.options[0].recoveryChoices[0].benefit, /Outils|River Gate|Ember Line/);
@@ -111,6 +116,8 @@ test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and i
   assert.ok(option.recoveryChoices.every((choice) => choice.bottleneck && choice.bottleneck.detail.length > 0));
   assert.ok(option.recoveryChoices.every((choice) => Array.isArray(choice.downstreamShortages)));
   assert.ok(option.recoveryChoices.some((choice) => choice.downstreamShortages.some((shortage) => ['aggravée', 'déplacée', 'résolue', 'inconnue'].includes(shortage.status))));
+  assert.ok(preview.priorityActions.every((action) => ['high', 'medium', 'low'].includes(action.tone)));
+  assert.ok(preview.priorityActions.some((action) => action.downstreamStatus === 'aggravée' || action.shortagesAvoided >= 0));
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
@@ -122,6 +129,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.equal(preview.timelineStatus, 'empty');
   assert.equal(preview.downstreamStatus, 'neutre');
   assert.match(preview.downstreamSummary, /Aucune pénurie aval/);
+  assert.deepEqual(preview.priorityActions, []);
+  assert.match(preview.prioritySummary, /Aucune action logistique prioritaire/);
   assert.match(preview.timelineSummary, /timeline vide/);
   assert.match(preview.summary, /Logistique stable/);
 });
@@ -143,6 +152,8 @@ test('buildProvinceLogisticsChoicePreview exposes stable local route causes', ()
   assert.match(preview.options[0].cause, /River Gate/);
   assert.equal(preview.options[0].recoveryChoices[0].bottleneck.type, 'none');
   assert.match(preview.options[0].recoveryChoices[0].bottleneck.detail, /Aucun ralentisseur/);
+  assert.ok(preview.priorityActions.length >= 1);
+  assert.equal(preview.priorityActions[0].recommended, true);
   assert.equal(preview.options[0].recoveryChoices[0].downstreamShortages[0].status, 'résolue');
   assert.match(preview.options[0].recoveryChoices[0].downstreamShortages[0].detail, /aucune pénurie aval/i);
 });

@@ -1214,6 +1214,25 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
         <b>Pénuries aval</b>
         <span>${preview.downstreamSummary ?? 'Aucune pénurie aval claire détectée.'}</span>
       </div>
+      <div class="province-logistics-priority-summary" aria-label="Priorisation aval des actions logistiques">
+        <b>Priorité aval</b>
+        <span>${preview.prioritySummary ?? 'Aucune action logistique prioritaire disponible.'}</span>
+      </div>
+      ${preview.priorityActions.length > 0 ? `
+        <div class="province-logistics-priority-list">
+          ${preview.priorityActions.map((action) => `
+            <article class="province-logistics-priority province-logistics-priority--${action.tone} ${action.recommended ? 'is-recommended' : ''}">
+              <div>
+                <strong>${action.action}</strong>
+                <span>${action.recommended ? 'meilleure première action' : action.tradeoff}</span>
+              </div>
+              <p>${action.impact}</p>
+              <small>${action.shortagesAvoided} pénurie${action.shortagesAvoided > 1 ? 's' : ''} évitée${action.shortagesAvoided > 1 ? 's' : ''} · ${action.downstreamStatus} · délai ${action.delay}</small>
+              <small>${action.reason}</small>
+            </article>
+          `).join('')}
+        </div>
+      ` : ''}
       ${preview.options.length > 0 ? `
         <div class="province-logistics-choice-list">
           ${preview.options.map((option) => `

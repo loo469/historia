@@ -458,12 +458,58 @@ function buildChoiceForRoute(route, localCity, localTension, resourceLabelById, 
   };
 }
 
+
+function getDelayTurns(delay) {
+  const match = String(delay ?? '').match(/\d+/);
+  return match ? Number(match[0]) : 1;
+}
+
+function buildRecoveryPriorityActions(routeChoices) {
+  const candidates = routeChoices
+    .flatMap((option) => option.recoveryChoices.slice(0, 2).map((choice) => {
+      const shortagesAvoided = choice.downstreamShortages.filter((shortage) => shortage.status === 'résolue').length;
+      const displacedShortages = choice.downstreamShortages.filter((shortage) => shortage.status === 'déplacée').length;
+      const aggravatedShortages = choice.downstreamShortages.filter((shortage) => shortage.status === 'aggravée').length;
+      const delayTurns = getDelayTurns(option.delay);
+      const structural = choice.bottleneck.tone === 'high' || choice.bottleneck.type === 'capacity' || choice.bottleneck.type === 'damage';
+      const impactScore = shortagesAvoided * 40 + displacedShortages * 18 - aggravatedShortages * 32 + (structural ? 26 : 8) - delayTurns * 4 + (option.recommended ? 12 : 0);
+      const tradeoff = delayTurns <= 1 && !structural
+        ? 'rapide mais limitée'
+        : structural
+          ? 'plus lente mais structurante'
+          : 'équilibrée';
+
+      return {
+        actionId: `${option.routeId}:${choice.choiceId}`,
+        action: `${choice.label} · ${option.routes[0]}`,
+        route: option.routes[0],
+        resource: option.resources[0],
+        tone: impactScore >= 40 ? 'high' : impactScore >= 18 ? 'medium' : 'low',
+        delay: option.delay,
+        impact: choice.benefit,
+        reason: `${choice.bottleneck.label}; ${choice.downstreamShortages[0]?.detail ?? 'aucune pénurie aval claire'}`,
+        shortagesAvoided,
+        downstreamStatus: choice.downstreamShortages[0]?.status ?? 'inconnue',
+        tradeoff,
+        impactScore,
+      };
+    }))
+    .sort((left, right) => right.impactScore - left.impactScore || left.delay.localeCompare(right.delay) || left.action.localeCompare(right.action))
+    .slice(0, 3)
+    .map((candidate, index) => ({
+      ...candidate,
+      recommended: index === 0,
+    }));
+
+  return candidates;
+}
+
 export function buildProvinceLogisticsChoicePreview(province, economyView, options = {}) {
   const normalizedOptions = requireObject(options, 'ProvinceLogisticsChoicePreview options');
   const resourceLabelById = requireObject(normalizedOptions.resourceLabelById ?? {}, 'ProvinceLogisticsChoicePreview resourceLabelById');
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -496,6 +542,8 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       timelineSummary: 'Aucune action route/logistique en file: timeline vide.',
       downstreamStatus: 'neutre',
       downstreamSummary: 'Aucune pénurie aval claire détectée.',
+      priorityActions: [],
+      prioritySummary: 'Aucune action logistique prioritaire disponible.',
       status: 'stable',
       summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
       options: [],
@@ -504,6 +552,8 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
 
   const recommended = routeChoices[0];
   const hasBlocker = routeChoices.some((choice) => choice.tone === 'high' || choice.tone === 'medium');
+  const priorityActions = buildRecoveryPriorityActions(routeChoices);
+  const recommendedPriority = priorityActions[0] ?? null;
 
   return {
     recommendedOptionId: recommended.optionId,
@@ -516,6 +566,10 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     downstreamSummary: hasBlocker
       ? `${recommended.recoveryChoices[0].downstreamShortages[0]?.status ?? 'inconnue'}: ${recommended.recoveryChoices[0].downstreamShortages[0]?.detail ?? 'Aucune pénurie aval claire détectée.'}`
       : 'Aucune pénurie aval claire détectée.',
+    priorityActions,
+    prioritySummary: recommendedPriority
+      ? `${recommendedPriority.action} recommandée: ${recommendedPriority.reason} (${recommendedPriority.tradeoff}, ${recommendedPriority.delay}).`
+      : 'Aucune action logistique prioritaire disponible.',
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
       ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause} ${recommended.recoveryChoices[0].label} est prioritaire car ${recommended.recoveryChoices[0].benefit}`
