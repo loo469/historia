@@ -678,8 +678,24 @@ const militaryOutcomeMarkerCategories = [
   { tone: 'risk', label: 'Risque de suivi', shortLabel: 'Risque' },
 ];
 
+function isCriticalMilitaryOutcomeMarker(marker) {
+  return Boolean(marker && ['worsened', 'blocked', 'risk'].includes(marker.tone));
+}
+
+function getMilitaryOutcomePinReason(marker) {
+  if (!isCriticalMilitaryOutcomeMarker(marker)) {
+    return null;
+  }
+
+  return {
+    worsened: 'épinglé: front aggravé à traiter avant densité/filtre',
+    blocked: 'épinglé: action bloquée à débloquer avant nouvel ordre',
+    risk: 'épinglé: risque de suivi critique à surveiller',
+  }[marker.tone] ?? 'épinglé: suivi militaire prioritaire';
+}
+
 function isMilitaryOutcomeMarkerVisible(marker) {
-  return Boolean(marker && state.militaryOutcomeMarkerFilters[marker.tone] !== false);
+  return Boolean(marker && (state.militaryOutcomeMarkerFilters[marker.tone] !== false || isCriticalMilitaryOutcomeMarker(marker)));
 }
 
 function getMilitaryOutcomeMarkerForProvince(provinceId) {
@@ -701,7 +717,8 @@ function buildMilitaryOutcomeMarkerFilterState(markers = state.lastMilitaryOutco
       ...category,
       count,
       enabled,
-      hiddenCount: enabled ? 0 : count,
+      hiddenCount: enabled ? 0 : markers.filter((marker) => marker.tone === category.tone && !isCriticalMilitaryOutcomeMarker(marker)).length,
+      pinnedCount: markers.filter((marker) => marker.tone === category.tone && isCriticalMilitaryOutcomeMarker(marker)).length,
     };
   });
 }
@@ -740,12 +757,19 @@ function buildMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeMa
       dominantTone: marker.tone,
       dominantLabel: marker.label,
       urgentAction: getMilitaryOutcomeUrgentAction(marker.tone),
+      pinnedCount: 0,
+      pinnedReasons: [],
     };
     const visible = isMilitaryOutcomeMarkerVisible(marker);
+    const pinReason = getMilitaryOutcomePinReason(marker);
 
     existing.markers.push(marker);
     existing.visibleCount += visible ? 1 : 0;
     existing.hiddenCount += visible ? 0 : 1;
+    existing.pinnedCount += pinReason ? 1 : 0;
+    if (pinReason && !existing.pinnedReasons.includes(pinReason)) {
+      existing.pinnedReasons.push(pinReason);
+    }
 
     if ((militaryOutcomeSeverityRank[marker.tone] ?? 0) > (militaryOutcomeSeverityRank[existing.dominantTone] ?? 0)) {
       existing.dominantTone = marker.tone;
@@ -761,6 +785,7 @@ function buildMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeMa
       ...group,
       totalCount: group.markers.length,
       status: group.visibleCount > 0 ? 'visible' : 'hidden',
+      pinSummary: group.pinnedReasons[0] ?? 'aucun épinglage critique',
     }))
     .sort((left, right) => {
       const severityDelta = (militaryOutcomeSeverityRank[right.dominantTone] ?? 0) - (militaryOutcomeSeverityRank[left.dominantTone] ?? 0);
@@ -794,9 +819,10 @@ function renderMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeM
           <article class="military-front-marker-summary__item military-front-marker-summary__item--${summary.dominantTone} military-front-marker-summary__item--${summary.status}">
             <div>
               <strong>${summary.frontLabel}</strong>
-              <small>${summary.visibleCount} visible${summary.visibleCount > 1 ? 's' : ''} · ${summary.hiddenCount} masqué${summary.hiddenCount > 1 ? 's' : ''}</small>
+              <small>${summary.visibleCount} visible${summary.visibleCount > 1 ? 's' : ''} · ${summary.hiddenCount} masqué${summary.hiddenCount > 1 ? 's' : ''} · ${summary.pinnedCount} épinglé${summary.pinnedCount > 1 ? 's' : ''}</small>
             </div>
             <p><b>${summary.dominantLabel}</b> · ${summary.urgentAction}</p>
+            ${summary.pinnedCount > 0 ? `<em>${summary.pinSummary}</em>` : ''}
           </article>
         `).join('')}
       </div>
@@ -816,7 +842,7 @@ function renderMilitaryOutcomeMarkerFilters(markers = state.lastMilitaryOutcomeM
           <span>Marqueurs militaires</span>
           <strong>${total} post-commit</strong>
         </div>
-        <small>${hiddenTotal} masqué${hiddenTotal > 1 ? 's' : ''}</small>
+        <small>${hiddenTotal} masqué${hiddenTotal > 1 ? 's' : ''} · ${filters.reduce((sum, filter) => sum + filter.pinnedCount, 0)} épinglé${filters.reduce((sum, filter) => sum + filter.pinnedCount, 0) > 1 ? 's' : ''}</small>
       </div>
       <div class="military-outcome-filter__buttons">
         ${filters.map((filter) => `
@@ -874,6 +900,8 @@ function buildPostCommitMilitaryOutcomeMarker(province, shell, intrigueView = nu
     summaryItem,
     changed: `${labels[tone]} après résolution: ${action?.expectedResult ?? projection.summary}`,
     why: `Référence rapport militaire: ${summaryItem}. ${why}`,
+    pinReason: getMilitaryOutcomePinReason({ tone }),
+    pinned: isCriticalMilitaryOutcomeMarker({ tone }),
     turn: state.turn + 1,
   };
 }
@@ -907,7 +935,7 @@ function renderSelectedProvinceMilitaryOutcomeMarker(province) {
       </div>
       <p>${marker.changed}</p>
       <small>${marker.why}</small>
-      ${isMilitaryOutcomeMarkerVisible(marker) ? '' : '<em>Marqueur masqué par le filtre de légende.</em>'}
+      ${marker.pinReason ? `<em>${marker.pinReason}</em>` : isMilitaryOutcomeMarkerVisible(marker) ? '' : '<em>Marqueur masqué par le filtre de légende.</em>'}
     </section>
   `;
 }
