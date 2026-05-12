@@ -2143,6 +2143,94 @@ function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = 
   };
 }
 
+function getClimateInterventionWindowRank(entry) {
+  if (entry.deadlineState === 'missed') return 0;
+  if (entry.deadlineState === 'just-in-time') return 1;
+  if (entry.deadlineState === 'covered') return 2;
+  if (entry.riskLevel === 'critical') return 3;
+  if (entry.riskLevel === 'strained') return 4;
+  return 5;
+}
+
+function buildMapClimateInterventionWindows(shell) {
+  const windows = shell.provinces
+    .map((province) => {
+      const forecast = buildProvinceClimateRiskReductionForecast(province, shell);
+      const primaryCue = buildProvinceClimateCountdownCues(province)[0] ?? null;
+      const riskLevel = getProvinceClimateRiskLevel(province);
+      const residualCascade = forecast.remainingCascades[0] ?? null;
+      const canWait = forecast.deadlineCoverage.state === 'calm' || (riskLevel === 'stable' && primaryCue?.level === 'stable');
+      const deadline = forecast.deadlineCoverage.state === 'calm'
+        ? primaryCue?.countdown ?? 'Stable'
+        : forecast.deadlineCoverage.label;
+      const benefit = forecast.payoffTradeoff?.benefit
+        ?? (forecast.queuedAction ? `${forecast.queuedAction}: ${forecast.currentRisk} → ${forecast.projectedRisk}.` : 'Action immédiate: bénéfice limité ou non confirmé.');
+      const delayRisk = forecast.deadlineCoverage.residualRisk
+        ?? (residualCascade ? `${residualCascade.type}: ${residualCascade.scope}` : 'Peut attendre sans gros coût visible.');
+
+      return {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        deadline,
+        deadlineState: forecast.deadlineCoverage.state,
+        riskLevel,
+        delayRisk,
+        benefit,
+        canWait,
+        cueLabel: primaryCue?.label ?? 'Fenêtre climat',
+        rank: 0,
+      };
+    })
+    .sort((left, right) => getClimateInterventionWindowRank(left) - getClimateInterventionWindowRank(right)
+      || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3)
+    .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
+  const urgentCount = windows.filter((window) => !window.canWait && window.deadlineState !== 'covered').length;
+
+  return {
+    state: urgentCount > 0 ? 'urgent' : windows.some((window) => !window.canWait) ? 'watch' : 'calm',
+    urgentCount,
+    windows,
+    summary: windows.length > 1
+      ? `${windows.length} fenêtres climat comparées; ${urgentCount} urgence${urgentCount > 1 ? 's' : ''} à traiter maintenant.`
+      : windows.length === 1
+        ? 'Une seule région climat concernée: comparaison réduite à la fenêtre locale.'
+        : 'Aucune fenêtre d’intervention climat prioritaire à comparer.',
+  };
+}
+
+function renderMapClimateInterventionWindows(view) {
+  if (view.windows.length === 0) {
+    return `
+      <section class="map-climate-windows map-climate-windows--calm" aria-label="Comparaison des fenêtres d’intervention climatique">
+        <strong>Fenêtres climat</strong>
+        <p>${view.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-climate-windows map-climate-windows--${view.state}" aria-label="Comparaison des fenêtres d’intervention climatique">
+      <div class="map-climate-windows__header">
+        <strong>Fenêtres d’intervention climat</strong>
+        <span>${view.urgentCount} maintenant · ${view.windows.length - view.urgentCount} peut attendre</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-climate-windows__list">
+        ${view.windows.map((window) => `
+          <li class="map-climate-windows__item map-climate-windows__item--${window.deadlineState} ${window.canWait ? 'map-climate-windows__item--wait' : ''}">
+            <b>${window.rank}. ${window.provinceLabel}</b>
+            <span>${window.deadline} · risque ${window.riskLevel}</span>
+            <small><b>Si retard</b> · ${window.delayRisk}</small>
+            <small><b>Bénéfice immédiat</b> · ${window.benefit}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderMapClimatePreparednessSummary(summary) {
   if (summary.warnings.length === 0) {
     return `
@@ -6476,6 +6564,7 @@ function render() {
     consequenceChips: selectedCultureContext.consequenceChips,
   });
   const climatePreparednessSummary = buildMapClimatePreparednessSummary(shell, focusContext, intrigueView);
+  const climateInterventionWindows = buildMapClimateInterventionWindows(shell);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -6497,6 +6586,7 @@ function render() {
           ${renderConflictReadinessWarnings(shell, intrigueView)}
           ${renderFrontPriorityRanking(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
+          ${renderMapClimateInterventionWindows(climateInterventionWindows)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
