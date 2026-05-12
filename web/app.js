@@ -4351,6 +4351,114 @@ function renderSafeIntrigueResponseTimingComparison(province, intrigueView) {
   `;
 }
 
+function collectQueuedMapChoiceConflictSources(province, queuedMapChoices = state) {
+  const selectedProvinceId = province?.provinceId;
+  const logistics = (queuedMapChoices.queuedLogisticsActions ?? [])
+    .filter((entry) => entry.provinceId !== selectedProvinceId)
+    .map((entry) => ({
+      type: 'logistics',
+      label: entry.label ?? entry.target ?? 'choix logistique en file',
+      code: entry.actionId ?? entry.routeId ?? 'LOG',
+      priority: entry.status === 'conflict' || entry.status === 'risky' ? 1 : 3,
+      conflictType: 'ressource détournée',
+      detail: entry.downstreamEffect ?? 'un ordre logistique visible peut détourner la réserve avant la réponse intrigue.',
+    }));
+  const climate = (queuedMapChoices.queuedClimateInterventions ?? [])
+    .filter((entry) => entry.provinceId !== selectedProvinceId)
+    .map((entry) => ({
+      type: 'climate',
+      label: entry.label ?? 'intervention climat en file',
+      code: entry.actionCode ?? 'CLIMATE',
+      priority: entry.missedDeadline ? 1 : 2,
+      conflictType: entry.missedDeadline ? 'fenêtre de brouillard de guerre qui se referme' : 'délai consommé',
+      detail: entry.tradeoff ?? entry.expectedResult ?? 'l’intervention consomme une fenêtre d’action lisible avant la réponse intrigue.',
+    }));
+  const culture = (queuedMapChoices.queuedCultureActions ?? [])
+    .filter((entry) => entry.provinceId !== selectedProvinceId)
+    .map((entry) => ({
+      type: 'culture',
+      label: entry.label ?? 'choix culturel en file',
+      code: entry.actionCode ?? 'CULTURE',
+      priority: entry.status === 'risky' || entry.status === 'blocked' ? 1 : 2,
+      conflictType: 'exposition accrue',
+      detail: entry.mainRisk ?? entry.expectedResult ?? 'un ordre public peut hausser le bruit visible avant la réponse intrigue.',
+    }));
+
+  return logistics.concat(climate, culture)
+    .sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label))
+    .slice(0, 3);
+}
+
+function buildIntrigueQueuedMapChoiceConflicts(province, intrigueView, queuedMapChoices = state) {
+  const options = buildSafeIntrigueResponseTimingOptions(province, intrigueView);
+  const entry = (intrigueView?.map?.entries ?? []).find((candidate) => candidate.locationId === province?.provinceId) ?? null;
+  const sources = collectQueuedMapChoiceConflictSources(province, queuedMapChoices);
+
+  if (options.length === 0 || sources.length === 0) {
+    return [];
+  }
+
+  const fogLimited = !entry?.showSecondaryDetails && (entry?.metrics?.exposedCellCount ?? 0) === 0 && entry?.sabotageRiskLevel !== 'high';
+  const primaryOption = options.find((option) => option.tone === 'danger') ?? options[0];
+
+  if (fogLimited) {
+    return [{
+      tone: 'masked',
+      priority: 1,
+      label: 'attention: conflit possible sous brouillard',
+      sourceLabel: 'choix de carte masqué',
+      sourceCode: primaryOption.code,
+      responseLabel: primaryOption.label,
+      detail: 'La file contient un choix ailleurs, mais le brouillard masque le lien exact: ne pas inférer cellule, cible, relais ni objectif caché.',
+    }];
+  }
+
+  return sources.map((source, index) => {
+    const option = options[index] ?? primaryOption;
+    return {
+      tone: source.priority <= 1 || option.tone === 'danger' ? 'danger' : 'warning',
+      priority: source.priority + (option.tone === 'danger' ? 0 : 1),
+      label: `attention: conflit avec ${source.label}`,
+      sourceLabel: source.label,
+      sourceCode: source.code,
+      responseLabel: option.label,
+      detail: `${source.conflictType}: ${source.detail} Réponse concernée: ${option.label}; seuls les impacts visibles de file, délai, exposition et ressource sont comparés.`,
+    };
+  })
+    .sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label))
+    .slice(0, 2);
+}
+
+function renderIntrigueQueuedMapChoiceConflicts(province, intrigueView, queuedMapChoices = state) {
+  const conflicts = buildIntrigueQueuedMapChoiceConflicts(province, intrigueView, queuedMapChoices);
+
+  if (conflicts.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-intrigue-queue-conflicts" aria-label="Conflits fog-safe entre réponses intrigue et choix carte en file">
+      <div class="province-intrigue-queue-conflicts__header">
+        <strong>Conflits avec la file carte</strong>
+        <span>${conflicts.length} avertissement${conflicts.length > 1 ? 's' : ''}</span>
+      </div>
+      <div class="province-intrigue-queue-conflict-list">
+        ${conflicts.map((conflict) => `
+          <article class="province-intrigue-queue-conflict province-intrigue-queue-conflict--${conflict.tone}">
+            <div>
+              <b>${conflict.label}</b>
+              <code>${conflict.sourceCode}</code>
+            </div>
+            <p>${conflict.detail}</p>
+            <small>${conflict.responseLabel} · ${conflict.sourceLabel}</small>
+          </article>
+        `).join('')}
+      </div>
+      <small>Lecture fog-safe: avertit seulement sur les conflits déductibles; cellule, cible, relais et état caché restent masqués.</small>
+    </section>
+  `;
+}
+
 function buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) {
   const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
   const selectedResponse = drillDown?.quickResponses?.find((response) => response.code === drillDown.recommendedResponseCode)
@@ -6785,6 +6893,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderProvinceIntrigueExposureTimelineHints(province, intrigueView)}
       ${renderSafeIntrigueResponseTimingComparison(province, intrigueView)}
+      ${renderIntrigueQueuedMapChoiceConflicts(province, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView)}
       ${renderQueuedMilitaryMapActionConfirmation(province, shell, intrigueView)}
