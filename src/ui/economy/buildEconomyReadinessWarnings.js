@@ -23,6 +23,7 @@ function getWarningTone(status) {
 function buildPlanWarning(province, plan, budgetStatus) {
   const resource = plan.consumedResources?.[0] ?? { label: 'ressource', quantity: plan.costUnits ?? 0 };
   const route = plan.routeNames?.[0] ?? 'route locale';
+  const hubName = plan.hubName ?? null;
   const status = plan.status === 'blocked' ? 'blocked' : plan.status === 'risky' ? 'risky' : budgetStatus;
 
   return {
@@ -33,7 +34,15 @@ function buildPlanWarning(province, plan, budgetStatus) {
     label: status === 'blocked' ? 'Blocage budget' : status === 'risky' ? 'Compromis logistique' : 'Capacité sécurisée',
     detail: `${province.label ?? province.provinceId}: ${plan.logisticsAction} sollicite ${resource.quantity} ${resource.label} via ${route}; ${plan.surplusOrShortage}.`,
     routeName: route,
+    hubName,
     resourceLabel: resource.label,
+    focusTarget: {
+      kind: status === 'blocked' ? 'hub' : 'route',
+      provinceId: province.provinceId,
+      routeName: route,
+      hubName,
+      resourceLabel: resource.label,
+    },
     score: (STATUS_RANK[status] ?? 0) * 100 + (plan.risk ?? 0) + (plan.costUnits ?? 0),
   };
 }
@@ -51,7 +60,15 @@ function buildChoiceWarning(province, choice) {
     label: choice.tone === 'high' ? 'Route sous stress' : 'Route surveillée',
     detail: `${province.label ?? province.provinceId}: ${route} garde un risque ${choice.residualRisk ?? 0} sur ${resource}.`,
     routeName: route,
+    hubName: choice.affectedCity ?? null,
     resourceLabel: resource,
+    focusTarget: {
+      kind: 'route',
+      provinceId: province.provinceId,
+      routeName: route,
+      hubName: choice.affectedCity ?? null,
+      resourceLabel: resource,
+    },
     score: (choice.tone === 'high' ? 180 : 80) + (choice.residualRisk ?? 0),
   };
 }

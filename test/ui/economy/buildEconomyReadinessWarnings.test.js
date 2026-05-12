@@ -19,6 +19,7 @@ test('buildEconomyReadinessWarnings ranks blocked economy budgets first', () => 
             logisticsAction: 'Réparer route',
             consumedResources: [{ label: 'Outils', quantity: 4 }],
             routeNames: ['Ember Line'],
+            hubName: 'River Gate',
             surplusOrShortage: '2 unités manquantes',
             risk: 30,
             costUnits: 4,
@@ -48,6 +49,13 @@ test('buildEconomyReadinessWarnings ranks blocked economy budgets first', () => 
   assert.equal(report.warnings[0].provinceLabel, 'Porte du Fleuve');
   assert.match(report.warnings[0].detail, /Ember Line/);
   assert.match(report.warnings[0].detail, /Outils/);
+  assert.deepEqual(report.warnings[0].focusTarget, {
+    kind: 'hub',
+    provinceId: 'river-gate',
+    routeName: 'Ember Line',
+    hubName: 'River Gate',
+    resourceLabel: 'Outils',
+  });
 });
 
 test('buildEconomyReadinessWarnings falls back to high logistics route stress', () => {
@@ -59,6 +67,7 @@ test('buildEconomyReadinessWarnings falls back to high logistics route stress', 
             tone: 'high',
             routes: ['Iron Road'],
             resources: ['Outils'],
+            affectedCity: 'Iron Hub',
             residualRisk: 72,
           },
         ],
@@ -70,6 +79,8 @@ test('buildEconomyReadinessWarnings falls back to high logistics route stress', 
   assert.equal(report.warnings.length, 1);
   assert.equal(report.warnings[0].label, 'Route sous stress');
   assert.match(report.warnings[0].detail, /Iron Road/);
+  assert.equal(report.warnings[0].focusTarget.kind, 'route');
+  assert.equal(report.warnings[0].focusTarget.hubName, 'Iron Hub');
 });
 
 test('buildEconomyReadinessWarnings returns compact ready state without warnings', () => {
