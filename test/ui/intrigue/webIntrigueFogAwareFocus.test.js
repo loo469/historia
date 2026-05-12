@@ -276,3 +276,19 @@ test('selected province intrigue details show ordered fog-safe timeline hints', 
   assert.match(stylesSource, /province-intrigue-timeline-hints/);
   assert.match(stylesSource, /province-intrigue-timeline-hint--danger/);
 });
+
+test('safe intrigue responses compare exposure timing without breaking fog', () => {
+  assert.match(webAppSource, /function buildSafeIntrigueResponseTimingOptions/);
+  assert.match(webAppSource, /function renderSafeIntrigueResponseTimingComparison/);
+  assert.match(webAppSource, /Comparaison fog-safe des réponses intrigue sous timing d’exposition/);
+  assert.match(webAppSource, /exposition réduite/);
+  assert.match(webAppSource, /brouillard conservé/);
+  assert.match(webAppSource, /aggravation possible immédiate/);
+  assert.match(webAppSource, /risque secondaire élevé: chaleur visible à compenser/);
+  assert.match(webAppSource, /sûr maintenant, risqué si le joueur attend/);
+  assert.match(webAppSource, /Comparaison prudente: seules les tendances visibles sont comparées; cellule, cible, relais et état caché restent masqués/);
+  assert.match(webAppSource, /renderSafeIntrigueResponseTimingComparison\(province, intrigueView\)/);
+  assert.match(stylesSource, /province-intrigue-response-timing/);
+  assert.match(stylesSource, /province-intrigue-response-option--mitigated/);
+  assert.match(stylesSource, /province-intrigue-response-option--danger/);
+});
