@@ -3657,11 +3657,43 @@ button { font: inherit; }
   margin: 0;
 }
 .intrigue-response-choice p,
+.intrigue-response-choice small,
 .intrigue-response-choice dt,
 .intrigue-response-choice dd {
   margin: 0;
   color: #cbd5e1;
   line-height: 1.35;
+}
+.intrigue-response-choice small {
+  color: #bfdbfe;
+}
+.intrigue-response-choice__confidence {
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+.intrigue-response-choice__confidence--fiable {
+  color: #bbf7d0;
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(74, 222, 128, 0.24);
+}
+.intrigue-response-choice__confidence--incertain {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(250, 204, 21, 0.26);
+}
+.intrigue-response-choice__confidence--dangereux {
+  color: #fecdd3;
+  background: rgba(225, 29, 72, 0.14);
+  border-color: rgba(251, 113, 133, 0.3);
+}
+.intrigue-response-choice__confidence--information-insuffisante {
+  color: #ddd6fe;
+  background: rgba(124, 58, 237, 0.14);
+  border-color: rgba(167, 139, 250, 0.28);
 }
 .intrigue-response-choice dt {
   color: #a5b4fc;

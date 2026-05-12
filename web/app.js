@@ -3530,6 +3530,12 @@ function buildSelectedProvinceIntrigueResponseChoices(entry, selectedCellules, s
       label: 'Surveiller',
       tone: 'watch',
       exposureRisk: 'faible',
+      confidence: riskIsHigh ? 'incertain' : 'fiable',
+      confidenceLabel: riskIsHigh ? 'Confiance incertaine' : 'Confiance fiable',
+      confidenceReason: riskIsHigh
+        ? 'Le signal reste exploitable, mais une pression cachée peut fausser la lecture.'
+        : 'Les signaux visibles suffisent pour observer sans exposer le réseau.',
+      improveConfidence: 'Collecter renseignement ou attendre un tour pour confirmer le signal avant action directe.',
       missingInfo: baseMissingInfo,
       gain: 'Maintient le signal visible sans forcer la révélation du brouillard.',
       summary: 'Surveiller: garder la province en observation et attendre un signal plus net.',
@@ -3540,6 +3546,14 @@ function buildSelectedProvinceIntrigueResponseChoices(entry, selectedCellules, s
       label: 'Infiltrer',
       tone: riskIsHigh ? 'warning' : 'watch',
       exposureRisk: riskIsHigh ? 'modéré' : 'faible à modéré',
+      confidence: heatedOperation ? 'dangereux' : entry.presenceLevel === 'low' ? 'information-insuffisante' : 'incertain',
+      confidenceLabel: heatedOperation ? 'Confiance dangereuse' : entry.presenceLevel === 'low' ? 'Information insuffisante' : 'Confiance incertaine',
+      confidenceReason: heatedOperation
+        ? 'La sécurité cible visible est trop haute pour supposer un contact sûr.'
+        : entry.presenceLevel === 'low'
+          ? 'Le brouillard masque encore la source du signal; ne pas inférer une menace réelle.'
+          : 'Le hotspot est plausible, mais le relais précis reste non confirmé.',
+      improveConfidence: 'Collecter renseignement discret avant infiltration ou basculer en surveillance.',
       missingInfo: exposedCount > 0 ? 'canal sûr pour approcher la cellule exposée' : 'confirmation du hotspot avant contact direct',
       gain: 'Transforme le soupçon en renseignement exploitable sans nommer la cible.',
       summary: 'Collecter renseignement: approcher le réseau sans révéler cellule, relais ou objectif.',
@@ -3553,6 +3567,14 @@ function buildSelectedProvinceIntrigueResponseChoices(entry, selectedCellules, s
       label: exposedCount > 0 ? 'Réduire chaleur' : 'Temporiser',
       tone: exposedCount > 0 ? 'danger' : 'warning',
       exposureRisk: exposedCount > 0 ? 'élevé si action directe' : 'modéré tant que la sécurité cible reste haute',
+      confidence: exposedCount > 0 ? 'dangereux' : 'incertain',
+      confidenceLabel: exposedCount > 0 ? 'Confiance dangereuse' : 'Confiance incertaine',
+      confidenceReason: exposedCount > 0
+        ? 'L’exposition visible rend toute neutralisation directe risquée sans révéler les détails masqués.'
+        : 'Le risque est lisible, mais le relais exact reste couvert par le brouillard.',
+      improveConfidence: exposedCount > 0
+        ? 'Réduire chaleur puis collecter renseignement avant une action nominative.'
+        : 'Temporiser pour laisser baisser la sécurité cible avant de réévaluer.',
       missingInfo: fogHint?.reason ?? baseMissingInfo,
       gain: exposedCount > 0
         ? 'Diminue la pression avant une neutralisation publique ou ciblée.'
@@ -3566,6 +3588,12 @@ function buildSelectedProvinceIntrigueResponseChoices(entry, selectedCellules, s
       label: 'Attendre',
       tone: 'watch',
       exposureRisk: 'très faible',
+      confidence: entry.presenceLevel === 'low' ? 'information-insuffisante' : 'fiable',
+      confidenceLabel: entry.presenceLevel === 'low' ? 'Information insuffisante' : 'Confiance fiable',
+      confidenceReason: entry.presenceLevel === 'low'
+        ? 'Le choix est sûr, mais les données visibles ne suffisent pas à qualifier la menace.'
+        : 'Attendre ne révèle rien et garde les options ouvertes avec les informations actuelles.',
+      improveConfidence: 'Surveiller ou collecter renseignement au prochain tour pour clarifier le signal.',
       missingInfo: baseMissingInfo,
       gain: 'Préserve totalement le brouillard mais reporte le gain de renseignement.',
       summary: 'Surveiller sans escalade: attendre si le tour ne peut pas absorber de chaleur intrigue.',
@@ -4529,9 +4557,11 @@ function renderIntrigueSidePanel(intrigueView) {
                   <article class="intrigue-response-choice intrigue-response-choice--${choice.tone} ${choice.recommended ? 'is-recommended' : ''}" aria-label="${choice.label}: risque d'exposition ${choice.exposureRisk}">
                     <div>
                       <strong>${choice.label}</strong>
+                      <span class="intrigue-response-choice__confidence intrigue-response-choice__confidence--${choice.confidence}">${choice.confidenceLabel}</span>
                       ${choice.recommended ? '<b>prudente</b>' : ''}
                     </div>
                     <p>${choice.summary}</p>
+                    <small>${choice.confidenceReason} ${choice.improveConfidence}</small>
                     <dl>
                       <div><dt>Exposition</dt><dd>${choice.exposureRisk}</dd></div>
                       <div><dt>Info manquante</dt><dd>${choice.missingInfo}</dd></div>
