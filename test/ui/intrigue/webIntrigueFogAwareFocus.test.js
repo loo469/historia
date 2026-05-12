@@ -164,3 +164,20 @@ test('map panel can queue safe intrigue responses with guarded states', () => {
   assert.match(stylesSource, /province-intrigue-map-queue-action--disabled/);
   assert.match(stylesSource, /province-intrigue-map-queue-action__cta:disabled/);
 });
+
+test('queued intrigue map responses show fog-safe confirmation and undo affordance', () => {
+  assert.match(webAppSource, /function buildConfirmedQueuedIntrigueMapResponse/);
+  assert.match(webAppSource, /Confirmation fog-safe réponse intrigue queueée/);
+  assert.match(webAppSource, /Réponse queueée/);
+  assert.match(webAppSource, /Aucune réponse queueée/);
+  assert.match(webAppSource, /Contexte visible/);
+  assert.match(webAppSource, /Direction risque/);
+  assert.match(webAppSource, /Incertitude/);
+  assert.match(webAppSource, /data-action="undo-last-intrigue-response"/);
+  assert.match(webAppSource, /Annuler dernière réponse intrigue/);
+  assert.match(webAppSource, /Annulation disponible avant résolution du tour; le brouillard conserve cible, cellule et relais masqués/);
+  assert.match(webAppSource, /Réponse confirmée: \$\{mapQueueAction\.actionLabel\} sur \$\{province\.label\}/);
+  assert.match(stylesSource, /province-intrigue-map-confirmation/);
+  assert.match(stylesSource, /province-intrigue-map-confirmation--confirmed/);
+  assert.match(stylesSource, /province-intrigue-map-confirmation__undo:disabled/);
+});

@@ -3161,11 +3161,36 @@ function buildMapIntrigueSafeQueueAction(province, projection, cumulativeRisk, q
   };
 }
 
+function buildConfirmedQueuedIntrigueMapResponse(province, projection, mapQueueAction) {
+  const confirmed = !projection.empty;
+  const direction = projection.deltaLabel === 'stable'
+    ? 'risque stable'
+    : projection.deltaLabel.startsWith('+')
+      ? 'risque en hausse'
+      : 'risque réduit';
+
+  return {
+    confirmed,
+    responseType: mapQueueAction.actionLabel,
+    visibleContext: province.label,
+    exposureDirection: direction,
+    uncertainty: projection.confidence,
+    summary: confirmed
+      ? `Réponse confirmée: ${mapQueueAction.actionLabel} sur ${province.label}; ${direction}, avec ${projection.confidence}.`
+      : 'Aucune confirmation active: queuez une réponse sûre depuis la carte pour obtenir un résumé auditable.',
+    undoLabel: confirmed ? 'Annuler dernière réponse intrigue' : 'Aucune réponse à annuler',
+    undoDetail: confirmed
+      ? 'Annulation disponible avant résolution du tour; le brouillard conserve cible, cellule et relais masqués.'
+      : 'L’undo s’active dès qu’une réponse intrigue carte est en file.',
+  };
+}
+
 function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const projection = buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
   const cumulativeRisk = buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigueView);
   const queueChangePreview = buildIntrigueQueueChangePreview(projection, cumulativeRisk);
   const mapQueueAction = buildMapIntrigueSafeQueueAction(province, projection, cumulativeRisk, queueChangePreview);
+  const confirmation = buildConfirmedQueuedIntrigueMapResponse(province, projection, mapQueueAction);
 
   return `
     <section class="province-intrigue-detection-projection province-intrigue-detection-projection--${projection.tone}" aria-label="Projection du risque de détection intrigue">
@@ -3241,6 +3266,20 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
         <p>${mapQueueAction.ignoredConsequence}</p>
         <button type="button" class="province-intrigue-map-queue-action__cta" data-action="queue-safe-intrigue-response" data-province-id="${province.provinceId}" ${mapQueueAction.disabled ? 'disabled' : ''}>${mapQueueAction.ctaLabel}</button>
         <small>${mapQueueAction.detail}</small>
+      </div>
+      <div class="province-intrigue-map-confirmation province-intrigue-map-confirmation--${confirmation.confirmed ? 'confirmed' : 'empty'}" aria-label="Confirmation fog-safe réponse intrigue queueée">
+        <div class="province-intrigue-map-confirmation__header">
+          <span>${confirmation.confirmed ? 'Réponse queueée' : 'Aucune réponse queueée'}</span>
+          <strong>${confirmation.responseType}</strong>
+        </div>
+        <p>${confirmation.summary}</p>
+        <dl>
+          <div><dt>Contexte visible</dt><dd>${confirmation.visibleContext}</dd></div>
+          <div><dt>Direction risque</dt><dd>${confirmation.exposureDirection}</dd></div>
+          <div><dt>Incertitude</dt><dd>${confirmation.uncertainty}</dd></div>
+        </dl>
+        <button type="button" class="province-intrigue-map-confirmation__undo" data-action="undo-last-intrigue-response" data-province-id="${province.provinceId}" ${confirmation.confirmed ? '' : 'disabled'}>${confirmation.undoLabel}</button>
+        <small>${confirmation.undoDetail}</small>
       </div>
       <small>${projection.fogLimit}</small>
     </section>
