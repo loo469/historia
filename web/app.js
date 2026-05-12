@@ -2092,6 +2092,69 @@ function renderConflictReadinessWarnings(shell, intrigueView = null) {
 }
 
 
+
+function buildIntrigueExposureFocusTarget(province, drillDown, leadWarning, response, mitigated) {
+  if (mitigated && drillDown) {
+    return {
+      state: 'confirmed',
+      kind: response.code === 'exposer' ? 'cellule' : 'hotspot',
+      provinceId: province.provinceId,
+      targetId: response.code === 'exposer' ? drillDown.primaryCelluleId ?? drillDown.locationId : drillDown.locationId,
+      label: response.code === 'exposer'
+        ? `Cellule ${drillDown.primaryCelluleId ?? 'locale'} confirmée`
+        : `Hotspot confirmé ${drillDown.locationName}`,
+      hint: 'focus confirmé',
+      focusable: true,
+    };
+  }
+
+  if (drillDown?.primaryCelluleId) {
+    return {
+      state: 'confirmed',
+      kind: 'cellule',
+      provinceId: province.provinceId,
+      targetId: drillDown.primaryCelluleId,
+      label: `Cellule ${drillDown.primaryCelluleId}`,
+      hint: 'cible confirmée',
+      focusable: true,
+    };
+  }
+
+  if (drillDown?.locationId) {
+    return {
+      state: 'confirmed',
+      kind: 'hotspot',
+      provinceId: province.provinceId,
+      targetId: drillDown.locationId,
+      label: `Hotspot ${drillDown.locationName}`,
+      hint: 'hotspot confirmé',
+      focusable: true,
+    };
+  }
+
+  if (leadWarning?.tone !== 'masked') {
+    return {
+      state: 'probable',
+      kind: 'province',
+      provinceId: province.provinceId,
+      targetId: province.provinceId,
+      label: `Zone probable ${province.label}`,
+      hint: 'zone probable',
+      focusable: true,
+    };
+  }
+
+  return {
+    state: 'masked',
+    kind: 'fog',
+    provinceId: null,
+    targetId: null,
+    label: 'Information masquée',
+    hint: 'brouillard préservé',
+    focusable: false,
+  };
+}
+
 function buildMapIntrigueExposureSummary(shell, intrigueView = null) {
   const warnings = shell.provinces
     .map((province) => {
@@ -2114,6 +2177,8 @@ function buildMapIntrigueExposureSummary(shell, intrigueView = null) {
 
       const mitigated = response && ['contenir', 'exposer'].includes(response.code) && response.escalationProbability !== 'élevée';
 
+      const focusTarget = buildIntrigueExposureFocusTarget(province, drillDown, lead, response, mitigated);
+
       return {
         provinceId: province.provinceId,
         provinceLabel: province.label,
@@ -2125,6 +2190,7 @@ function buildMapIntrigueExposureSummary(shell, intrigueView = null) {
           : lead.detail,
         trigger: mitigated ? response.code : lead.trigger,
         priority: mitigated ? 4 : lead.priority,
+        focusTarget,
       };
     })
     .filter(Boolean)
@@ -2165,10 +2231,13 @@ function renderMapIntrigueExposureSummary(summary) {
       <p>${summary.summary}</p>
       <ul class="map-intrigue-exposure-summary__list">
         ${summary.warnings.map((warning) => `
-          <li class="map-intrigue-exposure-summary__item map-intrigue-exposure-summary__item--${warning.tone}">
-            <b>${warning.provinceLabel}</b>
+          <li class="map-intrigue-exposure-summary__item map-intrigue-exposure-summary__item--${warning.tone} map-intrigue-exposure-summary__item--${warning.focusTarget.state}">
+            <div>
+              <b>${warning.provinceLabel}</b>
+              ${warning.focusTarget.focusable ? `<button type="button" data-province-id="${warning.focusTarget.provinceId}" data-intrigue-focus-target="${warning.focusTarget.kind}:${warning.focusTarget.targetId}" aria-label="Focaliser ${warning.focusTarget.label}">${warning.focusTarget.hint}</button>` : `<em>${warning.focusTarget.hint}</em>`}
+            </div>
             <span>${warning.risk}</span>
-            <small>${warning.trigger} · ${warning.consequence}</small>
+            <small>${warning.focusTarget.label} · ${warning.trigger} · ${warning.consequence}</small>
           </li>
         `).join('')}
       </ul>
