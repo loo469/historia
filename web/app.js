@@ -1928,6 +1928,48 @@ function buildProvinceLogisticsBottleneckPriorities(comparisons) {
     .slice(0, 3);
 }
 
+function buildProvinceLogisticsInterventionSequence(priorities) {
+  if (priorities.length === 0) {
+    return null;
+  }
+
+  const steps = priorities.slice(0, 3).map((entry, index, ordered) => {
+    const previous = ordered[index - 1] ?? null;
+    const next = ordered[index + 1] ?? null;
+    const equivalentWithPrevious = previous ? Math.abs(entry.priorityScore - previous.priorityScore) <= 10 : false;
+    const equivalentWithNext = next ? Math.abs(next.priorityScore - entry.priorityScore) <= 10 : false;
+    const dependency = entry.recoveryAction.includes('Escorter')
+      ? 'ordre dépendant du choix militaire'
+      : entry.reinforcement.includes('ressource')
+        ? 'ordre dépendant du choix culturel/production'
+        : null;
+    const reason = equivalentWithPrevious || equivalentWithNext
+      ? 'alternative équivalente: arbitrer selon disponibilité locale'
+      : entry.tone === 'high'
+        ? 'urgence et impact aval prioritaire'
+        : entry.interventionTradeoff.risk.includes('critique')
+          ? 'évite bascule en goulot critique'
+          : 'coût d’opportunité contenu après les urgences';
+
+    return {
+      routeId: entry.routeId,
+      routeName: entry.routeName,
+      order: index + 1,
+      reason,
+      dependency,
+      label: `${index + 1}. ${entry.routeName}`,
+    };
+  });
+
+  return {
+    steps,
+    path: steps.map((step) => step.order).join(' → '),
+    routes: steps.map((step) => step.routeName).join(' → '),
+    hasAlternative: steps.some((step) => step.reason.includes('alternative équivalente')),
+    dependency: steps.find((step) => step.dependency)?.dependency ?? null,
+  };
+}
+
 function buildProvinceLogisticsBottleneckWarnings(province, economyView, comparisons = null) {
   if (!province || !economyView) {
     return [];
@@ -1963,6 +2005,7 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
   const comparisons = buildProvinceLogisticsBottleneckComparison(province, economyView);
   const warnings = buildProvinceLogisticsBottleneckWarnings(province, economyView, comparisons);
   const priorities = buildProvinceLogisticsBottleneckPriorities(comparisons);
+  const interventionSequence = buildProvinceLogisticsInterventionSequence(priorities);
 
   if (comparisons.length < 2 && warnings.length === 0 && priorities.length === 0) {
     return '';
@@ -1987,6 +2030,20 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
             <b>Priorités aval</b>
             <span>${priorities.length} goulot${priorities.length > 1 ? 's' : ''} classé${priorities.length > 1 ? 's' : ''}</span>
           </div>
+          ${interventionSequence ? `
+            <div class="province-logistics-intervention-sequence" aria-label="Séquence recommandée d’interventions logistiques">
+              <b>Séquence recommandée</b>
+              <strong>${interventionSequence.path}</strong>
+              <span>${interventionSequence.routes}</span>
+              ${interventionSequence.hasAlternative ? '<small>Alternative équivalente détectée: l’ordre peut être inversé selon disponibilité locale.</small>' : ''}
+              ${interventionSequence.dependency ? `<small>${interventionSequence.dependency}: vérifier avant d'engager.</small>` : ''}
+              <ol>
+                ${interventionSequence.steps.map((step) => `
+                  <li><b>${step.label}</b><span>${step.reason}${step.dependency ? ` · ${step.dependency}` : ''}</span></li>
+                `).join('')}
+              </ol>
+            </div>
+          ` : ''}
           <ol>
             ${priorities.map((entry, index) => `
               <li class="province-logistics-bottleneck-priority province-logistics-bottleneck-priority--${entry.tone}">

@@ -9190,3 +9190,45 @@ button { font: inherit; }
   background: rgba(20, 83, 45, 0.24);
   border: 1px solid rgba(74, 222, 128, 0.24);
 }
+.province-logistics-intervention-sequence {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.2), rgba(2, 6, 23, 0.42));
+  border: 1px solid rgba(56, 189, 248, 0.22);
+}
+.province-logistics-intervention-sequence > b {
+  color: #bae6fd;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-logistics-intervention-sequence > strong {
+  color: #f8fafc;
+  font-size: 17px;
+  letter-spacing: 0.12em;
+}
+.province-logistics-intervention-sequence > span,
+.province-logistics-intervention-sequence small {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.province-logistics-intervention-sequence ol {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.province-logistics-intervention-sequence li {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.46);
+}
+.province-logistics-intervention-sequence li b { color: #e0f2fe; font-size: 11px; }
+.province-logistics-intervention-sequence li span { color: #dbeafe; font-size: 11px; line-height: 1.25; }
