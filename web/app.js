@@ -1859,10 +1859,53 @@ function buildProvinceLogisticsBottleneckComparison(province, economyView) {
         impactedCity: cityNameById[localCityId] ?? cityNameById[otherCityId] ?? route.destinationCityId,
         consequence: stress.summary,
         leverage,
+        downstreamImpact: stress.tone === 'high'
+          ? `${cityNameById[otherCityId] ?? route.destinationCityId}: pénurie aval probable si le flux reste bloqué.`
+          : stress.tone === 'medium'
+            ? `${cityNameById[otherCityId] ?? route.destinationCityId}: marge réduite, impact aval à contenir.`
+            : `${cityNameById[otherCityId] ?? route.destinationCityId}: impact aval limité pour l'instant.`,
+        recoveryAction: !route.active
+          ? 'Réouvrir ou détourner la route'
+          : localTension === 'high'
+            ? 'Prioriser convoi et stock local'
+            : route.riskLevel >= 70
+              ? 'Escorter le flux critique'
+              : route.totalCapacity >= 9
+                ? 'Délester vers une route parallèle'
+                : 'Surveiller avant engagement',
         score: (toneRank[stress.tone] ?? 0) * 100 + route.riskLevel + route.totalCapacity,
       };
     })
     .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
+    .slice(0, 3);
+}
+
+function buildProvinceLogisticsBottleneckPriorities(comparisons) {
+  const strained = comparisons.filter((entry) => entry.tone === 'high' || entry.tone === 'medium');
+  const impactedCityCounts = strained.reduce((counts, entry) => counts.set(entry.impactedCity, (counts.get(entry.impactedCity) ?? 0) + 1), new Map());
+  const resourceCounts = strained.reduce((counts, entry) => counts.set(entry.resourceLabel, (counts.get(entry.resourceLabel) ?? 0) + 1), new Map());
+
+  return strained
+    .map((entry) => {
+      const sharedCity = (impactedCityCounts.get(entry.impactedCity) ?? 0) > 1;
+      const sharedResource = (resourceCounts.get(entry.resourceLabel) ?? 0) > 1;
+      const reinforcement = sharedCity
+        ? `Renforce un autre goulot sur ${entry.impactedCity}`
+        : sharedResource
+          ? `Concurrence la même ressource (${entry.resourceLabel})`
+          : 'Goulot isolé, priorité par sévérité et risque.';
+      const rankReason = entry.tone === 'high'
+        ? `Sévérité haute + ${entry.consequence.toLowerCase()}`
+        : `Impact moyen mais ${reinforcement.toLowerCase()}`;
+
+      return {
+        ...entry,
+        reinforcement,
+        rankReason,
+        priorityScore: entry.score + (sharedCity ? 35 : 0) + (sharedResource ? 18 : 0),
+      };
+    })
+    .sort((left, right) => right.priorityScore - left.priorityScore || left.routeName.localeCompare(right.routeName))
     .slice(0, 3);
 }
 
@@ -1900,8 +1943,9 @@ function buildProvinceLogisticsBottleneckWarnings(province, economyView, compari
 function renderProvinceLogisticsBottleneckComparison(province, economyView) {
   const comparisons = buildProvinceLogisticsBottleneckComparison(province, economyView);
   const warnings = buildProvinceLogisticsBottleneckWarnings(province, economyView, comparisons);
+  const priorities = buildProvinceLogisticsBottleneckPriorities(comparisons);
 
-  if (comparisons.length < 2 && warnings.length === 0) {
+  if (comparisons.length < 2 && warnings.length === 0 && priorities.length === 0) {
     return '';
   }
 
@@ -1918,6 +1962,29 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
           <small>${warning.routeCount} route${warning.routeCount > 1 ? 's' : ''} sous tension autour de la province.</small>
         </div>
       `).join('')}
+      ${priorities.length > 0 ? `
+        <div class="province-logistics-bottleneck-priorities" aria-label="Priorités aval des goulets logistiques">
+          <div class="province-logistics-bottleneck-priorities__header">
+            <b>Priorités aval</b>
+            <span>${priorities.length} goulot${priorities.length > 1 ? 's' : ''} classé${priorities.length > 1 ? 's' : ''}</span>
+          </div>
+          <ol>
+            ${priorities.map((entry, index) => `
+              <li class="province-logistics-bottleneck-priority province-logistics-bottleneck-priority--${entry.tone}">
+                <span class="province-logistics-bottleneck-priority__rank">#${index + 1}</span>
+                <div>
+                  <strong>${entry.routeName}</strong>
+                  <small>${entry.impactedCity} · ${entry.resourceLabel} · ${entry.headline}</small>
+                  <p>${entry.downstreamImpact}</p>
+                  <small>Action probable: ${entry.recoveryAction}</small>
+                  <small>Raison du classement: ${entry.rankReason}</small>
+                  ${entry.reinforcement ? `<em>${entry.reinforcement}</em>` : ''}
+                </div>
+              </li>
+            `).join('')}
+          </ol>
+        </div>
+      ` : ''}
       ${comparisons.map((entry, index) => `
         <article class="province-logistics-route province-logistics-route--${entry.tone} ${index === 0 ? 'is-priority' : ''}">
           <div class="province-logistics-route__rank">${index === 0 ? 'Priorité' : `#${index + 1}`}</div>

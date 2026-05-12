@@ -8802,3 +8802,63 @@ button { font: inherit; }
 .culture-discovery-urgency-item span { color: #e0f2fe; font-size: 12px; font-weight: 800; }
 .culture-discovery-urgency-item b { color: #fde68a; font-size: 10px; text-transform: uppercase; }
 .culture-discovery-urgency-item small { grid-column: 1 / -1; color: #cbd5e1; font-size: 11px; line-height: 1.25; }
+.province-logistics-bottleneck-priorities {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(8, 15, 28, 0.54);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+.province-logistics-bottleneck-priorities__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.province-logistics-bottleneck-priorities__header span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-logistics-bottleneck-priorities ol {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+.province-logistics-bottleneck-priority {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.36);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.province-logistics-bottleneck-priority--high { border-color: rgba(251, 113, 133, 0.48); }
+.province-logistics-bottleneck-priority--medium { border-color: rgba(245, 158, 11, 0.42); }
+.province-logistics-bottleneck-priority__rank {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: #e0f2fe;
+  background: rgba(14, 116, 144, 0.28);
+  font-weight: 800;
+  font-size: 11px;
+}
+.province-logistics-bottleneck-priority strong,
+.province-logistics-bottleneck-priority small,
+.province-logistics-bottleneck-priority em { display: block; }
+.province-logistics-bottleneck-priority p {
+  margin: 4px 0;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-logistics-bottleneck-priority small { color: #93c5fd; font-size: 11px; }
+.province-logistics-bottleneck-priority em { margin-top: 4px; color: #fde68a; font-size: 11px; font-style: normal; }
