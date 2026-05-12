@@ -1542,6 +1542,18 @@ function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusC
   `;
 }
 
+function getEconomyReadinessFocusTarget(warning, economyView) {
+  const route = economyView.overlay.routes.find((candidate) => candidate.routeName === warning.focusTarget?.routeName) ?? null;
+  const hub = economyView.overlay.cities.find((candidate) => candidate.cityName === warning.focusTarget?.hubName) ?? null;
+
+  return {
+    provinceId: warning.provinceId,
+    routeId: route?.routeId ?? '',
+    cityId: hub?.cityId ?? '',
+    label: route?.routeName ?? hub?.cityName ?? warning.provinceLabel,
+  };
+}
+
 function renderEconomyReadinessWarnings(shell, economyView, focusContext, intrigueView = null) {
   const provinces = shell.provinces.slice(0, 6);
   const logisticsByProvinceId = Object.fromEntries(
@@ -1565,12 +1577,23 @@ function renderEconomyReadinessWarnings(shell, economyView, focusContext, intrig
       <p>${readiness.summary}</p>
       ${readiness.warnings.length > 0 ? `
         <ul class="economy-readiness-warnings__list">
-          ${readiness.warnings.map((warning) => `
-            <li class="economy-readiness-warning economy-readiness-warning--${warning.tone}">
-              <b>${warning.label}</b>
-              <span>${warning.detail}</span>
-            </li>
-          `).join('')}
+          ${readiness.warnings.map((warning) => {
+            const target = getEconomyReadinessFocusTarget(warning, economyView);
+
+            return `
+              <li class="economy-readiness-warning economy-readiness-warning--${warning.tone}">
+                <b>${warning.label}</b>
+                <span>${warning.detail}</span>
+                <button
+                  type="button"
+                  data-economy-readiness-focus="true"
+                  data-province-id="${target.provinceId}"
+                  data-route-id="${target.routeId}"
+                  data-city-id="${target.cityId}"
+                >Voir ${target.label}</button>
+              </li>
+            `;
+          }).join('')}
         </ul>
       ` : ''}
     </section>
@@ -4763,6 +4786,32 @@ function render() {
     element.addEventListener('click', () => {
       state.selectedRouteId = element.dataset.routeId;
       state.hoveredRouteId = element.dataset.routeId;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-economy-readiness-focus]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.provinceId;
+      const routeId = element.dataset.routeId;
+      const cityId = element.dataset.cityId;
+      state.activeOverlaySlot = 'economy-overlay';
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.popupProvinceId = provinceId;
+
+      if (routeId) {
+        state.selectedRouteId = routeId;
+        state.hoveredRouteId = routeId;
+      }
+
+      if (cityId) {
+        state.selectedCityId = cityId;
+        state.hoveredCityId = cityId;
+      }
+
+      const viewport = document.querySelector('.map-viewport');
+      centerMapOnProvince(provinceId, viewport);
       render();
     });
   });

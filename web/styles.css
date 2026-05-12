@@ -286,6 +286,23 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.35;
 }
+.economy-readiness-warning button {
+  justify-self: start;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: rgba(14, 116, 144, 0.2);
+  color: #bae6fd;
+  border-radius: 999px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.economy-readiness-warning button:hover {
+  border-color: rgba(186, 230, 253, 0.56);
+  color: #e0f2fe;
+}
 .economy-readiness-warnings--blocked,
 .economy-readiness-warning--critical { border-color: rgba(251, 113, 133, 0.34); }
 .economy-readiness-warnings--risky,
