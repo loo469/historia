@@ -259,3 +259,20 @@ test('intrigue exposure markers show fog-safe freshness cues', () => {
   assert.match(webAppSource, /aria-label="Fraîcheur fog-safe des marqueurs intrigue"/);
   assert.match(stylesSource, /intrigue-exposure-freshness-rollup/);
 });
+
+test('selected province intrigue details show ordered fog-safe timeline hints', () => {
+  assert.match(webAppSource, /function buildProvinceIntrigueExposureTimelineHints/);
+  assert.match(webAppSource, /function renderProvinceIntrigueExposureTimelineHints/);
+  assert.match(webAppSource, /resolveIntrigueExposureTimelineHint/);
+  assert.match(webAppSource, /right\.priority - left\.priority/);
+  assert.match(webAppSource, /Signal récent/);
+  assert.match(webAppSource, /Soupçon ancien/);
+  assert.match(webAppSource, /Zone non résolue/);
+  assert.match(webAppSource, /Menace visible récente: vérifier ou contenir avant d’empiler un ordre long/);
+  assert.match(webAppSource, /Information ancienne: confirmer la province avant intervention lourde/);
+  assert.match(webAppSource, /Fraîcheur inconnue sous brouillard: inspecter sans inférer cellule, cible ou relais/);
+  assert.match(webAppSource, /Lecture fog-safe: les indices anciens ou inconnus n’ajoutent aucun nom de cellule, cible ou relais caché/);
+  assert.match(webAppSource, /renderProvinceIntrigueExposureTimelineHints\(province, intrigueView\)/);
+  assert.match(stylesSource, /province-intrigue-timeline-hints/);
+  assert.match(stylesSource, /province-intrigue-timeline-hint--danger/);
+});

@@ -7684,6 +7684,53 @@ button { font: inherit; }
   margin-top: 3px;
   color: var(--muted);
 }
+.province-intrigue-timeline-hints {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(103, 232, 249, 0.18);
+}
+.province-intrigue-timeline-hints__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-intrigue-timeline-hints__header span,
+.province-intrigue-timeline-hints > small {
+  color: var(--muted);
+}
+.province-intrigue-timeline-hints__list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.province-intrigue-timeline-hint {
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.3);
+  border-left: 3px solid rgba(148, 163, 184, 0.46);
+}
+.province-intrigue-timeline-hint--danger { border-left-color: rgba(248, 113, 113, 0.78); }
+.province-intrigue-timeline-hint--warning { border-left-color: rgba(250, 204, 21, 0.72); }
+.province-intrigue-timeline-hint--watch { border-left-color: rgba(56, 189, 248, 0.68); }
+.province-intrigue-timeline-hint--masked { border-left-color: rgba(148, 163, 184, 0.6); }
+.province-intrigue-timeline-hint div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.province-intrigue-timeline-hint span,
+.province-intrigue-timeline-hint small {
+  color: var(--muted);
+}
+.province-intrigue-timeline-hint small {
+  display: block;
+  margin-top: 4px;
+}
 
 
 

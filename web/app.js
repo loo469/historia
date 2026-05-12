@@ -3772,6 +3772,96 @@ function findProvinceIntrigueDrillDown(province, intrigueView) {
     .find((entry) => entry.locationId === provinceId)?.drillDown ?? null;
 }
 
+function resolveIntrigueExposureTimelineHint(entry, province) {
+  const response = entry.drillDown?.quickResponses?.find((candidate) => candidate.code === entry.drillDown.recommendedResponseCode)
+    ?? entry.drillDown?.quickResponses?.[0]
+    ?? null;
+  const fogLimited = !entry.showSecondaryDetails && entry.sabotageRiskLevel !== 'high' && entry.metrics.exposedCellCount === 0;
+  const certainty = fogLimited
+    ? 'unknown'
+    : entry.metrics.exposedCellCount > 0 || entry.showSecondaryDetails
+      ? 'confirmed'
+      : 'suspected';
+  const freshness = certainty === 'unknown'
+    ? 'unresolved'
+    : entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0 || (response?.heatGenerated ?? 0) >= 10
+      ? 'fresh'
+      : 'stale';
+  const priority = (certainty === 'confirmed' ? 100 : certainty === 'suspected' ? 40 : 0)
+    + (freshness === 'fresh' ? 60 : freshness === 'stale' ? 15 : 0)
+    + (entry.sabotageRiskLevel === 'high' ? 30 : entry.sabotageRiskLevel === 'medium' ? 12 : 0);
+  const tone = freshness === 'fresh' && certainty === 'confirmed'
+    ? 'danger'
+    : freshness === 'stale'
+      ? 'watch'
+      : certainty === 'unknown'
+        ? 'masked'
+        : 'warning';
+  const freshnessLabel = freshness === 'fresh'
+    ? 'Signal récent'
+    : freshness === 'stale'
+      ? 'Soupçon ancien'
+      : 'Zone non résolue';
+  const detail = freshness === 'fresh'
+    ? 'Menace visible récente: vérifier ou contenir avant d’empiler un ordre long.'
+    : freshness === 'stale'
+      ? 'Information ancienne: confirmer la province avant intervention lourde.'
+      : 'Fraîcheur inconnue sous brouillard: inspecter sans inférer cellule, cible ou relais.';
+
+  return {
+    locationId: entry.locationId,
+    locationName: entry.locationName,
+    scope: entry.locationId === province.provinceId ? 'province sélectionnée' : 'voisinage surveillé',
+    certainty,
+    freshness,
+    priority,
+    tone,
+    freshnessLabel,
+    certaintyLabel: certainty === 'confirmed' ? 'confirmé' : certainty === 'suspected' ? 'soupçon' : 'inconnu',
+    responseLabel: response?.label ?? 'surveillance prudente',
+    detail,
+  };
+}
+
+function buildProvinceIntrigueExposureTimelineHints(province, intrigueView) {
+  const neighborIds = new Set(province?.neighborIds ?? []);
+
+  return (intrigueView?.map?.entries ?? [])
+    .filter((entry) => entry.locationId === province?.provinceId || neighborIds.has(entry.locationId))
+    .map((entry) => resolveIntrigueExposureTimelineHint(entry, province))
+    .sort((left, right) => right.priority - left.priority || left.locationName.localeCompare(right.locationName))
+    .slice(0, 4);
+}
+
+function renderProvinceIntrigueExposureTimelineHints(province, intrigueView) {
+  const hints = buildProvinceIntrigueExposureTimelineHints(province, intrigueView);
+
+  if (hints.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-intrigue-timeline-hints" aria-label="Timeline fog-safe des expositions intrigue">
+      <div class="province-intrigue-timeline-hints__header">
+        <strong>Timeline intrigue</strong>
+        <span>fraîcheur · certitude · brouillard</span>
+      </div>
+      <ol class="province-intrigue-timeline-hints__list">
+        ${hints.map((hint) => `
+          <li class="province-intrigue-timeline-hint province-intrigue-timeline-hint--${hint.tone}">
+            <div>
+              <b>${hint.freshnessLabel}</b>
+              <span>${hint.locationName} · ${hint.scope}</span>
+            </div>
+            <small>${hint.certaintyLabel} · ${hint.responseLabel} · ${hint.detail}</small>
+          </li>
+        `).join('')}
+      </ol>
+      <small>Lecture fog-safe: les indices anciens ou inconnus n’ajoutent aucun nom de cellule, cible ou relais caché.</small>
+    </section>
+  `;
+}
+
 function buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) {
   const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
   const selectedResponse = drillDown?.quickResponses?.find((response) => response.code === drillDown.recommendedResponseCode)
@@ -5947,6 +6037,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
         </div>
       </div>
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
+      ${renderProvinceIntrigueExposureTimelineHints(province, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView)}
       ${renderQueuedMilitaryMapActionConfirmation(province, shell, intrigueView)}
