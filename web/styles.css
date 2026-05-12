@@ -4735,6 +4735,58 @@ button { font: inherit; }
 }
 
 
+
+.province-climate-hazard-blockers {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(8, 47, 73, 0.42), rgba(15, 23, 42, 0.58));
+  border: 1px solid rgba(103, 232, 249, 0.2);
+}
+.province-climate-hazard-blockers__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-climate-hazard-blockers__header span {
+  color: var(--muted);
+}
+.province-climate-hazard-blocker-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.province-climate-hazard-blocker {
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.3);
+  border-left: 3px solid rgba(148, 163, 184, 0.46);
+}
+.province-climate-hazard-blocker--blocked { border-left-color: rgba(248, 113, 113, 0.82); }
+.province-climate-hazard-blocker--risky { border-left-color: rgba(250, 204, 21, 0.78); }
+.province-climate-hazard-blocker--delayed { border-left-color: rgba(56, 189, 248, 0.72); }
+.province-climate-hazard-blocker--safe { border-left-color: rgba(74, 222, 128, 0.72); }
+.province-climate-hazard-blocker div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-climate-hazard-blocker code {
+  color: #a5f3fc;
+  font-size: 0.72rem;
+}
+.province-climate-hazard-blocker p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+.province-climate-hazard-blocker small {
+  display: block;
+  margin-top: 5px;
+  color: #bae6fd;
+}
+
 .province-intrigue-risk-warnings {
   margin-top: 12px;
   padding: 12px;
