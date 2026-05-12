@@ -3037,6 +3037,65 @@ button { font: inherit; }
   line-height: 1.35;
 }
 
+.province-climate-mitigation-priorities {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(12, 74, 110, 0.32), rgba(15, 23, 42, 0.58));
+  border: 1px solid rgba(103, 232, 249, 0.18);
+}
+.province-climate-mitigation-priorities__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.province-climate-mitigation-priorities__header span {
+  color: #bae6fd;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-climate-mitigation-priority-list {
+  display: grid;
+  gap: 7px;
+}
+.province-climate-mitigation-priority {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-climate-mitigation-priority.is-decisive { border-color: rgba(251, 191, 36, 0.36); }
+.province-climate-mitigation-priority.is-observation { border-color: rgba(96, 165, 250, 0.24); }
+.province-climate-mitigation-priority div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.province-climate-mitigation-priority b {
+  color: #ecfeff;
+}
+.province-climate-mitigation-priority code {
+  color: #fde68a;
+  font-size: 0.72rem;
+}
+.province-climate-mitigation-priority p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-climate-mitigation-priority small {
+  color: #bae6fd;
+  line-height: 1.35;
+}
+
 .province-climate-turn-report {
   display: grid;
   gap: 9px;
