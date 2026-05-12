@@ -940,6 +940,17 @@ function renderCultureOpportunityReminders(report) {
         <small>${report.reminders.length} signal${report.reminders.length > 1 ? 's' : ''}</small>
       </div>
       <p>${report.summary}</p>
+      ${(report.priorityConflicts ?? []).length > 0 ? `
+        <div class="culture-opportunity-priority-conflicts" aria-label="Conflits de priorité culturelle">
+          ${(report.priorityConflicts ?? []).map((conflict) => `
+            <article class="culture-opportunity-priority-conflict culture-opportunity-priority-conflict--${conflict.level}">
+              <span>${conflict.label}</span>
+              <strong>${conflict.recommendation}</strong>
+              <small>${conflict.summary}</small>
+            </article>
+          `).join('')}
+        </div>
+      ` : ''}
       ${report.reminders.length > 0 ? `
         <div class="culture-opportunity-reminder-list">
           ${report.reminders.map((reminder) => `
