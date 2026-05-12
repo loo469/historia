@@ -985,6 +985,16 @@ function renderCultureOpportunityReminders(report) {
                   </ul>
                 ` : '<small>Aucun effet de propagation culturel en file.</small>'}
               </div>
+              ${reminder.queueAction ? `
+                <div class="culture-opportunity-reminder__queue-action" aria-label="Action culturelle à mettre en file">
+                  <b>${reminder.queueAction.label}</b>
+                  <small>${reminder.queueAction.effect} · ${reminder.queueAction.confidence} (${reminder.queueAction.dissent}) · Horizon ${reminder.queueAction.horizon}</small>
+                  <small>Coût d’opportunité: ${reminder.queueAction.opportunityCost}</small>
+                  <button type="button" data-culture-queue-action="${reminder.queueAction.code}" data-culture-queue-region="${reminder.provinceId}" data-culture-queue-summary="${reminder.queueAction.summary}" aria-label="Mettre en file ${reminder.queueAction.label}: ${reminder.queueAction.summary}">
+                    Mettre en file
+                  </button>
+                </div>
+              ` : '<small class="culture-opportunity-reminder__queue-empty">Aucune action culturelle pertinente à mettre en file.</small>'}
               <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}" aria-label="Voir ${reminder.focusCopy}: ${reminder.urgency?.detail ?? reminder.summary}">
                 Voir ${reminder.focusCopy}
               </button>
