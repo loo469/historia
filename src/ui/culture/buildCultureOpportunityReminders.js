@@ -515,6 +515,39 @@ function attachStabilityPreviews(reminders, priorityConflicts) {
   }));
 }
 
+
+function buildQueueAction(reminder) {
+  if (reminder.recommendedAction?.code === 'accept-risk') {
+    return null;
+  }
+
+  const horizon = reminder.recommendedAction?.timing ?? reminder.urgency?.timingLabel ?? reminder.urgency?.window ?? 'à confirmer';
+  const effect = reminder.stabilityPreview?.summary
+    ?? reminder.rippleEffects?.[0]?.summary
+    ?? reminder.recommendedAction?.summary;
+  const opportunityCost = reminder.tradeoff?.risk
+    ?? reminder.inactionCost?.summary
+    ?? 'Peut retarder une autre fenêtre culturelle.';
+
+  return {
+    code: `culture:${reminder.recommendedAction?.code ?? 'watch-window'}:${reminder.provinceId}`,
+    label: reminder.recommendedAction?.label ?? 'Stabiliser la culture',
+    effect,
+    confidence: reminder.confidenceCue?.label ?? 'Confiance mixte',
+    dissent: reminder.confidenceCue?.dissent ?? 'Effet à confirmer',
+    opportunityCost,
+    horizon,
+    summary: `${effect} Horizon ${horizon}; coût: ${opportunityCost}`,
+  };
+}
+
+function attachQueueActions(reminders) {
+  return reminders.map((reminder) => ({
+    ...reminder,
+    queueAction: buildQueueAction(reminder),
+  }));
+}
+
 function dedupeAndSort(reminders) {
   const remindersByKey = new Map();
 
@@ -562,12 +595,13 @@ export function buildCultureOpportunityReminders({
   const missingCount = reminders.filter((reminder) => reminder.status === 'missing').length;
   const priorityConflicts = buildPriorityConflicts(reminders);
   const remindersWithStabilityPreviews = attachStabilityPreviews(reminders, priorityConflicts);
+  const remindersWithQueueActions = attachQueueActions(remindersWithStabilityPreviews);
 
   return {
     state: 'active',
     provinceLabel,
     summary: `${provinceLabel}: ${probableCount} opportunité${probableCount > 1 ? 's' : ''} probable${probableCount > 1 ? 's' : ''}, ${missingCount} condition${missingCount > 1 ? 's' : ''} à surveiller.`,
-    reminders: remindersWithStabilityPreviews,
+    reminders: remindersWithQueueActions,
     priorityConflicts,
   };
 }

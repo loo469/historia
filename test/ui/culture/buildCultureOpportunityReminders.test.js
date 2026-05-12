@@ -116,6 +116,13 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
   ]);
   assert.equal(report.reminders[0].stabilityPreview.conflictImpact, 'Même action en file: peut aggraver le conflit détecté.');
   assert.equal(report.reminders[1].stabilityPreview.reason, 'Compact d’Aurora garde la fenêtre culturelle ouverte.');
+  assert.deepEqual(report.reminders.map((reminder) => reminder.queueAction && [reminder.queueAction.code, reminder.queueAction.label, reminder.queueAction.horizon]), [
+    ['culture:follow-event:river-gate', 'Suivre l’événement', 'ce tour'],
+    ['culture:accelerate-research:river-gate', 'Accélérer la recherche', 'maintenant'],
+    null,
+  ]);
+  assert.equal(report.reminders[0].queueAction.opportunityCost, 'Événement ignoré si ce tour passe');
+  assert.match(report.reminders[0].queueAction.summary, /coût: Événement ignoré si ce tour passe/);
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',

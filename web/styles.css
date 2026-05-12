@@ -3035,6 +3035,24 @@ button { font: inherit; }
 .culture-opportunity-reminder__ripple--positive { border-left-color: rgba(74, 222, 128, 0.62); }
 .culture-opportunity-reminder__ripple--uncertain { border-left-color: rgba(56, 189, 248, 0.56); }
 .culture-opportunity-reminder__ripple--risky { border-left-color: rgba(251, 191, 36, 0.62); }
+.culture-opportunity-reminder__queue-action {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 7px;
+  border-radius: 12px;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+.culture-opportunity-reminder__queue-action b { color: #dbeafe; font-size: 12px; }
+.culture-opportunity-reminder__queue-action small { color: #bfdbfe; font-size: 11px; line-height: 1.3; }
+.culture-opportunity-reminder__queue-action button { width: fit-content; margin-top: 2px; }
+.culture-opportunity-reminder__queue-empty {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
 .culture-opportunity-reminder button {
   margin-top: 7px;
   padding: 5px 8px;
