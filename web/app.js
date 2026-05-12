@@ -1119,6 +1119,9 @@ function buildAtlasSupplyRouteCapacityForecast(route, stress, tensionByCityId) {
     delta,
     tone,
     uncertain,
+    highHubs,
+    mediumHubs,
+    resourceLoad,
     label: uncertain
       ? `${route.routeName}: prévision incertaine`
       : `${route.routeName}: ${currentCapacity}→${projectedCapacity}`,
@@ -1188,6 +1191,66 @@ function buildAtlasSupplyCapacityForecasts(economyView) {
   };
 }
 
+function buildAtlasCorridorInterventionOptions(supplyForecasts) {
+  const options = supplyForecasts.routes.map((forecast) => {
+    const expectedGain = forecast.uncertain
+      ? null
+      : forecast.tone === 'overload'
+        ? Math.max(2, Math.abs(forecast.delta) + 1)
+        : forecast.tone === 'watch'
+          ? 1
+          : forecast.tone === 'recovery'
+            ? 0
+            : null;
+    const riskAvoided = forecast.uncertain
+      ? 'risque à qualifier'
+      : forecast.tone === 'overload'
+        ? 'pénurie évitée élevée'
+        : forecast.tone === 'watch'
+          ? 'pénurie évitée moyenne'
+          : 'risque déjà contenu';
+    const constraint = forecast.uncertain
+      ? 'données de flux incomplètes'
+      : forecast.highHubs > 0
+        ? `${forecast.highHubs} hub${forecast.highHubs > 1 ? 's' : ''} critique${forecast.highHubs > 1 ? 's' : ''}`
+        : forecast.resourceLoad >= 8
+          ? 'charge ressource élevée'
+          : forecast.mediumHubs > 0
+            ? 'hub sous tension modérée'
+            : 'contrainte faible';
+    const score = forecast.uncertain
+      ? 0
+      : (expectedGain * 10)
+        + (forecast.tone === 'overload' ? 12 : forecast.tone === 'watch' ? 6 : 1)
+        + Math.min(6, forecast.resourceLoad);
+
+    return {
+      optionId: `atlas-intervention:${forecast.routeId}`,
+      routeName: forecast.routeName,
+      corridor: forecast.corridor,
+      tone: forecast.uncertain ? 'unknown' : forecast.tone,
+      expectedGain,
+      gainLabel: forecast.uncertain ? 'gain inconnu' : `+${expectedGain} capacité attendue`,
+      riskAvoided,
+      constraint,
+      score,
+      unknown: forecast.uncertain,
+    };
+  })
+    .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
+    .slice(0, 3);
+
+  return options.map((option, index, entries) => ({
+    ...option,
+    rankLabel: option.unknown
+      ? '?'
+      : index > 0 && option.score === entries[index - 1].score
+        ? `≈${index}`
+        : `${index + 1}`,
+    tieLabel: index > 0 && option.score === entries[index - 1].score ? 'ex æquo' : '',
+  }));
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -1197,6 +1260,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const cityNameById = Object.fromEntries(economyView.overlay.cities.map((city) => [city.cityId, city.cityName]));
   const corridorMap = new Map();
   const supplyForecasts = buildAtlasSupplyCapacityForecasts(economyView);
+  const interventionOptions = buildAtlasCorridorInterventionOptions(supplyForecasts);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -1290,6 +1354,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     ],
     regions,
     forecasts: supplyForecasts.routes,
+    interventions: interventionOptions,
   };
 }
 
@@ -1302,7 +1367,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${20 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${24 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -1330,6 +1395,18 @@ function renderAtlasEconomyStressLegend(economyView) {
             <rect x="5" y="${y - 2.8}" width="30.5" height="4.7" rx="1.2"></rect>
             <text class="atlas-supply-forecast__route" x="6.2" y="${y - 0.6}">${forecast.label} · ${forecast.status}</text>
             <text class="atlas-supply-forecast__action" x="6.2" y="${y + 1.2}">${forecast.action}</text>
+          </g>
+        `;
+      }).join('')}
+      <text class="atlas-corridor-intervention__title" x="5" y="${26 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4)}">Comparer interventions</text>
+      ${rollup.interventions.map((option, index) => {
+        const y = 30 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (index * 6.2);
+        return `
+          <g class="atlas-corridor-intervention atlas-corridor-intervention--${option.tone}" aria-label="Intervention ${option.routeName}: ${option.gainLabel}, ${option.riskAvoided}, contrainte ${option.constraint}">
+            <rect x="5" y="${y - 3.1}" width="30.5" height="5.5" rx="1.2"></rect>
+            <text class="atlas-corridor-intervention__rank" x="6.2" y="${y - 0.8}">${option.rankLabel}</text>
+            <text class="atlas-corridor-intervention__route" x="8.2" y="${y - 0.8}">${option.corridor} · ${option.routeName}${option.tieLabel ? ` · ${option.tieLabel}` : ''}</text>
+            <text class="atlas-corridor-intervention__detail" x="6.2" y="${y + 1.2}">${option.gainLabel} · ${option.riskAvoided} · ${option.constraint}</text>
           </g>
         `;
       }).join('')}

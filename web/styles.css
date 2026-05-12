@@ -10330,3 +10330,33 @@ button { font: inherit; }
 .atlas-economy-region-rollup__forecast--recovery { fill: #a5f3fc; }
 .atlas-economy-region-rollup__forecast--watch { fill: #fde68a; }
 .atlas-economy-region-rollup__forecast--uncertain { fill: #ddd6fe; }
+.atlas-corridor-intervention__title {
+  fill: #f8fafc;
+  font-size: 1.65px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.atlas-corridor-intervention rect {
+  fill: rgba(15, 23, 42, 0.62);
+  stroke: rgba(148, 163, 184, 0.24);
+  stroke-width: 0.24;
+}
+.atlas-corridor-intervention--overload rect { stroke: rgba(251, 113, 133, 0.78); fill: rgba(127, 29, 29, 0.4); }
+.atlas-corridor-intervention--watch rect { stroke: rgba(251, 191, 36, 0.62); fill: rgba(120, 53, 15, 0.32); }
+.atlas-corridor-intervention--recovery rect { stroke: rgba(103, 232, 249, 0.48); fill: rgba(14, 116, 144, 0.26); }
+.atlas-corridor-intervention--unknown rect { stroke: rgba(196, 181, 253, 0.68); fill: rgba(76, 29, 149, 0.3); }
+.atlas-corridor-intervention__rank {
+  fill: #f8fafc;
+  font-size: 1.25px;
+  font-weight: 950;
+}
+.atlas-corridor-intervention__route {
+  fill: #e0f2fe;
+  font-size: 1.12px;
+  font-weight: 900;
+}
+.atlas-corridor-intervention__detail {
+  fill: #cbd5e1;
+  font-size: 1px;
+  font-weight: 760;
+}
