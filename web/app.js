@@ -951,6 +951,19 @@ function renderCultureOpportunityReminders(report) {
               <p>${reminder.summary}</p>
               <p class="culture-opportunity-reminder__action"><b>${reminder.recommendedAction?.label ?? 'Surveiller la fenêtre'}</b> · ${reminder.recommendedAction?.summary ?? reminder.actionCopy ?? reminder.summary}</p>
               <p class="culture-opportunity-reminder__tradeoff"><b>Compromis</b> · ${reminder.tradeoff?.summary ?? reminder.tradeoffCopy ?? 'Bénéfice culturel contre risque narratif.'}</p>
+              <div class="culture-opportunity-reminder__ripples" aria-label="Effets de propagation culturelle">
+                <b>Propagation</b>
+                ${(reminder.rippleEffects ?? []).length > 0 ? `
+                  <ul>
+                    ${reminder.rippleEffects.slice(0, 3).map((effect) => `
+                      <li class="culture-opportunity-reminder__ripple culture-opportunity-reminder__ripple--${effect.tone}">
+                        <span>${effect.targetLabel}</span>
+                        <small>${effect.cultureName} · ${effect.summary}</small>
+                      </li>
+                    `).join('')}
+                  </ul>
+                ` : '<small>Aucun effet de propagation culturel en file.</small>'}
+              </div>
               <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}" aria-label="Voir ${reminder.focusCopy}: ${reminder.urgency?.detail ?? reminder.summary}">
                 Voir ${reminder.focusCopy}
               </button>

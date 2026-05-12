@@ -2609,6 +2609,37 @@ button { font: inherit; }
   color: #fde68a !important;
 }
 .culture-opportunity-reminder__tradeoff b { color: #fef3c7; }
+.culture-opportunity-reminder__ripples {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 7px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.44);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.culture-opportunity-reminder__ripples > b {
+  color: #cffafe;
+  font-size: 11px;
+}
+.culture-opportunity-reminder__ripples ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.culture-opportunity-reminder__ripple {
+  display: grid;
+  gap: 2px;
+  padding-left: 7px;
+  border-left: 2px solid rgba(148, 163, 184, 0.24);
+}
+.culture-opportunity-reminder__ripple span { color: #f8fafc; font-size: 11px; }
+.culture-opportunity-reminder__ripple small { color: var(--muted); font-size: 11px; }
+.culture-opportunity-reminder__ripple--positive { border-left-color: rgba(74, 222, 128, 0.62); }
+.culture-opportunity-reminder__ripple--uncertain { border-left-color: rgba(56, 189, 248, 0.56); }
+.culture-opportunity-reminder__ripple--risky { border-left-color: rgba(251, 191, 36, 0.62); }
 .culture-opportunity-reminder button {
   margin-top: 7px;
   padding: 5px 8px;
