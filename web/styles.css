@@ -10039,7 +10039,8 @@ button { font: inherit; }
   pointer-events: none;
   opacity: 0.9;
 }
-.atlas-conflict-playback {
+.atlas-conflict-playback,
+.atlas-conflict-comparison {
   pointer-events: auto;
 }
 .atlas-conflict-playback__panel {
@@ -10073,6 +10074,43 @@ button { font: inherit; }
   stroke: rgba(254, 226, 226, 0.72);
 }
 .atlas-conflict-playback-step.is-active text { fill: #fff7ed; }
+.atlas-conflict-comparison__panel {
+  fill: rgba(2, 6, 23, 0.74);
+  stroke: rgba(251, 191, 36, 0.32);
+  stroke-width: 0.35;
+}
+.atlas-conflict-comparison__title,
+.atlas-conflict-comparison-mode text,
+.atlas-conflict-comparison-row text,
+.atlas-conflict-comparison__empty {
+  fill: #fef3c7;
+  font-size: 1.38px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.38;
+}
+.atlas-conflict-comparison-mode rect {
+  fill: rgba(120, 53, 15, 0.42);
+  stroke: rgba(251, 191, 36, 0.36);
+  stroke-width: 0.28;
+  cursor: pointer;
+}
+.atlas-conflict-comparison-mode.is-active rect {
+  fill: rgba(251, 191, 36, 0.52);
+  stroke: rgba(254, 243, 199, 0.75);
+}
+.atlas-conflict-comparison-row--danger text { fill: #fecdd3; }
+.atlas-conflict-comparison-row--relief text { fill: #bbf7d0; }
+.atlas-conflict-comparison-row__delta { font-size: 1.55px; }
+.atlas-conflict-comparison-row__route {
+  fill: #cbd5e1;
+  font-size: 1.08px;
+}
+.atlas-conflict-comparison__empty {
+  fill: #cbd5e1;
+  font-size: 1.16px;
+}
 .atlas-military-risk polygon {
   fill: rgba(251, 191, 36, 0.08);
   stroke: rgba(253, 230, 138, 0.26);
