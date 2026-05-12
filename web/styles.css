@@ -2694,6 +2694,18 @@ button { font: inherit; }
   color: #fde68a !important;
 }
 .culture-opportunity-reminder__tradeoff b { color: #fef3c7; }
+.culture-opportunity-reminder__confidence {
+  margin-top: 5px !important;
+  padding: 6px 7px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.48);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #e2e8f0 !important;
+}
+.culture-opportunity-reminder__confidence b { color: #f8fafc; }
+.culture-opportunity-reminder__confidence--high { border-color: rgba(74, 222, 128, 0.32); background: rgba(22, 163, 74, 0.09); }
+.culture-opportunity-reminder__confidence--mixed { border-color: rgba(56, 189, 248, 0.32); background: rgba(14, 165, 233, 0.08); }
+.culture-opportunity-reminder__confidence--risky { border-color: rgba(251, 191, 36, 0.34); background: rgba(217, 119, 6, 0.08); }
 .culture-opportunity-reminder__ripples {
   display: grid;
   gap: 5px;

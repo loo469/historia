@@ -236,6 +236,48 @@ function buildRippleEffects(hint, recommendedAction, focusTarget, urgency) {
   return baseEffects.slice(0, 3);
 }
 
+
+function buildConfidenceCue(hint, recommendedAction, urgency, rippleEffects) {
+  if (hint.status === 'missing') {
+    return {
+      level: 'risky',
+      label: 'Confiance risquée',
+      dissent: 'Signal culturel manquant',
+      summary: `${hint.cultureName}: recommandation à considérer comme pari assumé.`,
+    };
+  }
+
+  if (hint.tone === 'risk' || rippleEffects.some((effect) => effect.tone === 'risky')) {
+    return {
+      level: 'risky',
+      label: 'Confiance risquée',
+      dissent: urgency.sourceLabel ?? recommendedAction.source ?? 'Propagation fragile',
+      summary: `Risque visible: propagation fragile si la file change.`,
+    };
+  }
+
+  if (hint.status === 'possible' || rippleEffects.some((effect) => effect.tone === 'uncertain')) {
+    const dissent = hint.tone === 'research'
+      ? 'Recherche encore partielle'
+      : urgency.window === '2+ tours'
+        ? 'Fenêtre encore lointaine'
+        : 'Effet local à confirmer';
+    return {
+      level: 'mixed',
+      label: 'Confiance mixte',
+      dissent,
+      summary: `${dissent}: garder le signal visible sans sur-prioriser.`,
+    };
+  }
+
+  return {
+    level: 'high',
+    label: 'Confiance haute',
+    dissent: 'Aucune dissidence majeure',
+    summary: `Signal cohérent avec la fenêtre ${urgency.timingLabel ?? urgency.window}.`,
+  };
+}
+
 function summarizeHint(hint, actionLabel, urgency) {
   const provinceCopy = hint.regionId ? ` (${hint.regionId})` : '';
   const urgencyCopy = ` ${urgency.label.toLowerCase()} · ${urgency.window}.`;
@@ -266,6 +308,7 @@ function buildReminder(hint, actionLabel) {
   const recommendedAction = buildRecommendedAction(hint, focusTargetWithUrgency, urgency, actionLabel);
   const tradeoff = buildActionTradeoff(hint, recommendedAction, focusTargetWithUrgency, urgency);
   const rippleEffects = buildRippleEffects(hint, recommendedAction, focusTargetWithUrgency, urgency);
+  const confidenceCue = buildConfidenceCue(hint, recommendedAction, urgency, rippleEffects);
 
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
@@ -287,6 +330,8 @@ function buildReminder(hint, actionLabel) {
     rippleCopy: rippleEffects.length > 0
       ? rippleEffects.map((effect) => `${effect.targetLabel}: ${effect.summary}`).join(' | ')
       : 'Aucun effet de propagation culturel en file.',
+    confidenceCue,
+    confidenceCopy: `${confidenceCue.label} · ${confidenceCue.dissent}`,
     focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };
