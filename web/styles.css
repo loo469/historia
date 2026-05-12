@@ -1713,6 +1713,38 @@ button { font: inherit; }
 .province-action-card--warning { border-color: rgba(251, 191, 36, 0.32); }
 .province-action-card--ready { border-color: rgba(74, 222, 128, 0.28); }
 .province-action-card--info { border-color: rgba(56, 189, 248, 0.3); }
+.culture-unlock-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+.culture-unlock-hint {
+  display: inline-grid;
+  gap: 2px;
+  max-width: 100%;
+  padding: 5px 7px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+}
+.culture-unlock-hint b {
+  color: #bae6fd;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.culture-unlock-hint small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.1;
+}
+.culture-unlock-hint--probable { border-color: rgba(74, 222, 128, 0.32); }
+.culture-unlock-hint--probable b { color: #bbf7d0; }
+.culture-unlock-hint--possible { border-color: rgba(56, 189, 248, 0.3); }
+.culture-unlock-hint--missing { border-color: rgba(251, 191, 36, 0.26); }
+.culture-unlock-hint--missing b { color: #fde68a; }
 .culture-consequence-chips {
   display: flex;
   flex-wrap: wrap;
