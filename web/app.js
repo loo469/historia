@@ -1880,6 +1880,24 @@ function buildProvinceLogisticsBottleneckComparison(province, economyView) {
     .slice(0, 3);
 }
 
+function buildProvinceLogisticsInterventionTradeoff(entry, sharedCity, sharedResource) {
+  const improves = entry.tone === 'high'
+    ? `améliore ${entry.impactedCity} et réduit le risque aval immédiat`
+    : `améliore la marge de ${entry.impactedCity}`;
+  const delays = sharedResource
+    ? `retarde les routes concurrentes sur ${entry.resourceLabel}`
+    : entry.capacity >= 9
+      ? 'retarde le délestage des flux secondaires'
+      : 'retarde les actions de confort sur routes stables';
+  const risk = sharedCity
+    ? `risque: ignorer ce choix laisse deux goulots bloquer ${entry.impactedCity}`
+    : entry.tone === 'high'
+      ? `risque: choisir une autre route prolonge la pénurie aval de ${entry.impactedCity}`
+      : `risque: une autre ressource d'abord peut transformer ce flux en goulot critique`;
+
+  return { improves, delays, risk, summary: `Améliore: ${improves} · Retarde: ${delays} · ${risk}` };
+}
+
 function buildProvinceLogisticsBottleneckPriorities(comparisons) {
   const strained = comparisons.filter((entry) => entry.tone === 'high' || entry.tone === 'medium');
   const impactedCityCounts = strained.reduce((counts, entry) => counts.set(entry.impactedCity, (counts.get(entry.impactedCity) ?? 0) + 1), new Map());
@@ -1902,6 +1920,7 @@ function buildProvinceLogisticsBottleneckPriorities(comparisons) {
         ...entry,
         reinforcement,
         rankReason,
+        interventionTradeoff: buildProvinceLogisticsInterventionTradeoff(entry, sharedCity, sharedResource),
         priorityScore: entry.score + (sharedCity ? 35 : 0) + (sharedResource ? 18 : 0),
       };
     })
@@ -1977,6 +1996,11 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
                   <small>${entry.impactedCity} · ${entry.resourceLabel} · ${entry.headline}</small>
                   <p>${entry.downstreamImpact}</p>
                   <small>Action probable: ${entry.recoveryAction}</small>
+                  <div class="province-logistics-bottleneck-tradeoff" aria-label="Compromis d’intervention logistique">
+                    <span><b>Améliore</b>${entry.interventionTradeoff.improves}</span>
+                    <span><b>Retarde</b>${entry.interventionTradeoff.delays}</span>
+                    <span><b>Risque</b>${entry.interventionTradeoff.risk}</span>
+                  </div>
                   <small>Raison du classement: ${entry.rankReason}</small>
                   ${entry.reinforcement ? `<em>${entry.reinforcement}</em>` : ''}
                 </div>
