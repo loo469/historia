@@ -1410,6 +1410,79 @@ function renderProvinceClimateHazardBlockers(province, actionQueue) {
   `;
 }
 
+function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = null) {
+  const warnings = shell.provinces
+    .map((province) => {
+      const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+      const blockers = buildProvinceClimateHazardBlockers(province, actionQueue);
+      const urgentBlocker = blockers.find((blocker) => blocker.tone === 'blocked' || blocker.tone === 'delayed' || blocker.tone === 'risky') ?? null;
+      const mitigation = blockers.find((blocker) => blocker.tone === 'safe' && blocker.label === 'Mitigation efficace') ?? null;
+
+      if (!urgentBlocker && !mitigation) {
+        return null;
+      }
+
+      return {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        tone: urgentBlocker?.tone ?? 'safe',
+        status: urgentBlocker?.status ?? mitigation.status,
+        label: urgentBlocker?.label ?? mitigation.label,
+        hazard: urgentBlocker?.hazard ?? mitigation.hazard,
+        action: urgentBlocker?.trigger ?? mitigation.trigger,
+        detail: urgentBlocker?.detail ?? mitigation.detail,
+        priority: urgentBlocker?.priority ?? 4,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 4);
+  const exposedCount = warnings.filter((warning) => warning.tone !== 'safe').length;
+  const mitigatedCount = warnings.filter((warning) => warning.tone === 'safe').length;
+
+  return {
+    state: exposedCount > 0 ? 'warning' : mitigatedCount > 0 ? 'mitigated' : 'clear',
+    exposedCount,
+    mitigatedCount,
+    warnings,
+    summary: exposedCount > 0
+      ? `${exposedCount} province${exposedCount > 1 ? 's' : ''} reste${exposedCount > 1 ? 'nt' : ''} exposée${exposedCount > 1 ? 's' : ''} au climat avant validation du tour.`
+      : mitigatedCount > 0
+        ? `${mitigatedCount} mitigation${mitigatedCount > 1 ? 's' : ''} climat confirmée${mitigatedCount > 1 ? 's' : ''}; aucun danger résiduel prioritaire.`
+        : 'Préparation climat claire: aucun danger résiduel prioritaire avant validation du tour.',
+  };
+}
+
+function renderMapClimatePreparednessSummary(summary) {
+  if (summary.warnings.length === 0) {
+    return `
+      <section class="map-climate-preparedness map-climate-preparedness--clear" aria-label="Résumé de préparation climatique de fin de tour">
+        <strong>Préparation climat</strong>
+        <p>${summary.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-climate-preparedness map-climate-preparedness--${summary.state}" aria-label="Résumé de préparation climatique de fin de tour">
+      <div class="map-climate-preparedness__header">
+        <strong>Préparation climat fin de tour</strong>
+        <span>${summary.exposedCount} exposée${summary.exposedCount > 1 ? 's' : ''} · ${summary.mitigatedCount} mitigée${summary.mitigatedCount > 1 ? 's' : ''}</span>
+      </div>
+      <p>${summary.summary}</p>
+      <ul class="map-climate-preparedness__list">
+        ${summary.warnings.map((warning) => `
+          <li class="map-climate-preparedness__item map-climate-preparedness__item--${warning.tone}">
+            <b>${warning.provinceLabel}</b>
+            <span>${warning.status}: ${warning.hazard}</span>
+            <small>${warning.action} · ${warning.label}</small>
+          </li>
+        `).join('')}
+      </ul>
+    </section>
+  `;
+}
+
 function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const logisticsPreview = buildProvinceLogisticsChoicePreviewView(province, economyView);
@@ -4408,6 +4481,7 @@ function render() {
     localTimeline: selectedCultureContext.localTimeline,
     consequenceChips: selectedCultureContext.consequenceChips,
   });
+  const climatePreparednessSummary = buildMapClimatePreparednessSummary(shell, focusContext, intrigueView);
 
   document.querySelector('#app').innerHTML = `
     <main class="shell-root">
@@ -4426,6 +4500,7 @@ function render() {
           </div>
           <p class="turn-summary">${state.lastTurnSummary}</p>
           ${renderConflictReadinessWarnings(shell, intrigueView)}
+          ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
               <strong>Variation visible</strong>
