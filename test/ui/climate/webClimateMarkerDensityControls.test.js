@@ -16,7 +16,7 @@ test('climate post-commit markers have density controls that preserve urgent thr
   assert.match(webAppSource, /Priorité conservée aux cascades et aléas non résolus/);
   assert.match(webAppSource, /climateMarkerDensity = buildClimateMarkerDensityControl\(postCommitClimateMarkers, \{/);
   assert.match(webAppSource, /renderClimateMarkerDensityRollup\(climateMarkerDensity\)/);
-  assert.match(webAppSource, /renderMapLayerStack\(shell, economyView, focusContext, cultureView, climateMarkerDensity\.visibleMarkers\)/);
+  assert.match(webAppSource, /renderMapLayerStack\(shell, economyView, focusContext, cultureView, climateMarkerDensity\.visibleMarkers, climateMarkerDensity\.selectedCascadeGroup\)/);
 
   assert.match(stylesSource, /\.map-climate-density/);
   assert.match(stylesSource, /\.map-climate-density--grouped/);
