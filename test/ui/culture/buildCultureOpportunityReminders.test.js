@@ -109,6 +109,13 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
     ['urgent', 'Même action en file', 'Agir maintenant', ['Compact d’Aurora', 'Compact d’Aurora']],
   ]);
   assert.equal(report.priorityConflicts[0].summary, 'Agir maintenant: prioriser Compact d’Aurora avant Compact d’Aurora. Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
+  assert.deepEqual(report.reminders.map((reminder) => reminder.stabilityPreview && [reminder.stabilityPreview.level, reminder.stabilityPreview.stabilityDelta, reminder.stabilityPreview.urgencyDelta]), [
+    ['urgent', '+ stabilité locale', 'urgence baisse si action validée'],
+    ['urgent', 'effet limité', 'urgence stable'],
+    null,
+  ]);
+  assert.equal(report.reminders[0].stabilityPreview.conflictImpact, 'Même action en file: peut aggraver le conflit détecté.');
+  assert.equal(report.reminders[1].stabilityPreview.reason, 'Compact d’Aurora garde la fenêtre culturelle ouverte.');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',
