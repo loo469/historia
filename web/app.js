@@ -2535,6 +2535,81 @@ function buildMapClimateInterventionWindows(shell) {
   };
 }
 
+function buildCumulativeClimateImpactSummary(shell, queuedClimateInterventions = []) {
+  const duplicateCounts = queuedClimateInterventions.reduce((counts, entry) => {
+    counts.set(entry.provinceId, (counts.get(entry.provinceId) ?? 0) + 1);
+    return counts;
+  }, new Map());
+  const interventions = queuedClimateInterventions.map((entry, index) => {
+    const province = shell.provinces.find((candidate) => candidate.provinceId === entry.provinceId) ?? null;
+    const forecast = province ? buildProvinceClimateRiskReductionForecast(province, shell) : null;
+    const deadlineState = entry.missedDeadline ? 'missed' : forecast?.deadlineCoverage.state ?? 'covered';
+    const redundant = (duplicateCounts.get(entry.provinceId) ?? 0) > 1;
+    const tooLate = Boolean(entry.missedDeadline) || deadlineState === 'missed';
+
+    return {
+      ...entry,
+      rank: index + 1,
+      provinceLabel: entry.provinceLabel ?? province?.label ?? entry.provinceId,
+      deadlineWindow: entry.deadlineWindow ?? forecast?.criticalDeadline ?? 'deadline inconnue',
+      riskReduction: entry.riskReduction ?? (forecast ? `${forecast.currentRisk} → ${forecast.projectedRisk}` : 'réduction à confirmer'),
+      tradeoff: entry.tradeoff ?? forecast?.payoffTradeoff?.tradeoff ?? 'tradeoff à confirmer',
+      mitigationDirection: entry.expectedResult ?? (forecast?.queuedAction ? `${forecast.queuedAction}: ${forecast.summary}` : 'mitigation à confirmer'),
+      deadlineStatus: tooLate ? 'trop tardive' : deadlineState === 'just-in-time' ? 'sauvée de justesse' : 'sauvée par le plan',
+      deadlineState: tooLate ? 'missed' : deadlineState,
+      redundant,
+      tooLate,
+    };
+  });
+  const savedCount = interventions.filter((entry) => !entry.tooLate).length;
+  const missedCount = interventions.filter((entry) => entry.tooLate).length;
+  const redundantCount = interventions.filter((entry) => entry.redundant).length;
+
+  return {
+    state: interventions.length === 0 ? 'empty' : missedCount > 0 || redundantCount > 0 ? 'warning' : 'ready',
+    interventions,
+    savedCount,
+    missedCount,
+    redundantCount,
+    summary: interventions.length === 0
+      ? 'Aucune intervention climat confirmée: l’impact cumulé sera calculé dès qu’une action est mise en file.'
+      : `${interventions.length} intervention${interventions.length > 1 ? 's' : ''} climat en attente: ${savedCount} délai${savedCount > 1 ? 's' : ''} sauvé${savedCount > 1 ? 's' : ''}, ${missedCount} encore critique${missedCount > 1 ? 's' : ''}, ${redundantCount} redondance${redundantCount > 1 ? 's' : ''}.`,
+  };
+}
+
+function renderCumulativeClimateImpactSummary(view) {
+  if (view.interventions.length === 0) {
+    return `
+      <section class="map-climate-cumulative map-climate-cumulative--empty" aria-label="Impact climatique cumulé avant résolution du tour">
+        <strong>Impact climat cumulé</strong>
+        <p>${view.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-climate-cumulative map-climate-cumulative--${view.state}" aria-label="Impact climatique cumulé avant résolution du tour">
+      <div class="map-climate-cumulative__header">
+        <strong>Impact climat cumulé avant validation</strong>
+        <span>${view.savedCount} sauvé${view.savedCount > 1 ? 's' : ''} · ${view.missedCount} critique${view.missedCount > 1 ? 's' : ''} · ${view.redundantCount} redondant${view.redundantCount > 1 ? 's' : ''}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-climate-cumulative__list">
+        ${view.interventions.map((entry) => `
+          <li class="map-climate-cumulative__item map-climate-cumulative__item--${entry.deadlineState} ${entry.redundant ? 'map-climate-cumulative__item--redundant' : ''}">
+            <b>${entry.rank}. ${entry.provinceLabel}</b>
+            <span>${entry.label} · ${entry.deadlineStatus}</span>
+            <small><b>Après résolution</b> · risque ${entry.riskReduction}</small>
+            <small><b>Délai</b> · ${entry.deadlineWindow}</small>
+            <small><b>Tradeoff</b> · ${entry.tradeoff}</small>
+            ${entry.redundant ? '<small><b>Redondance</b> · une autre intervention cible déjà cette province.</small>' : ''}
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderMapClimateInterventionWindows(view) {
   if (view.windows.length === 0) {
     return `
@@ -7500,6 +7575,7 @@ function render() {
   });
   const climatePreparednessSummary = buildMapClimatePreparednessSummary(shell, focusContext, intrigueView);
   const climateInterventionWindows = buildMapClimateInterventionWindows(shell);
+  const cumulativeClimateImpact = buildCumulativeClimateImpactSummary(shell, state.queuedClimateInterventions);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -7524,6 +7600,7 @@ function render() {
           ${renderQueuedMilitaryResolutionSummary(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
           ${renderMapClimateInterventionWindows(climateInterventionWindows)}
+          ${renderCumulativeClimateImpactSummary(cumulativeClimateImpact)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
