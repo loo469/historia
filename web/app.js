@@ -1227,12 +1227,14 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   </div>
                   <p>${choice.benefit}</p>
                   <small>Contrainte: ${choice.blocker} · ${choice.rationale}</small>
+                  <small class="province-logistics-bottleneck province-logistics-bottleneck--${choice.bottleneck.tone}">Goulot: ${choice.bottleneck.label} · ${choice.bottleneck.detail}</small>
                   ${choice.timeline.length > 0 ? `
                     <ol class="province-logistics-recovery-timeline" aria-label="Timeline de récupération logistique">
                       ${choice.timeline.map((step) => `
                         <li class="province-logistics-recovery-timeline__step province-logistics-recovery-timeline__step--${step.tone}">
                           <b>${step.step}</b>
                           <span>${step.detail}</span>
+                          ${step.bottleneck ? `<small>Goulot: ${step.bottleneck.label}</small>` : ''}
                         </li>
                       `).join('')}
                     </ol>
