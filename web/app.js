@@ -5608,12 +5608,24 @@ function buildIntrigueExposureMarkerRollup(markers) {
     hidden: markers.filter((marker) => marker.direction === 'hidden').length,
   };
   const activeFilters = getActiveIntrigueExposureOutcomeFilters();
+  const certaintyGroups = {
+    confirmed: markers.filter((marker) => marker.certainty === 'confirmed'),
+    suspected: markers.filter((marker) => marker.certainty === 'suspected'),
+    unknown: markers.filter((marker) => marker.certainty === 'unknown'),
+  };
+  const certaintyCopy = {
+    confirmed: `${certaintyGroups.confirmed.length} confirmé${certaintyGroups.confirmed.length > 1 ? 's' : ''}: résultat appuyé par un signal visible consolidé.`,
+    suspected: `${certaintyGroups.suspected.length} soupçon${certaintyGroups.suspected.length > 1 ? 's' : ''}: tendance lisible, mais source ou relais encore partiellement masqué.`,
+    unknown: `${certaintyGroups.unknown.length} zone${certaintyGroups.unknown.length > 1 ? 's' : ''} inconnue${certaintyGroups.unknown.length > 1 ? 's' : ''}: ne pas assimiler à un faible risque confirmé.`,
+  };
 
   return {
     counts,
     activeFilters,
     filteredCount: filteredMarkers.length,
     totalCount: markers.length,
+    certaintyGroups,
+    certaintyCopy,
     summary: activeFilters.length > 0
       ? `${filteredMarkers.length}/${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue visible${filteredMarkers.length > 1 ? 's' : ''} après filtre fog-safe.`
       : `${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue post-commit visible${markers.length > 1 ? 's' : ''}; aucun filtre d’issue actif.`,
@@ -5662,6 +5674,22 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {
             ? 'risque résiduel stable; la synthèse finale conserve le détail visible'
             : 'résultat masqué par le brouillard; seule la province reste inspectable';
 
+      const certainty = direction === 'hidden'
+        ? 'unknown'
+        : entry.metrics.exposedCellCount > 0 || entry.showSecondaryDetails
+          ? 'confirmed'
+          : 'suspected';
+      const certaintyLabels = {
+        confirmed: 'confirmé',
+        suspected: 'soupçon',
+        unknown: 'inconnu',
+      };
+      const certaintyExplanation = certainty === 'confirmed'
+        ? 'certitude confirmée par les marqueurs visibles; pas de détail secret ajouté'
+        : certainty === 'suspected'
+          ? 'certitude partielle: tendance visible, identité et relais non confirmés'
+          : 'certitude inconnue: zone fog-limitée séparée des faibles risques confirmés';
+
       return {
         locationId: entry.locationId,
         locationName: entry.locationName,
@@ -5673,9 +5701,12 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {
         label: directionLabels[direction],
         glyph: glyphs[direction],
         responseLabel: response.label,
+        certainty,
+        certaintyLabel: certaintyLabels[certainty],
+        certaintyExplanation,
         residualRisk,
-        copy: `${directionLabels[direction]} après résolution · ${residualRisk}. Voir synthèse finale exposition intrigue.`,
-        ariaLabel: `${directionLabels[direction]} en ${entry.locationName}: ${residualRisk}; détails fog-safe liés à la synthèse finale`,
+        copy: `${directionLabels[direction]} après résolution · ${certaintyLabels[certainty]} · ${residualRisk}. Voir synthèse finale exposition intrigue.`,
+        ariaLabel: `${directionLabels[direction]} en ${entry.locationName}: certitude ${certaintyLabels[certainty]}; ${residualRisk}; détails fog-safe liés à la synthèse finale`,
       };
     })
     .filter(Boolean)
@@ -5711,8 +5742,13 @@ function renderIntrigueExposureMarkerRollup(rollup) {
           </button>
         `).join('')}
       </div>
+      <div class="intrigue-exposure-certainty-rollup" aria-label="Niveau de certitude fog-safe des marqueurs intrigue">
+        <span><b>Confirmés</b>${rollup.certaintyCopy.confirmed}</span>
+        <span><b>Soupçons</b>${rollup.certaintyCopy.suspected}</span>
+        <span><b>Inconnues</b>${rollup.certaintyCopy.unknown}</span>
+      </div>
       <small>${rollup.hiddenCopy}</small>
-      <small>Rollup conservateur: les comptes agrègent uniquement les résultats visibles et ne nomment jamais cellule, cible ou relais.</small>
+      <small>Certitude fog-safe: les zones inconnues restent séparées des faibles risques confirmés et ne nomment jamais cellule, cible ou relais.</small>
     </section>
   `;
 }
@@ -5730,7 +5766,7 @@ function renderPostCommitIntrigueExposureMarkers(markers) {
           <circle class="intrigue-post-commit-marker__backplate" cx="${marker.center.x}%" cy="${marker.center.y}%" r="3.3"></circle>
           <text class="intrigue-post-commit-marker__glyph" x="${marker.center.x}%" y="${marker.center.y + 1.15}%" text-anchor="middle">${marker.glyph}</text>
           <text class="intrigue-post-commit-marker__label" x="${marker.center.x + 4.1}%" y="${marker.center.y - 1.15}%" text-anchor="start">${marker.label}</text>
-          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.responseLabel} · ${marker.direction === 'hidden' ? 'fog conservé' : 'voir synthèse finale'}</text>
+          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.certaintyLabel} · ${marker.direction === 'hidden' ? 'fog conservé' : 'voir synthèse finale'}</text>
         </g>
       `).join('')}
     </g>
