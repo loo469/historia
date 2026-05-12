@@ -8036,6 +8036,13 @@ function renderCultureInterventionPriorities(priorityView) {
             <small>Risque: ${priority.waitRisk} · Dépendance: ${priority.dependency}</small>
             ${priority.blocker ? `<em class="culture-intervention-priority__blocker">${priority.blocker.label} ${priority.blocker.shortReason}</em>` : ''}
             ${priority.followUp ? `<em class="culture-intervention-priority__follow-up">${priority.followUp.label} ${priority.followUp.action}</em>` : ''}
+            ${priority.resolutionGain ? `
+              <div class="culture-intervention-priority__resolution-gain">
+                <b>${priority.resolutionGain.label}</b>
+                <span>${priority.resolutionGain.gain}</span>
+                <small>${priority.resolutionGain.next} · ${priority.resolutionGain.riskAvoided}</small>
+              </div>
+            ` : ''}
           </li>
         `).join('')}
       </ol>

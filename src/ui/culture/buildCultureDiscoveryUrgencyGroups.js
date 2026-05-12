@@ -232,12 +232,59 @@ function buildInterventionFollowUp(item, items) {
   return null;
 }
 
+function buildInterventionResolutionGain(item, blocker, followUp, conflict) {
+  if (blocker) {
+    const gain = conflict
+      ? `tension réduite entre ${item.cultureName} et ${blocker.shortReason}`
+      : item.cause === 'Tension locale'
+        ? 'tension réduite avant le prochain arbitrage'
+        : `coordination clarifiée avec ${blocker.shortReason}`;
+
+    return {
+      label: 'après résolution',
+      gain,
+      next: followUp ? `${followUp.action} devient prioritaire ensuite` : 'file culturelle à nouveau lisible',
+      riskAvoided: item.group === 'urgent'
+        ? 'évite qu’un risque social masque la découverte'
+        : 'évite de bloquer une suite utile',
+    };
+  }
+
+  if (followUp) {
+    return {
+      label: 'après résolution',
+      gain: `action suivante débloquée: ${followUp.action}`,
+      next: followUp.reason,
+      riskAvoided: item.group === 'active'
+        ? 'préserve la synergie locale sans surcharger la file'
+        : 'évite de perdre la fenêtre culturelle utile',
+    };
+  }
+
+  if (item.group === 'urgent') {
+    return {
+      label: 'après résolution',
+      gain: 'risque social évité sur le signal urgent',
+      next: 'priorités locales stabilisées',
+      riskAvoided: 'évite une escalade silencieuse de tension culturelle',
+    };
+  }
+
+  return {
+    label: 'après résolution',
+    gain: 'synergie locale préservée',
+    next: 'contexte gardé pour les prochains arbitrages',
+    riskAvoided: 'limite le bruit dans la file culturelle',
+  };
+}
+
 function buildInterventionPriority(item, items, index) {
   const dependency = buildInterventionDependency(item, items);
   const conflict = dependency.startsWith('Conflit local');
   const action = buildInterventionAction(item);
   const blocker = buildInterventionBlocker(item, dependency, conflict);
   const followUp = buildInterventionFollowUp(item, items);
+  const resolutionGain = buildInterventionResolutionGain(item, blocker, followUp, conflict);
 
   return {
     priorityId: `culture-intervention:${item.itemId}`,
@@ -251,6 +298,7 @@ function buildInterventionPriority(item, items, index) {
     conflict,
     blocker,
     followUp,
+    resolutionGain,
     cultureName: item.cultureName,
     regionId: item.regionId,
     sourceLabel: item.shortLabel,
