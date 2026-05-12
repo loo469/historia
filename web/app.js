@@ -404,6 +404,7 @@ const state = {
   logisticsOutcomeMarkers: [],
   queuedCultureActions: [],
   cultureTensionMarkers: [],
+  cultureTensionFilters: { eased: true, unresolved: true, escalated: true, opportunity: true },
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   mobilePanelSection: 'details',
@@ -6300,6 +6301,8 @@ function getCultureViewModel() {
   const selectedRegionId = state.selectedProvinceId;
   const selectedMarkers = overlay.filter((entry) => entry.regionId === selectedRegionId);
   const selectedMarker = selectedMarkers[0] ?? overlay[0] ?? null;
+  const tensionFilters = state.cultureTensionFilters ?? {};
+  const filteredTensionMarkers = state.cultureTensionMarkers.filter((marker) => tensionFilters[marker.state] !== false);
 
   return {
     overlay,
@@ -6308,8 +6311,10 @@ function getCultureViewModel() {
     selectedRegionId,
     selectedMarkers,
     selectedMarker,
-    tensionMarkers: state.cultureTensionMarkers,
-    selectedTensionMarkers: state.cultureTensionMarkers.filter((marker) => marker.provinceId === selectedRegionId),
+    tensionMarkers: filteredTensionMarkers,
+    tensionFilters,
+    allTensionMarkers: state.cultureTensionMarkers,
+    selectedTensionMarkers: filteredTensionMarkers.filter((marker) => marker.provinceId === selectedRegionId),
     metrics: {
       markerCount: overlay.length,
       cultureCount: seeds.length,
@@ -6727,6 +6732,69 @@ function buildPostCommitCultureTensionMarkers(shell) {
   }).slice(0, 8);
 }
 
+
+const CULTURE_TENSION_FILTER_LABELS = {
+  eased: 'Apaisées',
+  unresolved: 'Non couvertes',
+  escalated: 'Aggravées',
+  opportunity: 'Opportunités',
+};
+
+function cultureTensionPriority(marker) {
+  return { escalated: 4, unresolved: 3, opportunity: 2, eased: 1 }[marker.state] ?? 0;
+}
+
+function renderCultureTensionFilters(cultureView) {
+  const markers = cultureView.allTensionMarkers ?? [];
+
+  if (!markers.length) {
+    return '';
+  }
+
+  return `
+    <div class="culture-tension-filters" aria-label="Filtres des marqueurs culturels post-commit">
+      ${Object.entries(CULTURE_TENSION_FILTER_LABELS).map(([stateKey, label]) => {
+        const active = cultureView.tensionFilters?.[stateKey] !== false;
+        const count = markers.filter((marker) => marker.state === stateKey).length;
+        return `
+          <button type="button" class="culture-tension-filter ${active ? 'is-active' : ''}" data-culture-tension-filter="${stateKey}" aria-pressed="${active}" aria-label="Filtrer les marqueurs culturels ${label}: ${count}">
+            <span>${label}</span><b>${count}</b>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderCultureTensionQuickJump(markers) {
+  const entries = [...markers]
+    .sort((left, right) => cultureTensionPriority(right) - cultureTensionPriority(left) || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 4);
+
+  if (!entries.length) {
+    return '';
+  }
+
+  return `
+    <div class="culture-tension-quick-jump" aria-label="Accès rapide aux tensions culturelles prioritaires">
+      <div class="culture-tension-quick-jump__header">
+        <span>À vérifier</span>
+        <strong>${entries.length} repère${entries.length > 1 ? 's' : ''}</strong>
+      </div>
+      ${entries.map((marker) => {
+        const visual = getCultureTensionMarkerVisual(marker);
+        return `
+          <button type="button" class="culture-tension-jump culture-tension-jump--${marker.state}" data-culture-tension-jump="${marker.provinceId}" aria-label="Aller à ${marker.provinceLabel}: ${marker.label}">
+            <b>${visual.icon}</b>
+            <span>${marker.provinceLabel}</span>
+            <small>${marker.label} · ${marker.cultureName}</small>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderCultureTensionMarker(marker, active) {
   const center = getProvinceCenter(marker.provinceId);
 
@@ -6867,6 +6935,8 @@ function renderCultureSidePanel(cultureView) {
         <div class="overlay-anchor"><span>Repères</span><strong>${cultureView.metrics.eventCount}</strong></div>
       </div>
       ${renderCultureLegendKey(cultureView)}
+      ${renderCultureTensionFilters(cultureView)}
+      ${renderCultureTensionQuickJump(cultureView.tensionMarkers ?? [])}
       ${renderCultureTensionMarkerPanel(cultureView.selectedTensionMarkers ?? [])}
       ${renderCultureRecommendationPanel(recommendationView)}
       ${renderCultureLocalTimeline(localTimelineView)}
@@ -8765,6 +8835,40 @@ function render() {
 
     stage.addEventListener('mouseleave', stopDragging);
     stage.addEventListener('mouseup', stopDragging);
+  });
+
+
+  document.querySelectorAll('[data-culture-tension-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const key = element.dataset.cultureTensionFilter;
+      if (!key) {
+        return;
+      }
+
+      state.cultureTensionFilters[key] = state.cultureTensionFilters[key] === false;
+      state.activeOverlaySlot = 'culture-overlay';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-culture-tension-jump]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.cultureTensionJump;
+      const shell = getShell();
+      const province = shell.provinces.find((candidate) => candidate.provinceId === provinceId);
+
+      if (!province) {
+        return;
+      }
+
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.activeOverlaySlot = 'culture-overlay';
+      state.mobilePanelSection = 'overlay';
+      const viewport = document.querySelector('.map-viewport');
+      centerMapOnProvince(provinceId, viewport);
+      render();
+    });
   });
 
   document.querySelectorAll('[data-culture-focus-region]').forEach((element) => {
