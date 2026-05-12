@@ -1199,6 +1199,18 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
             </div>
             <p>${option.impact}</p>
             <small class="province-logistics-choice__cause">${option.causeLabel}: ${option.cause}</small>
+            <div class="province-logistics-recovery-comparison" aria-label="Comparaison des corrections logistiques">
+              ${option.recoveryChoices.slice(0, 3).map((choice) => `
+                <article class="province-logistics-recovery province-logistics-recovery--${choice.tone} ${choice.recommended ? 'is-recommended' : ''}">
+                  <div>
+                    <strong>${choice.label}</strong>
+                    <span>${choice.comparison}</span>
+                  </div>
+                  <p>${choice.benefit}</p>
+                  <small>Contrainte: ${choice.blocker} · ${choice.rationale}</small>
+                </article>
+              `).join('')}
+            </div>
             <dl>
               <div><dt>Coût</dt><dd>${option.cost}</dd></div>
               <div><dt>Délai</dt><dd>${option.delay}</dd></div>

@@ -60,6 +60,12 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.options[0].causeLabel, 'stock critique');
   assert.match(preview.options[0].cause, /River Gate/);
   assert.match(preview.options[0].cause, /Ember Line/);
+  assert.equal(preview.recoveryChoiceCount, 4);
+  assert.ok(preview.options[0].recoveryChoices.length >= 2);
+  assert.equal(preview.options[0].recoveryChoices[0].recommended, true);
+  assert.match(preview.options[0].recoveryChoices[0].benefit, /Outils|River Gate|Ember Line/);
+  assert.ok(preview.options[0].recoveryChoices[0].blocker.length > 0);
+  assert.match(preview.options[0].recoveryChoices[1].comparison, /moins urgent/);
 });
 
 test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and impact labels', () => {
@@ -72,6 +78,7 @@ test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and i
   assert.ok(option.impact.includes('tools') || option.impact.includes('ressource'));
   assert.deepEqual(option.routes, ['Ember Line']);
   assert.ok(option.cause.length > 0);
+  assert.deepEqual(option.recoveryChoices.map((choice) => choice.choiceId).sort(), ['economic-priority', 'repair', 'reroute', 'stockpile']);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
