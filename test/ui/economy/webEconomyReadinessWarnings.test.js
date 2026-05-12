@@ -14,6 +14,9 @@ test('playable map wires economy readiness warnings into end-turn summary', () =
   assert.match(webAppSource, /logisticsByProvinceId/);
   assert.match(webAppSource, /function getEconomyReadinessFocusTarget/);
   assert.match(webAppSource, /data-economy-readiness-focus/);
+  assert.match(webAppSource, /data-readiness-tone=\"\$\{warning\.status === 'blocked' \? 'danger' : 'warning'\}\"/);
+  assert.match(webAppSource, /has-economy-blocker--\$\{routeBlocker\.tone\}/);
+  assert.match(webAppSource, /has-economy-blocker--\$\{cityBlocker\.tone\}/);
   assert.match(webAppSource, /data-blocker-label/);
   assert.match(webAppSource, /data-next-turn-effect/);
   assert.match(webAppSource, /economyReadinessFocus/);
@@ -25,6 +28,11 @@ test('playable map wires economy readiness warnings into end-turn summary', () =
   assert.match(stylesSource, /economy-readiness-warning--critical/);
   assert.match(stylesSource, /economy-readiness-warnings--risky/);
   assert.match(stylesSource, /has-economy-blocker/);
+  assert.match(stylesSource, /economy-route-group\.has-economy-blocker/);
+  assert.match(stylesSource, /economy-route-group\.has-economy-blocker--danger/);
+  assert.match(stylesSource, /economy-route-group\.has-economy-blocker--critical/);
+  assert.match(stylesSource, /economy-blocker-badge--critical/);
+  assert.match(stylesSource, /economy-city-group\.has-economy-blocker--critical/);
   assert.match(stylesSource, /economy-blocker-badge/);
   assert.match(stylesSource, /\.economy-readiness-warning button/);
 });
