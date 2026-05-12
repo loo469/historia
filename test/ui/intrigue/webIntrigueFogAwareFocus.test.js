@@ -213,6 +213,18 @@ test('atlas counterintelligence sweep planning uses filtered signals without spo
   assert.match(stylesSource, /atlas-counterintelligence-card--shadow/);
 });
 
+test('atlas counterintelligence sweep coverage preview stays fog-safe before confirmation', () => {
+  assert.match(webAppSource, /coveragePreview/);
+  assert.match(webAppSource, /Prévisualisation de couverture fog-safe avant confirmation/);
+  assert.match(webAppSource, /couverture probable/);
+  assert.match(webAppSource, /couverture partielle/);
+  assert.match(webAppSource, /couverture incertaine/);
+  assert.match(webAppSource, /non couvert/);
+  assert.match(webAppSource, /exposition modérée · cooldown moyen/);
+  assert.match(webAppSource, /cooldown visible estimé sans cause cachée/);
+  assert.match(stylesSource, /atlas-counterintelligence-coverage-preview/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
