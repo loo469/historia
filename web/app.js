@@ -1276,6 +1276,100 @@ function renderProvinceClimateTurnReport(province) {
   `;
 }
 
+function buildProvinceClimateHazardBlockers(province, actionQueue) {
+  const report = buildProvinceClimateTurnReport(province);
+  const plannedAction = actionQueue[0] ?? null;
+  const riskDelta = report.deltas.find((delta) => delta.deltaId.includes(':risk') || delta.deltaId.includes(':anomaly'));
+  const recoveryDelta = report.deltas.find((delta) => delta.deltaId.includes(':recovery'));
+  const upcomingDelta = report.deltas.find((delta) => delta.deltaId.includes(':upcoming'));
+  const blockers = [];
+
+  if (report.state === 'risk') {
+    blockers.push({
+      tone: 'blocked',
+      status: 'déconseillée',
+      label: 'Hazard climat bloquant',
+      hazard: riskDelta?.label ?? 'risque climat accru',
+      detail: `${plannedAction?.label ?? 'Action principale'} déconseillée: ${riskDelta?.reason ?? report.summary}`,
+      trigger: plannedAction?.actionCode ?? 'plan province',
+      priority: 1,
+    });
+  }
+
+  if (upcomingDelta) {
+    blockers.push({
+      tone: upcomingDelta.tone === 'improved' ? 'safe' : 'delayed',
+      status: upcomingDelta.tone === 'improved' ? 'sûre' : 'retardée',
+      label: upcomingDelta.tone === 'improved' ? 'Fenêtre climat sûre' : 'Saison à risque court terme',
+      hazard: upcomingDelta.value,
+      detail: upcomingDelta.tone === 'improved'
+        ? `${plannedAction?.label ?? 'Action'} peut être planifiée pendant cette fenêtre: ${upcomingDelta.reason}`
+        : `${plannedAction?.label ?? 'Action'} devrait attendre ou recevoir une mitigation: ${upcomingDelta.reason}`,
+      trigger: plannedAction?.actionCode ?? 'saison suivante',
+      priority: upcomingDelta.tone === 'improved' ? 4 : 2,
+    });
+  }
+
+  if (recoveryDelta) {
+    blockers.push({
+      tone: recoveryDelta.tone === 'worse' ? 'blocked' : recoveryDelta.tone === 'partial' ? 'risky' : 'safe',
+      status: recoveryDelta.tone === 'worse' ? 'déconseillée' : recoveryDelta.tone === 'partial' ? 'risquée' : 'sûre',
+      label: recoveryDelta.tone === 'improved' ? 'Mitigation efficace' : 'Récupération à surveiller',
+      hazard: recoveryDelta.value,
+      detail: recoveryDelta.forecast && recoveryDelta.realized
+        ? `Prévu ${recoveryDelta.forecast.recoveryWindowDays}j / réalisé ${recoveryDelta.realized.recoveryWindowDays}j; garder ce délai dans la file d’actions.`
+        : recoveryDelta.reason,
+      trigger: plannedAction?.actionCode ?? recoveryDelta.deltaId,
+      priority: recoveryDelta.tone === 'improved' ? 3 : 2,
+    });
+  }
+
+  if (report.state === 'stable' || report.state === 'quiet') {
+    blockers.push({
+      tone: 'safe',
+      status: 'sûre',
+      label: 'Aucun blocker climat',
+      hazard: 'saison stable',
+      detail: `${plannedAction?.label ?? 'Action principale'} peut être planifiée sans retard climatique visible.`,
+      trigger: plannedAction?.actionCode ?? 'plan province',
+      priority: 5,
+    });
+  }
+
+  return blockers
+    .sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label))
+    .slice(0, 3);
+}
+
+function renderProvinceClimateHazardBlockers(province, actionQueue) {
+  const blockers = buildProvinceClimateHazardBlockers(province, actionQueue);
+
+  if (blockers.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-climate-hazard-blockers" aria-label="Blockers climatiques du planning de province">
+      <div class="province-climate-hazard-blockers__header">
+        <strong>Blockers climat planning</strong>
+        <span>${blockers.length} signal${blockers.length > 1 ? 's' : ''}</span>
+      </div>
+      <div class="province-climate-hazard-blocker-list">
+        ${blockers.map((blocker) => `
+          <article class="province-climate-hazard-blocker province-climate-hazard-blocker--${blocker.tone}">
+            <div>
+              <strong>${blocker.label}</strong>
+              <code>${blocker.status}</code>
+            </div>
+            <p>${blocker.detail}</p>
+            <small>Hazard: ${blocker.hazard} · Action: ${blocker.trigger}</small>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const logisticsPreview = buildProvinceLogisticsChoicePreviewView(province, economyView);
@@ -1567,6 +1661,7 @@ function renderSelectedProvinceActionQueue(province, shell, focusContext, intrig
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const resolution = summarizeTurnResolutionPreview(province, actionQueue);
   const intrigueWarnings = renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView);
+  const climateHazardBlockers = renderProvinceClimateHazardBlockers(province, actionQueue);
 
   return `
     <section class="province-action-queue" aria-label="File d’actions préparées pour la province sélectionnée">
@@ -1602,6 +1697,7 @@ function renderSelectedProvinceActionQueue(province, shell, focusContext, intrig
       </ol>
     </section>
     ${intrigueWarnings}
+    ${climateHazardBlockers}
   `;
 }
 
