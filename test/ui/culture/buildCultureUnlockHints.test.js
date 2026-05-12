@@ -63,6 +63,13 @@ test('buildCultureUnlockHints ranks probable, possible, and missing unlock signa
     ['probable', 'Recherche culture', 'research'],
   ]);
   assert.equal(hints[0].explanation, 'Ouverture des archives peut suivre “Préparer la manœuvre”.');
+  assert.deepEqual(hints.map((hint) => hint.focusTarget.type), ['timeline', 'cluster', 'marker']);
+  assert.deepEqual(hints[0].focusTarget, {
+    type: 'timeline',
+    id: 'river-gate:event:archives-open',
+    regionId: 'river-gate',
+    label: 'Ouverture des archives',
+  });
 });
 
 test('buildCultureUnlockHints returns readable missing-condition fallbacks', () => {
@@ -78,6 +85,13 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
       explanation: 'Ajoutez découverte, repère ou cluster actif avant d’attendre un gain culturel.',
       regionId: 'quiet-field',
       cultureName: 'Aucun signal',
+      sourceId: 'Garder en observation',
+      focusTarget: {
+        type: 'province',
+        id: 'quiet-field',
+        regionId: 'quiet-field',
+        label: 'Province sans unlock',
+      },
     },
   ]);
 
@@ -98,5 +112,12 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
     explanation: 'Cluster visible, mais aucun pin découverte/événement ne justifie encore un unlock.',
     regionId: 'shared-bay',
     cultureName: 'Delta Scribes, Harbor Compact',
+    sourceId: 'shared-bay:culture-cluster',
+    focusTarget: {
+      type: 'cluster',
+      id: 'shared-bay:culture-cluster',
+      regionId: 'shared-bay',
+      label: 'Delta Scribes, Harbor Compact',
+    },
   });
 });

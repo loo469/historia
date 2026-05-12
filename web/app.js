@@ -924,6 +924,9 @@ function renderCultureOpportunityReminders(report) {
               <span>${reminder.label}</span>
               <strong>${reminder.cultureName}</strong>
               <p>${reminder.summary}</p>
+              <button type="button" data-culture-focus-region="${reminder.focusTarget.regionId}" data-culture-focus-type="${reminder.focusTarget.type}" data-culture-focus-id="${reminder.focusTarget.id}">
+                Voir ${reminder.focusCopy}
+              </button>
             </article>
           `).join('')}
         </div>
@@ -4879,6 +4882,18 @@ function render() {
 
     stage.addEventListener('mouseleave', stopDragging);
     stage.addEventListener('mouseup', stopDragging);
+  });
+
+  document.querySelectorAll('[data-culture-focus-region]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.cultureFocusRegion;
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.popupProvinceId = provinceId;
+      state.activeOverlaySlot = 'culture';
+      state.mobilePanelSection = element.dataset.cultureFocusType === 'timeline' ? 'details' : 'overlay';
+      render();
+    });
   });
 
   document.querySelectorAll('[data-popup-action]').forEach((element) => {

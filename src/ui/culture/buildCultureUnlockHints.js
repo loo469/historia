@@ -4,7 +4,18 @@ function normalizeText(value, fallback = '') {
   return String(value ?? fallback).trim();
 }
 
-function buildHint({ status, tone, label, explanation, regionId, cultureName, sourceId }) {
+function buildFocusTarget({ type = 'province', id, regionId, label }) {
+  const targetId = normalizeText(id, regionId);
+
+  return {
+    type,
+    id: targetId,
+    regionId,
+    label: normalizeText(label, targetId),
+  };
+}
+
+function buildHint({ status, tone, label, explanation, regionId, cultureName, sourceId, focusTarget }) {
   return {
     hintId: `${status}:${regionId}:${cultureName}:${label}:${sourceId ?? 'source'}`,
     status,
@@ -13,6 +24,8 @@ function buildHint({ status, tone, label, explanation, regionId, cultureName, so
     explanation,
     regionId,
     cultureName,
+    sourceId: sourceId ?? null,
+    focusTarget: focusTarget ?? buildFocusTarget({ regionId, label: 'Province liée' }),
   };
 }
 
@@ -48,6 +61,12 @@ function hintsFromTimeline(localTimeline, actionTitle, fallbackRegionId) {
       regionId: normalizeText(item.regionId, fallbackRegionId),
       cultureName: normalizeText(item.cultureName, 'Culture locale'),
       sourceId: item.timelineId,
+      focusTarget: buildFocusTarget({
+        type: 'timeline',
+        id: item.timelineId,
+        regionId: normalizeText(item.regionId, fallbackRegionId),
+        label: normalizeText(item.title, label),
+      }),
     });
   });
 }
@@ -70,6 +89,12 @@ function hintsFromMarker(marker, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: marker.overlayId,
+      focusTarget: buildFocusTarget({
+        type: 'marker',
+        id: marker.overlayId,
+        regionId,
+        label: cultureName,
+      }),
     }));
   }
 
@@ -82,6 +107,12 @@ function hintsFromMarker(marker, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: marker.overlayId,
+      focusTarget: buildFocusTarget({
+        type: 'marker',
+        id: marker.overlayId,
+        regionId,
+        label: cultureName,
+      }),
     }));
   }
 
@@ -109,6 +140,12 @@ function hintsFromCluster(cluster, actionTitle, fallbackRegionId) {
       regionId,
       cultureName: normalizeText(strongestEvent.cultureName, cultureName),
       sourceId: strongestEvent.pinId,
+      focusTarget: buildFocusTarget({
+        type: 'cluster',
+        id: cluster.clusterId,
+        regionId,
+        label: strongestEvent.name,
+      }),
     }));
   }
 
@@ -121,6 +158,12 @@ function hintsFromCluster(cluster, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: cluster.clusterId,
+      focusTarget: buildFocusTarget({
+        type: 'cluster',
+        id: cluster.clusterId,
+        regionId,
+        label: cultureName,
+      }),
     }));
   }
 
@@ -133,6 +176,12 @@ function hintsFromCluster(cluster, actionTitle, fallbackRegionId) {
       regionId,
       cultureName,
       sourceId: cluster.clusterId,
+      focusTarget: buildFocusTarget({
+        type: 'cluster',
+        id: cluster.clusterId,
+        regionId,
+        label: cultureName,
+      }),
     }));
   }
 
@@ -166,5 +215,6 @@ export function buildCultureUnlockHints({
     regionId,
     cultureName: 'Aucun signal',
     sourceId: actionTitle,
+    focusTarget: buildFocusTarget({ regionId, label: 'Province sans unlock' }),
   })];
 }
