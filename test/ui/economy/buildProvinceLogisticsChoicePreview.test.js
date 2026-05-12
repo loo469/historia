@@ -90,6 +90,8 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
   assert.match(preview.primaryLogisticsAction.downstreamImpact, /pénurie|route|province|délai/);
+  assert.match(preview.primaryLogisticsAction.bottleneckRelieved, /capacité|stock|route|goulot|dégâts/);
+  assert.match(preview.primaryLogisticsAction.downstreamEffect, /Projeté/);
   assert.ok(['ready', 'risky'].includes(preview.primaryLogisticsAction.status));
   assert.equal(preview.primaryLogisticsAction.disabled, false);
   assert.ok(preview.options[0].recoveryChoices.length >= 2);
