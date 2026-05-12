@@ -18,6 +18,7 @@ import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMa
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
+import { buildClimateTurnReportDeltas } from '../src/ui/climate/buildClimateTurnReportDeltas.js';
 
 const culturePayload = {
   cultures: [
@@ -1147,6 +1148,111 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
   `;
 }
 
+function getProvinceClimateRiskLevel(province) {
+  if (province.supplyLevel === 'collapsed' || province.contested) {
+    return 'critical';
+  }
+
+  if (province.supplyLevel === 'disrupted' || province.supplyLevel === 'strained') {
+    return 'strained';
+  }
+
+  return 'stable';
+}
+
+function buildProvinceClimateTurnReport(province) {
+  const currentRiskLevel = getProvinceClimateRiskLevel(province);
+  const previousRiskLevel = currentRiskLevel === 'critical'
+    ? 'strained'
+    : currentRiskLevel === 'strained'
+      ? 'stable'
+      : 'stable';
+  const recoveryChoiceId = currentRiskLevel === 'critical' ? 'evacuate-risk-zones' : 'stockpile-supplies';
+  const recoveryLabel = currentRiskLevel === 'critical' ? 'Évacuer les zones exposées' : 'Stocker des vivres';
+  const recoveryWindowDays = currentRiskLevel === 'critical' ? 18 : 12;
+  const climateOverlay = {
+    selectedClimateImpactComparison: {
+      state: 'ready',
+      regionId: province.provinceId,
+      current: {
+        riskLevel: currentRiskLevel,
+        anomaly: currentRiskLevel === 'stable' ? null : 'seasonal-pressure',
+      },
+    },
+    selectedClimateTimingRecommendation: {
+      state: 'ready',
+      direction: currentRiskLevel === 'stable' ? 'steady' : 'riskier',
+      urgency: currentRiskLevel === 'critical' ? 'act-before-preview' : 'time-sensitive',
+      copy: currentRiskLevel === 'stable'
+        ? 'Le climat reste stable pour le prochain tour.'
+        : 'Le prochain tour peut amplifier la pression climatique locale.',
+    },
+  };
+  const previousClimateOverlay = {
+    selectedClimateImpactComparison: {
+      state: 'ready',
+      regionId: province.provinceId,
+      current: {
+        riskLevel: previousRiskLevel,
+        anomaly: null,
+      },
+    },
+  };
+
+  return buildClimateTurnReportDeltas({
+    turn: state.turn,
+    selectedRegionId: province.provinceId,
+    climateOverlay,
+    previousClimateOverlay,
+    previousRecoveryForecast: currentRiskLevel === 'stable' ? null : {
+      forecasts: [
+        {
+          choiceId: recoveryChoiceId,
+          label: recoveryLabel,
+          recoveryWindowDays,
+          relapseRisk: currentRiskLevel === 'critical' ? 'medium' : 'low',
+          nextCriticalSeason: 'prochain tour',
+          summary: `${recoveryLabel}: prévu ~${recoveryWindowDays}j avant stabilisation.`,
+        },
+      ],
+    },
+    realizedRecoveryByChoiceId: currentRiskLevel === 'stable' ? {} : {
+      [recoveryChoiceId]: {
+        recoveryWindowDays: Math.max(6, recoveryWindowDays - 2),
+        relapseRisk: currentRiskLevel === 'critical' ? 'medium' : 'low',
+        status: 'on-track',
+        summary: 'Réalisation lisible dans le rapport du dernier tour.',
+      },
+    },
+    upcomingSeason: 'prochain tour',
+  });
+}
+
+function renderProvinceClimateTurnReport(province) {
+  const report = buildProvinceClimateTurnReport(province);
+
+  return `
+    <section class="province-climate-turn-report province-climate-turn-report--${report.state}" aria-label="Rapport climat et catastrophes du dernier tour">
+      <div class="province-climate-turn-report__header">
+        <strong>Rapport climat dernier tour</strong>
+        <span>${report.deltas.length > 0 ? `${report.deltas.length} delta${report.deltas.length > 1 ? 's' : ''}` : 'stable'}</span>
+      </div>
+      <p>${report.summary}</p>
+      ${report.deltas.length > 0 ? `
+        <ul class="province-climate-turn-report__list">
+          ${report.deltas.map((delta) => `
+            <li class="province-climate-turn-report__delta province-climate-turn-report__delta--${delta.tone}">
+              <b>${delta.label}</b>
+              <span>${delta.value}</span>
+              <small>${delta.forecast && delta.realized ? `Prévu: ${delta.forecast.recoveryWindowDays}j · Réalisé: ${delta.realized.recoveryWindowDays}j` : delta.reason}</small>
+            </li>
+          `).join('')}
+        </ul>
+      ` : ''}
+    </section>
+  `;
+}
+
 function renderProvinceEconomyTurnReport(province, economyView) {
   const previousChoice = buildProvinceLogisticsChoicePreviewView(province, economyView).options[0] ?? null;
   const report = buildProvinceEconomyTurnReport(province, economyView, { previousChoice });
@@ -1429,6 +1535,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
+      ${renderProvinceClimateTurnReport(province)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
         <p>${comparedProvinceNames.length > 0 ? comparedProvinceNames.join(' vs ') : 'Aucune province comparée pour le moment.'}</p>
