@@ -5610,6 +5610,55 @@ function buildAtlasSeasonalMitigationPlanComparison(seasonalWindows) {
   };
 }
 
+function buildAtlasClimateActionPlanFromComparison(planComparison) {
+  if (!planComparison || planComparison.plans.length === 0) {
+    return {
+      state: 'empty',
+      selectedPlan: null,
+      vulnerablePlans: [],
+      summary: 'Aucun plan d’action climat à convertir depuis l’atlas.',
+    };
+  }
+
+  const selectedPlan = planComparison.bestPlan ?? planComparison.plans.slice().sort((left, right) => right.score - left.score || left.planRank - right.planRank)[0];
+  const vulnerablePlans = planComparison.plans.filter((plan) => /probable|Report|cascade suivante/i.test(plan.probableCascade) && plan.provinceId !== selectedPlan?.provinceId);
+
+  return {
+    state: selectedPlan ? (vulnerablePlans.length > 0 ? 'warning' : 'ready') : 'empty',
+    selectedPlan,
+    vulnerablePlans,
+    summary: selectedPlan
+      ? `Plan d’action proposé: ${selectedPlan.action} sur ${selectedPlan.provinceLabel}, fenêtre ${selectedPlan.criticalSeason}.`
+      : 'Aucun plan saisonnier assez clair pour devenir une action atlas.',
+  };
+}
+
+function renderAtlasClimateActionPlan(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  const plan = view.selectedPlan;
+
+  return `
+    <section class="map-world-climate-action-plan map-world-climate-action-plan--${view.state}" aria-label="Plan d’action climatique converti depuis la comparaison saisonnière">
+      <div class="map-world-climate-action-plan__header">
+        <strong>Plan d’action climat</strong>
+        <span>${plan.provinceLabel} · ${plan.criticalSeason}</span>
+      </div>
+      <p>${view.summary}</p>
+      <div class="map-world-climate-action-plan__card">
+        <b>${plan.action}</b>
+        <small><b>Saison/fenêtre</b> · ${plan.criticalSeason}</small>
+        <small><b>Régions touchées</b> · ${plan.protectedRegions}</small>
+        <small><b>Cascade évitée/réduite</b> · ${plan.avoidedCascade}</small>
+        <small><b>Coût/compromis</b> · ${plan.verdict}; ${plan.delayedCascade}</small>
+        ${view.vulnerablePlans.length > 0 ? `<small><b>Vulnérable</b> · ${view.vulnerablePlans.map((vulnerable) => `${vulnerable.provinceLabel}: ${vulnerable.probableCascade}`).join(' · ')}</small>` : ''}
+      </div>
+    </section>
+  `;
+}
+
 function renderAtlasSeasonalMitigationPlanComparison(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -12628,6 +12677,7 @@ function render() {
   const atlasClimateMitigationSynergies = buildAtlasClimateMitigationSynergies(shell, atlasClimateCascadeImpact, worldClimateLayer);
   const atlasSeasonalMitigationWindows = buildAtlasSeasonalMitigationWindows(atlasClimateMitigationSynergies, worldClimateLayer);
   const atlasSeasonalPlanComparison = buildAtlasSeasonalMitigationPlanComparison(atlasSeasonalMitigationWindows);
+  const atlasClimateActionPlan = buildAtlasClimateActionPlanFromComparison(atlasSeasonalPlanComparison);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -12662,6 +12712,7 @@ function render() {
           ${renderAtlasClimateMitigationSynergies(atlasClimateMitigationSynergies)}
           ${renderAtlasSeasonalMitigationWindows(atlasSeasonalMitigationWindows)}
           ${renderAtlasSeasonalMitigationPlanComparison(atlasSeasonalPlanComparison)}
+          ${renderAtlasClimateActionPlan(atlasClimateActionPlan)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

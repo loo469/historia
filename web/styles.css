@@ -640,6 +640,39 @@ button { font: inherit; }
 .map-world-climate-plan-compare__item.is-best {
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.32), 0 0 18px rgba(74, 222, 128, 0.16);
 }
+.map-world-climate-action-plan {
+  display: grid;
+  gap: 8px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.66), rgba(20, 83, 45, 0.24));
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+.map-world-climate-action-plan--warning { border-color: rgba(251, 191, 36, 0.42); }
+.map-world-climate-action-plan__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-action-plan p,
+.map-world-climate-action-plan span,
+.map-world-climate-action-plan small {
+  color: #dcfce7;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-action-plan__card {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.54);
+  border: 1px solid rgba(74, 222, 128, 0.24);
+}
 
 .map-climate-severity-legend {
   display: grid;
