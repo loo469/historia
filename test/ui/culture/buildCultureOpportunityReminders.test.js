@@ -105,6 +105,10 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
   ]);
   assert.equal(report.reminders[0].inactionCost.summary, 'Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
   assert.equal(report.reminders[1].inactionCopy, 'Inaction tolérée · Pas de perte culturelle claire si la recommandation attend.');
+  assert.deepEqual(report.priorityConflicts.map((conflict) => [conflict.level, conflict.label, conflict.recommendation, conflict.cultures]), [
+    ['urgent', 'Même action en file', 'Agir maintenant', ['Compact d’Aurora', 'Compact d’Aurora']],
+  ]);
+  assert.equal(report.priorityConflicts[0].summary, 'Agir maintenant: prioriser Compact d’Aurora avant Compact d’Aurora. Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',

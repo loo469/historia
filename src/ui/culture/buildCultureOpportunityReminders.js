@@ -399,6 +399,70 @@ function buildReminder(hint, actionLabel) {
   };
 }
 
+
+function conflictPriorityScore(reminder) {
+  const urgencyScore = reminder.urgency?.level === 'soon' ? 3 : reminder.urgency?.level === 'new' ? 2 : 1;
+  const inactionScore = { closing: 4, degrades: 3, risky: 3, blocked: 2, low: 0 }[reminder.inactionCost?.level] ?? 0;
+  const confidenceScore = reminder.confidenceCue?.level === 'high' ? 2 : reminder.confidenceCue?.level === 'mixed' ? 1 : 0;
+  return urgencyScore + inactionScore + confidenceScore;
+}
+
+function summarizePriorityConflict(left, right) {
+  const sameAction = left.actionLabel === right.actionLabel;
+  const sameWindow = left.urgency?.window === right.urgency?.window;
+  const sameRegion = left.provinceId === right.provinceId;
+  const hasRiskyRipple = [...(left.rippleEffects ?? []), ...(right.rippleEffects ?? [])]
+    .some((effect) => effect.tone === 'risky');
+
+  if (!sameAction && !sameWindow && !sameRegion && !hasRiskyRipple) {
+    return null;
+  }
+
+  const primary = conflictPriorityScore(left) >= conflictPriorityScore(right) ? left : right;
+  const secondary = primary === left ? right : left;
+  const reason = primary.inactionCost?.level !== 'low'
+    ? primary.inactionCost.summary
+    : (primary.rippleEffects?.[0]?.summary ?? primary.reasonCopy);
+  const level = primary.inactionCost?.level === 'closing' || hasRiskyRipple ? 'urgent' : sameAction || sameWindow ? 'shared' : 'watch';
+  const recommendation = level === 'urgent'
+    ? 'Agir maintenant'
+    : sameAction
+      ? 'Combiner si possible'
+      : 'Attendre le signal le plus faible';
+
+  return {
+    conflictId: `${left.reminderId}|${right.reminderId}`,
+    level,
+    label: sameAction ? 'Même action en file' : sameWindow ? 'Même fenêtre culturelle' : hasRiskyRipple ? 'Ripple opposé' : 'Région partagée',
+    primaryReminderId: primary.reminderId,
+    secondaryReminderId: secondary.reminderId,
+    cultures: [primary.cultureName, secondary.cultureName],
+    recommendation,
+    reason,
+    summary: `${recommendation}: prioriser ${primary.cultureName} avant ${secondary.cultureName}. ${reason}`,
+  };
+}
+
+function buildPriorityConflicts(reminders) {
+  const conflicts = [];
+
+  for (let index = 0; index < reminders.length; index += 1) {
+    for (let nextIndex = index + 1; nextIndex < reminders.length; nextIndex += 1) {
+      const conflict = summarizePriorityConflict(reminders[index], reminders[nextIndex]);
+      if (conflict) {
+        conflicts.push(conflict);
+      }
+    }
+  }
+
+  return conflicts
+    .sort((left, right) => {
+      const rank = { urgent: 3, shared: 2, watch: 1 };
+      return rank[right.level] - rank[left.level] || left.label.localeCompare(right.label);
+    })
+    .slice(0, 2);
+}
+
 function dedupeAndSort(reminders) {
   const remindersByKey = new Map();
 
@@ -444,11 +508,13 @@ export function buildCultureOpportunityReminders({
 
   const probableCount = reminders.filter((reminder) => reminder.status === 'probable').length;
   const missingCount = reminders.filter((reminder) => reminder.status === 'missing').length;
+  const priorityConflicts = buildPriorityConflicts(reminders);
 
   return {
     state: 'active',
     provinceLabel,
     summary: `${provinceLabel}: ${probableCount} opportunité${probableCount > 1 ? 's' : ''} probable${probableCount > 1 ? 's' : ''}, ${missingCount} condition${missingCount > 1 ? 's' : ''} à surveiller.`,
     reminders,
+    priorityConflicts,
   };
 }
