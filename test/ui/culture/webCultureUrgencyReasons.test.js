@@ -38,6 +38,10 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /culture-opportunity-resolution/);
   assert.match(webAppSource, /Résumé de résolution culturelle/);
   assert.match(webAppSource, /Urgences non couvertes/);
+  assert.match(webAppSource, /cultureTensionMarkers/);
+  assert.match(webAppSource, /buildPostCommitCultureTensionMarkers/);
+  assert.match(webAppSource, /culture-tension-marker/);
+  assert.match(webAppSource, /Tensions culturelles après résolution/);
   assert.match(webAppSource, /Mettre en file/);
   assert.match(webAppSource, /Aucune action culturelle pertinente/);
   assert.match(webAppSource, /Pas de perte culturelle claire/);
@@ -58,6 +62,8 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(stylesSource, /\.culture-opportunity-queued-action/);
   assert.match(stylesSource, /\.culture-opportunity-resolution/);
   assert.match(stylesSource, /\.culture-opportunity-resolution__uncovered/);
+  assert.match(stylesSource, /\.culture-tension-marker/);
+  assert.match(stylesSource, /\.culture-tension-marker-card--escalated/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-confirmation/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-empty/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__ripple--positive/);
