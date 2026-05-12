@@ -2373,6 +2373,89 @@ function buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) 
     .slice(0, 3);
 }
 
+function buildIntrigueExposureSourceBreakdown(province, drillDown, response, localOperations) {
+  if (!drillDown || !response) {
+    return [
+      {
+        tone: 'masked',
+        label: 'Source masquée',
+        detail: 'Le brouillard empêche d’attribuer la projection à une source précise.',
+      },
+    ];
+  }
+
+  const sources = [];
+  const heatedOperation = localOperations.find((operation) => operation.detectionRisk >= 50 || operation.heat >= 50) ?? null;
+
+  if (drillDown.riskBand === 'high' || drillDown.criticality === 'critical') {
+    sources.push({
+      tone: 'danger',
+      label: 'Suspicion locale',
+      detail: 'Signal visible élevé sur la province; identité et relais restent masqués.',
+    });
+  }
+
+  if (heatedOperation) {
+    sources.push({
+      tone: 'warning',
+      label: 'Opération conflictuelle',
+      detail: 'Une opération visible chauffe déjà le théâtre sans révéler sa cible exacte.',
+    });
+  }
+
+  if ((drillDown.reasons ?? []).some((reason) => reason.includes('exposée'))) {
+    sources.push({
+      tone: 'danger',
+      label: 'Couverture fragile',
+      detail: 'Une exposition est soupçonnée; la cellule ou le canal concerné reste caché.',
+    });
+  }
+
+  if (response.code === 'infiltrer') {
+    sources.push({
+      tone: 'warning',
+      label: 'Tension réseau',
+      detail: 'L’approche ajoute du contact opérationnel avant confirmation complète.',
+    });
+  } else if (response.code === 'exposer') {
+    sources.push({
+      tone: 'danger',
+      label: 'Vigilance cible',
+      detail: 'La réponse rend le signal exploitable publiquement et peut alerter l’adversaire.',
+    });
+  } else if (response.code === 'surveiller') {
+    sources.push({
+      tone: 'watch',
+      label: 'Surveillance discrète',
+      detail: 'Le risque vient surtout du suivi prolongé, pas d’une révélation directe.',
+    });
+  } else if (response.code === 'contenir') {
+    sources.push({
+      tone: 'mitigated',
+      label: 'Pression contenue',
+      detail: 'La réponse réduit la fenêtre d’exposition sans nommer la menace.',
+    });
+  }
+
+  if (province.loyalty < 50) {
+    sources.push({
+      tone: 'warning',
+      label: 'Couverture faible',
+      detail: 'La loyauté locale basse rend les mouvements plus visibles sans identifier d’agent.',
+    });
+  }
+
+  if (sources.length === 0) {
+    sources.push({
+      tone: 'masked',
+      label: 'Information limitée',
+      detail: 'La projection agrège des signaux faibles sans révéler leur origine.',
+    });
+  }
+
+  return sources.slice(0, 3);
+}
+
 function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
   const response = drillDown?.quickResponses?.find((candidate) => candidate.code === drillDown.recommendedResponseCode)
@@ -2391,6 +2474,7 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
       afterLabel: '—',
       deltaLabel: 'stable',
       fogLimit: 'Le brouillard conserve les cellules, relais et objectifs masqués.',
+      sources: buildIntrigueExposureSourceBreakdown(province, drillDown, response, []),
     };
   }
 
@@ -2417,6 +2501,7 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
       : 'brouillard';
   const tone = rawDelta < 0 ? 'mitigated' : afterRisk >= 60 ? 'danger' : afterRisk >= 40 ? 'warning' : 'watch';
   const deltaLabel = rawDelta < 0 ? `${rawDelta}` : `+${rawDelta}`;
+  const sources = buildIntrigueExposureSourceBreakdown(province, drillDown, response, localOperations);
 
   return {
     empty: false,
@@ -2430,6 +2515,7 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
     fogLimit: confidence === 'visible'
       ? 'Basé sur les opérations visibles; les relais non confirmés restent masqués.'
       : 'Projection prudente: source, cellule et objectif exacts restent masqués par le brouillard.',
+    sources,
   };
 }
 
@@ -2447,6 +2533,14 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
         <span>Avant <b>${projection.beforeLabel}</b></span>
         <span>Après <b>${projection.afterLabel}</b></span>
         <span>Tendance <b>${projection.deltaLabel}</b></span>
+      </div>
+      <div class="province-intrigue-detection-projection__sources" aria-label="Sources compactes du risque d’exposition">
+        ${projection.sources.map((source) => `
+          <article class="province-intrigue-detection-source province-intrigue-detection-source--${source.tone}">
+            <strong>${source.label}</strong>
+            <span>${source.detail}</span>
+          </article>
+        `).join('')}
       </div>
       <small>${projection.fogLimit}</small>
     </section>

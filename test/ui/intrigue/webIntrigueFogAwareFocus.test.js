@@ -81,3 +81,19 @@ test('queued province intrigue responses project detection risk without breaking
   assert.match(stylesSource, /province-intrigue-detection-projection--mitigated/);
   assert.match(stylesSource, /province-intrigue-detection-projection--masked/);
 });
+
+test('queued intrigue detection projection explains fog-safe exposure sources', () => {
+  assert.match(webAppSource, /function buildIntrigueExposureSourceBreakdown/);
+  assert.match(webAppSource, /Sources compactes du risque d’exposition/);
+  assert.match(webAppSource, /Suspicion locale/);
+  assert.match(webAppSource, /Opération conflictuelle/);
+  assert.match(webAppSource, /Vigilance cible/);
+  assert.match(webAppSource, /Tension réseau/);
+  assert.match(webAppSource, /Couverture faible/);
+  assert.match(webAppSource, /Signal visible élevé sur la province; identité et relais restent masqués/);
+  assert.match(webAppSource, /la cellule ou le canal concerné reste caché/);
+  assert.match(webAppSource, /sans révéler sa cible exacte/);
+  assert.match(stylesSource, /province-intrigue-detection-projection__sources/);
+  assert.match(stylesSource, /province-intrigue-detection-source--danger/);
+  assert.match(stylesSource, /province-intrigue-detection-source--mitigated/);
+});
