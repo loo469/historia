@@ -5085,6 +5085,86 @@ function renderMapIntrigueExposureSummary(summary) {
   `;
 }
 
+function buildPostCommitIntrigueExposureMarkers(intrigueView = null) {
+  return (intrigueView?.map?.entries ?? [])
+    .map((entry) => {
+      const response = entry.drillDown?.quickResponses?.find((candidate) => candidate.code === entry.drillDown.recommendedResponseCode)
+        ?? entry.drillDown?.quickResponses?.[0]
+        ?? null;
+
+      if (!response) {
+        return null;
+      }
+
+      const fogLimited = !entry.showSecondaryDetails && entry.sabotageRiskLevel !== 'high' && entry.metrics.exposedCellCount === 0;
+      const direction = fogLimited
+        ? 'hidden'
+        : ['contenir', 'exposer'].includes(response.code) && response.escalationProbability !== 'élevée'
+          ? 'lowered'
+          : response.heatGenerated >= 10 || response.escalationProbability === 'élevée'
+            ? 'increased'
+            : 'unchanged';
+      const directionLabels = {
+        lowered: 'Exposition réduite',
+        unchanged: 'Exposition stable',
+        increased: 'Exposition accrue',
+        hidden: 'Résultat fog-limité',
+      };
+      const glyphs = {
+        lowered: '↓',
+        unchanged: '≈',
+        increased: '↑',
+        hidden: '?',
+      };
+      const residualRisk = direction === 'lowered'
+        ? 'risque résiduel contenu; vérifier la synthèse finale avant commit'
+        : direction === 'increased'
+          ? 'risque résiduel élevé; la synthèse finale signale les combinaisons gênantes'
+          : direction === 'unchanged'
+            ? 'risque résiduel stable; la synthèse finale conserve le détail visible'
+            : 'résultat masqué par le brouillard; seule la province reste inspectable';
+
+      return {
+        locationId: entry.locationId,
+        locationName: entry.locationName,
+        center: {
+          x: clampVisualMetric(entry.center.x + 4.4, 5, 95),
+          y: clampVisualMetric(entry.center.y + 5.6, 6, 96),
+        },
+        direction,
+        label: directionLabels[direction],
+        glyph: glyphs[direction],
+        responseLabel: response.label,
+        residualRisk,
+        copy: `${directionLabels[direction]} après résolution · ${residualRisk}. Voir synthèse finale exposition intrigue.`,
+        ariaLabel: `${directionLabels[direction]} en ${entry.locationName}: ${residualRisk}; détails fog-safe liés à la synthèse finale`,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.locationName.localeCompare(right.locationName))
+    .slice(0, 5);
+}
+
+function renderPostCommitIntrigueExposureMarkers(markers) {
+  if (!markers.length) {
+    return '';
+  }
+
+  return `
+    <g class="intrigue-post-commit-marker-layer" aria-label="Marqueurs intrigue post-commit fog-safe">
+      ${markers.map((marker) => `
+        <g class="intrigue-post-commit-marker intrigue-post-commit-marker--${marker.direction}" data-intrigue-location="${marker.locationId}" tabindex="0" aria-label="${marker.ariaLabel}">
+          <title>${marker.copy}</title>
+          <circle class="intrigue-post-commit-marker__backplate" cx="${marker.center.x}%" cy="${marker.center.y}%" r="3.3"></circle>
+          <text class="intrigue-post-commit-marker__glyph" x="${marker.center.x}%" y="${marker.center.y + 1.15}%" text-anchor="middle">${marker.glyph}</text>
+          <text class="intrigue-post-commit-marker__label" x="${marker.center.x + 4.1}%" y="${marker.center.y - 1.15}%" text-anchor="start">${marker.label}</text>
+          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.responseLabel} · ${marker.direction === 'hidden' ? 'fog conservé' : 'voir synthèse finale'}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const cultureContext = getSelectedCultureContext(province.provinceId);
@@ -6658,10 +6738,12 @@ function renderEconomyMapOverlay(economyView) {
 }
 
 function renderIntrigueMapOverlay(intrigueView) {
+  const postCommitMarkers = buildPostCommitIntrigueExposureMarkers(intrigueView);
+
   if (state.activeOverlaySlot !== 'intrigue-overlay') {
     const criticalSignals = intrigueView.map.entries.filter((entry) => entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0);
 
-    if (criticalSignals.length === 0) {
+    if (criticalSignals.length === 0 && postCommitMarkers.length === 0) {
       return '';
     }
 
@@ -6673,6 +6755,7 @@ function renderIntrigueMapOverlay(intrigueView) {
             <text class="intrigue-critical-signal__code" x="${entry.center.x + 3.8}%" y="${entry.center.y - 2.6}%">${entry.threatGlyph.code}</text>
           </g>
         `).join('')}
+        ${renderPostCommitIntrigueExposureMarkers(postCommitMarkers)}
       </svg>
     `;
   }
@@ -6727,6 +6810,7 @@ function renderIntrigueMapOverlay(intrigueView) {
         ${threatGlyphMarkup}
       </g>
       ${hotspotMarkup}
+      ${renderPostCommitIntrigueExposureMarkers(postCommitMarkers)}
     </svg>
   `;
 }
