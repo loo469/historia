@@ -561,6 +561,113 @@ function buildAtlasTerrainShapes(shell) {
   };
 }
 
+function getAtlasMilitaryPressureScore(province) {
+  let score = 0;
+  if (province.contested) score += 80;
+  if (province.occupied) score += 58;
+  if (province.supplyLevel === 'collapsed') score += 26;
+  if (province.supplyLevel === 'disrupted') score += 18;
+  if (province.loyalty < 45) score += 14;
+  score += Math.min(18, Math.max(0, province.strategicValue ?? 0) * 2);
+  return score;
+}
+
+function getAtlasMilitaryRouteTone(route) {
+  if (route.contested) return 'front';
+  if (route.occupied) return 'occupation';
+  return route.pressure >= 74 ? 'risk' : 'watch';
+}
+
+function buildAtlasMilitaryFeatures(shell) {
+  const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
+  const routes = buildProvinceRelations(shell)
+    .map((relation) => {
+      const originProvince = shell.provinces.find((province) => province.provinceId === relation.relationId.split('::')[0]);
+      const destinationProvince = shell.provinces.find((province) => province.provinceId === relation.relationId.split('::')[1]);
+      const originScore = pressureByProvinceId.get(originProvince?.provinceId) ?? 0;
+      const destinationScore = pressureByProvinceId.get(destinationProvince?.provinceId) ?? 0;
+      const pressure = Math.max(originScore, destinationScore) + (relation.contested ? 18 : relation.occupied ? 10 : 0);
+      const source = originScore >= destinationScore ? originProvince : destinationProvince;
+      const target = originScore >= destinationScore ? destinationProvince : originProvince;
+
+      if (!source || !target || pressure < 38) {
+        return null;
+      }
+
+      const controlX = ((relation.origin.x + relation.destination.x) / 2) + (relation.contested ? 1.2 : -0.8);
+      const controlY = ((relation.origin.y + relation.destination.y) / 2) - (relation.occupied ? 2.1 : 1.2);
+
+      return {
+        routeId: relation.relationId,
+        sourceId: source.provinceId,
+        targetId: target.provinceId,
+        sourceLabel: source.label,
+        targetLabel: target.label,
+        origin: getProvinceCenter(source.provinceId),
+        destination: getProvinceCenter(target.provinceId),
+        control: { x: controlX, y: controlY },
+        pressure,
+        contested: relation.contested,
+        occupied: relation.occupied,
+        tone: getAtlasMilitaryRouteTone({ ...relation, pressure }),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.pressure - left.pressure || left.routeId.localeCompare(right.routeId));
+
+  const dominantRoutes = routes.slice(0, 3);
+  const riskZones = shell.provinces
+    .map((province) => ({
+      provinceId: province.provinceId,
+      label: province.label,
+      center: getProvinceCenter(province.provinceId),
+      polygon: getProvincePolygon(province.provinceId),
+      pressure: pressureByProvinceId.get(province.provinceId) ?? 0,
+      tone: province.contested ? 'front' : province.occupied ? 'occupation' : province.supplyLevel === 'collapsed' ? 'risk' : 'watch',
+    }))
+    .filter((zone) => zone.pressure >= 42)
+    .sort((left, right) => right.pressure - left.pressure || left.label.localeCompare(right.label))
+    .slice(0, 3);
+
+  return {
+    routes: dominantRoutes,
+    overflowCount: Math.max(0, routes.length - dominantRoutes.length),
+    riskZones,
+  };
+}
+
+function renderAtlasMilitaryLayer(shell) {
+  const features = buildAtlasMilitaryFeatures(shell);
+
+  if (!features.routes.length && !features.riskZones.length) {
+    return '';
+  }
+
+  return `
+    <g class="atlas-military-layer" aria-label="Axes militaires atlas: routes de campagne, pression directionnelle et risques résiduels">
+      ${features.riskZones.map((zone) => `
+        <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
+          <polygon points="${zone.polygon}"></polygon>
+          <text x="${zone.center.x}%" y="${zone.center.y - 3.5}%" text-anchor="middle">${zone.tone === 'front' ? 'FRONT' : zone.tone === 'occupation' ? 'OCC' : 'RISQUE'}</text>
+        </g>
+      `).join('')}
+      ${features.routes.map((route) => {
+        const path = `M${route.origin.x},${route.origin.y} Q${route.control.x},${route.control.y} ${route.destination.x},${route.destination.y}`;
+        const arrowX = (route.control.x + route.destination.x) / 2;
+        const arrowY = (route.control.y + route.destination.y) / 2;
+        return `
+          <g class="atlas-campaign-route atlas-campaign-route--${route.tone}" data-atlas-campaign-route="${route.routeId}" aria-label="Axe ${route.sourceLabel} vers ${route.targetLabel}: pression ${route.pressure}">
+            <path d="${path}" pathLength="100"></path>
+            <path class="atlas-campaign-route__arrow" d="M${arrowX - 1.15},${arrowY - 0.85} L${arrowX + 1.35},${arrowY} L${arrowX - 1.15},${arrowY + 0.85} Z"></path>
+            <text x="${route.control.x}" y="${route.control.y - 1.6}" text-anchor="middle">${route.contested ? 'Front' : route.occupied ? 'Occupation' : 'Pression'}</text>
+          </g>
+        `;
+      }).join('')}
+      ${features.overflowCount > 0 ? `<text class="atlas-military-overflow" x="82" y="88" text-anchor="middle">+${features.overflowCount} axes agrégés</text>` : ''}
+    </g>
+  `;
+}
+
 function buildAtlasCultureFeatures(cultureView) {
   const entries = cultureView?.overlay ?? [];
   const dominantByRegion = new Map();
@@ -662,6 +769,7 @@ function renderAtlasWorldCanvas(shell, economyView = null, cultureView = null) {
       `).join('')}
       ${renderAtlasWorldEconomyLayer(economyView)}
       ${renderAtlasCultureLayer(cultureView)}
+      ${renderAtlasMilitaryLayer(shell)}
     </svg>
   `;
 }

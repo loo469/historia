@@ -9881,3 +9881,61 @@ button { font: inherit; }
 .atlas-discovery-site--amber path { fill: #fde68a; }
 .atlas-discovery-site--rose path { fill: #fecdd3; }
 .atlas-discovery-site--cyan path { fill: #a5f3fc; }
+.atlas-military-layer {
+  pointer-events: none;
+  opacity: 0.9;
+}
+.atlas-military-risk polygon {
+  fill: rgba(251, 191, 36, 0.08);
+  stroke: rgba(253, 230, 138, 0.26);
+  stroke-width: 0.4;
+  stroke-dasharray: 1.2 1.4;
+}
+.atlas-military-risk--front polygon {
+  fill: rgba(127, 29, 29, 0.18);
+  stroke: rgba(248, 113, 113, 0.48);
+}
+.atlas-military-risk--occupation polygon {
+  fill: rgba(71, 85, 105, 0.18);
+  stroke: rgba(203, 213, 225, 0.42);
+}
+.atlas-military-risk text,
+.atlas-campaign-route text,
+.atlas-military-overflow {
+  fill: #fee2e2;
+  font-size: 1.65px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.88);
+  stroke-width: 0.46;
+}
+.atlas-campaign-route path:first-child {
+  fill: none;
+  stroke: rgba(248, 113, 113, 0.86);
+  stroke-width: 0.74;
+  stroke-linecap: round;
+  stroke-dasharray: 4 2;
+  filter: drop-shadow(0 0 3px rgba(127, 29, 29, 0.58));
+}
+.atlas-campaign-route--occupation path:first-child {
+  stroke: rgba(203, 213, 225, 0.72);
+  stroke-dasharray: 2.6 1.8;
+}
+.atlas-campaign-route--risk path:first-child {
+  stroke: rgba(251, 191, 36, 0.78);
+}
+.atlas-campaign-route--watch path:first-child {
+  stroke: rgba(125, 211, 252, 0.5);
+  stroke-width: 0.52;
+}
+.atlas-campaign-route__arrow {
+  fill: #fecdd3;
+  stroke: rgba(127, 29, 29, 0.88);
+  stroke-width: 0.22;
+}
+.atlas-campaign-route--risk .atlas-campaign-route__arrow { fill: #fde68a; }
+.atlas-campaign-route--watch .atlas-campaign-route__arrow { fill: #bae6fd; }
+.atlas-military-overflow {
+  fill: #fde68a;
+}
