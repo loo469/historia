@@ -16,7 +16,7 @@ test('climate overlay exposes compact severity legend for stacked markers', () =
   assert.match(webAppSource, /'risk-reduced': \{ label: 'Réduit'/);
   assert.match(webAppSource, /map-climate-severity-legend/);
   assert.match(webAppSource, /la sévérité explique les piles sans ouvrir chaque province/);
-  assert.match(webAppSource, /climateSeverityLegend = buildClimateSeverityLegend\(postCommitClimateMarkers, climateMarkerDensity\)/);
+  assert.match(webAppSource, /climateSeverityLegend = buildClimateSeverityLegend\(postCommitClimateMarkers, climateMarkerDensity, shell\)/);
   assert.match(webAppSource, /renderClimateSeverityLegend\(climateSeverityLegend\)/);
 
   assert.match(stylesSource, /\.map-climate-severity-legend/);
