@@ -401,6 +401,7 @@ const state = {
   hoveredRouteId: null,
   selectedRouteId: null,
   queuedLogisticsActions: [],
+  queuedCultureActions: [],
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   mobilePanelSection: 'details',
@@ -943,6 +944,17 @@ function renderCultureOpportunityReminders(report) {
         <small>${report.reminders.length} signal${report.reminders.length > 1 ? 's' : ''}</small>
       </div>
       <p>${report.summary}</p>
+      ${report.queuedCultureAction ? `
+        <div class="culture-opportunity-queued-action" aria-label="Action culturelle en file">
+          <span>Action culturelle en file</span>
+          <strong>${report.queuedCultureAction.label}</strong>
+          <small>${report.queuedCultureAction.effect}</small>
+          <small>Pourquoi: ${report.queuedCultureAction.reason}</small>
+          <button type="button" data-culture-undo-action="${report.queuedCultureAction.undoAction.code}" data-culture-undo-index="${report.queuedCultureAction.queueIndex}" aria-label="${report.queuedCultureAction.undoAction.summary}">
+            ${report.queuedCultureAction.undoAction.label}
+          </button>
+        </div>
+      ` : ''}
       ${(report.priorityConflicts ?? []).length > 0 ? `
         <div class="culture-opportunity-priority-conflicts" aria-label="Conflits de priorité culturelle">
           ${(report.priorityConflicts ?? []).map((conflict) => `
@@ -987,12 +999,22 @@ function renderCultureOpportunityReminders(report) {
                   </ul>
                 ` : '<small>Aucun effet de propagation culturel en file.</small>'}
               </div>
+              ${reminder.queueConfirmation ? `
+                <div class="culture-opportunity-reminder__queue-confirmation" aria-label="Confirmation d’action culturelle en file">
+                  <b>En file</b>
+                  <small>${reminder.queueConfirmation.effect}</small>
+                  <small>Raison: ${reminder.queueConfirmation.reason}</small>
+                  <button type="button" data-culture-undo-action="${reminder.queueConfirmation.undoAction.code}" data-culture-undo-index="${reminder.queueConfirmation.queueIndex}" aria-label="${reminder.queueConfirmation.undoAction.summary}">
+                    ${reminder.queueConfirmation.undoAction.label}
+                  </button>
+                </div>
+              ` : ''}
               ${reminder.queueAction ? `
                 <div class="culture-opportunity-reminder__queue-action" aria-label="Action culturelle à mettre en file">
                   <b>${reminder.queueAction.label}</b>
                   <small>${reminder.queueAction.effect} · ${reminder.queueAction.confidence} (${reminder.queueAction.dissent}) · Horizon ${reminder.queueAction.horizon}</small>
                   <small>Coût d’opportunité: ${reminder.queueAction.opportunityCost}</small>
-                  <button type="button" data-culture-queue-action="${reminder.queueAction.code}" data-culture-queue-region="${reminder.provinceId}" data-culture-queue-summary="${reminder.queueAction.summary}" aria-label="Mettre en file ${reminder.queueAction.label}: ${reminder.queueAction.summary}">
+                  <button type="button" data-culture-queue-action="${reminder.queueAction.code}" data-culture-queue-region="${reminder.provinceId}" data-culture-queue-label="${reminder.queueAction.label}" data-culture-queue-summary="${reminder.queueAction.summary}" aria-label="Mettre en file ${reminder.queueAction.label}: ${reminder.queueAction.summary}">
                     Mettre en file
                   </button>
                 </div>
@@ -2712,6 +2734,9 @@ function buildSelectedProvinceActionQueue(province, shell, focusContext, intrigu
   const queuedClimateActions = state.queuedClimateInterventions
     .filter((entry) => entry.provinceId === province.provinceId)
     .map((entry) => ({ ...entry }));
+  const queuedCultureActions = state.queuedCultureActions
+    .filter((entry) => entry.provinceId === province.provinceId)
+    .map((entry) => ({ ...entry }));
 
   return recommendations
     .map((recommendation, index) => ({
@@ -2728,7 +2753,7 @@ function buildSelectedProvinceActionQueue(province, shell, focusContext, intrigu
       status: statusByTone[recommendation.tone] ?? 'ready',
       tone: recommendation.tone,
     }))
-    .concat(queuedClimateActions)
+    .concat(queuedClimateActions, queuedCultureActions)
     .sort((left, right) => left.priority - right.priority || left.actionCode.localeCompare(right.actionCode));
 }
 
@@ -6952,6 +6977,7 @@ function advanceTurn() {
     'Le froid coupe certains flux, les provinces exposées repassent en posture défensive.',
   ];
 
+  state.queuedCultureActions = [];
   state.lastTurnSummary = summaries[(state.turn - 2) % summaries.length];
 }
 
@@ -7423,6 +7449,49 @@ function render() {
       state.focusedProvinceId = provinceId;
       state.activeOverlaySlot = 'climate-overlay';
       state.lastTurnSummary = `Intervention climat planifiée: ${actionCode} sur ${province.label}. Vérifiez deadline, tradeoff et risque résiduel avant validation du tour.`;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-culture-queue-action]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.cultureQueueRegion;
+      const actionCode = element.dataset.cultureQueueAction;
+      const shell = getShell();
+      const province = shell.provinces.find((candidate) => candidate.provinceId === provinceId);
+      if (!province || !actionCode || state.queuedCultureActions.some((entry) => entry.actionCode === actionCode)) {
+        return;
+      }
+
+      state.queuedCultureActions = state.queuedCultureActions.concat({
+        actionCode,
+        label: element.dataset.cultureQueueLabel ?? 'Action culturelle',
+        provinceId,
+        priority: 2,
+        orderCost: '1 ordre culturel',
+        mainRisk: element.dataset.cultureQueueSummary ?? 'Effet culturel à confirmer.',
+        expectedResult: element.dataset.cultureQueueSummary ?? 'Stabilité culturelle préparée avant résolution.',
+        status: 'ready',
+        tone: 'ready',
+      });
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.activeOverlaySlot = 'culture-overlay';
+      state.mobilePanelSection = 'details';
+      state.lastTurnSummary = `Action culturelle planifiée: ${element.dataset.cultureQueueLabel ?? actionCode} sur ${province.label}. Vous pouvez la retirer avant validation du tour.`;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-culture-undo-action]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const actionCode = String(element.dataset.cultureUndoAction ?? '').replace(/^undo:/, '');
+      if (!actionCode) {
+        return;
+      }
+
+      state.queuedCultureActions = state.queuedCultureActions.filter((entry) => entry.actionCode !== actionCode);
+      state.lastTurnSummary = 'Action culturelle retirée de la file avant résolution du tour.';
       render();
     });
   });
