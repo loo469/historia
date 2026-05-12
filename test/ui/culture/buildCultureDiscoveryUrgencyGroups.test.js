@@ -62,6 +62,9 @@ test('buildCultureDiscoveryUrgencyGroups orders urgent and active culture signal
   assert.equal(priorities.priorities[0].action, 'Suivre le repère maintenant');
   assert.match(priorities.priorities[0].effect, /Ouverture des archives/);
   assert.match(priorities.priorities[0].waitRisk, /signal prioritaire/);
+  assert.equal(priorities.priorities[0].blocker, null);
+  assert.equal(priorities.priorities[0].followUp.label, 'débloque ensuite');
+  assert.equal(priorities.priorities[0].followUp.action, 'catalogues-publics');
   assert.match(priorities.summary, /interventions? culturelle/);
 });
 
@@ -109,6 +112,9 @@ test('buildCultureDiscoveryUrgencyGroups names ambiguous empty states without du
   assert.equal(priorities.priorities.length, 1);
   assert.equal(priorities.priorities[0].action, 'Stabiliser la découverte');
   assert.match(priorities.priorities[0].waitRisk, /tension locale/);
+  assert.equal(priorities.priorities[0].blocker.label, 'bloqué par');
+  assert.equal(priorities.priorities[0].blocker.shortReason, 'tension locale');
+  assert.equal(priorities.priorities[0].followUp.label, 'débloque ensuite');
 });
 
 test('buildCultureInterventionPriorities flags local priority conflicts', () => {
@@ -145,6 +151,8 @@ test('buildCultureInterventionPriorities flags local priority conflicts', () => 
   });
 
   assert.equal(priorities.priorities[0].conflict, true);
+  assert.equal(priorities.priorities[0].blocker.label, 'bloqué par');
+  assert.equal(priorities.priorities[0].blocker.shortReason, 'Ligues des Forges');
   assert.equal(priorities.conflicts[0].label, 'Même province');
   assert.match(priorities.conflicts[0].summary, /concurrence/);
 });

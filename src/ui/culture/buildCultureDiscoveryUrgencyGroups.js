@@ -177,10 +177,67 @@ function buildInterventionDependency(item, items) {
   return item.group === 'background' ? 'Aucune dépendance prioritaire' : 'Dépendance non bloquante';
 }
 
+function buildInterventionBlocker(item, dependency, conflict) {
+  if (conflict) {
+    return {
+      state: 'blocked',
+      label: 'bloqué par',
+      reason: dependency,
+      shortReason: dependency.replace('Conflit local avec ', ''),
+    };
+  }
+
+  if (item.cause === 'Tension locale') {
+    return {
+      state: 'blocked',
+      label: 'bloqué par',
+      reason: 'condition culturelle locale instable',
+      shortReason: 'tension locale',
+    };
+  }
+
+  if (dependency.startsWith('Dépend aussi de ')) {
+    return {
+      state: 'waiting',
+      label: 'bloqué par',
+      reason: dependency,
+      shortReason: dependency.replace('Dépend aussi de ', ''),
+    };
+  }
+
+  return null;
+}
+
+function buildInterventionFollowUp(item, items) {
+  const nextInCulture = items.find((candidate) => candidate.itemId !== item.itemId
+    && candidate.cultureName === item.cultureName
+    && candidate.group !== 'urgent');
+
+  if (nextInCulture) {
+    return {
+      label: 'débloque ensuite',
+      action: nextInCulture.shortLabel,
+      reason: `${nextInCulture.cause} en ${nextInCulture.regionId || item.regionId}`,
+    };
+  }
+
+  if (item.group === 'urgent') {
+    return {
+      label: 'débloque ensuite',
+      action: 'priorités actives',
+      reason: 'une fois le signal urgent stabilisé',
+    };
+  }
+
+  return null;
+}
+
 function buildInterventionPriority(item, items, index) {
   const dependency = buildInterventionDependency(item, items);
   const conflict = dependency.startsWith('Conflit local');
   const action = buildInterventionAction(item);
+  const blocker = buildInterventionBlocker(item, dependency, conflict);
+  const followUp = buildInterventionFollowUp(item, items);
 
   return {
     priorityId: `culture-intervention:${item.itemId}`,
@@ -192,6 +249,8 @@ function buildInterventionPriority(item, items, index) {
     waitRisk: buildInterventionRisk(item),
     dependency,
     conflict,
+    blocker,
+    followUp,
     cultureName: item.cultureName,
     regionId: item.regionId,
     sourceLabel: item.shortLabel,
