@@ -139,6 +139,25 @@ button { font: inherit; }
 .map-climate-preparedness__item--risky { border-left-color: rgba(250, 204, 21, 0.78); }
 .map-climate-preparedness__item--delayed { border-left-color: rgba(56, 189, 248, 0.72); }
 .map-climate-preparedness__item--safe { border-left-color: rgba(74, 222, 128, 0.72); }
+
+.map-climate-preparedness__item button {
+  justify-self: start;
+  margin-top: 4px;
+  border: 1px solid rgba(103, 232, 249, 0.24);
+  background: rgba(8, 47, 73, 0.44);
+  color: #cffafe;
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.map-climate-preparedness__item button:hover,
+.map-climate-preparedness__item button:focus-visible {
+  border-color: rgba(165, 243, 252, 0.72);
+  background: rgba(14, 116, 144, 0.42);
+}
+
 .map-climate-preparedness__item span,
 .map-climate-preparedness__item small {
   color: var(--muted);
