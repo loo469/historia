@@ -423,6 +423,7 @@ const state = {
     sabotage: true,
   },
   acceptedRecommendedMilitaryAction: null,
+  lastMilitaryOutcomeMarkers: [],
 };
 
 function getSelectedMapScenario() {
@@ -654,6 +655,91 @@ function getProvinceShape(provinceId) {
   return getProvinceGeometry(provinceId).shape ?? `polygon(${getProvincePolygon(provinceId).split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
 }
 
+function getMilitaryOutcomeMarkerForProvince(provinceId) {
+  return state.lastMilitaryOutcomeMarkers.find((marker) => marker.provinceId === provinceId) ?? null;
+}
+
+function buildPostCommitMilitaryOutcomeMarker(province, shell, intrigueView = null) {
+  const queuedAction = state.acceptedRecommendedMilitaryAction;
+
+  if (!queuedAction || !province || queuedAction.provinceId !== province.provinceId) {
+    return null;
+  }
+
+  const focusContext = {
+    focusedProvinceId: province.provinceId,
+    focusedProvince: province,
+    neighborIds: new Set(province.neighborIds),
+  };
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const action = actionQueue.find((entry) => entry.actionCode === queuedAction.actionCode) ?? actionQueue[0] ?? null;
+  const outcome = buildConflictOutcomePreview(province, shell);
+  const projection = buildProjectedFrontStability(province, shell, actionQueue);
+  const risks = buildCriticalFrontRiskWarnings(province, projection);
+  const tone = action?.status === 'blocked'
+    ? 'blocked'
+    : outcome.tone === 'success'
+      ? 'stabilized'
+      : outcome.tone === 'danger'
+        ? 'worsened'
+        : risks.length > 0 || action?.status === 'risky'
+          ? 'risk'
+          : 'stabilized';
+  const labels = {
+    stabilized: 'Front stabilisé',
+    worsened: 'Front aggravé',
+    blocked: 'Action bloquée',
+    risk: 'Risque de suivi',
+  };
+  const summaryItem = `${action?.label ?? queuedAction.actionCode}: ${outcome.title.toLowerCase()}`;
+  const why = risks[0]?.detail ?? action?.mainRisk ?? projection.summary;
+
+  return {
+    provinceId: province.provinceId,
+    provinceLabel: province.label,
+    actionCode: queuedAction.actionCode,
+    tone,
+    label: labels[tone],
+    summaryItem,
+    changed: `${labels[tone]} après résolution: ${action?.expectedResult ?? projection.summary}`,
+    why: `Référence rapport militaire: ${summaryItem}. ${why}`,
+    turn: state.turn + 1,
+  };
+}
+
+function renderPostCommitMilitaryOutcomeMarker(marker) {
+  if (!marker) {
+    return '';
+  }
+
+  return `
+    <span class="province-node__military-outcome province-node__military-outcome--${marker.tone}" aria-label="Issue militaire dernier tour: ${marker.label}">
+      <b>${marker.label}</b>
+      <small>${marker.actionCode}</small>
+    </span>
+  `;
+}
+
+function renderSelectedProvinceMilitaryOutcomeMarker(province) {
+  const marker = getMilitaryOutcomeMarkerForProvince(province.provinceId);
+
+  if (!marker) {
+    return '';
+  }
+
+  return `
+    <section class="post-commit-military-outcome post-commit-military-outcome--${marker.tone}" aria-label="Marqueur d’issue militaire post-commit">
+      <div>
+        <span>Issue militaire dernier tour</span>
+        <strong>${marker.label}</strong>
+        <code>${marker.actionCode}</code>
+      </div>
+      <p>${marker.changed}</p>
+      <small>${marker.why}</small>
+    </section>
+  `;
+}
+
 function renderProvinceSurface(shell, focusContext) {
   return `
     <svg class="province-surface-layer" viewBox="0 0 100 100" aria-label="Surface continue des provinces">
@@ -663,10 +749,12 @@ function renderProvinceSurface(shell, focusContext) {
         const isFocused = province.selectionState.focused;
         const isHovered = province.selectionState.hovered;
         const readinessTone = state.readinessFocusProvinceId === province.provinceId ? state.readinessFocusTone : null;
+        const militaryOutcomeMarker = getMilitaryOutcomeMarkerForProvince(province.provinceId);
         const isReadinessHighlight = Boolean(readinessTone);
-        const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
+        const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
+        const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
         return `
-          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isHovered ? 'is-hovered' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isReadinessHighlight ? 'is-readiness-highlight' : ''} ${readinessTone ? `is-readiness-${readinessTone}` : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
+          <g class="province-surface ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isHovered ? 'is-hovered' : ''} ${isNeighbor ? 'is-neighbor' : ''} ${isReadinessHighlight ? 'is-readiness-highlight' : ''} ${isMilitaryOutcomeHighlight ? 'has-military-outcome' : ''} ${militaryOutcomeMarker ? `has-military-outcome--${militaryOutcomeMarker.tone}` : ''} ${readinessTone ? `is-readiness-${readinessTone}` : ''} ${isMuted ? 'is-muted' : ''} ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--province-fill:${province.style.fill};--province-border:${province.style.border};">
             <polygon class="province-surface__glow" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
             <polygon class="province-surface__core" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
             <polygon class="province-surface__hairline" points="${province.geometry.polygon ?? getProvincePolygon(province.provinceId)}"></polygon>
@@ -686,12 +774,14 @@ function renderProvinceCard(province, focusContext) {
   const isHovered = province.selectionState.hovered;
   const readinessTone = state.readinessFocusProvinceId === province.provinceId ? state.readinessFocusTone : null;
   const economyBlocker = state.economyReadinessFocus?.provinceId === province.provinceId ? state.economyReadinessFocus : null;
+  const militaryOutcomeMarker = getMilitaryOutcomeMarkerForProvince(province.provinceId);
   const isReadinessHighlight = Boolean(readinessTone);
-  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
+  const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
+  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
   const readinessLabel = readinessTone === 'danger' ? 'menace immédiate' : readinessTone === 'warning' ? 'préparation insuffisante' : readinessTone === 'ready' ? 'opportunité tactique' : null;
   const economyBlockerLabel = economyBlocker ? `${economyBlocker.blocker}: ${economyBlocker.summary}` : null;
-  const selectionSignal = economyBlocker ? 'BLOCAGE' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
+  const selectionSignal = economyBlocker ? 'BLOCAGE' : isMilitaryOutcomeHighlight ? 'RÉSOLU' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
@@ -701,6 +791,8 @@ function renderProvinceCard(province, focusContext) {
     isReadinessHighlight ? 'is-readiness-highlight' : '',
     economyBlocker ? 'has-economy-blocker' : '',
     economyBlocker ? `has-economy-blocker--${economyBlocker.tone}` : '',
+    isMilitaryOutcomeHighlight ? 'has-military-outcome' : '',
+    militaryOutcomeMarker ? `has-military-outcome--${militaryOutcomeMarker.tone}` : '',
     readinessTone ? `is-readiness-${readinessTone}` : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
@@ -715,7 +807,8 @@ function renderProvinceCard(province, focusContext) {
       data-tactical-state="${readinessLabel ?? tacticalState}"
       data-readiness-highlight="${readinessTone ?? ''}"
       data-economy-blocker="${economyBlockerLabel ?? ''}"
-      title="${economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : province.label}"
+      data-military-outcome="${militaryOutcomeMarker?.label ?? ''}"
+      title="${economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
       aria-label="${province.label}, ${economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
@@ -727,6 +820,7 @@ function renderProvinceCard(province, focusContext) {
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
       ${economyBlocker ? `<span class="province-node__economy-blocker"><b>${economyBlocker.blocker}</b>${economyBlocker.summary}<small>${economyBlocker.effect}</small></span>` : ''}
       <span class="province-node__badges">${badges}</span>
+      ${renderPostCommitMilitaryOutcomeMarker(militaryOutcomeMarker)}
       ${isNeighbor ? '<span class="province-node__link">Voisine directe</span>' : ''}
     </button>
   `;
@@ -4943,6 +5037,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderMilitaryResponseOptions(province, shell, focusContext, intrigueView)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
+      ${renderSelectedProvinceMilitaryOutcomeMarker(province)}
       ${renderProjectedFrontStability(province, shell, focusContext, intrigueView)}
       ${renderCriticalFrontRiskWarnings(province, shell, focusContext, intrigueView)}
       ${renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView)}
@@ -7405,6 +7500,15 @@ function renderMapArchitecturePanel() {
 }
 
 function advanceTurn() {
+  const shell = getShell();
+  const militaryOutcomeMarker = state.acceptedRecommendedMilitaryAction
+    ? buildPostCommitMilitaryOutcomeMarker(
+      shell.provinces.find((province) => province.provinceId === state.acceptedRecommendedMilitaryAction.provinceId),
+      shell,
+      getIntrigueViewModel(),
+    )
+    : null;
+
   state.turn += 1;
   state.seasonIndex = (state.seasonIndex + 1) % seasonLabels.length;
 
@@ -7417,6 +7521,7 @@ function advanceTurn() {
 
   state.queuedCultureActions = [];
   state.lastTurnSummary = summaries[(state.turn - 2) % summaries.length];
+  state.lastMilitaryOutcomeMarkers = militaryOutcomeMarker ? [militaryOutcomeMarker] : [];
   state.acceptedRecommendedMilitaryAction = null;
 }
 

@@ -1328,6 +1328,20 @@ button { font: inherit; }
 .province-surface.is-readiness-warning .province-surface__glow { stroke: rgba(251, 191, 36, 0.9); }
 .province-surface.is-readiness-ready .province-surface__core,
 .province-surface.is-readiness-ready .province-surface__glow { stroke: rgba(74, 222, 128, 0.84); }
+
+.province-surface.has-military-outcome .province-surface__core,
+.province-surface.has-military-outcome .province-surface__glow {
+  stroke-width: 0.58;
+  filter: drop-shadow(0 0 10px rgba(125, 211, 252, 0.32));
+}
+.province-surface.has-military-outcome--stabilized .province-surface__core,
+.province-surface.has-military-outcome--stabilized .province-surface__glow { stroke: rgba(74, 222, 128, 0.92); }
+.province-surface.has-military-outcome--worsened .province-surface__core,
+.province-surface.has-military-outcome--worsened .province-surface__glow { stroke: rgba(251, 113, 133, 0.96); }
+.province-surface.has-military-outcome--blocked .province-surface__core,
+.province-surface.has-military-outcome--blocked .province-surface__glow { stroke: rgba(148, 163, 184, 0.88); stroke-dasharray: 1.6 1.2; }
+.province-surface.has-military-outcome--risk .province-surface__core,
+.province-surface.has-military-outcome--risk .province-surface__glow { stroke: rgba(251, 191, 36, 0.95); }
 .map-label-layer {
   position: absolute;
   inset: 0;
@@ -2069,6 +2083,41 @@ button { font: inherit; }
 .province-node.is-readiness-danger::after { border-color: rgba(251, 113, 133, 0.52); color: #fecdd3; }
 .province-node.is-readiness-warning::after { border-color: rgba(251, 191, 36, 0.52); color: #fde68a; }
 .province-node.is-readiness-ready::after { border-color: rgba(74, 222, 128, 0.48); color: #bbf7d0; }
+
+.province-node.has-military-outcome {
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.24), 0 16px 34px rgba(2, 6, 23, 0.32);
+}
+.province-node.has-military-outcome::before { border-color: rgba(125, 211, 252, 0.62); }
+.province-node.has-military-outcome--stabilized::before { border-color: rgba(74, 222, 128, 0.78); }
+.province-node.has-military-outcome--worsened::before { border-color: rgba(251, 113, 133, 0.84); }
+.province-node.has-military-outcome--blocked::before { border-color: rgba(148, 163, 184, 0.72); }
+.province-node.has-military-outcome--risk::before { border-color: rgba(251, 191, 36, 0.8); }
+.province-node__military-outcome {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.68);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  color: #e0f2fe;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.province-node__military-outcome small {
+  color: var(--muted);
+  font-size: 9px;
+}
+.province-node__military-outcome--stabilized { border-color: rgba(74, 222, 128, 0.44); color: #bbf7d0; }
+.province-node__military-outcome--worsened { border-color: rgba(251, 113, 133, 0.5); color: #fecdd3; }
+.province-node__military-outcome--blocked { border-color: rgba(148, 163, 184, 0.44); color: #e2e8f0; }
+.province-node__military-outcome--risk { border-color: rgba(251, 191, 36, 0.48); color: #fde68a; }
 .province-node.is-neighbor {
   z-index: 5;
   filter: saturate(1.06);
@@ -3492,6 +3541,43 @@ button { font: inherit; }
 .resolved-conflict-delta--warning { border-color: rgba(251, 191, 36, 0.32); }
 .resolved-conflict-delta--danger { border-color: rgba(251, 113, 133, 0.38); }
 .resolved-conflict-delta--neutral { border-color: rgba(148, 163, 184, 0.18); }
+
+.post-commit-military-outcome {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+.post-commit-military-outcome div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.post-commit-military-outcome span,
+.post-commit-military-outcome code,
+.post-commit-military-outcome small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.post-commit-military-outcome span {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.post-commit-military-outcome strong { color: #f8fafc; }
+.post-commit-military-outcome p {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.post-commit-military-outcome--stabilized { border-color: rgba(74, 222, 128, 0.34); }
+.post-commit-military-outcome--worsened { border-color: rgba(251, 113, 133, 0.4); }
+.post-commit-military-outcome--blocked { border-color: rgba(148, 163, 184, 0.32); }
+.post-commit-military-outcome--risk { border-color: rgba(251, 191, 36, 0.38); }
 .resolved-conflict-deltas.is-empty { border-style: dashed; }
 .context-summary {
   margin-top: 14px;
