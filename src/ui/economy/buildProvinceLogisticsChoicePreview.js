@@ -164,6 +164,46 @@ function getNeighborEffect(choiceId, route, localCity, neighbor, mainResource) {
   };
 }
 
+
+function buildRecoveryTimeline(choice, route, localCity, mainResource) {
+  const firstBottleneck = choice.neighborEffects.find((effect) => effect.tone !== 'low') ?? choice.neighborEffects[0] ?? null;
+  const nextTurnLabel = choice.choiceId === 'repair'
+    ? (!route.active ? 'route rouverte' : 'fragilité réduite')
+    : choice.choiceId === 'reroute'
+      ? 'flux redistribué'
+      : choice.choiceId === 'stockpile'
+        ? 'tampon consommé'
+        : 'priorité appliquée';
+  const remainingRisk = choice.choiceId === 'repair'
+    ? Math.max(5, route.riskLevel - (!route.active ? 24 : 16))
+    : choice.choiceId === 'reroute'
+      ? Math.max(5, route.riskLevel - 10)
+      : choice.choiceId === 'stockpile'
+        ? Math.max(5, route.riskLevel - 6)
+        : Math.max(5, route.riskLevel - 8);
+  const riskTone = remainingRisk >= 55 || firstBottleneck?.tone === 'medium' ? 'medium' : 'low';
+
+  return [
+    {
+      step: 'Effet immédiat',
+      tone: choice.tone,
+      detail: `${choice.label}: ${choice.benefit}`,
+    },
+    {
+      step: 'Prochain tour',
+      tone: firstBottleneck?.tone ?? 'low',
+      detail: firstBottleneck
+        ? `${nextTurnLabel}; ${firstBottleneck.label} sur ${firstBottleneck.route} près de ${firstBottleneck.target}.`
+        : `${nextTurnLabel}; aucune route voisine critique détectée.`,
+    },
+    {
+      step: 'Risque restant',
+      tone: riskTone,
+      detail: `Risque estimé ${remainingRisk} sur ${route.routeName}; ${firstBottleneck ? `${firstBottleneck.route} reste le goulot à surveiller.` : `${localCity.cityName} garde ${mainResource.label} sous veille.`}`,
+    },
+  ];
+}
+
 function buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause, neighborContexts = []) {
   const choices = [
     {
@@ -211,12 +251,17 @@ function buildRecoveryChoices(route, localCity, localTension, mainResource, rout
   const rankedChoices = choices.sort((left, right) => right.score - left.score || left.label.localeCompare(right.label));
   const topChoice = rankedChoices[0];
 
-  return rankedChoices.map((choice, index) => ({
-    ...choice,
-    recommended: index === 0,
-    comparison: index === 0 ? 'meilleur levier immédiat' : `moins urgent: ${topChoice.blocker} prioritaire`,
-    neighborEffects: neighborContexts.map((neighbor) => getNeighborEffect(choice.choiceId, route, localCity, neighbor, mainResource)),
-  }));
+  return rankedChoices.map((choice, index) => {
+    const neighborEffects = neighborContexts.map((neighbor) => getNeighborEffect(choice.choiceId, route, localCity, neighbor, mainResource));
+
+    return {
+      ...choice,
+      recommended: index === 0,
+      comparison: index === 0 ? 'meilleur levier immédiat' : `moins urgent: ${topChoice.blocker} prioritaire`,
+      neighborEffects,
+      timeline: buildRecoveryTimeline({ ...choice, neighborEffects }, route, localCity, mainResource),
+    };
+  });
 }
 
 function buildChoiceForRoute(route, localCity, localTension, resourceLabelById, context = {}) {
@@ -275,7 +320,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const resourceLabelById = requireObject(normalizedOptions.resourceLabelById ?? {}, 'ProvinceLogisticsChoicePreview resourceLabelById');
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -304,6 +349,8 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   if (routeChoices.length === 0) {
     return {
       recommendedOptionId: null,
+      timelineStatus: 'empty',
+      timelineSummary: 'Aucune action route/logistique en file: timeline vide.',
       status: 'stable',
       summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
       options: [],
@@ -316,6 +363,10 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   return {
     recommendedOptionId: recommended.optionId,
     recoveryChoiceCount: recommended.recoveryChoices.length,
+    timelineStatus: hasBlocker ? 'queued' : 'empty',
+    timelineSummary: hasBlocker
+      ? `${recommended.recoveryChoices[0].label}: amélioration visible au prochain tour, risque restant ${recommended.recoveryChoices[0].timeline[2].detail}`
+      : 'Aucune action route/logistique en file: timeline vide.',
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
       ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause} ${recommended.recoveryChoices[0].label} est prioritaire car ${recommended.recoveryChoices[0].benefit}`

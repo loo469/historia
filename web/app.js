@@ -1191,6 +1191,10 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
         <b>Cause locale</b>
         <span>${preview.options[0]?.cause ?? 'logistique stable'}</span>
       </div>
+      <div class="province-logistics-timeline-summary province-logistics-timeline-summary--${preview.timelineStatus ?? 'empty'}">
+        <b>Timeline récupération</b>
+        <span>${preview.timelineSummary ?? 'Aucune action route/logistique en file.'}</span>
+      </div>
       ${preview.options.length > 0 ? `
         <div class="province-logistics-choice-list">
           ${preview.options.map((option) => `
@@ -1210,6 +1214,16 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   </div>
                   <p>${choice.benefit}</p>
                   <small>Contrainte: ${choice.blocker} · ${choice.rationale}</small>
+                  ${choice.timeline.length > 0 ? `
+                    <ol class="province-logistics-recovery-timeline" aria-label="Timeline de récupération logistique">
+                      ${choice.timeline.map((step) => `
+                        <li class="province-logistics-recovery-timeline__step province-logistics-recovery-timeline__step--${step.tone}">
+                          <b>${step.step}</b>
+                          <span>${step.detail}</span>
+                        </li>
+                      `).join('')}
+                    </ol>
+                  ` : ''}
                   ${choice.neighborEffects.length > 0 ? `
                     <ul class="province-logistics-neighbor-effects" aria-label="Effets voisins attendus">
                       ${choice.neighborEffects.map((effect) => `
