@@ -3834,6 +3834,59 @@ function buildClimateSeverityLegend(markers = [], densityControl = null, shell =
   };
 }
 
+function buildClimateFollowUpDebtSummary(markers = [], mitigationSequence = []) {
+  if (markers.length === 0) {
+    return {
+      state: 'empty',
+      successfulCount: 0,
+      partialCount: 0,
+      debtCount: 0,
+      benefits: [],
+      debts: [],
+      summary: 'Aucune dette climat post-résolution à suivre pour le moment.',
+    };
+  }
+
+  const successfulCount = markers.filter((marker) => marker.status === 'risk-reduced').length;
+  const partialMarkers = markers.filter((marker) => marker.status === 'hazard-delayed');
+  const debtMarkers = markers.filter((marker) => marker.status === 'hazard-unresolved' || marker.status === 'cascade-active');
+  const benefits = mitigationSequence
+    .flatMap((step) => step.secondaryBenefits ?? [])
+    .filter((benefit, index, all) => all.indexOf(benefit) === index)
+    .slice(0, 2);
+  const debts = debtMarkers
+    .map((marker) => `${marker.provinceLabel}: ${marker.summary}`)
+    .slice(0, 2);
+
+  return {
+    state: debtMarkers.length > 0 ? 'debt' : partialMarkers.length > 0 ? 'partial' : 'resolved',
+    successfulCount,
+    partialCount: partialMarkers.length,
+    debtCount: debtMarkers.length,
+    benefits,
+    debts,
+    summary: `${successfulCount} mitigation${successfulCount > 1 ? 's' : ''} réussie${successfulCount > 1 ? 's' : ''}, ${partialMarkers.length} partielle${partialMarkers.length > 1 ? 's' : ''}, ${debtMarkers.length} dette${debtMarkers.length > 1 ? 's' : ''} de suivi après résolution.`,
+  };
+}
+
+function renderClimateFollowUpDebtSummary(summary) {
+  if (summary.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-climate-follow-up-debt map-climate-follow-up-debt--${summary.state}" aria-label="Résumé des dettes de suivi climatique après résolution">
+      <div>
+        <strong>Dette climat après résolution</strong>
+        <span>${summary.successfulCount} réussie${summary.successfulCount > 1 ? 's' : ''} · ${summary.partialCount} partielle${summary.partialCount > 1 ? 's' : ''} · ${summary.debtCount} ouverte${summary.debtCount > 1 ? 's' : ''}</span>
+      </div>
+      <p>${summary.summary}</p>
+      <small><b>Bénéfices obtenus</b> · ${summary.benefits.length > 0 ? summary.benefits.join(' · ') : 'Aucun bénéfice cross-domain confirmé.'}</small>
+      <small><b>Conséquences ouvertes</b> · ${summary.debts.length > 0 ? summary.debts.join(' · ') : 'Aucune conséquence critique ouverte; vérifier les mitigations partielles au prochain tour.'}</small>
+    </section>
+  `;
+}
+
 function renderClimateSeverityLegend(legend) {
   if (!legend.active || legend.entries.length === 0) {
     return '';
@@ -10049,6 +10102,7 @@ function render() {
     selectedProvinceId: state.selectedProvinceId,
   });
   const climateSeverityLegend = buildClimateSeverityLegend(postCommitClimateMarkers, climateMarkerDensity, shell);
+  const climateFollowUpDebt = buildClimateFollowUpDebtSummary(postCommitClimateMarkers, climateSeverityLegend.mitigationSequence ?? []);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -10077,6 +10131,7 @@ function render() {
           ${renderCumulativeClimateImpactSummary(cumulativeClimateImpact)}
           ${renderClimateMarkerDensityRollup(climateMarkerDensity)}
           ${renderSelectedClimateCascadeGroup(climateMarkerDensity.selectedCascadeGroup)}
+          ${renderClimateFollowUpDebtSummary(climateFollowUpDebt)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
