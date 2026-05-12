@@ -2182,6 +2182,70 @@ function renderConflictReadinessWarnings(shell, intrigueView = null) {
 }
 
 
+function buildSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView = null) {
+  const warnings = buildConflictReadinessWarnings(shell, intrigueView);
+  const directWarning = warnings.find((warning) => warning.provinceId === province.provinceId) ?? null;
+  const neighborWarning = warnings.find((warning) => province.neighborIds.includes(warning.provinceId)) ?? null;
+  const warning = directWarning ?? neighborWarning;
+
+  if (!warning) {
+    return null;
+  }
+
+  const targetProvince = shell.provinces.find((candidate) => candidate.provinceId === warning.provinceId) ?? province;
+  const relation = directWarning ? 'focus conflit sélectionné' : `voisine du focus conflit ${targetProvince.label}`;
+  const actionQueue = buildSelectedProvinceActionQueue(directWarning ? province : targetProvince, shell, {
+    focusedProvinceId: targetProvince.provinceId,
+    focusedProvince: targetProvince,
+    selectedProvince: province,
+    neighborIds: new Set(targetProvince.neighborIds),
+  }, intrigueView);
+  const nextAction = actionQueue[0] ?? null;
+
+  return {
+    tone: warning.tone,
+    priority: warning.priorityLabel,
+    reason: warning.detail,
+    relation,
+    provinceLabel: province.label,
+    targetLabel: warning.focusTargetLabel,
+    frontLabel: targetProvince.contested ? `Front contesté ${targetProvince.label}` : `Front ${targetProvince.label}`,
+    actionCode: nextAction?.actionCode ?? warning.actionCode,
+    suggestedAction: directWarning
+      ? nextAction?.label ?? warning.actionLabel
+      : `Appuyer ${targetProvince.label}: ${nextAction?.label ?? warning.actionLabel}`,
+  };
+}
+
+function renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView = null) {
+  const nextAction = buildSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView);
+
+  if (!nextAction) {
+    return '';
+  }
+
+  return `
+    <section class="province-conflict-next-action province-conflict-next-action--${nextAction.tone}" aria-label="Prochaine action conflit">
+      <div class="province-conflict-next-action__header">
+        <div>
+          <span>Prochaine action conflit</span>
+          <strong>${nextAction.priority}</strong>
+        </div>
+        <code>${nextAction.actionCode}</code>
+      </div>
+      <dl class="province-conflict-next-action__facts">
+        <div><dt>Province</dt><dd>${nextAction.provinceLabel}</dd></div>
+        <div><dt>Front concerné</dt><dd>${nextAction.frontLabel}</dd></div>
+        <div><dt>Cible</dt><dd>${nextAction.targetLabel}</dd></div>
+        <div><dt>Relation</dt><dd>${nextAction.relation}</dd></div>
+      </dl>
+      <p>${nextAction.reason}</p>
+      <strong class="province-conflict-next-action__suggestion">${nextAction.suggestedAction}</strong>
+    </section>
+  `;
+}
+
+
 
 function buildIntrigueExposureFocusTarget(province, drillDown, leadWarning, response, mitigated) {
   if (mitigated && drillDown) {
@@ -2408,6 +2472,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       </div>
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
+      ${renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
       ${renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView)}
