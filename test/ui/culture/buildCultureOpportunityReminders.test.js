@@ -91,6 +91,13 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
     [],
   ]);
   assert.equal(report.reminders[0].rippleCopy, 'Province river-gate: Ouverture des archives stabilise l’opportunité culturelle locale. | Timeline locale: Repère narratif maintenu dans la timeline locale.');
+  assert.deepEqual(report.reminders.map((reminder) => [reminder.confidenceCue.level, reminder.confidenceCue.label, reminder.confidenceCue.dissent]), [
+    ['high', 'Confiance haute', 'Aucune dissidence majeure'],
+    ['mixed', 'Confiance mixte', 'Recherche encore partielle'],
+    ['risky', 'Confiance risquée', 'Signal culturel manquant'],
+  ]);
+  assert.equal(report.reminders[1].confidenceCue.summary, 'Recherche encore partielle: garder le signal visible sans sur-prioriser.');
+  assert.equal(report.reminders[2].confidenceCopy, 'Confiance risquée · Signal culturel manquant');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',
