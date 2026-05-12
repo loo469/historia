@@ -360,6 +360,47 @@ button { font: inherit; }
 }
 .map-climate-cascade-group small { color: #fde68a; }
 
+.map-climate-severity-legend {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 10px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.54);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+.map-climate-severity-legend div,
+.map-climate-severity-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.map-climate-severity-legend div { justify-content: space-between; }
+.map-climate-severity-legend p,
+.map-climate-severity-legend span,
+.map-climate-severity-legend small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-climate-severity-legend__item {
+  display: grid;
+  gap: 2px;
+  min-width: 132px;
+  padding: 6px 8px;
+  border-radius: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  list-style: none;
+}
+.map-climate-severity-legend__item--cascade-active { border-color: rgba(248, 113, 113, 0.54); }
+.map-climate-severity-legend__item--hazard-unresolved { border-color: rgba(251, 191, 36, 0.5); }
+.map-climate-severity-legend__item--hazard-delayed { border-color: rgba(56, 189, 248, 0.48); }
+.map-climate-severity-legend__item--risk-reduced { border-color: rgba(74, 222, 128, 0.48); }
+
 .economy-turn-pulse {
   margin-top: 12px;
   display: inline-flex;

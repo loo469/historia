@@ -3478,6 +3478,64 @@ function renderClimateMarkerDensityRollup(control) {
   `;
 }
 
+function buildClimateSeverityLegend(markers = [], densityControl = null) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || markers.length === 0) {
+    return { active: false, entries: [], summary: 'Légende climat inactive: overlay climat masqué ou aucun marqueur.' };
+  }
+
+  const severityLabels = {
+    'cascade-active': { label: 'Critique', cue: 'Cascade active épinglée', detail: 'Risque régional principal toujours visible.' },
+    'hazard-unresolved': { label: 'Élevé', cue: 'Aléa non résolu', detail: 'Danger restant sans intervention confirmée.' },
+    'hazard-delayed': { label: 'Surveillance', cue: 'Aléa retardé', detail: 'Impact ralenti mais à relire après commit.' },
+    'risk-reduced': { label: 'Réduit', cue: 'Risque réduit', detail: 'Mitigation confirmée dans le résumé cumulé.' },
+  };
+  const entries = Object.entries(severityLabels)
+    .map(([status, copy]) => ({
+      status,
+      count: markers.filter((marker) => marker.status === status).length,
+      ...copy,
+    }))
+    .filter((entry) => entry.count > 0);
+  const groupedCount = densityControl?.groupedCount ?? 0;
+  const cascadeGroupCount = densityControl?.selectedCascadeGroup?.markers.length ?? 0;
+
+  return {
+    active: true,
+    entries,
+    groupedCount,
+    cascadeGroupCount,
+    summary: groupedCount > 0
+      ? `${groupedCount} marqueur${groupedCount > 1 ? 's' : ''} agrégé${groupedCount > 1 ? 's' : ''}; la sévérité explique les piles sans ouvrir chaque province.`
+      : 'Sévérité climat lisible directement sur les marqueurs visibles.',
+  };
+}
+
+function renderClimateSeverityLegend(legend) {
+  if (!legend.active || legend.entries.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="map-climate-severity-legend" aria-label="Légende de sévérité des marqueurs climat empilés">
+      <div>
+        <strong>Sévérité climat</strong>
+        <span>${legend.entries.length} niveau${legend.entries.length > 1 ? 'x' : ''} · ${legend.groupedCount} agrégé${legend.groupedCount > 1 ? 's' : ''}</span>
+      </div>
+      <p>${legend.summary}</p>
+      <ul>
+        ${legend.entries.map((entry) => `
+          <li class="map-climate-severity-legend__item map-climate-severity-legend__item--${entry.status}">
+            <b>${entry.label}</b>
+            <span>${entry.cue} · ${entry.count}</span>
+            <small>${entry.detail}</small>
+          </li>
+        `).join('')}
+      </ul>
+      ${legend.cascadeGroupCount > 1 ? `<small>Groupe sélectionné: ${legend.cascadeGroupCount} provinces liées au risque principal.</small>` : '<small>Les cascades et aléas non résolus restent épinglés en priorité.</small>'}
+    </section>
+  `;
+}
+
 function renderSelectedClimateCascadeGroup(group) {
   if (!group || group.markers.length <= 1) {
     return '';
@@ -9107,6 +9165,7 @@ function render() {
     mobileMapExpanded: state.mobileMapExpanded,
     selectedProvinceId: state.selectedProvinceId,
   });
+  const climateSeverityLegend = buildClimateSeverityLegend(postCommitClimateMarkers, climateMarkerDensity);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -9162,6 +9221,7 @@ function render() {
             </div>
             <div class="overlay-tabs">${renderOverlaySlots(shell)}</div>
           </div>
+          ${renderClimateSeverityLegend(climateSeverityLegend)}
           <div class="map-stage" data-map-stage="true" tabindex="0" aria-label="Carte opérationnelle zoomable. Utilisez plus, moins, zéro ou C pour naviguer.">
             ${renderMapControls()}
             ${renderMilitaryOutcomeMarkerFilters(state.lastMilitaryOutcomeMarkers)}
