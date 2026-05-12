@@ -35,7 +35,7 @@ test('selected province panel forecasts climate risk reduction after queued miti
   assert.match(webAppSource, /remainingCascades/);
   assert.match(webAppSource, /Aucune mitigation climat décisive en file/);
   assert.match(webAppSource, /surveillance résiduelle/);
-  assert.match(webAppSource, /renderProvinceClimateRiskReductionForecast\(province, shell\)/);
+  assert.match(webAppSource, /renderProvinceClimateRiskReductionForecast\(province, shell, actionQueue/);
 
   assert.match(stylesSource, /\.province-climate-risk-forecast/);
   assert.match(stylesSource, /\.province-climate-risk-forecast--empty/);
