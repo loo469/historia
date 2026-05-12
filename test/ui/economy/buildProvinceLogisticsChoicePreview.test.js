@@ -72,6 +72,8 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.options[0].cause, /River Gate/);
   assert.match(preview.options[0].cause, /Ember Line/);
   assert.equal(preview.recoveryChoiceCount, 4);
+  assert.equal(preview.timelineStatus, 'queued');
+  assert.match(preview.timelineSummary, /prochain tour/);
   assert.ok(preview.options[0].recoveryChoices.length >= 2);
   assert.equal(preview.options[0].recoveryChoices[0].recommended, true);
   assert.match(preview.options[0].recoveryChoices[0].benefit, /Outils|River Gate|Ember Line/);
@@ -80,6 +82,8 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(preview.options[0].recoveryChoices[0].neighborEffects.length >= 1);
   assert.match(preview.options[0].recoveryChoices[0].neighborEffects[0].detail, /Iron Plain|Hill Hub|voisin|hub|trafic/);
   assert.ok(['congestion déplacée', 'hub soulagé', 'route toujours fragile', 'stockpile consommé', 'hub priorisé', 'effet réseau limité'].includes(preview.options[0].recoveryChoices[0].neighborEffects[0].label));
+  assert.deepEqual(preview.options[0].recoveryChoices[0].timeline.map((step) => step.step), ['Effet immédiat', 'Prochain tour', 'Risque restant']);
+  assert.match(preview.options[0].recoveryChoices[0].timeline[2].detail, /goulot|veille|Risque estimé/);
 });
 
 test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and impact labels', () => {
@@ -103,6 +107,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.equal(preview.recommendedOptionId, null);
   assert.deepEqual(preview.options, []);
   assert.equal(preview.status, 'stable');
+  assert.equal(preview.timelineStatus, 'empty');
+  assert.match(preview.timelineSummary, /timeline vide/);
   assert.match(preview.summary, /Logistique stable/);
 });
 
@@ -116,6 +122,7 @@ test('buildProvinceLogisticsChoicePreview exposes stable local route causes', ()
   });
 
   assert.equal(preview.status, 'stable');
+  assert.equal(preview.timelineStatus, 'empty');
   assert.match(preview.summary, /Logistique stable/);
   assert.equal(preview.options[0].causeLabel, 'logistique stable');
   assert.match(preview.options[0].cause, /Safe Road/);
