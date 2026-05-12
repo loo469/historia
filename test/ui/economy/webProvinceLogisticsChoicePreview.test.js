@@ -7,6 +7,12 @@ const stylesSource = readFileSync(new URL('../../../web/styles.css', import.meta
 
 test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /function renderProvinceLogisticsChoicePreview/);
+  assert.match(webAppSource, /buildProvinceLogisticsBottleneckWarnings/);
+  assert.match(webAppSource, /province-logistics-bottleneck-warning/);
+  assert.match(webAppSource, /Alerte goulot logistique/);
+  assert.match(webAppSource, /Route logistique sous tension/);
+  assert.match(webAppSource, /stock en tension haute/);
+  assert.match(webAppSource, /sous tension autour de la province/);
   assert.match(webAppSource, /province-logistics-cause-summary/);
   assert.match(webAppSource, /Cause locale/);
   assert.match(webAppSource, /option\.causeLabel/);
@@ -94,6 +100,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(stylesSource, /province-logistics-recovery--medium/);
   assert.match(stylesSource, /province-logistics-bottleneck--high/);
   assert.match(stylesSource, /province-logistics-bottleneck--medium/);
+  assert.match(stylesSource, /province-logistics-bottleneck-warning--high/);
+  assert.match(stylesSource, /province-logistics-bottleneck-warning--medium/);
   assert.match(stylesSource, /province-logistics-bottleneck--low/);
   assert.match(stylesSource, /province-logistics-timeline-summary--queued/);
   assert.match(stylesSource, /province-logistics-downstream-summary--aggravée/);
