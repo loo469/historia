@@ -177,6 +177,11 @@ test('buildCultureOpportunityReminders confirms queued culture actions and expos
   assert.equal(report.queuedCultureAction.undoAction.label, 'Retirer de la file');
   assert.equal(report.reminders[0].queueConfirmation.actionCode, 'culture:follow-event:river-gate');
   assert.equal(report.reminders[0].queueConfirmation.summary, 'Suivre l’événement est en file: + stabilité locale; urgence baisse si action validée; dissidence faible. Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
+  assert.equal(report.resolutionSummary.state, 'queued');
+  assert.equal(report.resolutionSummary.summary, '1 tension apaisée, 0 ignorée, 0 aggravée après résolution.');
+  assert.deepEqual(report.resolutionSummary.queuedActions.map((action) => [action.cultureName, action.label, action.outcome, action.effect]), [
+    ['Compact d’Aurora', 'Suivre l’événement', 'apaisé', '+ stabilité locale; urgence baisse si action validée; dissidence faible'],
+  ]);
 });
 
 test('buildCultureOpportunityReminders returns a compact quiet summary without hints', () => {

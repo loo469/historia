@@ -955,6 +955,33 @@ function renderCultureOpportunityReminders(report) {
           </button>
         </div>
       ` : ''}
+      ${report.resolutionSummary ? `
+        <div class="culture-opportunity-resolution culture-opportunity-resolution--${report.resolutionSummary.state}" aria-label="Résumé de résolution culturelle">
+          <div class="culture-opportunity-resolution__header">
+            <span>Après validation</span>
+            <strong>${report.resolutionSummary.summary}</strong>
+          </div>
+          ${(report.resolutionSummary.queuedActions ?? []).length > 0 ? `
+            <ul>
+              ${report.resolutionSummary.queuedActions.map((action) => `
+                <li class="culture-opportunity-resolution__item culture-opportunity-resolution__item--${action.tone}">
+                  <b>${action.cultureName}</b>
+                  <span>${action.label} · ${action.outcome}</span>
+                  <small>${action.effect} · ${action.reason}</small>
+                </li>
+              `).join('')}
+            </ul>
+          ` : ''}
+          ${(report.resolutionSummary.uncoveredUrgent ?? []).length > 0 ? `
+            <div class="culture-opportunity-resolution__uncovered" aria-label="Recommandations culturelles urgentes non couvertes">
+              <b>Urgences non couvertes</b>
+              ${(report.resolutionSummary.uncoveredUrgent ?? []).map((entry) => `
+                <small>${entry.cultureName}: ${entry.expectedImpact}</small>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
       ${(report.priorityConflicts ?? []).length > 0 ? `
         <div class="culture-opportunity-priority-conflicts" aria-label="Conflits de priorité culturelle">
           ${(report.priorityConflicts ?? []).map((conflict) => `
