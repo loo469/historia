@@ -2688,6 +2688,32 @@ button { font: inherit; }
 .world-map-intrigue-rollup__header span,
 .world-map-intrigue-rollup p,
 .world-map-intrigue-rollup small { color: #cbd5e1; }
+.world-map-intrigue-filter-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.world-map-intrigue-filter-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
+  background: rgba(2, 6, 23, 0.24);
+  cursor: pointer;
+}
+.world-map-intrigue-filter-chip.is-active,
+.world-map-intrigue-filter-chip:hover,
+.world-map-intrigue-filter-chip:focus-visible {
+  border-color: rgba(129, 140, 248, 0.68);
+  background: rgba(49, 46, 129, 0.42);
+}
+.world-map-intrigue-filter-chip b {
+  color: #f8fafc;
+}
 .intrigue-exposure-marker-rollup {
   display: grid;
   gap: 8px;

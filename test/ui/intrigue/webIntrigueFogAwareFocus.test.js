@@ -197,6 +197,23 @@ test('final intrigue exposure summary is visible before turn commit', () => {
   assert.match(stylesSource, /province-intrigue-final-commit-summary__item--trop-risqué/);
 });
 
+test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
+  assert.match(webAppSource, /atlasIntrigueSignalFilters/);
+  assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
+  assert.match(webAppSource, /function filterWorldMapIntrigueSignals/);
+  assert.match(webAppSource, /data-atlas-intrigue-signal-filter="\$\{key\}"/);
+  assert.match(webAppSource, /state\.atlasIntrigueSignalFilters\[key\] = !state\.atlasIntrigueSignalFilters\[key\]/);
+  assert.match(webAppSource, /Récents/);
+  assert.match(webAppSource, /Anciens/);
+  assert.match(webAppSource, /Incertains/);
+  assert.match(webAppSource, /Probables/);
+  assert.match(webAppSource, /information ancienne à revérifier avant action directe/);
+  assert.match(webAppSource, /incertitude élevée: action risquée sans vérification/);
+  assert.match(webAppSource, /signal probable à prioriser sans révéler la source/);
+  assert.match(stylesSource, /world-map-intrigue-filter-chip/);
+  assert.match(stylesSource, /world-map-intrigue-filter-chip\.is-active/);
+});
+
 test('world map intrigue signals show presence risk shadows and probable sabotage safely', () => {
   assert.match(webAppSource, /function buildWorldMapIntrigueSignals/);
   assert.match(webAppSource, /function renderWorldMapIntrigueSignals/);
@@ -205,6 +222,7 @@ test('world map intrigue signals show presence risk shadows and probable sabotag
   assert.match(webAppSource, /Résumé intrigue carte monde fog-safe/);
   assert.match(webAppSource, /présence forte/);
   assert.match(webAppSource, /risque sabotage probable/);
+  assert.match(webAppSource, /\$\{signal\.freshnessLabel\} · \$\{signal\.riskLabel\}/);
   assert.match(webAppSource, /zone d’ombre conservée/);
   assert.match(webAppSource, /les cellules, relais, objectifs et causes cachées restent masqués/);
   assert.match(webAppSource, /aucun détail caché révélé/);

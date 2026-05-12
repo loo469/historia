@@ -435,6 +435,12 @@ const state = {
     increased: false,
     hidden: false,
   },
+  atlasIntrigueSignalFilters: {
+    recent: false,
+    stale: false,
+    uncertain: false,
+    probable: false,
+  },
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
   militaryOutcomeMarkerFilters: {
@@ -7529,10 +7535,25 @@ function renderPostCommitIntrigueExposureMarkers(markers) {
 }
 
 
-function buildWorldMapIntrigueSignals(intrigueView = null) {
-  const entries = intrigueView?.map?.entries ?? [];
+function getActiveAtlasIntrigueSignalFilters() {
+  return Object.entries(state.atlasIntrigueSignalFilters)
+    .filter(([, active]) => active)
+    .map(([key]) => key);
+}
 
-  return entries.map((entry) => {
+function filterWorldMapIntrigueSignals(signals) {
+  const activeFilters = getActiveAtlasIntrigueSignalFilters();
+
+  if (activeFilters.length === 0) {
+    return signals;
+  }
+
+  return signals.filter((signal) => activeFilters.some((filter) => signal.filterTags.includes(filter)));
+}
+
+function buildWorldMapIntrigueSignals(intrigueView = null, options = {}) {
+  const entries = intrigueView?.map?.entries ?? [];
+  const signals = entries.map((entry) => {
     const presenceLabels = {
       high: 'présence forte',
       medium: 'présence probable',
@@ -7557,6 +7578,34 @@ function buildWorldMapIntrigueSignals(intrigueView = null) {
       : shadowZone
         ? '??'
         : 'I';
+    const freshness = entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0 || hasSabotageSignal
+      ? 'recent'
+      : shadowZone
+        ? 'uncertain'
+        : 'stale';
+    const freshnessLabels = {
+      recent: 'récent',
+      stale: 'ancien',
+      uncertain: 'incertain',
+    };
+    const certainty = assurance === 'confirmé'
+      ? 'confirmed'
+      : assurance === 'probable'
+        ? 'probable'
+        : 'uncertain';
+    const filterTags = [freshness];
+
+    if (certainty === 'probable') {
+      filterTags.push('probable');
+    }
+
+    const priorityReason = freshness === 'stale'
+      ? 'information ancienne à revérifier avant action directe'
+      : freshness === 'uncertain'
+        ? 'incertitude élevée: action risquée sans vérification'
+        : certainty === 'probable'
+          ? 'signal probable à prioriser sans révéler la source'
+          : 'signal récent lisible par données visibles';
     const tone = entry.sabotageRiskLevel === 'high'
       ? 'danger'
       : entry.sabotageRiskLevel === 'medium' || entry.presenceLevel === 'high'
@@ -7575,32 +7624,47 @@ function buildWorldMapIntrigueSignals(intrigueView = null) {
       tone,
       glyph,
       assurance,
+      certainty,
+      freshness,
+      freshnessLabel: freshnessLabels[freshness],
+      filterTags,
+      priorityReason,
       presenceLabel: presenceLabels[entry.presenceLevel] ?? presenceLabels.none,
       riskLabel: riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none,
       shadowZone,
       probableSabotage: hasSabotageSignal,
-      copy: `${presenceLabels[entry.presenceLevel] ?? presenceLabels.none} · ${riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none} · assurance ${assurance}${shadowZone ? ' · zone d’ombre conservée' : ''}`,
-      ariaLabel: `Signal intrigue monde en ${entry.locationName}: ${presenceLabels[entry.presenceLevel] ?? presenceLabels.none}; ${riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none}; assurance ${assurance}; aucun détail caché révélé`,
+      copy: `${freshnessLabels[freshness]} · ${presenceLabels[entry.presenceLevel] ?? presenceLabels.none} · ${riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none} · assurance ${assurance}${shadowZone ? ' · zone d’ombre conservée' : ''} · ${priorityReason}`,
+      ariaLabel: `Signal intrigue monde en ${entry.locationName}: ${freshnessLabels[freshness]}; ${presenceLabels[entry.presenceLevel] ?? presenceLabels.none}; ${riskLabels[entry.sabotageRiskLevel] ?? riskLabels.none}; assurance ${assurance}; aucun détail caché révélé`,
     };
   }).sort((left, right) => {
     const rank = { danger: 1, warning: 2, shadow: 3, watch: 4 };
     return rank[left.tone] - rank[right.tone] || left.locationName.localeCompare(right.locationName);
   }).slice(0, 6);
+
+  return options.ignoreFilters ? signals : filterWorldMapIntrigueSignals(signals);
 }
 
 function buildWorldMapIntrigueSignalRollup(signals) {
+  const filteredSignals = filterWorldMapIntrigueSignals(signals);
   const counts = {
     danger: signals.filter((signal) => signal.tone === 'danger').length,
     warning: signals.filter((signal) => signal.tone === 'warning').length,
     shadow: signals.filter((signal) => signal.shadowZone).length,
     probableSabotage: signals.filter((signal) => signal.probableSabotage).length,
+    recent: signals.filter((signal) => signal.freshness === 'recent').length,
+    stale: signals.filter((signal) => signal.freshness === 'stale').length,
+    uncertain: signals.filter((signal) => signal.freshness === 'uncertain').length,
+    probable: signals.filter((signal) => signal.certainty === 'probable').length,
   };
+  const activeFilters = getActiveAtlasIntrigueSignalFilters();
 
   return {
     counts,
+    activeFilters,
+    filteredCount: filteredSignals.length,
     totalCount: signals.length,
     summary: signals.length > 0
-      ? `${signals.length} signal${signals.length > 1 ? 's' : ''} intrigue monde visible${signals.length > 1 ? 's' : ''}: ${counts.probableSabotage} sabotage${counts.probableSabotage > 1 ? 's' : ''} probable${counts.probableSabotage > 1 ? 's' : ''}, ${counts.shadow} zone${counts.shadow > 1 ? 's' : ''} d’ombre.`
+      ? `${filteredSignals.length}/${signals.length} signal${signals.length > 1 ? 's' : ''} intrigue atlas visible${filteredSignals.length > 1 ? 's' : ''}: ${counts.recent} récent${counts.recent > 1 ? 's' : ''}, ${counts.stale} ancien${counts.stale > 1 ? 's' : ''}, ${counts.uncertain} incertain${counts.uncertain > 1 ? 's' : ''}, ${counts.probable} probable${counts.probable > 1 ? 's' : ''}.`
       : 'Aucun signal intrigue monde visible avec les filtres actuels.',
   };
 }
@@ -7617,7 +7681,7 @@ function renderWorldMapIntrigueSignals(signals) {
           <title>${signal.copy}</title>
           <circle class="world-map-intrigue-signal__aura" cx="${signal.center.x}%" cy="${signal.center.y}%" r="${signal.probableSabotage ? 4.9 : 3.9}"></circle>
           <text class="world-map-intrigue-signal__glyph" x="${signal.center.x}%" y="${signal.center.y + 1.05}%" text-anchor="middle">${signal.glyph}</text>
-          <text class="world-map-intrigue-signal__label" x="${signal.center.x + 4.2}%" y="${signal.center.y - 1.2}%" text-anchor="start">${signal.riskLabel}</text>
+          <text class="world-map-intrigue-signal__label" x="${signal.center.x + 4.2}%" y="${signal.center.y - 1.2}%" text-anchor="start">${signal.freshnessLabel} · ${signal.riskLabel}</text>
           <text class="world-map-intrigue-signal__copy" x="${signal.center.x + 4.2}%" y="${signal.center.y + 2.0}%" text-anchor="start">${signal.presenceLabel} · ${signal.assurance}</text>
         </g>
       `).join('')}
@@ -7637,6 +7701,18 @@ function renderWorldMapIntrigueSignalRollup(rollup) {
         <span>${rollup.counts.probableSabotage} sabotage${rollup.counts.probableSabotage > 1 ? 's' : ''} probable${rollup.counts.probableSabotage > 1 ? 's' : ''}</span>
       </div>
       <p>${rollup.summary}</p>
+      <div class="world-map-intrigue-filter-chips" aria-label="Filtres atlas intrigue par fraîcheur et certitude">
+        ${[
+          ['recent', 'Récents'],
+          ['stale', 'Anciens'],
+          ['uncertain', 'Incertains'],
+          ['probable', 'Probables'],
+        ].map(([key, label]) => `
+          <button type="button" class="world-map-intrigue-filter-chip ${state.atlasIntrigueSignalFilters[key] ? 'is-active' : ''}" data-atlas-intrigue-signal-filter="${key}" aria-pressed="${state.atlasIntrigueSignalFilters[key]}">
+            ${label} <b>${rollup.counts[key]}</b>
+          </button>
+        `).join('')}
+      </div>
       <small>${rollup.counts.shadow} zone${rollup.counts.shadow > 1 ? 's' : ''} d’ombre conservée${rollup.counts.shadow > 1 ? 's' : ''}; les cellules, relais, objectifs et causes cachées restent masqués.</small>
     </section>
   `;
@@ -9715,7 +9791,7 @@ function renderIntrigueSidePanel(intrigueView) {
 
   const exposureMarkers = buildPostCommitIntrigueExposureMarkers(intrigueView, { ignoreFilters: true });
   const exposureMarkerRollup = buildIntrigueExposureMarkerRollup(exposureMarkers);
-  const worldMapSignals = buildWorldMapIntrigueSignals(intrigueView);
+  const worldMapSignals = buildWorldMapIntrigueSignals(intrigueView, { ignoreFilters: true });
   const worldMapSignalRollup = buildWorldMapIntrigueSignalRollup(worldMapSignals);
 
   return `
@@ -11533,6 +11609,14 @@ function render() {
     element.addEventListener('click', () => {
       const key = element.dataset.intrigueExposureFilter;
       state.intrigueExposureOutcomeFilters[key] = !state.intrigueExposureOutcomeFilters[key];
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-atlas-intrigue-signal-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const key = element.dataset.atlasIntrigueSignalFilter;
+      state.atlasIntrigueSignalFilters[key] = !state.atlasIntrigueSignalFilters[key];
       render();
     });
   });
