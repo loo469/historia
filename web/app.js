@@ -1608,6 +1608,53 @@ function buildAtlasCorridorBudgetShortfalls(actionBudget) {
   };
 }
 
+function buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls) {
+  const funded = actionBudget.selected.map((option) => ({
+    planId: `atlas-funded-plan:${option.optionId}`,
+    routeName: option.routeName,
+    corridor: option.corridor,
+    committed: option.actionCost ?? 0,
+    remainingToFund: 0,
+    status: 'financé',
+    impactLabel: `${option.corridor} · ${option.routeName}`,
+    benefit: `+${option.expectedGain ?? 0} capacité · ${option.riskAvoided}`,
+    cityEffect: option.constraint.includes('hub') ? option.constraint : 'routes/cités stabilisées',
+  }));
+
+  const partial = budgetShortfalls.items
+    .filter((item) => !item.unknown)
+    .slice(0, 1)
+    .map((item) => {
+      const committed = Math.max(0, Math.min(actionBudget.remaining, item.actionCost ?? 0));
+      const remainingToFund = Math.max(0, (item.actionCost ?? 1) - committed);
+      return {
+        planId: `atlas-partial-plan:${item.optionId}`,
+        routeName: item.routeName,
+        corridor: item.corridor,
+        committed,
+        remainingToFund,
+        status: remainingToFund > 0 ? 'partiel' : 'finançable',
+        impactLabel: `${item.corridor} · ${item.routeName}`,
+        benefit: item.expectedEffect,
+        cityEffect: item.minimumAction,
+      };
+    });
+
+  const plans = [...funded, ...partial].slice(0, 3);
+  const committedBudget = plans.reduce((total, plan) => total + plan.committed, 0);
+  const remainingToFund = plans.reduce((total, plan) => total + plan.remainingToFund, 0);
+
+  return {
+    empty: plans.length === 0,
+    plans,
+    committedBudget,
+    remainingToFund,
+    summary: plans.length === 0
+      ? 'Aucun corridor finançable'
+      : `${plans.length} plan${plans.length > 1 ? 's' : ''} logistique${plans.length > 1 ? 's' : ''}`,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -1620,6 +1667,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const interventionOptions = buildAtlasCorridorInterventionOptions(supplyForecasts);
   const actionBudget = buildAtlasCorridorActionBudget(interventionOptions);
   const budgetShortfalls = buildAtlasCorridorBudgetShortfalls(actionBudget);
+  const fundedPlans = buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -1716,6 +1764,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     interventions: interventionOptions,
     actionBudget,
     budgetShortfalls,
+    fundedPlans,
   };
 }
 
@@ -1728,7 +1777,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${43 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${53 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -1788,6 +1837,20 @@ function renderAtlasEconomyStressLegend(economyView) {
             <g class="atlas-corridor-shortfall-item atlas-corridor-shortfall-item--${item.tone}" aria-label="Manque ${item.routeName}: impact aval ${item.downstreamImpact}, action minimale ${item.minimumAction}, effet ${item.expectedEffect}">
               <text class="atlas-corridor-shortfall-item__route" x="6.2" y="${y}">${item.corridor} · ${item.routeName}</text>
               <text class="atlas-corridor-shortfall-item__action" x="6.2" y="${y + 2.0}">${item.minimumAction} · ${item.expectedEffect}</text>
+            </g>
+          `;
+        }).join('')}
+      </g>
+      <g class="atlas-funded-logistics-plan ${rollup.fundedPlans.empty ? 'is-empty' : ''}" aria-label="Plans logistiques financés: ${rollup.fundedPlans.summary}, budget engagé ${rollup.fundedPlans.committedBudget}, reste à financer ${rollup.fundedPlans.remainingToFund}">
+        <rect x="5" y="${49.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2)}" width="30.5" height="${rollup.fundedPlans.empty ? 5.2 : 6.2 + (rollup.fundedPlans.plans.length * 5.4)}" rx="1.4"></rect>
+        <text class="atlas-funded-logistics-plan__title" x="6.2" y="${51.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2)}">Plan financé · engagé ${rollup.fundedPlans.committedBudget} · reste ${rollup.fundedPlans.remainingToFund}</text>
+        ${rollup.fundedPlans.empty ? `<text class="atlas-funded-logistics-plan__empty" x="6.2" y="${54.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2)}">Aucun corridor finançable</text>` : ''}
+        ${rollup.fundedPlans.plans.map((plan, index) => {
+          const y = 55.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (index * 5.4);
+          return `
+            <g class="atlas-funded-logistics-plan-item atlas-funded-logistics-plan-item--${plan.status}" aria-label="Plan ${plan.routeName}: budget engagé ${plan.committed}, reste à financer ${plan.remainingToFund}, bénéfice ${plan.benefit}">
+              <text class="atlas-funded-logistics-plan-item__route" x="6.2" y="${y}">${plan.status} · ${plan.impactLabel}</text>
+              <text class="atlas-funded-logistics-plan-item__benefit" x="6.2" y="${y + 2.0}">${plan.benefit} · ${plan.cityEffect}</text>
             </g>
           `;
         }).join('')}
