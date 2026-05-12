@@ -1361,9 +1361,55 @@ button { font: inherit; }
 .map-layer--relations,
 .map-layer--surface,
 .map-layer--terrain,
+.map-layer--atlas,
 .map-layer--backdrop {
   z-index: 1;
 }
+.atlas-world-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.atlas-world-canvas__ocean {
+  fill: url(#atlasOceanGradient);
+}
+.atlas-world-canvas__ocean-band {
+  fill: rgba(14, 116, 144, 0.22);
+  stroke: rgba(125, 211, 252, 0.16);
+  stroke-width: 0.35;
+}
+.atlas-world-canvas__current {
+  fill: none;
+  stroke: rgba(186, 230, 253, 0.24);
+  stroke-width: 0.42;
+  stroke-dasharray: 2 2.6;
+}
+.atlas-region polygon {
+  fill: color-mix(in srgb, var(--atlas-fill) 52%, rgba(15, 23, 42, 0.22));
+  stroke: color-mix(in srgb, var(--atlas-border) 70%, rgba(226, 232, 240, 0.25));
+  stroke-width: 0.55;
+  filter: url(#atlasReliefShadow);
+  opacity: 0.78;
+}
+.atlas-region--mountain polygon,
+.atlas-region--highlands polygon { opacity: 0.86; }
+.atlas-region--delta polygon,
+.atlas-region--marsh polygon { opacity: 0.72; }
+.atlas-region__relief {
+  fill: none;
+  stroke: rgba(248, 250, 252, 0.24);
+  stroke-width: 0.45;
+  stroke-linecap: round;
+}
+.atlas-region--soft .atlas-region__relief { opacity: 0.28; }
+.atlas-island {
+  fill: rgba(203, 213, 225, 0.24);
+  stroke: rgba(226, 232, 240, 0.32);
+  stroke-width: 0.35;
+}
+
 .map-controls {
   position: absolute;
   top: 14px;

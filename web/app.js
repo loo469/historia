@@ -515,6 +515,84 @@ function getProvincePolygon(provinceId) {
   return getProvinceGeometry(provinceId).polygon ?? '12,12 88,12 88,88 12,88';
 }
 
+function getAtlasTerrainKind(province) {
+  if (province.supplyLevel === 'collapsed') return 'marsh';
+  if (province.supplyLevel === 'disrupted') return 'highlands';
+  if (province.provinceId.includes('river')) return 'delta';
+  if (province.provinceId.includes('ridge')) return 'mountain';
+  if (province.provinceId.includes('plain')) return 'steppe';
+  if (province.provinceId.includes('watch')) return 'tundra';
+  if (province.provinceId.includes('reach')) return 'isles';
+  return 'heartland';
+}
+
+function buildAtlasTerrainShapes(shell) {
+  const continents = shell.provinces.map((province) => {
+    const geometry = getProvinceGeometry(province.provinceId);
+    const layout = geometry.layout ?? getProvinceLayout(province.provinceId);
+    return {
+      provinceId: province.provinceId,
+      label: province.label,
+      polygon: geometry.polygon ?? getProvincePolygon(province.provinceId),
+      center: getProvinceCenter(province.provinceId),
+      terrain: getAtlasTerrainKind(province),
+      fill: province.style.fill,
+      border: province.style.border,
+      relief: ['highlands', 'mountain'].includes(getAtlasTerrainKind(province)) ? 'relief' : 'soft',
+      island: layout.w < 18 || getAtlasTerrainKind(province) === 'isles',
+    };
+  });
+
+  const islands = continents
+    .filter((shape) => shape.island)
+    .map((shape) => ({
+      ...shape,
+      radius: shape.terrain === 'isles' ? 2.4 : 1.6,
+    }));
+
+  return {
+    continents,
+    islands,
+    oceanBands: [
+      { id: 'western-ocean', label: 'Mer d’Occident', path: 'M0,0 H21 C16,18 18,34 9,50 C18,68 13,84 22,100 H0 Z' },
+      { id: 'southern-ocean', label: 'Mer Australe', path: 'M0,82 C20,76 31,84 48,79 C68,74 80,82 100,76 V100 H0 Z' },
+      { id: 'eastern-sea', label: 'Mer des Brumes', path: 'M82,0 H100 V100 H90 C94,80 86,66 92,47 C84,31 91,15 82,0 Z' },
+    ],
+  };
+}
+
+function renderAtlasWorldCanvas(shell) {
+  const atlas = buildAtlasTerrainShapes(shell);
+
+  return `
+    <svg class="atlas-world-canvas" viewBox="0 0 100 100" aria-label="Canevas atlas: océans, continents, îles et relief">
+      <defs>
+        <linearGradient id="atlasOceanGradient" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#0f3b57"></stop>
+          <stop offset="55%" stop-color="#12324a"></stop>
+          <stop offset="100%" stop-color="#071827"></stop>
+        </linearGradient>
+        <filter id="atlasReliefShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0.6" dy="0.9" stdDeviation="0.7" flood-color="#020617" flood-opacity="0.42"></feDropShadow>
+        </filter>
+      </defs>
+      <rect class="atlas-world-canvas__ocean" width="100" height="100"></rect>
+      ${atlas.oceanBands.map((band) => `<path class="atlas-world-canvas__ocean-band" d="${band.path}" aria-label="${band.label}"></path>`).join('')}
+      <path class="atlas-world-canvas__current atlas-world-canvas__current--north" d="M8,20 C25,12 37,23 52,16 S82,12 94,23"></path>
+      <path class="atlas-world-canvas__current atlas-world-canvas__current--south" d="M5,73 C23,66 41,77 57,69 S82,61 96,70"></path>
+      ${atlas.continents.map((shape) => `
+        <g class="atlas-region atlas-region--${shape.terrain} atlas-region--${shape.relief}" data-atlas-province="${shape.provinceId}">
+          <polygon points="${shape.polygon}" style="--atlas-fill:${shape.fill};--atlas-border:${shape.border}"></polygon>
+          <path class="atlas-region__relief" d="M${Math.max(4, shape.center.x - 5)},${shape.center.y} q4,-3 8,0 t8,0"></path>
+        </g>
+      `).join('')}
+      ${atlas.islands.map((shape) => `
+        <circle class="atlas-island atlas-island--${shape.terrain}" cx="${shape.center.x}" cy="${shape.center.y}" r="${shape.radius}" aria-label="Île ou archipel: ${shape.label}"></circle>
+      `).join('')}
+    </svg>
+  `;
+}
+
 function getProvinceCenter(provinceId) {
   const geometry = getProvinceGeometry(provinceId);
 
@@ -10131,6 +10209,7 @@ function renderTacticalCoordinateGrid() {
 function getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null) {
   return [
     { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
+    { key: 'atlas', className: 'map-layer map-layer--atlas', content: renderAtlasWorldCanvas(shell) },
     { key: 'terrain', className: 'map-layer map-layer--terrain', content: renderTerrainDecor() },
     { key: 'surface', className: 'map-layer map-layer--surface', content: renderProvinceSurface(shell, focusContext) },
     { key: 'relations', className: 'map-layer map-layer--relations', content: renderStrategicRelations(shell) },
