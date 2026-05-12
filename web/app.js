@@ -19,6 +19,7 @@ import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMa
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
+import { buildCultureUnlockHints } from '../src/ui/culture/buildCultureUnlockHints.js';
 import { buildClimateTurnReportDeltas } from '../src/ui/climate/buildClimateTurnReportDeltas.js';
 
 const culturePayload = {
@@ -877,6 +878,19 @@ function renderCultureTurnReport(report) {
   `;
 }
 
+function renderCultureUnlockHints(hints) {
+  return `
+    <div class="culture-unlock-hints" aria-label="Unlocks culture potentiels">
+      ${hints.map((hint) => `
+        <span class="culture-unlock-hint culture-unlock-hint--${hint.status} culture-unlock-hint--${hint.tone}" title="${hint.explanation}">
+          <b>${hint.status}</b>
+          <small>${hint.label} · ${hint.cultureName}</small>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderCultureConsequenceChips(chips) {
   return `
     <div class="culture-consequence-chips" aria-label="Conséquences culturelles">
@@ -909,11 +923,19 @@ function renderProvinceActionRecommendations(province, focusContext, intrigueVie
             selectedCluster,
             localTimeline,
           });
+          const unlockHints = buildCultureUnlockHints({
+            province,
+            action: recommendation,
+            selectedMarker,
+            selectedCluster,
+            localTimeline,
+          });
 
           return `
             <article class="province-action-card province-action-card--${recommendation.tone}">
               <strong>${recommendation.title}</strong>
               <p>${recommendation.body}</p>
+              ${renderCultureUnlockHints(unlockHints)}
               ${renderCultureConsequenceChips(cultureChips)}
             </article>
           `;
