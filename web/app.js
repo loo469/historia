@@ -768,7 +768,100 @@ function renderAtlasConflictRouteComparison(comparison) {
   `;
 }
 
+function getAtlasMilitaryOperationEffect(route, comparisonRow) {
+  if (comparisonRow?.label === 'front stabilisé' || comparisonRow?.label === 'pression perdue') {
+    return 'stabiliser le front';
+  }
+  if (comparisonRow?.label === 'route coupée') {
+    return 'rouvrir l’axe coupé';
+  }
+  if (route.contested) {
+    return 'contenir la poussée';
+  }
+  if (route.occupied) {
+    return 'sécuriser l’occupation';
+  }
+  return route.playbackDirection === 'rising' ? 'ralentir la menace' : 'exploiter le repli';
+}
+
+function getAtlasMilitaryOperationRisk(route, comparisonRow) {
+  if (comparisonRow?.label === 'route coupée') {
+    return 'ravitaillement coupé';
+  }
+  if (route.activePlayback?.direction === 'rising') {
+    return 'pression en hausse';
+  }
+  if (route.occupied) {
+    return 'contre-attaque locale';
+  }
+  if (route.contested) {
+    return 'front instable';
+  }
+  return 'fenêtre courte';
+}
+
+function buildAtlasMilitaryOperationSequence(playback, comparison) {
+  if (!playback || playback.empty || !playback.routes.length) {
+    return {
+      steps: [],
+      summary: 'Plan d’opération indisponible: aucune route/front prioritaire visible.',
+      empty: true,
+    };
+  }
+
+  const comparisonByRouteId = new Map((comparison?.rows ?? []).map((row) => [row.routeId, row]));
+  const steps = playback.routes
+    .map((route) => {
+      const comparisonRow = comparisonByRouteId.get(route.routeId) ?? null;
+      const pressureDelta = route.activePlayback?.delta ?? 0;
+      const priority = Math.abs(pressureDelta) + route.pressure + (route.contested ? 20 : 0) + (route.occupied ? 12 : 0);
+      const effect = getAtlasMilitaryOperationEffect(route, comparisonRow);
+      const risk = getAtlasMilitaryOperationRisk(route, comparisonRow);
+      const reason = comparisonRow?.label
+        ?? (pressureDelta > 0 ? 'pression gagnée' : pressureDelta < 0 ? 'pression perdue' : 'pression stable');
+
+      return {
+        stepId: `operation:${route.routeId}`,
+        target: `${route.sourceLabel} → ${route.targetLabel}`,
+        effect,
+        risk,
+        reason,
+        priority,
+        tone: risk.includes('hausse') || risk.includes('coupé') || risk.includes('instable') ? 'danger' : 'support',
+      };
+    })
+    .sort((left, right) => right.priority - left.priority || left.target.localeCompare(right.target))
+    .slice(0, 3);
+
+  return {
+    steps,
+    summary: steps.length > 0
+      ? `Plan d’opération: ${steps.map((step, index) => `${index + 1}. ${step.effect}`).join(' · ')}`
+      : 'Plan d’opération indisponible: données de route incomplètes.',
+    empty: steps.length === 0,
+  };
+}
+
+function renderAtlasMilitaryOperationSequence(sequence) {
+  const height = sequence.empty ? 10 : 10 + (sequence.steps.length * 5.9);
+  return `
+    <g class="atlas-military-operation-sequence" aria-label="Séquence militaire atlas: ${sequence.summary}">
+      <rect class="atlas-military-operation-sequence__panel" x="3" y="54" width="38" height="${height}" rx="2.5"></rect>
+      <text class="atlas-military-operation-sequence__title" x="5" y="58.3">Plan d’opération</text>
+      ${sequence.empty ? `<text class="atlas-military-operation-sequence__empty" x="5" y="63.1">${sequence.summary}</text>` : sequence.steps.map((step, index) => `
+        <g class="atlas-military-operation-step atlas-military-operation-step--${step.tone}" data-atlas-operation-step="${step.stepId}">
+          <circle cx="${6.1}" cy="${63.2 + index * 5.9}" r="1.35"></circle>
+          <text class="atlas-military-operation-step__target" x="8.2" y="${62.3 + index * 5.9}">${index + 1}. ${step.target}</text>
+          <text class="atlas-military-operation-step__effect" x="8.2" y="${64.5 + index * 5.9}">${step.effect} · ${step.risk}</text>
+          <text class="atlas-military-operation-step__reason" x="8.2" y="${66.4 + index * 5.9}">${step.reason}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
+
   const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
   const routes = buildProvinceRelations(shell)
     .map((relation) => {
@@ -831,6 +924,7 @@ function renderAtlasMilitaryLayer(shell) {
   const playback = buildAtlasConflictRoutePlayback(features.routes);
   const playbackSummary = getAtlasConflictPlaybackSummary(playback);
   const comparison = buildAtlasConflictRouteComparison(playback);
+  const operationSequence = buildAtlasMilitaryOperationSequence(playback, comparison);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -854,6 +948,7 @@ function renderAtlasMilitaryLayer(shell) {
         `).join('')}
       </g>
       ${renderAtlasConflictRouteComparison(comparison)}
+      ${renderAtlasMilitaryOperationSequence(operationSequence)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
           <polygon points="${zone.polygon}"></polygon>
