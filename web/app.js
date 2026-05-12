@@ -1534,6 +1534,58 @@ function buildAtlasCorridorActionBudget(interventions, actionCapacity = 3) {
   };
 }
 
+function buildAtlasCorridorBudgetShortfalls(actionBudget) {
+  if (actionBudget.empty || actionBudget.deferred.length === 0) {
+    return {
+      empty: true,
+      items: [],
+      summary: 'Aucun corridor sous-financé',
+    };
+  }
+
+  const items = actionBudget.deferred
+    .map((option) => {
+      const downstreamImpact = option.unknown
+        ? 12
+        : option.tone === 'overload'
+          ? 40 + (option.expectedGain ?? 0) * 4
+          : option.tone === 'watch'
+            ? 24 + (option.expectedGain ?? 0) * 3
+            : 10;
+      const minimumAction = option.unknown
+        ? 'réduire objectif'
+        : option.actionCost !== null && option.actionCost > actionBudget.remaining
+          ? 'rediriger ressources'
+          : option.tone === 'overload'
+            ? 'financer'
+            : 'reporter';
+      const expectedEffect = option.unknown
+        ? `${option.corridor}: clarifier routes/cités touchées`
+        : option.tone === 'overload'
+          ? `${option.routeName}: éviter pénurie aval`
+          : option.tone === 'watch'
+            ? `${option.routeName}: contenir tension cité`
+            : `${option.routeName}: report faible impact`;
+
+      return {
+        ...option,
+        downstreamImpact,
+        minimumAction,
+        expectedEffect,
+      };
+    })
+    .sort((left, right) => right.downstreamImpact - left.downstreamImpact || left.routeName.localeCompare(right.routeName))
+    .slice(0, 3);
+
+  return {
+    empty: items.length === 0,
+    items,
+    summary: items.length === 0
+      ? 'Aucun corridor sous-financé'
+      : `${items.length} manque${items.length > 1 ? 's' : ''} budgétaire${items.length > 1 ? 's' : ''} priorisé${items.length > 1 ? 's' : ''}`,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -1545,6 +1597,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const supplyForecasts = buildAtlasSupplyCapacityForecasts(economyView);
   const interventionOptions = buildAtlasCorridorInterventionOptions(supplyForecasts);
   const actionBudget = buildAtlasCorridorActionBudget(interventionOptions);
+  const budgetShortfalls = buildAtlasCorridorBudgetShortfalls(actionBudget);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -1640,6 +1693,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     forecasts: supplyForecasts.routes,
     interventions: interventionOptions,
     actionBudget,
+    budgetShortfalls,
   };
 }
 
@@ -1652,7 +1706,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${34 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${43 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -1701,6 +1755,20 @@ function renderAtlasEconomyStressLegend(economyView) {
         <text class="atlas-corridor-budget__selected" x="6.2" y="${36.4 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Retenir: ${rollup.actionBudget.selectedLabel} · gain +${rollup.actionBudget.selectedGain}</text>
         <text class="atlas-corridor-budget__deferred" x="6.2" y="${38.4 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Reporter: ${rollup.actionBudget.deferredLabel}</text>
         <text class="atlas-corridor-budget__tradeoff" x="6.2" y="${40.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Compromis: ${rollup.actionBudget.tradeoff}</text>
+      </g>
+      <g class="atlas-corridor-shortfall ${rollup.budgetShortfalls.empty ? 'is-empty' : ''}" aria-label="Manques budgétaires corridors: ${rollup.budgetShortfalls.summary}">
+        <rect x="5" y="${42.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}" width="30.5" height="${rollup.budgetShortfalls.empty ? 4.8 : 5.6 + (rollup.budgetShortfalls.items.length * 5.2)}" rx="1.4"></rect>
+        <text class="atlas-corridor-shortfall__title" x="6.2" y="${44.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Manques budget · ${rollup.budgetShortfalls.summary}</text>
+        ${rollup.budgetShortfalls.empty ? `<text class="atlas-corridor-shortfall__empty" x="6.2" y="${47.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Aucun corridor sous-financé</text>` : ''}
+        ${rollup.budgetShortfalls.items.map((item, index) => {
+          const y = 48.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (index * 5.2);
+          return `
+            <g class="atlas-corridor-shortfall-item atlas-corridor-shortfall-item--${item.tone}" aria-label="Manque ${item.routeName}: impact aval ${item.downstreamImpact}, action minimale ${item.minimumAction}, effet ${item.expectedEffect}">
+              <text class="atlas-corridor-shortfall-item__route" x="6.2" y="${y}">${item.corridor} · ${item.routeName}</text>
+              <text class="atlas-corridor-shortfall-item__action" x="6.2" y="${y + 2.0}">${item.minimumAction} · ${item.expectedEffect}</text>
+            </g>
+          `;
+        }).join('')}
       </g>
     </g>
   `;
