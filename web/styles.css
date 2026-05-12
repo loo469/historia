@@ -3525,6 +3525,30 @@ button { font: inherit; }
   color: #fde68a;
   line-height: 1.35;
 }
+.province-climate-risk-forecast__deadline {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.38);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+.province-climate-risk-forecast__deadline--covered { border-color: rgba(74, 222, 128, 0.28); }
+.province-climate-risk-forecast__deadline--just-in-time { border-color: rgba(251, 191, 36, 0.34); }
+.province-climate-risk-forecast__deadline--missed { border-color: rgba(248, 113, 113, 0.34); }
+.province-climate-risk-forecast__deadline--calm { border-color: rgba(125, 211, 252, 0.18); }
+.province-climate-risk-forecast__deadline span {
+  color: #e0f2fe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-climate-risk-forecast__deadline small {
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+.province-climate-risk-forecast__deadline b {
+  color: #fef3c7;
+}
 .province-climate-risk-forecast__residuals {
   display: grid;
   gap: 3px;
