@@ -4718,6 +4718,93 @@ function renderAtlasClimateForecastToggles(layer) {
   `;
 }
 
+function buildAtlasClimateCascadeImpactPreview(shell, worldClimateLayer) {
+  const provinceById = new Map(shell.provinces.map((province) => [province.provinceId, province]));
+  const impactedEntries = worldClimateLayer.timeline.decisionChanges
+    .concat(worldClimateLayer.timeline.mode === 'short-alert' ? worldClimateLayer.timeline.urgentCurrentEntries : [])
+    .filter((entry, index, all) => all.findIndex((candidate) => candidate.provinceId === entry.provinceId) === index)
+    .filter((entry) => entry.disaster || entry.anomaly || entry.tone === 'watch' || entry.changedDecision);
+
+  const impacts = impactedEntries.map((entry) => {
+    const province = provinceById.get(entry.provinceId);
+    const linkedRoutes = (province?.neighborIds ?? [])
+      .map((neighborId) => provinceById.get(neighborId))
+      .filter(Boolean)
+      .slice(0, 2);
+    const intensity = entry.disaster ? 'critical' : entry.anomaly ? 'elevated' : 'watch';
+    const horizon = worldClimateLayer.timeline.mode === 'current'
+      ? 'maintenant'
+      : worldClimateLayer.timeline.mode === 'next-season'
+        ? `prochaine saison (${worldClimateLayer.timeline.targetSeason})`
+        : 'court terme';
+    const confidence = entry.disaster ? 'haute' : entry.anomaly ? 'moyenne' : 'prudente';
+
+    return {
+      provinceId: entry.provinceId,
+      provinceLabel: entry.provinceLabel,
+      intensity,
+      horizon,
+      confidence,
+      regionImpact: entry.disaster
+        ? `${entry.provinceLabel}: catastrophe susceptible de propager des coûts régionaux.`
+        : entry.anomaly
+          ? `${entry.provinceLabel}: anomalie à relire avant arbitrage régional.`
+          : `${entry.provinceLabel}: variation saisonnière utile mais non critique.`,
+      routeImpact: linkedRoutes.length > 0
+        ? linkedRoutes.map((neighbor) => `${entry.provinceLabel} → ${neighbor.label}`).join(' · ')
+        : 'Aucune route voisine exposée.',
+      reason: entry.decisionReason ?? entry.detail,
+    };
+  })
+    .sort((left, right) => ({ critical: 0, elevated: 1, watch: 2 }[left.intensity] ?? 3) - ({ critical: 0, elevated: 1, watch: 2 }[right.intensity] ?? 3)
+      || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+
+  return {
+    state: impacts.length === 0 ? 'empty' : impacts.some((impact) => impact.intensity === 'critical') ? 'critical' : 'watch',
+    impacts,
+    summary: impacts.length === 0
+      ? 'Aucune cascade climat pertinente prévue pour les routes ou régions suivies.'
+      : `${impacts.length} cascade${impacts.length > 1 ? 's' : ''} climat à surveiller sur routes/régions · horizon ${worldClimateLayer.timeline.targetSeason}.`,
+  };
+}
+
+function renderAtlasClimateCascadeImpactPreview(preview) {
+  if (state.activeOverlaySlot !== 'climate-overlay') {
+    return '';
+  }
+
+  if (preview.state === 'empty') {
+    return `
+      <section class="map-world-climate-cascade map-world-climate-cascade--empty" aria-label="Aperçu des cascades climat atlas">
+        <strong>Cascades climat atlas</strong>
+        <p>${preview.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-world-climate-cascade map-world-climate-cascade--${preview.state}" aria-label="Aperçu des cascades climat atlas">
+      <div class="map-world-climate-cascade__header">
+        <strong>Cascades climat atlas</strong>
+        <span>${preview.impacts.length} impact${preview.impacts.length > 1 ? 's' : ''} route/région</span>
+      </div>
+      <p>${preview.summary}</p>
+      <ol class="map-world-climate-cascade__list">
+        ${preview.impacts.map((impact) => `
+          <li class="map-world-climate-cascade__item map-world-climate-cascade__item--${impact.intensity}">
+            <b>${impact.provinceLabel}</b>
+            <span>${impact.regionImpact}</span>
+            <small><b>Routes</b> · ${impact.routeImpact}</small>
+            <small><b>Horizon</b> · ${impact.horizon} · confiance ${impact.confidence}</small>
+            <small>${impact.reason}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderWorldClimateLayerSummary(layer) {
   if (state.activeOverlaySlot !== 'climate-overlay') {
     return '';
@@ -11406,6 +11493,7 @@ function render() {
   const climateSeverityLegend = buildClimateSeverityLegend(postCommitClimateMarkers, climateMarkerDensity, shell);
   const climateFollowUpDebt = buildClimateFollowUpDebtSummary(postCommitClimateMarkers, climateSeverityLegend.mitigationSequence ?? []);
   const worldClimateLayer = buildWorldClimateLayer(shell, state.seasonIndex, state.atlasClimateForecastMode);
+  const atlasClimateCascadeImpact = buildAtlasClimateCascadeImpactPreview(shell, worldClimateLayer);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -11436,6 +11524,7 @@ function render() {
           ${renderSelectedClimateCascadeGroup(climateMarkerDensity.selectedCascadeGroup)}
           ${renderClimateFollowUpDebtSummary(climateFollowUpDebt)}
           ${renderWorldClimateLayerSummary(worldClimateLayer)}
+          ${renderAtlasClimateCascadeImpactPreview(atlasClimateCascadeImpact)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
