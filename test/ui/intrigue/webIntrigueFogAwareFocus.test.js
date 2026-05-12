@@ -225,6 +225,19 @@ test('atlas counterintelligence sweep coverage preview stays fog-safe before con
   assert.match(stylesSource, /atlas-counterintelligence-coverage-preview/);
 });
 
+test('atlas counterintelligence warns about missed sweep windows safely', () => {
+  assert.match(webAppSource, /missedWindowRiskLevel/);
+  assert.match(webAppSource, /Fenêtres à ne pas manquer/);
+  assert.match(webAppSource, /Risque de fenêtre manquée fog-safe/);
+  assert.match(webAppSource, /fenêtre critique ce tour/);
+  assert.match(webAppSource, /fenêtre en train de se fermer/);
+  assert.match(webAppSource, /fenêtre incertaine à confirmer/);
+  assert.match(webAppSource, /attendre risque de rendre la réponse moins utile malgré une cause masquée/);
+  assert.match(webAppSource, /Aucune fenêtre manquée probable avec les signaux filtrés actuels/);
+  assert.match(webAppSource, /État low-signal: aucun délai ne semble réduire fortement l’utilité du sweep/);
+  assert.match(stylesSource, /atlas-counterintelligence-window-risk/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);

@@ -8864,6 +8864,27 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
         : signal.tone === 'warning' || signal.certainty === 'probable'
           ? 'exposition modérée · cooldown moyen'
           : 'exposition faible · cooldown court';
+      const missedWindowRiskLevel = signal.freshness === 'stale'
+        ? 'closing'
+        : signal.freshness === 'uncertain' || signal.shadowZone
+          ? 'uncertain'
+          : signal.tone === 'danger' || signal.probableSabotage
+            ? 'urgent'
+            : 'low';
+      const missedWindowLabel = missedWindowRiskLevel === 'urgent'
+        ? 'fenêtre critique ce tour'
+        : missedWindowRiskLevel === 'closing'
+          ? 'fenêtre en train de se fermer'
+          : missedWindowRiskLevel === 'uncertain'
+            ? 'fenêtre incertaine à confirmer'
+            : 'fenêtre stable';
+      const missedWindowReason = missedWindowRiskLevel === 'urgent'
+        ? 'attendre risque de rendre la réponse moins utile malgré une cause masquée'
+        : missedWindowRiskLevel === 'closing'
+          ? 'signal ancien: attendre peut périmer la vérification'
+          : missedWindowRiskLevel === 'uncertain'
+            ? 'signal partiel: délai utile seulement si la couverture reste discrète'
+            : 'faible risque de fenêtre manquée avec les données visibles';
 
       return {
         ...signal,
@@ -8875,6 +8896,9 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
         coverageLevel,
         coverageLabel,
         exposureCooldownRisk,
+        missedWindowRiskLevel,
+        missedWindowLabel,
+        missedWindowReason,
       };
     })
     .filter((signal) => signal.score >= 28 || signal.freshness !== 'stale' || signal.certainty === 'probable')
@@ -8888,6 +8912,11 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     uncertain: sweepCandidates.filter((candidate) => candidate.coverageLevel === 'uncertain'),
     uncovered: filteredSignals.filter((signal) => !candidateIds.has(signal.locationId)),
   };
+  const missedWindowRisks = sweepCandidates
+    .filter((candidate) => ['urgent', 'closing', 'uncertain'].includes(candidate.missedWindowRiskLevel));
+  const missedWindowSummary = missedWindowRisks.length > 0
+    ? `${missedWindowRisks.length} fenêtre${missedWindowRisks.length > 1 ? 's' : ''} de balayage à risque si vous attendez: ${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'urgent').length} critique${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'urgent').length > 1 ? 's' : ''}, ${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'closing').length} en fermeture, ${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'uncertain').length} incertaine${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'uncertain').length > 1 ? 's' : ''}.`
+    : 'Aucune fenêtre manquée probable avec les signaux filtrés actuels.';
   const exposureCooldownSummary = sweepCandidates.length > 0
     ? `${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length} risque${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''} d’exposition haut${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''}; cooldown visible estimé sans cause cachée.`
     : 'Aucun risque d’exposition ou cooldown supplémentaire proposé.';
@@ -8897,6 +8926,8 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     totalFiltered: filteredSignals.length,
     candidates: sweepCandidates,
     coveragePreview,
+    missedWindowRisks,
+    missedWindowSummary,
     exposureCooldownSummary,
     summary: sweepCandidates.length > 0
       ? `${sweepCandidates.length} zone${sweepCandidates.length > 1 ? 's' : ''} de balayage contre-espionnage proposée${sweepCandidates.length > 1 ? 's' : ''} depuis les filtres atlas actifs.`
@@ -8915,6 +8946,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <p>${plan.summary}</p>
         <small>Activez un filtre récent, ancien, incertain ou probable pour préparer une vérification sans révéler de cause cachée.</small>
         <small>${plan.exposureCooldownSummary}</small>
+        <small>${plan.missedWindowSummary}</small>
       </section>
     `;
   }
@@ -8932,6 +8964,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <span><b>${plan.coveragePreview.uncovered.length}</b> non couvert${plan.coveragePreview.uncovered.length > 1 ? 's' : ''}</span>
       </div>
       <small>${plan.exposureCooldownSummary}</small>
+      <section class="atlas-counterintelligence-window-risk" aria-label="Risque de fenêtre manquée fog-safe">
+        <strong>Fenêtres à ne pas manquer</strong>
+        <p>${plan.missedWindowSummary}</p>
+        ${plan.missedWindowRisks.length > 0
+          ? `<ul>${plan.missedWindowRisks.map((candidate) => `<li><b>${candidate.locationName}</b> · ${candidate.missedWindowLabel} · ${candidate.missedWindowReason}</li>`).join('')}</ul>`
+          : '<small>État low-signal: aucun délai ne semble réduire fortement l’utilité du sweep.</small>'}
+      </section>
       <div class="atlas-counterintelligence-plan__list">
         ${plan.candidates.map((candidate, index) => `
           <button type="button" class="atlas-counterintelligence-card atlas-counterintelligence-card--${candidate.tone}" data-province-id="${candidate.locationId}" aria-label="Choisir ${candidate.locationName} pour ${candidate.sweepMode}: ${candidate.uncertainty}">
@@ -8944,6 +8983,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
               <div><dt>Coût / délai</dt><dd>${candidate.costDelay}</dd></div>
               <div><dt>Incertitude</dt><dd>${candidate.uncertainty}</dd></div>
               <div><dt>Couverture</dt><dd>${candidate.coverageLabel} · ${candidate.exposureCooldownRisk}</dd></div>
+              <div><dt>Fenêtre</dt><dd>${candidate.missedWindowLabel}</dd></div>
             </dl>
             <small>${candidate.priorityReason}; cellule, relais, cible et cause restent masqués.</small>
           </button>
