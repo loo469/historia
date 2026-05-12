@@ -3248,6 +3248,112 @@ function renderCriticalFrontRiskWarnings(province, shell, focusContext, intrigue
 
 
 
+function buildFrontPriorityRanking(shell, intrigueView = null) {
+  const rankTone = { critical: 'danger', watch: 'warning', covered: 'ready' };
+
+  return shell.provinces
+    .map((province) => {
+      const focusContext = {
+        focusedProvinceId: province.provinceId,
+        focusedProvince: province,
+        neighborIds: new Set(province.neighborIds),
+      };
+      const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+      const projection = buildProjectedFrontStability(province, shell, actionQueue);
+      const risks = buildCriticalFrontRiskWarnings(province, projection);
+      const leadRisk = risks[0] ?? { tone: 'covered', label: 'Risque acceptable', driver: 'Terrain' };
+      const blockedCount = actionQueue.filter((entry) => entry.status === 'blocked').length;
+      const riskyCount = actionQueue.filter((entry) => entry.status === 'risky').length;
+      const criticalCount = risks.filter((risk) => risk.tone === 'critical').length;
+      const watchCount = risks.filter((risk) => risk.tone === 'watch').length;
+      const urgencyLabel = criticalCount > 0 || blockedCount > 0
+        ? 'avant validation'
+        : watchCount > 0 || riskyCount > 0
+          ? 'prochain tour'
+          : 'surveillance légère';
+      const score = (criticalCount * 40)
+        + (watchCount * 18)
+        + (projection.tone === 'danger' ? 28 : projection.tone === 'warning' ? 16 : 4)
+        + (blockedCount * 12)
+        + (riskyCount * 6)
+        + (province.contested ? 8 : 0)
+        + (['collapsed', 'disrupted'].includes(province.supplyLevel) ? 6 : province.supplyLevel === 'strained' ? 3 : 0)
+        + Math.min(province.strategicValue ?? 0, 8);
+      const reasons = [
+        `${leadRisk.label} (${leadRisk.driver})`,
+        projection.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? projection.title,
+      ];
+
+      if (blockedCount > 0) {
+        reasons.push(`${blockedCount} option${blockedCount > 1 ? 's' : ''} bloquée${blockedCount > 1 ? 's' : ''}`);
+      } else if (riskyCount > 0) {
+        reasons.push(`${riskyCount} option${riskyCount > 1 ? 's' : ''} risquée${riskyCount > 1 ? 's' : ''}`);
+      }
+
+      reasons.push(`urgence ${urgencyLabel}`);
+
+      return {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        tone: rankTone[leadRisk.tone] ?? 'ready',
+        score,
+        leadRisk: leadRisk.label,
+        actionCode: actionQueue[0]?.actionCode ?? 'WAR-HOLD',
+        reason: reasons.slice(0, 4).join(' · '),
+        focusTargetLabel: province.contested ? `front contesté ${province.label}` : `province ${province.label}`,
+      };
+    })
+    .filter((entry) => entry.tone !== 'ready' || entry.score >= 18)
+    .sort((left, right) => right.score - left.score || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3)
+    .map((entry, index, entries) => ({
+      ...entry,
+      rank: index + 1,
+      comparison: index === 0
+        ? 'Passe en premier: cumul risque / stabilité le plus élevé.'
+        : `Après ${entries[index - 1].provinceLabel}: score ${entry.score} contre ${entries[index - 1].score}.`,
+    }));
+}
+
+function renderFrontPriorityRanking(shell, intrigueView = null) {
+  const priorities = buildFrontPriorityRanking(shell, intrigueView);
+
+  if (priorities.length === 0) {
+    return `
+      <section class="front-priority-ranking is-empty" aria-label="Classement des priorités militaires de front">
+        <div class="front-priority-ranking__header">
+          <strong>Priorités fronts</strong>
+          <span>calme</span>
+        </div>
+        <p>Aucun front visible ne demande de priorité militaire immédiate.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="front-priority-ranking" aria-label="Classement des priorités militaires de front">
+      <div class="front-priority-ranking__header">
+        <strong>Priorités fronts</strong>
+        <span>${priorities.length} provinces à traiter</span>
+      </div>
+      <div class="front-priority-ranking__list">
+        ${priorities.map((priority) => `
+          <button class="front-priority front-priority--${priority.tone}" type="button" data-province-id="${priority.provinceId}" data-readiness-focus="${priority.provinceId}" aria-label="Priorité ${priority.rank}: ${priority.focusTargetLabel}">
+            <div>
+              <strong>#${priority.rank} ${priority.provinceLabel}</strong>
+              <code>${priority.actionCode}</code>
+            </div>
+            <p>${priority.reason}</p>
+            <small>${priority.comparison}</small>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+
+
 function buildConflictReadinessWarnings(shell, intrigueView = null) {
   return shell.provinces
     .map((province) => {
@@ -6283,6 +6389,7 @@ function render() {
           </div>
           <p class="turn-summary">${state.lastTurnSummary}</p>
           ${renderConflictReadinessWarnings(shell, intrigueView)}
+          ${renderFrontPriorityRanking(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
