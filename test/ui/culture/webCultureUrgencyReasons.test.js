@@ -59,6 +59,8 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /File recommandée des interventions culturelles/);
   assert.match(webAppSource, /culture-intervention-priority__blocker/);
   assert.match(webAppSource, /culture-intervention-priority__follow-up/);
+  assert.match(webAppSource, /culture-intervention-priority__resolution-gain/);
+  assert.match(webAppSource, /resolutionGain\.riskAvoided/);
   assert.match(webAppSource, /Urgence/);
   assert.match(webAppSource, /Cause floue/);
   assert.match(webAppSource, /urgence puis tendance/);
@@ -99,6 +101,7 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(stylesSource, /\.culture-intervention-conflicts/);
   assert.match(stylesSource, /\.culture-intervention-priority__blocker/);
   assert.match(stylesSource, /\.culture-intervention-priority__follow-up/);
+  assert.match(stylesSource, /\.culture-intervention-priority__resolution-gain/);
   assert.match(stylesSource, /\.culture-tension-marker-card--trend-rising/);
   assert.match(stylesSource, /\.culture-tension-marker-card--trend-unknown/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-confirmation/);
