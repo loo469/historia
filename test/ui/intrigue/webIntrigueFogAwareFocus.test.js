@@ -205,9 +205,9 @@ test('post-commit intrigue exposure markers stay fog-safe on the map', () => {
   assert.match(webAppSource, /Exposition stable/);
   assert.match(webAppSource, /Exposition accrue/);
   assert.match(webAppSource, /Résultat fog-limité/);
-  assert.match(webAppSource, /Voir synthèse finale exposition intrigue/);
+  assert.match(webAppSource, /assurance \$\{assuranceLevel\}/);
   assert.match(webAppSource, /résultat masqué par le brouillard; seule la province reste inspectable/);
-  assert.match(webAppSource, /détails fog-safe liés à la synthèse finale/);
+  assert.match(webAppSource, /aucun détail caché révélé/);
   assert.match(webAppSource, /renderPostCommitIntrigueExposureMarkers\(postCommitMarkers\)/);
   assert.match(stylesSource, /intrigue-post-commit-marker/);
   assert.match(stylesSource, /intrigue-post-commit-marker--lowered/);
@@ -242,6 +242,23 @@ test('intrigue exposure rollups separate confirmed suspected and unknown certain
   assert.match(webAppSource, /Certitude fog-safe: les zones inconnues restent séparées des faibles risques confirmés/);
   assert.match(webAppSource, /aria-label="Niveau de certitude fog-safe des marqueurs intrigue"/);
   assert.match(stylesSource, /intrigue-exposure-certainty-rollup/);
+});
+
+test('intrigue exposure markers mark resolved threats without exposing hidden causes', () => {
+  assert.match(webAppSource, /resolutionStatus/);
+  assert.match(webAppSource, /resolutionCounts/);
+  assert.match(webAppSource, /resolved: markers\.filter\(\(marker\) => marker\.resolutionStatus === 'resolved'\)/);
+  assert.match(webAppSource, /active: markers\.filter\(\(marker\) => marker\.resolutionStatus === 'active'\)/);
+  assert.match(webAppSource, /fogCalmed: markers\.filter\(\(marker\) => marker\.resolutionStatus === 'fog-calmed'\)/);
+  assert.match(webAppSource, /Traité récemment/);
+  assert.match(webAppSource, /Menace active/);
+  assert.match(webAppSource, /Rumeur calmée/);
+  assert.match(webAppSource, /assuranceLevel/);
+  assert.match(webAppSource, /menace encore active malgré la réponse/);
+  assert.match(webAppSource, /aucune source ou cause cachée n’est révélée/);
+  assert.match(webAppSource, /aria-label="Menaces intrigue traitées ou encore actives"/);
+  assert.match(stylesSource, /intrigue-exposure-resolution-rollup/);
+  assert.match(stylesSource, /intrigue-post-commit-marker--fog-calmed/);
 });
 
 test('intrigue exposure markers show fog-safe freshness cues', () => {
