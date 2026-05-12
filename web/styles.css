@@ -3731,6 +3731,43 @@ button { font: inherit; }
   color: #fde68a;
   line-height: 1.35;
 }
+.province-climate-risk-forecast__selected {
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(12, 74, 110, 0.26);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+.province-climate-risk-forecast__selected--reduced { border-color: rgba(74, 222, 128, 0.34); }
+.province-climate-risk-forecast__selected--urgent { border-color: rgba(248, 113, 113, 0.38); }
+.province-climate-risk-forecast__selected--unchanged,
+.province-climate-risk-forecast__selected--empty { border-color: rgba(148, 163, 184, 0.22); }
+.province-climate-risk-forecast__selected div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.province-climate-risk-forecast__selected span,
+.province-climate-risk-forecast__selected small,
+.province-climate-risk-forecast__selected li {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-climate-risk-forecast__selected p {
+  color: #ecfeff;
+}
+.province-climate-risk-forecast__selected ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: 16px;
+}
+.province-climate-risk-forecast__selected b {
+  color: #fef3c7;
+}
 .province-climate-risk-forecast__deadline {
   display: grid;
   gap: 3px;
