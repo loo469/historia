@@ -3096,6 +3096,65 @@ button { font: inherit; }
   line-height: 1.35;
 }
 
+.province-climate-cascade-preview {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(8, 47, 73, 0.34), rgba(15, 23, 42, 0.58));
+  border: 1px solid rgba(125, 211, 252, 0.16);
+}
+.province-climate-cascade-preview__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.province-climate-cascade-preview__header span {
+  color: #bae6fd;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-climate-cascade-list {
+  display: grid;
+  gap: 7px;
+}
+.province-climate-cascade {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.34);
+  border-left: 3px solid rgba(148, 163, 184, 0.48);
+}
+.province-climate-cascade.is-decisive { border-left-color: rgba(251, 191, 36, 0.82); }
+.province-climate-cascade.is-cosmetic { border-left-color: rgba(96, 165, 250, 0.62); }
+.province-climate-cascade div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.province-climate-cascade b {
+  color: #ecfeff;
+}
+.province-climate-cascade code {
+  color: #fde68a;
+  font-size: 0.72rem;
+}
+.province-climate-cascade p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-climate-cascade small {
+  color: #bae6fd;
+  line-height: 1.35;
+}
+
 .province-climate-turn-report {
   display: grid;
   gap: 9px;

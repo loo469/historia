@@ -1455,6 +1455,106 @@ function buildProvinceClimateMitigationPriorities(province, report = buildProvin
     .slice(0, 3);
 }
 
+function buildProvinceClimateCascadePreview(province, shell, report = buildProvinceClimateTurnReport(province)) {
+  const priorities = buildProvinceClimateMitigationPriorities(province, report);
+  const decisivePriority = priorities.find((priority) => priority.outcomeChange) ?? null;
+  const riskLevel = getProvinceClimateRiskLevel(province);
+  const hazard = province.hazards?.[0] ?? null;
+  const neighborProvinces = province.neighborIds
+    .map((neighborId) => shell.provinces.find((candidate) => candidate.provinceId === neighborId))
+    .filter(Boolean);
+  const protectedNeighbors = neighborProvinces
+    .filter((neighbor) => neighbor.supplyLevel !== 'stable' || neighbor.contested || neighbor.occupied)
+    .slice(0, 3);
+  const localResources = [
+    ...(province.resourceIds ?? []),
+    ...Object.keys(province.resourceDeposits ?? {}),
+  ];
+  const affectedResources = localResources.length > 0 ? localResources.slice(0, 3) : ['réserves locales'];
+  const cascades = [];
+
+  if (riskLevel !== 'stable' || province.supplyLevel === 'collapsed') {
+    cascades.push({
+      type: 'famine',
+      scope: protectedNeighbors.length > 0 ? `Protège aussi ${protectedNeighbors.map((neighbor) => neighbor.label).join(', ')}` : 'Impact local seulement',
+      avoidedImpact: `Évite une rupture de vivres sur ${affectedResources.join(', ')}.`,
+      changesThisTurn: Boolean(decisivePriority),
+      priority: 1,
+    });
+  }
+
+  if (province.contested || province.occupied || protectedNeighbors.length > 0) {
+    cascades.push({
+      type: 'route fragilisée',
+      scope: protectedNeighbors.length > 0 ? `Voisins concernés: ${protectedNeighbors.map((neighbor) => neighbor.label).join(', ')}` : 'Route locale sous pression',
+      avoidedImpact: 'Réduit le risque de propagation vers les connexions frontalières et logistiques.',
+      changesThisTurn: Boolean(decisivePriority),
+      priority: 2,
+    });
+  }
+
+  if (localResources.length > 0 && riskLevel !== 'stable') {
+    cascades.push({
+      type: 'migration de ressources',
+      scope: affectedResources.join(', '),
+      avoidedImpact: 'Garde les ressources dans la province au lieu de les déplacer en urgence.',
+      changesThisTurn: Boolean(decisivePriority),
+      priority: 3,
+    });
+  }
+
+  if (hazard || report.deltas.some((delta) => delta.deltaId.includes(':upcoming') || delta.deltaId.includes(':anomaly'))) {
+    cascades.push({
+      type: 'anomalie saisonnière prolongée',
+      scope: hazard ? `${hazard.type} ${hazard.riskLevel ?? 'visible'}` : 'saison prochaine',
+      avoidedImpact: 'Limite la prolongation qualitative de l’anomalie au prochain tour.',
+      changesThisTurn: Boolean(decisivePriority),
+      priority: 4,
+    });
+  }
+
+  if (cascades.length === 0) {
+    cascades.push({
+      type: 'cascade cosmétique',
+      scope: 'Aucun voisin critique',
+      avoidedImpact: 'La mitigation améliore surtout la lisibilité locale; pas de cascade régionale fiable.',
+      changesThisTurn: false,
+      priority: 5,
+    });
+  }
+
+  return cascades
+    .sort((left, right) => Number(right.changesThisTurn) - Number(left.changesThisTurn) || left.priority - right.priority)
+    .slice(0, 3);
+}
+
+function renderProvinceClimateCascadePreview(province, shell) {
+  const report = buildProvinceClimateTurnReport(province);
+  const cascades = buildProvinceClimateCascadePreview(province, shell, report);
+  const decisiveCount = cascades.filter((cascade) => cascade.changesThisTurn).length;
+
+  return `
+    <section class="province-climate-cascade-preview" aria-label="Aperçu des cascades régionales évitées par la mitigation climat">
+      <div class="province-climate-cascade-preview__header">
+        <strong>Cascades évitées</strong>
+        <span>${decisiveCount > 0 ? `${decisiveCount} change${decisiveCount > 1 ? 'nt' : ''} ce tour` : 'effet local'}</span>
+      </div>
+      <div class="province-climate-cascade-list">
+        ${cascades.map((cascade) => `
+          <article class="province-climate-cascade ${cascade.changesThisTurn ? 'is-decisive' : 'is-cosmetic'}">
+            <div>
+              <b>${cascade.type}</b>
+              <code>${cascade.changesThisTurn ? 'agit ce tour' : 'cosmétique'}</code>
+            </div>
+            <p>${cascade.avoidedImpact}</p>
+            <small>${cascade.scope}</small>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderProvinceClimateMitigationPriorities(province) {
   const report = buildProvinceClimateTurnReport(province);
   const priorities = buildProvinceClimateMitigationPriorities(province, report);
@@ -2735,6 +2835,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       ${renderProvinceClimateCountdownCues(province)}
       ${renderProvinceClimateMitigationPriorities(province)}
+      ${renderProvinceClimateCascadePreview(province, shell)}
       ${renderProvinceClimateTurnReport(province)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>
