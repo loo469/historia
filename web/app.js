@@ -3015,10 +3015,60 @@ function buildIntrigueQueueChangePreview(projection, cumulativeRisk) {
   };
 }
 
+function buildMapIntrigueSafeQueueAction(province, projection, cumulativeRisk, queueChangePreview) {
+  const alreadyQueued = !projection.empty;
+  const tooRisky = projection.tone === 'danger' && projection.fallback.empty;
+  const fallbackReady = !projection.fallback.empty && ['danger', 'warning', 'masked'].includes(projection.tone);
+  const unavailable = projection.empty && projection.fallback.empty;
+  const status = alreadyQueued
+    ? 'déjà en file'
+    : tooRisky
+      ? 'trop risqué'
+      : unavailable
+        ? 'aucune réponse disponible'
+        : fallbackReady
+          ? 'fallback proposé'
+          : 'prêt';
+  const actionLabel = fallbackReady
+    ? projection.fallback.action
+    : unavailable
+      ? 'Aucune réponse disponible'
+      : projection.label.replace(/^Réponse en file · /, '') || 'Réponse intrigue recommandée';
+  const disabled = alreadyQueued || tooRisky || unavailable;
+  const residualRisk = queueChangePreview.scenarios.find((scenario) => scenario.code === 'remplacement')?.after
+    ?? Number.parseInt(cumulativeRisk.totalLabel, 10)
+    ?? 0;
+  const majorSources = projection.sources.slice(0, 2).map((source) => source.label).join(' · ') || 'Sources masquées';
+
+  return {
+    status,
+    actionLabel,
+    disabled,
+    residualRisk,
+    majorSources,
+    beforeLabel: projection.beforeLabel,
+    afterLabel: projection.afterLabel,
+    ignoredConsequence: cumulativeRisk.level === 'critique' || cumulativeRisk.level === 'élevé'
+      ? 'Ignorer maintenant laisse la pression visible s’accumuler au prochain tour.'
+      : 'Ignorer conserve le signal sous observation, mais le brouillard peut réduire la confiance.',
+    ctaLabel: disabled ? 'Action non queueable' : `Queue carte: ${actionLabel}`,
+    detail: fallbackReady
+      ? 'La réponse recommandée est remplacée par un fallback sûr déjà connu.'
+      : alreadyQueued
+        ? 'Une réponse intrigue est déjà en file pour cette province.'
+        : tooRisky
+          ? 'Risque trop élevé sans fallback sûr; attendre un signal confirmé.'
+          : unavailable
+            ? 'Aucune réponse exploitable depuis la carte sans lever le brouillard.'
+            : 'Queue directe depuis le panneau carte, sans navigation lourde.',
+  };
+}
+
 function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const projection = buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
   const cumulativeRisk = buildCumulativeQueuedIntrigueExposureRisk(province, projection, intrigueView);
   const queueChangePreview = buildIntrigueQueueChangePreview(projection, cumulativeRisk);
+  const mapQueueAction = buildMapIntrigueSafeQueueAction(province, projection, cumulativeRisk, queueChangePreview);
 
   return `
     <section class="province-intrigue-detection-projection province-intrigue-detection-projection--${projection.tone}" aria-label="Projection du risque de détection intrigue">
@@ -3080,6 +3130,20 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
         </div>
         <small>Alternative sûre: ${queueChangePreview.safeAlternative}.</small>
         <small>${queueChangePreview.fogLimit}</small>
+      </div>
+      <div class="province-intrigue-map-queue-action province-intrigue-map-queue-action--${mapQueueAction.disabled ? 'disabled' : 'ready'}" aria-label="Queue carte réponse intrigue sûre">
+        <div class="province-intrigue-map-queue-action__header">
+          <span>${mapQueueAction.status}</span>
+          <strong>${mapQueueAction.actionLabel}</strong>
+        </div>
+        <dl>
+          <div><dt>Exposition</dt><dd>${mapQueueAction.beforeLabel} → ${mapQueueAction.afterLabel}</dd></div>
+          <div><dt>Risque résiduel</dt><dd>${mapQueueAction.residualRisk}</dd></div>
+          <div><dt>Sources majeures</dt><dd>${mapQueueAction.majorSources}</dd></div>
+        </dl>
+        <p>${mapQueueAction.ignoredConsequence}</p>
+        <button type="button" class="province-intrigue-map-queue-action__cta" data-action="queue-safe-intrigue-response" data-province-id="${province.provinceId}" ${mapQueueAction.disabled ? 'disabled' : ''}>${mapQueueAction.ctaLabel}</button>
+        <small>${mapQueueAction.detail}</small>
       </div>
       <small>${projection.fogLimit}</small>
     </section>

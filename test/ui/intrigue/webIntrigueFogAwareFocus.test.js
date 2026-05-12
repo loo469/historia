@@ -145,3 +145,22 @@ test('queued intrigue preview shows exposure deltas before confirmation', () => 
   assert.match(stylesSource, /province-intrigue-queue-change-preview__scenario--retrait/);
   assert.match(stylesSource, /province-intrigue-queue-change-preview__scenario--remplacement/);
 });
+
+test('map panel can queue safe intrigue responses with guarded states', () => {
+  assert.match(webAppSource, /function buildMapIntrigueSafeQueueAction/);
+  assert.match(webAppSource, /Queue carte réponse intrigue sûre/);
+  assert.match(webAppSource, /data-action="queue-safe-intrigue-response"/);
+  assert.match(webAppSource, /déjà en file/);
+  assert.match(webAppSource, /trop risqué/);
+  assert.match(webAppSource, /aucune réponse disponible/);
+  assert.match(webAppSource, /fallback proposé/);
+  assert.match(webAppSource, /Exposition/);
+  assert.match(webAppSource, /Risque résiduel/);
+  assert.match(webAppSource, /Sources majeures/);
+  assert.match(webAppSource, /Ignorer maintenant laisse la pression visible s’accumuler au prochain tour/);
+  assert.match(webAppSource, /La réponse recommandée est remplacée par un fallback sûr déjà connu/);
+  assert.match(webAppSource, /Queue directe depuis le panneau carte, sans navigation lourde/);
+  assert.match(stylesSource, /province-intrigue-map-queue-action/);
+  assert.match(stylesSource, /province-intrigue-map-queue-action--disabled/);
+  assert.match(stylesSource, /province-intrigue-map-queue-action__cta:disabled/);
+});
