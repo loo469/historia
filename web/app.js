@@ -776,6 +776,35 @@ function renderAtlasMilitaryLayer(shell) {
   `;
 }
 
+function buildAtlasCultureDrift(entry, regionEntries, selectedDiscoveryId, selectedRegionId) {
+  const cultures = new Set(regionEntries.map((candidate) => candidate.cultureName));
+  const discoveryCount = new Set(regionEntries.flatMap((candidate) => candidate.regionalDiscoveryLinks.map((link) => link.discoveryId))).size;
+  const eventCount = regionEntries.reduce((sum, candidate) => sum + (candidate.eventPopups?.length ?? 0), 0);
+  const linkedToFocus = Boolean(selectedDiscoveryId)
+    && regionEntries.some((candidate) => candidate.regionalDiscoveryLinks.some((link) => link.discoveryId === selectedDiscoveryId));
+  const state = cultures.size > 1
+    ? 'migre'
+    : entry.influenceScore >= 70 || discoveryCount >= 2
+      ? 'monte'
+      : entry.influenceScore <= 45
+        ? 'recule'
+        : 'stable';
+  const causes = [
+    cultures.size > 1 ? 'chevauchement' : null,
+    discoveryCount > 0 ? `${discoveryCount} découverte${discoveryCount > 1 ? 's' : ''}` : null,
+    eventCount > 0 ? 'repère actif' : null,
+    linkedToFocus ? 'focus lié' : null,
+  ].filter(Boolean).slice(0, 3);
+
+  return {
+    state,
+    label: { monte: 'influence monte', recule: 'influence recule', migre: 'migration culturelle', stable: 'zone stable' }[state],
+    causes: causes.length > 0 ? causes : ['signal stable'],
+    selected: entry.regionId === selectedRegionId,
+    linkedToFocus,
+  };
+}
+
 function buildAtlasCultureFeatures(cultureView) {
   const entries = cultureView?.overlay ?? [];
   const selectedRegionId = cultureView?.selectedRegionId ?? state.selectedProvinceId;
@@ -820,6 +849,9 @@ function buildAtlasCultureFeatures(cultureView) {
       .flatMap((entry) => entry.eventPopups ?? [])
       .sort((left, right) => (right.importance ?? 0) - (left.importance ?? 0))[0];
 
+    const sourceEntry = dominantByRegion.get(zone.regionId) ?? regionEntries[0];
+    const drift = buildAtlasCultureDrift(sourceEntry, regionEntries, selectedDiscoveryId, selectedRegionId);
+
     return {
       summaryId: `atlas-culture-summary:${zone.regionId}`,
       regionId: zone.regionId,
@@ -829,9 +861,13 @@ function buildAtlasCultureFeatures(cultureView) {
       influenceLabel: cultures.size > 1 ? 'influence contestée' : `${zone.influenceTier} dominante`,
       discoveryLabel: `${discoveryCount} découverte${discoveryCount > 1 ? 's' : ''} active${discoveryCount > 1 ? 's' : ''}`,
       opportunityLabel: opportunity ? `opportunité: ${opportunity.title}` : 'opportunité à surveiller',
+      drift,
       selected: zone.regionId === selectedRegionId,
     };
   }).slice(0, 6);
+  const driftPreviews = regionSummaries
+    .filter((summary) => summary.drift.state !== 'stable' || summary.selected || summary.drift.linkedToFocus)
+    .slice(0, 5);
 
   return {
     influenceZones,
@@ -839,6 +875,7 @@ function buildAtlasCultureFeatures(cultureView) {
     discoverySites,
     focusedDiscovery: discoverySites.find((site) => site.focused) ?? null,
     regionSummaries,
+    driftPreviews,
   };
 }
 
@@ -856,9 +893,16 @@ function renderAtlasCultureLayer(cultureView) {
         <polygon class="atlas-culture-zone atlas-culture-zone--${zone.tone} atlas-culture-zone--${zone.influenceTier}" points="${zone.polygon}" aria-label="Zone d’influence ${zone.cultureName}: ${zone.influenceTier}"></polygon>
       `).join('')}
       ${features.regionSummaries.map((summary, index) => `
-        <g class="atlas-culture-summary atlas-culture-summary--${summary.tone} ${summary.selected ? 'is-selected' : ''}" data-atlas-culture-summary="${summary.regionId}" aria-label="Résumé atlas culture ${summary.cultureName}: ${summary.influenceLabel}, ${summary.discoveryLabel}, ${summary.opportunityLabel}">
+        <g class="atlas-culture-summary atlas-culture-summary--${summary.tone} ${summary.selected ? 'is-selected' : ''}" data-atlas-culture-summary="${summary.regionId}" aria-label="Résumé atlas culture ${summary.cultureName}: ${summary.influenceLabel}, ${summary.discoveryLabel}, ${summary.opportunityLabel}, ${summary.drift.label}">
           <text x="${Math.min(92, summary.center.x + 3.2)}%" y="${Math.max(7, summary.center.y - 6.2 + (index % 2) * 2.4)}%">${summary.cultureName}</text>
           <text class="atlas-culture-summary__chip" x="${Math.min(92, summary.center.x + 3.2)}%" y="${Math.max(9.2, summary.center.y - 3.9 + (index % 2) * 2.4)}%">${summary.influenceLabel} · ${summary.discoveryLabel}</text>
+          <text class="atlas-culture-summary__drift" x="${Math.min(92, summary.center.x + 3.2)}%" y="${Math.max(11.1, summary.center.y - 2.0 + (index % 2) * 2.4)}%">${summary.drift.label}</text>
+        </g>
+      `).join('')}
+      ${features.driftPreviews.map((summary) => `
+        <g class="atlas-culture-drift atlas-culture-drift--${summary.drift.state} ${summary.drift.linkedToFocus ? 'is-linked-focus' : ''}" data-atlas-culture-drift="${summary.regionId}" aria-label="Dérive culture ${summary.cultureName}: ${summary.drift.label}, causes ${summary.drift.causes.join(', ')}">
+          <path d="M${summary.center.x - 3},${summary.center.y + 4} q3,-3 6,0" marker-end="url(#atlasCultureDriftArrow)"></path>
+          <text x="${summary.center.x + 4.2}%" y="${summary.center.y + 4.3}%">${summary.drift.causes.join(' · ')}</text>
         </g>
       `).join('')}
       ${features.cultureMarkers.map((marker) => `
@@ -897,6 +941,9 @@ function renderAtlasWorldCanvas(shell, economyView = null, cultureView = null) {
         <filter id="atlasReliefShadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0.6" dy="0.9" stdDeviation="0.7" flood-color="#020617" flood-opacity="0.42"></feDropShadow>
         </filter>
+        <marker id="atlasCultureDriftArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="3" markerHeight="3" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#a7f3d0" opacity="0.9"></path>
+        </marker>
       </defs>
       <rect class="atlas-world-canvas__ocean" width="100" height="100"></rect>
       ${atlas.oceanBands.map((band) => `<path class="atlas-world-canvas__ocean-band" d="${band.path}" aria-label="${band.label}"></path>`).join('')}
