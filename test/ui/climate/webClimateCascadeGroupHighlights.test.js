@@ -15,7 +15,7 @@ test('aggregated climate markers expose selected cascade groups while urgent mar
   assert.match(webAppSource, /Le groupe met en évidence les provinces du risque principal/);
   assert.match(webAppSource, /has-climate-cascade-group/);
   assert.match(webAppSource, /is-climate-cascade-group-primary/);
-  assert.match(webAppSource, /renderMapLayerStack\(shell, economyView, focusContext, cultureView, climateMarkerDensity\.visibleMarkers, climateMarkerDensity\.selectedCascadeGroup\)/);
+  assert.match(webAppSource, /renderMapLayerStack\(shell, economyView, focusContext, cultureView, climateMarkerDensity\.visibleMarkers, climateMarkerDensity\.selectedCascadeGroup, worldClimateLayer\)/);
   assert.match(webAppSource, /marker\.status === 'cascade-active' \|\| marker\.status === 'hazard-unresolved'/);
 
   assert.match(stylesSource, /\.map-climate-cascade-group/);

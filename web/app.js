@@ -1457,7 +1457,7 @@ function renderProvinceWarOverlayOverflowSummary(summary) {
   `;
 }
 
-function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null) {
+function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null, worldClimateLayer = null) {
   const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
   const isNeighbor = focusContext.neighborIds.has(province.provinceId);
@@ -1470,17 +1470,19 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
   const logisticsOutcomeMarker = getLogisticsOutcomeMarkerForProvince(province.provinceId);
   const climateMarker = postCommitClimateMarkers.find((marker) => marker.provinceId === province.provinceId) ?? null;
   const climateCascadeGroupMarker = selectedClimateCascadeGroup?.markers.find((marker) => marker.provinceId === province.provinceId) ?? null;
+  const worldClimateEntry = worldClimateLayer?.entries.find((entry) => entry.provinceId === province.provinceId) ?? null;
   const warOverlayOverflow = buildProvinceWarOverlayOverflowSummary(province, { readinessTone, militaryOutcomeMarker, logisticsOutcomeMarker });
   const isReadinessHighlight = Boolean(readinessTone);
   const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
   const isLogisticsOutcomeHighlight = Boolean(logisticsOutcomeMarker);
   const isClimateOutcomeHighlight = Boolean(climateMarker);
   const isClimateCascadeGroupHighlight = Boolean(climateCascadeGroupMarker);
-  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && !isLogisticsOutcomeHighlight && !isClimateOutcomeHighlight && !isClimateCascadeGroupHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
+  const isWorldClimateHighlight = Boolean(worldClimateEntry && state.activeOverlaySlot === 'climate-overlay');
+  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && !isLogisticsOutcomeHighlight && !isClimateOutcomeHighlight && !isClimateCascadeGroupHighlight && !isWorldClimateHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
   const readinessLabel = readinessTone === 'danger' ? 'menace immédiate' : readinessTone === 'warning' ? 'préparation insuffisante' : readinessTone === 'ready' ? 'opportunité tactique' : null;
   const economyBlockerLabel = economyBlocker ? `${economyBlocker.blocker}: ${economyBlocker.summary}` : null;
-  const selectionSignal = climateMarker ? 'CLIMAT' : climateCascadeGroupMarker ? 'GROUPE' : economyBlocker ? 'BLOCAGE' : isMilitaryOutcomeHighlight ? 'RÉSOLU' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
+  const selectionSignal = climateMarker ? 'CLIMAT' : climateCascadeGroupMarker ? 'GROUPE' : worldClimateEntry ? 'SAISON' : economyBlocker ? 'BLOCAGE' : isMilitaryOutcomeHighlight ? 'RÉSOLU' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
@@ -1498,6 +1500,9 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
     climateMarker ? `has-climate-post-commit--${climateMarker.status}` : '',
     climateCascadeGroupMarker ? 'has-climate-cascade-group' : '',
     climateCascadeGroupMarker?.provinceId === selectedClimateCascadeGroup?.primaryProvinceId ? 'is-climate-cascade-group-primary' : '',
+    isWorldClimateHighlight ? 'has-world-climate' : '',
+    isWorldClimateHighlight ? `has-world-climate--${worldClimateEntry.tone}` : '',
+    isWorldClimateHighlight ? `has-world-biome--${worldClimateEntry.biome}` : '',
     readinessTone ? `is-readiness-${readinessTone}` : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
@@ -1514,8 +1519,9 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
       data-economy-blocker="${economyBlockerLabel ?? ''}"
       data-military-outcome="${militaryOutcomeMarker?.label ?? ''}"
       data-logistics-outcome="${logisticsOutcomeMarker?.label ?? ''}"
-      data-climate-outcome="${climateMarker?.label ?? climateCascadeGroupMarker?.label ?? ''}"
-      title="${climateMarker ? `${climateMarker.label} — ${climateMarker.summary}` : climateCascadeGroupMarker ? `${selectedClimateCascadeGroup.label}: ${climateCascadeGroupMarker.summary}` : logisticsOutcomeMarker ? `${logisticsOutcomeMarker.label}: ${logisticsOutcomeMarker.detail}` : economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
+      data-climate-outcome="${climateMarker?.label ?? climateCascadeGroupMarker?.label ?? worldClimateEntry?.label ?? ''}"
+      data-world-climate="${worldClimateEntry ? `${worldClimateEntry.biome}:${worldClimateEntry.tone}` : ''}"
+      title="${climateMarker ? `${climateMarker.label} — ${climateMarker.summary}` : climateCascadeGroupMarker ? `${selectedClimateCascadeGroup.label}: ${climateCascadeGroupMarker.summary}` : worldClimateEntry ? `${worldClimateEntry.label}: ${worldClimateEntry.summary}` : logisticsOutcomeMarker ? `${logisticsOutcomeMarker.label}: ${logisticsOutcomeMarker.detail}` : economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
       aria-label="${province.label}, ${climateMarker ? `marqueur climat post-résolution: ${climateMarker.label}, ${climateMarker.summary}` : logisticsOutcomeMarker ? `résultat logistique post-commit: ${logisticsOutcomeMarker.label}, ${logisticsOutcomeMarker.detail}` : economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : militaryOutcomeMarker ? `issue militaire post-commit: ${militaryOutcomeMarker.label}, ${militaryOutcomeMarker.changed}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
@@ -1528,6 +1534,7 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
       ${economyBlocker ? `<span class="province-node__economy-blocker"><b>${economyBlocker.blocker}</b>${economyBlocker.summary}<small>${economyBlocker.effect}</small></span>` : ''}
       ${renderProvinceLogisticsOutcomeMarker(logisticsOutcomeMarker)}
       ${climateMarker ? `<span class="province-node__climate-marker"><b>${climateMarker.label}</b>${climateMarker.summary}<small>${climateMarker.detail}</small></span>` : ''}
+      ${isWorldClimateHighlight ? `<span class="province-node__world-climate"><b>${worldClimateEntry.label}</b>${worldClimateEntry.summary}<small>${worldClimateEntry.detail}</small></span>` : ''}
       <span class="province-node__badges">${badges}</span>
       ${renderPostCommitMilitaryOutcomeMarker(militaryOutcomeMarker)}
       ${renderProvinceWarOverlayOverflowSummary(warOverlayOverflow)}
@@ -3995,6 +4002,98 @@ function buildClimateSeverityLegend(markers = [], densityControl = null, shell =
       ? `${groupedCount} marqueur${groupedCount > 1 ? 's' : ''} agrégé${groupedCount > 1 ? 's' : ''}; la sévérité explique les piles sans ouvrir chaque province.`
       : 'Sévérité climat lisible directement sur les marqueurs visibles.',
   };
+}
+
+function getWorldClimateBiomeLabel(biome) {
+  return {
+    continental: 'Continental',
+    temperate: 'Tempéré',
+    arid: 'Aride',
+    coastal: 'Côtier',
+    tropical: 'Tropical',
+  }[biome] ?? 'Mixte';
+}
+
+function getWorldClimateSeasonCue(province, seasonIndex = state.seasonIndex) {
+  const season = seasonLabels[seasonIndex] ?? seasonLabels[0];
+  const biome = province.biome ?? 'temperate';
+  const riskLevel = getProvinceClimateRiskLevel(province);
+  const hazard = province.hazards?.[0] ?? null;
+  const disaster = hazard && (hazard.riskLevel === 'high' || riskLevel === 'critical')
+    ? `${hazard.type} ${hazard.riskLevel}`
+    : null;
+  const anomaly = hazard && hazard.riskLevel === 'moderate'
+    ? `${hazard.type} sous surveillance`
+    : riskLevel === 'strained'
+      ? 'stress saisonnier'
+      : null;
+  const seasonalPressure = [
+    biome === 'continental' ? 'gel tardif possible' : biome === 'coastal' ? 'crues littorales surveillées' : 'reprise végétale',
+    biome === 'arid' ? 'sécheresse probable' : biome === 'tropical' ? 'mousson active' : 'chaleur modérée',
+    biome === 'temperate' ? 'récoltes exposées' : biome === 'continental' ? 'premiers froids' : 'instabilité de transition',
+    biome === 'continental' ? 'gel et cols difficiles' : biome === 'coastal' ? 'tempêtes côtières' : 'pression hivernale',
+  ][seasonIndex] ?? 'saison lisible';
+  const tone = disaster ? 'disaster' : anomaly ? 'anomaly' : riskLevel === 'stable' ? 'seasonal' : 'watch';
+
+  return {
+    provinceId: province.provinceId,
+    provinceLabel: province.label,
+    biome,
+    biomeLabel: getWorldClimateBiomeLabel(biome),
+    season,
+    seasonalPressure,
+    anomaly,
+    disaster,
+    tone,
+    label: disaster ? 'Catastrophe visible' : anomaly ? 'Anomalie climat' : 'Biome saisonnier',
+    summary: `${getWorldClimateBiomeLabel(biome)} · ${season}: ${seasonalPressure}.`,
+    detail: disaster ? `Catastrophe: ${disaster}.` : anomaly ? `Anomalie: ${anomaly}.` : `Variation saisonnière sans surcharge: risque ${riskLevel}.`,
+  };
+}
+
+function buildWorldClimateLayer(shell, seasonIndex = state.seasonIndex) {
+  const entries = shell.provinces.map((province) => getWorldClimateSeasonCue(province, seasonIndex));
+  const disasterCount = entries.filter((entry) => entry.disaster).length;
+  const anomalyCount = entries.filter((entry) => entry.anomaly && !entry.disaster).length;
+  const biomeCount = new Set(entries.map((entry) => entry.biome)).size;
+
+  return {
+    entries,
+    season: seasonLabels[seasonIndex] ?? seasonLabels[0],
+    biomeCount,
+    disasterCount,
+    anomalyCount,
+    summary: `${biomeCount} biomes visibles en ${seasonLabels[seasonIndex] ?? seasonLabels[0]} · ${disasterCount} catastrophe${disasterCount > 1 ? 's' : ''} · ${anomalyCount} anomalie${anomalyCount > 1 ? 's' : ''}.`,
+  };
+}
+
+function renderWorldClimateLayerSummary(layer) {
+  if (state.activeOverlaySlot !== 'climate-overlay') {
+    return '';
+  }
+
+  const highlighted = layer.entries
+    .filter((entry) => entry.disaster || entry.anomaly)
+    .slice(0, 3);
+
+  return `
+    <section class="map-world-climate" aria-label="Lecture monde des saisons biomes et catastrophes">
+      <div class="map-world-climate__header">
+        <strong>Carte monde climat · ${layer.season}</strong>
+        <span>${layer.biomeCount} biomes · ${layer.disasterCount} catastrophes · ${layer.anomalyCount} anomalies</span>
+      </div>
+      <p>${layer.summary}</p>
+      <ul class="map-world-climate__list">
+        ${(highlighted.length > 0 ? highlighted : layer.entries.slice(0, 3)).map((entry) => `
+          <li class="map-world-climate__item map-world-climate__item--${entry.tone}">
+            <b>${entry.provinceLabel}</b>
+            <span>${entry.summary}</span>
+            <small>${entry.detail}</small>
+          </li>
+        `).join('')}
+      </ul>
+    </section>
+  `;
 }
 
 function buildClimateFollowUpDebtSummary(markers = [], mitigationSequence = []) {
@@ -10206,7 +10305,7 @@ function renderTacticalCoordinateGrid() {
   `;
 }
 
-function getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null) {
+function getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null, worldClimateLayer = null) {
   return [
     { key: 'backdrop', className: 'map-layer map-layer--backdrop', content: `<div class="map-backdrop"></div>${renderTacticalCoordinateGrid()}` },
     { key: 'atlas', className: 'map-layer map-layer--atlas', content: renderAtlasWorldCanvas(shell) },
@@ -10217,12 +10316,12 @@ function getMapRenderLayers(shell, economyView, focusContext, cultureView, postC
     { key: 'anchors', className: 'map-layer map-layer--anchors', content: renderMapAnchorShells() },
     { key: 'economy', className: 'map-layer map-layer--economy', content: `${renderEconomyMapOverlay(economyView)}${renderCultureMapOverlay(cultureView)}` },
     { key: 'hud', className: 'map-layer map-layer--hud', content: `${renderCityQuickPanel(economyView)}<div class="focus-hint">${focusContext.selectedProvince ? `Sélection active, ${focusContext.selectedProvince.label}` : 'Survolez une province pour déplacer le focus'}</div>` },
-    { key: 'interactions', className: 'map-layer map-layer--interactions', content: `${shell.provinces.map((province) => renderProvinceCard(province, focusContext, postCommitClimateMarkers, selectedClimateCascadeGroup)).join('')}${renderProvincePopup(shell)}` },
+    { key: 'interactions', className: 'map-layer map-layer--interactions', content: `${shell.provinces.map((province) => renderProvinceCard(province, focusContext, postCommitClimateMarkers, selectedClimateCascadeGroup, worldClimateLayer)).join('')}${renderProvincePopup(shell)}` },
   ];
 }
 
-function renderMapLayerStack(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null) {
-  return getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers, selectedClimateCascadeGroup)
+function renderMapLayerStack(shell, economyView, focusContext, cultureView, postCommitClimateMarkers = [], selectedClimateCascadeGroup = null, worldClimateLayer = null) {
+  return getMapRenderLayers(shell, economyView, focusContext, cultureView, postCommitClimateMarkers, selectedClimateCascadeGroup, worldClimateLayer)
     .map((layer) => `<div class="${layer.className}" data-map-layer="${layer.key}">${layer.content}</div>`)
     .join('');
 }
@@ -10482,6 +10581,7 @@ function render() {
   });
   const climateSeverityLegend = buildClimateSeverityLegend(postCommitClimateMarkers, climateMarkerDensity, shell);
   const climateFollowUpDebt = buildClimateFollowUpDebtSummary(postCommitClimateMarkers, climateSeverityLegend.mitigationSequence ?? []);
+  const worldClimateLayer = buildWorldClimateLayer(shell, state.seasonIndex);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -10511,6 +10611,7 @@ function render() {
           ${renderClimateMarkerDensityRollup(climateMarkerDensity)}
           ${renderSelectedClimateCascadeGroup(climateMarkerDensity.selectedCascadeGroup)}
           ${renderClimateFollowUpDebtSummary(climateFollowUpDebt)}
+          ${renderWorldClimateLayerSummary(worldClimateLayer)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
@@ -10546,7 +10647,7 @@ function render() {
             ${renderMilitaryOutcomeTrailSummary(state.lastMilitaryOutcomeMarkers)}
             ${renderMilitaryFrontMarkerSummaries(state.lastMilitaryOutcomeMarkers)}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
-              ${renderMapLayerStack(shell, economyView, focusContext, cultureView, climateMarkerDensity.visibleMarkers, climateMarkerDensity.selectedCascadeGroup)}
+              ${renderMapLayerStack(shell, economyView, focusContext, cultureView, climateMarkerDensity.visibleMarkers, climateMarkerDensity.selectedCascadeGroup, worldClimateLayer)}
               ${renderIntrigueMapOverlay(intrigueView)}
             </div>
             ${renderBottomTray(economyView, intrigueView, cultureView)}
