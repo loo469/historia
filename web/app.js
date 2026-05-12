@@ -2254,6 +2254,56 @@ function renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView)
   `;
 }
 
+function buildMilitaryOptionFeasibility(entry, province, readinessWarning, outcome) {
+  const neighborPressure = readinessWarning && readinessWarning.provinceId !== province.provinceId;
+
+  if (entry.status === 'blocked') {
+    const blocker = ['disrupted', 'collapsed'].includes(province.supplyLevel)
+      ? 'Ravitaillement insuffisant'
+      : province.contested || outcome.tone === 'danger'
+        ? 'Pression de front trop forte'
+        : province.loyalty < 45
+          ? 'Moral local fragile'
+          : 'Information manquante';
+
+    return {
+      state: 'bloqué',
+      tone: 'blocked',
+      blocker,
+      detail: entry.mainRisk,
+      unlockAction: blocker === 'Ravitaillement insuffisant'
+        ? 'Sécuriser une route ou un convoi avant de confirmer.'
+        : blocker === 'Pression de front trop forte'
+          ? 'Ajouter un appui adjacent ou renforcer la garnison.'
+          : blocker === 'Moral local fragile'
+            ? 'Stabiliser loyauté et ordre public avant l’action.'
+            : 'Lancer reconnaissance ou attendre un signal confirmé.',
+    };
+  }
+
+  if (entry.status === 'risky') {
+    return {
+      state: neighborPressure ? 'dépendant' : 'risqué',
+      tone: neighborPressure ? 'dependent' : 'risky',
+      blocker: neighborPressure ? 'Province voisine sous pression' : 'Délai / contrôle à confirmer',
+      detail: neighborPressure ? readinessWarning.focusTargetLabel : entry.mainRisk,
+      unlockAction: neighborPressure
+        ? `Traiter ${readinessWarning.provinceLabel} ou déplacer un appui voisin.`
+        : 'Vérifier réserve, timing et contrôle avant de queue l’ordre.',
+    };
+  }
+
+  return {
+    state: readinessWarning?.tone === 'warning' ? 'dépendant' : 'prêt',
+    tone: readinessWarning?.tone === 'warning' ? 'dependent' : 'ready',
+    blocker: readinessWarning?.tone === 'warning' ? 'Préparation voisine à surveiller' : 'Aucun bloqueur immédiat',
+    detail: readinessWarning?.tone === 'warning' ? readinessWarning.focusTargetLabel : `Ravitaillement ${province.supplyLevel}, loyauté ${province.loyalty}.`,
+    unlockAction: readinessWarning?.tone === 'warning'
+      ? 'Confirmer l’appui adjacent avant engagement.'
+      : 'Peut être queue maintenant si l’ordre reste prioritaire.',
+  };
+}
+
 function buildMilitaryResponseOptions(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const outcome = buildConflictOutcomePreview(province, shell);
@@ -2272,6 +2322,7 @@ function buildMilitaryResponseOptions(province, shell, focusContext, intrigueVie
   return actionQueue.slice(0, 3).map((entry, index) => ({
     ...entry,
     optionLabel: index === 0 ? 'Option prioritaire' : index === 1 ? 'Option prudente' : 'Option de réserve',
+    feasibility: buildMilitaryOptionFeasibility(entry, province, readinessWarning, outcome),
     localReason: index === 0
       ? localReason
       : entry.status === 'ready'
@@ -2299,16 +2350,22 @@ function renderMilitaryResponseOptions(province, shell, focusContext, intrigueVi
       </div>
       <div class="military-response-options__grid">
         ${options.map((option) => `
-          <article class="military-response-option military-response-option--${option.status}">
+          <article class="military-response-option military-response-option--${option.status} military-response-option--${option.feasibility.tone}">
             <div class="military-response-option__title">
               <span>${option.optionLabel}</span>
               <code>${option.actionCode}</code>
             </div>
             <strong>${option.label}</strong>
+            <div class="military-response-option__feasibility military-response-option__feasibility--${option.feasibility.tone}">
+              <span>${option.feasibility.state}</span>
+              <strong>${option.feasibility.blocker}</strong>
+              <small>${option.feasibility.unlockAction}</small>
+            </div>
             <dl>
               <div><dt>Coût / risque</dt><dd>${option.orderCost} · ${option.mainRisk}</dd></div>
               <div><dt>Effet prochain tour</dt><dd>${option.expectedNextTurn}</dd></div>
               <div><dt>Raison locale</dt><dd>${option.localReason}</dd></div>
+              <div><dt>Bloqueur principal</dt><dd>${option.feasibility.detail}</dd></div>
             </dl>
           </article>
         `).join('')}
