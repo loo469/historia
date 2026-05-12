@@ -37,13 +37,19 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /buildLogisticsTurnCommitSummary/);
   assert.match(webAppSource, /renderLogisticsTurnCommitSummary/);
   assert.match(webAppSource, /buildLogisticsOutcomeMarkers/);
+  assert.match(webAppSource, /sortLogisticsOutcomeDetails/);
+  assert.match(webAppSource, /getLogisticsOutcomeSeverityRank/);
   assert.match(webAppSource, /renderProvinceLogisticsOutcomeMarker/);
   assert.match(webAppSource, /renderLogisticsOutcomeRouteBadge/);
+  assert.match(webAppSource, /renderFocusedLogisticsOutcomeGroup/);
   assert.match(webAppSource, /logisticsOutcomeMarkers/);
   assert.match(webAppSource, /data-logistics-outcome-marker/);
   assert.match(webAppSource, /Pénurie résolue/);
   assert.match(webAppSource, /Nouveau goulot/);
   assert.match(webAppSource, /Synthèse pénuries restantes/);
+  assert.match(webAppSource, /Résultat logistique groupé/);
+  assert.match(webAppSource, /trié.*par gravité/);
+  assert.match(webAppSource, /logistics-outcome-group:/);
   assert.match(webAppSource, /File logistique/);
   assert.match(webAppSource, /Avant validation du tour/);
   assert.match(webAppSource, /unresolvedShortages/);
@@ -93,6 +99,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(stylesSource, /province-node__logistics-outcome--resolved/);
   assert.match(stylesSource, /province-node__logistics-outcome--new-bottleneck/);
   assert.match(stylesSource, /economy-logistics-outcome--unresolved/);
+  assert.match(stylesSource, /province-logistics-outcome-group--unresolved/);
+  assert.match(stylesSource, /province-logistics-outcome-group__item--new-bottleneck/);
   assert.match(stylesSource, /province-logistics-downstream-summary--résolue/);
   assert.match(stylesSource, /province-logistics-downstream-shortage--high/);
   assert.match(stylesSource, /province-logistics-timeline-summary--empty/);

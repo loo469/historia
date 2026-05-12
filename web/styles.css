@@ -8070,3 +8070,51 @@ button { font: inherit; }
 .culture-tension-marker-card--opportunity { border-color: rgba(74, 222, 128, 0.24); }
 .culture-tension-marker-card--unresolved { border-color: rgba(251, 191, 36, 0.28); }
 .culture-tension-marker-card--escalated { border-color: rgba(248, 113, 113, 0.3); }
+.province-logistics-outcome-group {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+.province-logistics-outcome-group--unresolved { border-color: rgba(245, 158, 11, 0.48); }
+.province-logistics-outcome-group--new-bottleneck { border-color: rgba(251, 113, 133, 0.52); }
+.province-logistics-outcome-group--reduced { border-color: rgba(56, 189, 248, 0.46); }
+.province-logistics-outcome-group--resolved { border-color: rgba(74, 222, 128, 0.48); }
+.province-logistics-outcome-group__header {
+  display: grid;
+  gap: 3px;
+}
+.province-logistics-outcome-group__header span {
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.province-logistics-outcome-group__header strong { color: #f8fafc; }
+.province-logistics-outcome-group__header small { color: #cbd5e1; }
+.province-logistics-outcome-group ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.province-logistics-outcome-group__item {
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-logistics-outcome-group__item strong,
+.province-logistics-outcome-group__item span,
+.province-logistics-outcome-group__item small { display: block; }
+.province-logistics-outcome-group__item strong { color: #f8fafc; font-size: 12px; }
+.province-logistics-outcome-group__item span { color: #dbeafe; font-size: 12px; line-height: 1.35; }
+.province-logistics-outcome-group__item small { color: #93c5fd; font-size: 11px; }
+.province-logistics-outcome-group__item--unresolved { border-color: rgba(245, 158, 11, 0.42); }
+.province-logistics-outcome-group__item--new-bottleneck { border-color: rgba(251, 113, 133, 0.48); }
+.province-logistics-outcome-group__item--reduced { border-color: rgba(56, 189, 248, 0.42); }
+.province-logistics-outcome-group__item--resolved { border-color: rgba(74, 222, 128, 0.42); }
