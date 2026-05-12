@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCultureDiscoveryUrgencyGroups } from '../../../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
+import { buildCultureDiscoveryUrgencyGroups, buildCultureInterventionPriorities } from '../../../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
 
 test('buildCultureDiscoveryUrgencyGroups orders urgent and active culture signals before background lore', () => {
   const groups = buildCultureDiscoveryUrgencyGroups({
@@ -55,6 +55,14 @@ test('buildCultureDiscoveryUrgencyGroups orders urgent and active culture signal
   assert.match(groups.groups[0].items.map((item) => item.label).join(' | '), /routes-célestes/);
   assert.equal(groups.groups[1].items[0].cause, 'Recherche active');
   assert.equal(groups.groups[2].items[0].label, 'Chant de quai');
+
+  const priorities = buildCultureInterventionPriorities(groups);
+  assert.equal(priorities.state, 'active');
+  assert.equal(priorities.priorities[0].urgency, 'urgent');
+  assert.equal(priorities.priorities[0].action, 'Suivre le repère maintenant');
+  assert.match(priorities.priorities[0].effect, /Ouverture des archives/);
+  assert.match(priorities.priorities[0].waitRisk, /signal prioritaire/);
+  assert.match(priorities.summary, /interventions? culturelle/);
 });
 
 test('buildCultureDiscoveryUrgencyGroups names ambiguous empty states without duplicating marker data', () => {
@@ -96,4 +104,47 @@ test('buildCultureDiscoveryUrgencyGroups names ambiguous empty states without du
   assert.equal(grouped.groups[0].key, 'urgent');
   assert.equal(grouped.groups[0].items.length, 1);
   assert.equal(grouped.groups[0].items[0].cause, 'Tension locale');
+
+  const priorities = buildCultureInterventionPriorities(grouped);
+  assert.equal(priorities.priorities.length, 1);
+  assert.equal(priorities.priorities[0].action, 'Stabiliser la découverte');
+  assert.match(priorities.priorities[0].waitRisk, /tension locale/);
+});
+
+test('buildCultureInterventionPriorities flags local priority conflicts', () => {
+  const priorities = buildCultureInterventionPriorities({
+    groups: [{
+      key: 'urgent',
+      items: [
+        {
+          itemId: 'discovery:river:aurora',
+          kind: 'discovery',
+          group: 'urgent',
+          label: 'routes-célestes',
+          shortLabel: 'routes-célestes',
+          cultureName: 'Compact d’Aurora',
+          regionId: 'river-gate',
+          cause: '1 repère',
+          detail: 'route critique',
+          priority: 330,
+        },
+        {
+          itemId: 'discovery:river:ember',
+          kind: 'discovery',
+          group: 'urgent',
+          label: 'glyphes-de-convoi',
+          shortLabel: 'glyphes-de-convoi',
+          cultureName: 'Ligues des Forges',
+          regionId: 'river-gate',
+          cause: 'Tension locale',
+          detail: 'friction locale',
+          priority: 320,
+        },
+      ],
+    }],
+  });
+
+  assert.equal(priorities.priorities[0].conflict, true);
+  assert.equal(priorities.conflicts[0].label, 'Même province');
+  assert.match(priorities.conflicts[0].summary, /concurrence/);
 });

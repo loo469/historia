@@ -18,7 +18,7 @@ import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js
 import { buildIntrigueTurnReportDeltas } from '../src/ui/intrigue/buildIntrigueTurnReportDeltas.js';
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
-import { buildCultureDiscoveryUrgencyGroups } from '../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
+import { buildCultureDiscoveryUrgencyGroups, buildCultureInterventionPriorities } from '../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
 import { buildCultureUnlockHints } from '../src/ui/culture/buildCultureUnlockHints.js';
@@ -7707,6 +7707,39 @@ function renderCultureDiscoveryUrgencyGroups(groupView) {
   `;
 }
 
+function renderCultureInterventionPriorities(priorityView) {
+  if (!priorityView || priorityView.state !== 'active') {
+    return '';
+  }
+
+  return `
+    <article class="culture-intervention-priorities" aria-label="File recommandée des interventions culturelles">
+      <div class="culture-intervention-priorities__header">
+        <span>Interventions à mettre en file</span>
+        <strong>${priorityView.summary}</strong>
+      </div>
+      <ol>
+        ${priorityView.priorities.map((priority) => `
+          <li class="culture-intervention-priority culture-intervention-priority--${priority.urgency} ${priority.conflict ? 'has-conflict' : ''}">
+            <div>
+              <b>${priority.rank}. ${priority.action}</b>
+              <span>${priority.urgencyLabel} · ${priority.sourceLabel}</span>
+            </div>
+            <p>${priority.effect}</p>
+            <small>Risque: ${priority.waitRisk} · Dépendance: ${priority.dependency}</small>
+          </li>
+        `).join('')}
+      </ol>
+      ${priorityView.conflicts.length > 0 ? `
+        <div class="culture-intervention-conflicts">
+          <b>Conflits prioritaires</b>
+          ${priorityView.conflicts.map((conflict) => `<p>${conflict.label}: ${conflict.summary}</p>`).join('')}
+        </div>
+      ` : ''}
+    </article>
+  `;
+}
+
 function renderCultureClusterPinList(cluster) {
   if (!cluster) {
     return '';
@@ -8069,6 +8102,7 @@ function renderCultureSidePanel(cultureView) {
     selectedMarker: focus,
     selectedCluster,
   });
+  const interventionPriorities = buildCultureInterventionPriorities(discoveryUrgencyGroups);
   const recommendationView = buildCultureMapRecommendations({
     selectedRegionId: state.selectedProvinceId,
     selectedMarker: focus,
@@ -8100,6 +8134,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureRecommendationPanel(recommendationView)}
       ${renderCultureLocalTimeline(localTimelineView)}
       ${renderCultureDiscoveryUrgencyGroups(discoveryUrgencyGroups)}
+      ${renderCultureInterventionPriorities(interventionPriorities)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
