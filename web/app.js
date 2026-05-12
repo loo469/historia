@@ -5074,6 +5074,106 @@ function buildAtlasClimateCascadeImpactPreview(shell, worldClimateLayer) {
   };
 }
 
+function buildAtlasClimateMitigationSynergies(shell, cascadePreview, worldClimateLayer) {
+  if (!shell || !cascadePreview || cascadePreview.impacts.length === 0) {
+    return {
+      state: 'empty',
+      synergies: [],
+      summary: 'Aucune synergie climat notable à afficher sur l’atlas.',
+    };
+  }
+
+  const provinceById = new Map(shell.provinces.map((province) => [province.provinceId, province]));
+  const timelineByProvinceId = new Map(worldClimateLayer.timeline.entries.map((entry) => [entry.provinceId, entry]));
+  const synergies = cascadePreview.impacts
+    .map((impact) => {
+      const province = provinceById.get(impact.provinceId);
+      if (!province) {
+        return null;
+      }
+
+      const forecast = buildProvinceClimateRiskReductionForecast(province, shell);
+      const plan = buildClimateInterventionQueuePlan(province, forecast);
+      const timelineEntry = timelineByProvinceId.get(impact.provinceId);
+      const linkedRegions = province.neighborIds
+        .map((provinceId) => provinceById.get(provinceId)?.label)
+        .filter(Boolean)
+        .slice(0, 2);
+      const avoidedCascade = forecast.selectedInterventionPreview.avoidedCascade;
+      const badges = [
+        avoidedCascade ? 'cascade évitée' : null,
+        impact.routeImpact !== 'Aucune route voisine exposée.' ? 'route protégée' : null,
+        timelineEntry?.season ? `saison critique: ${timelineEntry.season}` : null,
+        impact.intensity === 'critical' ? 'région prioritaire' : null,
+      ].filter(Boolean);
+
+      return {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        action: plan.actionLabel,
+        disabled: plan.disabled,
+        intensity: impact.intensity,
+        badges: badges.slice(0, 4),
+        protectedRegions: linkedRegions.length > 0 ? linkedRegions.join(' · ') : province.label,
+        routeImpact: impact.routeImpact,
+        avoidedCascade,
+        season: timelineEntry?.season ?? worldClimateLayer.timeline.targetSeason,
+        summary: `${plan.actionLabel}: protège ${linkedRegions.length > 0 ? linkedRegions.join(' / ') : province.label} et réduit ${avoidedCascade}.`,
+      };
+    })
+    .filter(Boolean)
+    .filter((entry) => entry.badges.length > 1 || entry.intensity === 'critical')
+    .sort((left, right) => ({ critical: 0, elevated: 1, watch: 2 }[left.intensity] ?? 3) - ({ critical: 0, elevated: 1, watch: 2 }[right.intensity] ?? 3)
+      || Number(left.disabled) - Number(right.disabled)
+      || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+
+  return {
+    state: synergies.length === 0 ? 'quiet' : synergies.some((entry) => entry.intensity === 'critical') ? 'priority' : 'ready',
+    synergies,
+    summary: synergies.length === 0
+      ? 'Les cascades prévues n’ont pas encore de synergie de mitigation assez nette; aucun bruit visuel ajouté.'
+      : `${synergies.length} synergie${synergies.length > 1 ? 's' : ''} climat relie${synergies.length > 1 ? 'nt' : ''} interventions, régions protégées et cascades évitées.`,
+  };
+}
+
+function renderAtlasClimateMitigationSynergies(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  if (view.state === 'quiet') {
+    return `
+      <section class="map-world-climate-synergy map-world-climate-synergy--quiet" aria-label="Synergies de mitigation climat atlas">
+        <strong>Synergies climat</strong>
+        <p>${view.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="map-world-climate-synergy map-world-climate-synergy--${view.state}" aria-label="Synergies de mitigation climat atlas">
+      <div class="map-world-climate-synergy__header">
+        <strong>Synergies climat</strong>
+        <span>${view.synergies.length} mitigation${view.synergies.length > 1 ? 's' : ''} multi-effet</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-synergy__list">
+        ${view.synergies.map((entry) => `
+          <li class="map-world-climate-synergy__item map-world-climate-synergy__item--${entry.intensity}">
+            <b>${entry.provinceLabel}</b>
+            <span>${entry.summary}</span>
+            <div class="map-world-climate-synergy__badges">
+              ${entry.badges.map((badge) => `<small>${badge}</small>`).join('')}
+            </div>
+            <small><b>Routes/régions</b> · ${entry.routeImpact} · régions protégées: ${entry.protectedRegions}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateCascadeImpactPreview(preview) {
   if (state.activeOverlaySlot !== 'climate-overlay') {
     return '';
@@ -11799,6 +11899,7 @@ function render() {
   const climateFollowUpDebt = buildClimateFollowUpDebtSummary(postCommitClimateMarkers, climateSeverityLegend.mitigationSequence ?? []);
   const worldClimateLayer = buildWorldClimateLayer(shell, state.seasonIndex, state.atlasClimateForecastMode);
   const atlasClimateCascadeImpact = buildAtlasClimateCascadeImpactPreview(shell, worldClimateLayer);
+  const atlasClimateMitigationSynergies = buildAtlasClimateMitigationSynergies(shell, atlasClimateCascadeImpact, worldClimateLayer);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -11830,6 +11931,7 @@ function render() {
           ${renderClimateFollowUpDebtSummary(climateFollowUpDebt)}
           ${renderWorldClimateLayerSummary(worldClimateLayer)}
           ${renderAtlasClimateCascadeImpactPreview(atlasClimateCascadeImpact)}
+          ${renderAtlasClimateMitigationSynergies(atlasClimateMitigationSynergies)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
