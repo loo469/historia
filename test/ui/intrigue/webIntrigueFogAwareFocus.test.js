@@ -238,6 +238,20 @@ test('atlas counterintelligence warns about missed sweep windows safely', () => 
   assert.match(stylesSource, /atlas-counterintelligence-window-risk/);
 });
 
+test('atlas counterintelligence previews schedule conflicts safely', () => {
+  assert.match(webAppSource, /scheduleConflicts/);
+  assert.match(webAppSource, /Conflits de planning/);
+  assert.match(webAppSource, /Conflits de calendrier contre-espionnage fog-safe/);
+  assert.match(webAppSource, /chevauchement de balayage/);
+  assert.match(webAppSource, /arrive trop tard/);
+  assert.match(webAppSource, /zone sensible sans couverture/);
+  assert.match(webAppSource, /Déplacer ce balayage au créneau suivant/);
+  assert.match(webAppSource, /Monter ce balayage en priorité ou remplacer une veille stable/);
+  assert.match(webAppSource, /aucune identité ni cause cachée révélée/);
+  assert.match(webAppSource, /Aucun conflit de planning visible entre balayages filtrés/);
+  assert.match(stylesSource, /atlas-counterintelligence-schedule-conflicts/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);

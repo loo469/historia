@@ -9246,11 +9246,54 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     uncertain: sweepCandidates.filter((candidate) => candidate.coverageLevel === 'uncertain'),
     uncovered: filteredSignals.filter((signal) => !candidateIds.has(signal.locationId)),
   };
-  const missedWindowRisks = sweepCandidates
+  const scheduledSweeps = sweepCandidates.map((candidate, index) => ({
+    ...candidate,
+    plannedTurnOffset: candidate.missedWindowRiskLevel === 'urgent' ? 0 : index === 0 ? 0 : index,
+  }));
+  const missedWindowRisks = scheduledSweeps
     .filter((candidate) => ['urgent', 'closing', 'uncertain'].includes(candidate.missedWindowRiskLevel));
   const missedWindowSummary = missedWindowRisks.length > 0
     ? `${missedWindowRisks.length} fenêtre${missedWindowRisks.length > 1 ? 's' : ''} de balayage à risque si vous attendez: ${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'urgent').length} critique${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'urgent').length > 1 ? 's' : ''}, ${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'closing').length} en fermeture, ${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'uncertain').length} incertaine${missedWindowRisks.filter((candidate) => candidate.missedWindowRiskLevel === 'uncertain').length > 1 ? 's' : ''}.`
     : 'Aucune fenêtre manquée probable avec les signaux filtrés actuels.';
+  const scheduleConflicts = [];
+  scheduledSweeps.forEach((candidate, index) => {
+    const overlapping = scheduledSweeps.find((other, otherIndex) => otherIndex < index && other.plannedTurnOffset === candidate.plannedTurnOffset);
+    if (overlapping) {
+      scheduleConflicts.push({
+        type: 'overlap',
+        tone: 'warning',
+        locationName: candidate.locationName,
+        label: 'chevauchement de balayage',
+        detail: `Même créneau que ${overlapping.locationName}; prioriser le signal le plus frais sans dévoiler la cause.`,
+        alternative: candidate.score > overlapping.score ? 'Déplacer l’autre balayage au créneau suivant.' : 'Déplacer ce balayage au créneau suivant.',
+      });
+    }
+
+    if (['urgent', 'closing'].includes(candidate.missedWindowRiskLevel) && candidate.plannedTurnOffset > 0) {
+      scheduleConflicts.push({
+        type: 'late',
+        tone: 'danger',
+        locationName: candidate.locationName,
+        label: 'arrive trop tard',
+        detail: `${candidate.missedWindowLabel}: le créneau prévu peut réduire l’utilité de la réponse.`,
+        alternative: 'Monter ce balayage en priorité ou remplacer une veille stable.',
+      });
+    }
+  });
+  coveragePreview.uncovered
+    .filter((signal) => signal.tone === 'danger' || signal.tone === 'warning' || signal.certainty === 'probable')
+    .slice(0, 2)
+    .forEach((signal) => scheduleConflicts.push({
+      type: 'gap',
+      tone: signal.tone === 'danger' ? 'danger' : 'warning',
+      locationName: signal.locationName,
+      label: 'zone sensible sans couverture',
+      detail: `${signal.freshnessLabel} · ${signal.riskLabel}; aucune identité ni cause cachée révélée.`,
+      alternative: 'Remplacer une veille stable par une vérification courte sur cette zone.',
+    }));
+  const scheduleConflictSummary = scheduleConflicts.length > 0
+    ? `${scheduleConflicts.length} conflit${scheduleConflicts.length > 1 ? 's' : ''} de planning détecté${scheduleConflicts.length > 1 ? 's' : ''}: ${scheduleConflicts.filter((conflict) => conflict.type === 'overlap').length} chevauchement${scheduleConflicts.filter((conflict) => conflict.type === 'overlap').length > 1 ? 's' : ''}, ${scheduleConflicts.filter((conflict) => conflict.type === 'late').length} retard${scheduleConflicts.filter((conflict) => conflict.type === 'late').length > 1 ? 's' : ''}, ${scheduleConflicts.filter((conflict) => conflict.type === 'gap').length} zone${scheduleConflicts.filter((conflict) => conflict.type === 'gap').length > 1 ? 's' : ''} sans couverture.`
+    : 'Aucun conflit de planning visible entre balayages filtrés.';
   const exposureCooldownSummary = sweepCandidates.length > 0
     ? `${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length} risque${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''} d’exposition haut${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''}; cooldown visible estimé sans cause cachée.`
     : 'Aucun risque d’exposition ou cooldown supplémentaire proposé.';
@@ -9258,10 +9301,12 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   return {
     empty: sweepCandidates.length === 0,
     totalFiltered: filteredSignals.length,
-    candidates: sweepCandidates,
+    candidates: scheduledSweeps,
     coveragePreview,
     missedWindowRisks,
     missedWindowSummary,
+    scheduleConflicts,
+    scheduleConflictSummary,
     exposureCooldownSummary,
     summary: sweepCandidates.length > 0
       ? `${sweepCandidates.length} zone${sweepCandidates.length > 1 ? 's' : ''} de balayage contre-espionnage proposée${sweepCandidates.length > 1 ? 's' : ''} depuis les filtres atlas actifs.`
@@ -9281,6 +9326,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <small>Activez un filtre récent, ancien, incertain ou probable pour préparer une vérification sans révéler de cause cachée.</small>
         <small>${plan.exposureCooldownSummary}</small>
         <small>${plan.missedWindowSummary}</small>
+        <small>${plan.scheduleConflictSummary}</small>
       </section>
     `;
   }
@@ -9298,6 +9344,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <span><b>${plan.coveragePreview.uncovered.length}</b> non couvert${plan.coveragePreview.uncovered.length > 1 ? 's' : ''}</span>
       </div>
       <small>${plan.exposureCooldownSummary}</small>
+      <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
+        <strong>Conflits de planning</strong>
+        <p>${plan.scheduleConflictSummary}</p>
+        ${plan.scheduleConflicts.length > 0
+          ? `<ul>${plan.scheduleConflicts.map((conflict) => `<li class="atlas-counterintelligence-schedule-conflicts__item atlas-counterintelligence-schedule-conflicts__item--${conflict.tone}"><b>${conflict.locationName}</b> · ${conflict.label}: ${conflict.detail}<small>${conflict.alternative}</small></li>`).join('')}</ul>`
+          : '<small>Aucun chevauchement, retard critique ou trou de couverture sensible avec les filtres actifs.</small>'}
+      </section>
       <section class="atlas-counterintelligence-window-risk" aria-label="Risque de fenêtre manquée fog-safe">
         <strong>Fenêtres à ne pas manquer</strong>
         <p>${plan.missedWindowSummary}</p>
