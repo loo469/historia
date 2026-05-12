@@ -22,3 +22,18 @@ test('intrigue end-turn exposure warnings expose fog-aware focus targets', () =>
   assert.match(stylesSource, /data-intrigue-fog-state="probable"/);
   assert.match(stylesSource, /data-intrigue-fog-state="masked"/);
 });
+
+test('selected intrigue province detail explains fog reasons with safe action hints', () => {
+  assert.match(webAppSource, /function buildSelectedProvinceIntrigueFogHint/);
+  assert.match(webAppSource, /Cellule exposée signalée/);
+  assert.match(webAppSource, /Sécurité cible élevée/);
+  assert.match(webAppSource, /Renseignement incomplet/);
+  assert.match(webAppSource, /Réduire chaleur/);
+  assert.match(webAppSource, /Collecter renseignement/);
+  assert.match(webAppSource, /Temporiser/);
+  assert.match(webAppSource, /Surveiller sans escalade/);
+  assert.match(webAppSource, /aria-label="\$\{intrigueView\.selectedProvince\.fogHint\.ariaLabel\}"/);
+  assert.match(stylesSource, /intrigue-fog-hint--danger/);
+  assert.match(stylesSource, /intrigue-fog-hint--warning/);
+  assert.match(stylesSource, /intrigue-fog-hint--watch/);
+});
