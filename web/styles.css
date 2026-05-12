@@ -10712,3 +10712,16 @@ button { font: inherit; }
 .atlas-corridor-shortfall-item--overload .atlas-corridor-shortfall-item__action { fill: #fecdd3; }
 .atlas-corridor-shortfall-item--watch .atlas-corridor-shortfall-item__action { fill: #fde68a; }
 .atlas-corridor-shortfall-item--unknown .atlas-corridor-shortfall-item__action { fill: #ddd6fe; }
+.atlas-cultural-border-zone__confidence {
+  fill: #fef3c7;
+  font-size: 0.94px;
+  font-weight: 840;
+}
+.atlas-cultural-border-zone__consequences {
+  fill: #bbf7d0;
+  font-size: 0.9px;
+  font-weight: 760;
+}
+.atlas-cultural-border-zone--confidence-sûre .atlas-cultural-border-zone__confidence { fill: #bbf7d0; }
+.atlas-cultural-border-zone--confidence-incertaine .atlas-cultural-border-zone__confidence { fill: #fde68a; }
+.atlas-cultural-border-zone--confidence-inconnue .atlas-cultural-border-zone__confidence { fill: #ddd6fe; }
