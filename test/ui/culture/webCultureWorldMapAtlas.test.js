@@ -21,7 +21,9 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /atlas-culture-drift--\$\{summary\.drift\.state\}/);
   assert.match(webAppSource, /borderZones/);
   assert.match(webAppSource, /atlas-cultural-border-zones/);
-  assert.match(webAppSource, /Frontières instables/);
+  assert.match(webAppSource, /Frontières instables|Médiations culturelles/);
+  assert.match(webAppSource, /function buildAtlasCultureMediation/);
+  assert.match(webAppSource, /zone\.mediation\.option/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -38,6 +40,9 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /mainDriver === 'migration'/);
   assert.match(webAppSource, /protéger découverte/);
   assert.match(webAppSource, /arbitrer influence/);
+  assert.match(webAppSource, /pacte de frontière/);
+  assert.match(webAppSource, /si ignorée:/);
+  assert.match(webAppSource, /frontières stables · données limitées/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -49,4 +54,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-culture-drift\.is-linked-focus path/);
   assert.match(stylesSource, /\.atlas-cultural-border-zones/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone--migre/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__mediation/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__risk/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zones\.is-stable rect/);
 });

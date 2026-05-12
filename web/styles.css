@@ -10515,3 +10515,22 @@ button { font: inherit; }
   font-size: 0.98px;
   font-weight: 780;
 }
+.atlas-cultural-border-zone__mediation {
+  fill: #bfdbfe;
+  font-size: 1.02px;
+  font-weight: 840;
+}
+.atlas-cultural-border-zone__risk {
+  fill: #fecdd3;
+  font-size: 0.96px;
+  font-weight: 780;
+}
+.atlas-cultural-border-zones.is-stable rect {
+  fill: rgba(15, 23, 42, 0.52);
+  stroke: rgba(148, 163, 184, 0.28);
+}
+.atlas-cultural-border-zone__empty {
+  fill: #cbd5e1;
+  font-size: 1.04px;
+  font-weight: 800;
+}
