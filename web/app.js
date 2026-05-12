@@ -796,6 +796,98 @@ function buildMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeMa
     });
 }
 
+function buildMilitaryOutcomeTrailSummary(markers = state.lastMilitaryOutcomeMarkers) {
+  const visibleMarkers = markers.filter((marker) => isMilitaryOutcomeMarkerVisible(marker));
+  const sourceMarkers = visibleMarkers.length > 0 ? visibleMarkers : markers;
+
+  if (sourceMarkers.length === 0) {
+    return {
+      empty: true,
+      hiddenByFilters: false,
+      trails: [],
+      groupedCount: 0,
+      summary: 'Aucune suite militaire post-résolution à afficher.',
+    };
+  }
+
+  const trails = sourceMarkers
+    .map((marker) => {
+      const severity = militaryOutcomeSeverityRank[marker.tone] ?? 0;
+      const impactLabel = {
+        stabilized: 'stabilisé',
+        worsened: 'pression déplacée',
+        blocked: 'action bloquée',
+        risk: 'risque résiduel',
+      }[marker.tone] ?? 'suite militaire';
+      const nextStep = getMilitaryOutcomeUrgentAction(marker.tone);
+
+      return {
+        provinceId: marker.provinceId,
+        provinceLabel: marker.provinceLabel ?? marker.provinceId,
+        tone: marker.tone,
+        actionCode: marker.actionCode,
+        label: marker.label,
+        impactLabel,
+        detail: marker.changed ?? marker.summaryItem ?? marker.why,
+        nextStep,
+        severity,
+        turn: marker.turn,
+      };
+    })
+    .sort((left, right) => right.severity - left.severity || left.provinceLabel.localeCompare(right.provinceLabel));
+
+  const visibleTrails = trails.slice(0, 3);
+  const groupedCount = Math.max(0, trails.length - visibleTrails.length);
+
+  return {
+    empty: false,
+    hiddenByFilters: visibleMarkers.length === 0 && markers.length > 0,
+    trails: visibleTrails,
+    groupedCount,
+    summary: `${visibleTrails.length} suite${visibleTrails.length > 1 ? 's' : ''} militaire${visibleTrails.length > 1 ? 's' : ''} clé${visibleTrails.length > 1 ? 's' : ''} après résolution${groupedCount > 0 ? ` · ${groupedCount} regroupée${groupedCount > 1 ? 's' : ''}` : ''}.`,
+  };
+}
+
+function renderMilitaryOutcomeTrailSummary(markers = state.lastMilitaryOutcomeMarkers) {
+  const trailSummary = buildMilitaryOutcomeTrailSummary(markers);
+
+  if (trailSummary.empty) {
+    return `
+      <section class="military-outcome-trail is-empty" aria-label="Suites militaires post-résolution">
+        <div class="military-outcome-trail__header">
+          <span>Suites militaires</span>
+          <strong>Aucune suite</strong>
+        </div>
+        <p>${trailSummary.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="military-outcome-trail" aria-label="Suites militaires post-résolution">
+      <div class="military-outcome-trail__header">
+        <div>
+          <span>Suites militaires</span>
+          <strong>${trailSummary.summary}</strong>
+        </div>
+        ${trailSummary.hiddenByFilters ? '<small>résumé replié par filtres</small>' : '<small>top 3 visibles</small>'}
+      </div>
+      <div class="military-outcome-trail__list">
+        ${trailSummary.trails.map((trail) => `
+          <button type="button" class="military-outcome-trail__item military-outcome-trail__item--${trail.tone}" data-province-id="${trail.provinceId}" data-readiness-focus="${trail.provinceId}" aria-label="Suite militaire ${trail.provinceLabel}: ${trail.label}">
+            <div>
+              <strong>${trail.provinceLabel}</strong>
+              <code>${trail.actionCode}</code>
+            </div>
+            <p><b>${trail.label}</b> · ${trail.impactLabel}</p>
+            <small>${trail.nextStep}</small>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderMilitaryFrontMarkerSummaries(markers = state.lastMilitaryOutcomeMarkers) {
   const summaries = buildMilitaryFrontMarkerSummaries(markers);
 
@@ -10017,6 +10109,7 @@ function render() {
           <div class="map-stage" data-map-stage="true" tabindex="0" aria-label="Carte opérationnelle zoomable. Utilisez plus, moins, zéro ou C pour naviguer.">
             ${renderMapControls()}
             ${renderMilitaryOutcomeMarkerFilters(state.lastMilitaryOutcomeMarkers)}
+            ${renderMilitaryOutcomeTrailSummary(state.lastMilitaryOutcomeMarkers)}
             ${renderMilitaryFrontMarkerSummaries(state.lastMilitaryOutcomeMarkers)}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
               ${renderMapLayerStack(shell, economyView, focusContext, cultureView, climateMarkerDensity.visibleMarkers, climateMarkerDensity.selectedCascadeGroup)}
