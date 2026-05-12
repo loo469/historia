@@ -243,3 +243,19 @@ test('intrigue exposure rollups separate confirmed suspected and unknown certain
   assert.match(webAppSource, /aria-label="Niveau de certitude fog-safe des marqueurs intrigue"/);
   assert.match(stylesSource, /intrigue-exposure-certainty-rollup/);
 });
+
+test('intrigue exposure markers show fog-safe freshness cues', () => {
+  assert.match(webAppSource, /freshnessCounts/);
+  assert.match(webAppSource, /freshnessCopy/);
+  assert.match(webAppSource, /recent: markers\.filter\(\(marker\) => marker\.freshness === 'recent'\)/);
+  assert.match(webAppSource, /stale: markers\.filter\(\(marker\) => marker\.freshness === 'stale'\)/);
+  assert.match(webAppSource, /uncertain: markers\.filter\(\(marker\) => marker\.freshness === 'uncertain'\)/);
+  assert.match(webAppSource, /info récente/);
+  assert.match(webAppSource, /info ancienne/);
+  assert.match(webAppSource, /fraîcheur incertaine/);
+  assert.match(webAppSource, /soupçon ancien à revérifier avant intervention lourde/);
+  assert.match(webAppSource, /fraîcheur déduite seulement des signaux visibles/);
+  assert.match(webAppSource, /Récent = signal visible actif; ancien = soupçon à revérifier; incertain = zone inconnue sans détail caché/);
+  assert.match(webAppSource, /aria-label="Fraîcheur fog-safe des marqueurs intrigue"/);
+  assert.match(stylesSource, /intrigue-exposure-freshness-rollup/);
+});

@@ -2227,6 +2227,20 @@ button { font: inherit; }
 .intrigue-exposure-certainty-rollup b {
   color: #f8fafc;
 }
+.intrigue-exposure-freshness-rollup {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+}
+.intrigue-exposure-freshness-rollup b {
+  color: #e0f2fe;
+}
+.intrigue-exposure-freshness-rollup span {
+  color: #f8fafc;
+}
 .overlay-anchor-shell--top { left: 18%; top: 3%; width: 64%; height: 9%; }
 .overlay-anchor-shell--left { left: 3%; top: 18%; width: 12%; height: 58%; }
 .overlay-anchor-shell--right { right: 3%; top: 18%; width: 12%; height: 58%; }

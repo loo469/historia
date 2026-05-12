@@ -5650,6 +5650,12 @@ function buildIntrigueExposureMarkerRollup(markers) {
     suspected: `${certaintyGroups.suspected.length} soupçon${certaintyGroups.suspected.length > 1 ? 's' : ''}: tendance lisible, mais source ou relais encore partiellement masqué.`,
     unknown: `${certaintyGroups.unknown.length} zone${certaintyGroups.unknown.length > 1 ? 's' : ''} inconnue${certaintyGroups.unknown.length > 1 ? 's' : ''}: ne pas assimiler à un faible risque confirmé.`,
   };
+  const freshnessCounts = {
+    recent: markers.filter((marker) => marker.freshness === 'recent').length,
+    stale: markers.filter((marker) => marker.freshness === 'stale').length,
+    uncertain: markers.filter((marker) => marker.freshness === 'uncertain').length,
+  };
+  const freshnessCopy = `${freshnessCounts.recent} récent${freshnessCounts.recent > 1 ? 's' : ''} · ${freshnessCounts.stale} ancien${freshnessCounts.stale > 1 ? 's' : ''} · ${freshnessCounts.uncertain} incertain${freshnessCounts.uncertain > 1 ? 's' : ''}; fraîcheur déduite seulement des signaux visibles.`;
 
   return {
     counts,
@@ -5658,6 +5664,8 @@ function buildIntrigueExposureMarkerRollup(markers) {
     totalCount: markers.length,
     certaintyGroups,
     certaintyCopy,
+    freshnessCounts,
+    freshnessCopy,
     summary: activeFilters.length > 0
       ? `${filteredMarkers.length}/${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue visible${filteredMarkers.length > 1 ? 's' : ''} après filtre fog-safe.`
       : `${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue post-commit visible${markers.length > 1 ? 's' : ''}; aucun filtre d’issue actif.`,
@@ -5721,6 +5729,21 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {
         : certainty === 'suspected'
           ? 'certitude partielle: tendance visible, identité et relais non confirmés'
           : 'certitude inconnue: zone fog-limitée séparée des faibles risques confirmés';
+      const freshness = certainty === 'unknown'
+        ? 'uncertain'
+        : entry.sabotageRiskLevel === 'high' || entry.metrics.exposedCellCount > 0 || response.heatGenerated >= 10
+          ? 'recent'
+          : 'stale';
+      const freshnessLabels = {
+        recent: 'info récente',
+        stale: 'info ancienne',
+        uncertain: 'fraîcheur incertaine',
+      };
+      const freshnessExplanation = freshness === 'recent'
+        ? 'signal récent confirmé par une chaleur ou exposition visible'
+        : freshness === 'stale'
+          ? 'soupçon ancien à revérifier avant intervention lourde'
+          : 'fraîcheur incertaine sous brouillard; vérifier la province sans inférer de cible';
 
       return {
         locationId: entry.locationId,
@@ -5736,9 +5759,12 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {
         certainty,
         certaintyLabel: certaintyLabels[certainty],
         certaintyExplanation,
+        freshness,
+        freshnessLabel: freshnessLabels[freshness],
+        freshnessExplanation,
         residualRisk,
-        copy: `${directionLabels[direction]} après résolution · ${certaintyLabels[certainty]} · ${residualRisk}. Voir synthèse finale exposition intrigue.`,
-        ariaLabel: `${directionLabels[direction]} en ${entry.locationName}: certitude ${certaintyLabels[certainty]}; ${residualRisk}; détails fog-safe liés à la synthèse finale`,
+        copy: `${directionLabels[direction]} après résolution · ${certaintyLabels[certainty]} · ${freshnessLabels[freshness]} · ${residualRisk}. Voir synthèse finale exposition intrigue.`,
+        ariaLabel: `${directionLabels[direction]} en ${entry.locationName}: certitude ${certaintyLabels[certainty]}; ${freshnessLabels[freshness]}; ${freshnessExplanation}; détails fog-safe liés à la synthèse finale`,
       };
     })
     .filter(Boolean)
@@ -5779,6 +5805,11 @@ function renderIntrigueExposureMarkerRollup(rollup) {
         <span><b>Soupçons</b>${rollup.certaintyCopy.suspected}</span>
         <span><b>Inconnues</b>${rollup.certaintyCopy.unknown}</span>
       </div>
+      <div class="intrigue-exposure-freshness-rollup" aria-label="Fraîcheur fog-safe des marqueurs intrigue">
+        <b>Fraîcheur</b>
+        <span>${rollup.freshnessCopy}</span>
+        <small>Récent = signal visible actif; ancien = soupçon à revérifier; incertain = zone inconnue sans détail caché.</small>
+      </div>
       <small>${rollup.hiddenCopy}</small>
       <small>Certitude fog-safe: les zones inconnues restent séparées des faibles risques confirmés et ne nomment jamais cellule, cible ou relais.</small>
     </section>
@@ -5798,7 +5829,7 @@ function renderPostCommitIntrigueExposureMarkers(markers) {
           <circle class="intrigue-post-commit-marker__backplate" cx="${marker.center.x}%" cy="${marker.center.y}%" r="3.3"></circle>
           <text class="intrigue-post-commit-marker__glyph" x="${marker.center.x}%" y="${marker.center.y + 1.15}%" text-anchor="middle">${marker.glyph}</text>
           <text class="intrigue-post-commit-marker__label" x="${marker.center.x + 4.1}%" y="${marker.center.y - 1.15}%" text-anchor="start">${marker.label}</text>
-          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.certaintyLabel} · ${marker.direction === 'hidden' ? 'fog conservé' : 'voir synthèse finale'}</text>
+          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.freshnessLabel} · ${marker.certaintyLabel} · ${marker.direction === 'hidden' ? 'fog conservé' : 'voir synthèse finale'}</text>
         </g>
       `).join('')}
     </g>
