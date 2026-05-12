@@ -27,6 +27,12 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Impact si engagé/);
   assert.match(webAppSource, /selectedActionPreview/);
   assert.match(webAppSource, /badge\.value/);
+  assert.match(webAppSource, /province-logistics-queue-action/);
+  assert.match(webAppSource, /Action carte/);
+  assert.match(webAppSource, /Engager récupération/);
+  assert.match(webAppSource, /data-logistics-queue-action/);
+  assert.match(webAppSource, /queuedLogisticsActions/);
+  assert.match(webAppSource, /primaryLogisticsAction/);
   assert.match(webAppSource, /pénurie/);
   assert.match(webAppSource, /Pénuries aval/);
   assert.match(webAppSource, /choice\.downstreamShortages/);
@@ -58,6 +64,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(stylesSource, /province-logistics-priority--high/);
   assert.match(stylesSource, /province-logistics-impact-preview--critical/);
   assert.match(stylesSource, /province-logistics-impact-badge--medium/);
+  assert.match(stylesSource, /province-logistics-queue-action--ready/);
+  assert.match(stylesSource, /province-logistics-queue-action--conflict/);
   assert.match(stylesSource, /province-logistics-downstream-summary--résolue/);
   assert.match(stylesSource, /province-logistics-downstream-shortage--high/);
   assert.match(stylesSource, /province-logistics-timeline-summary--empty/);
