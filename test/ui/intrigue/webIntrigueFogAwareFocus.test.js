@@ -9,11 +9,16 @@ test('intrigue end-turn exposure warnings expose fog-aware focus targets', () =>
   assert.match(webAppSource, /function buildIntrigueExposureFocusTarget/);
   assert.match(webAppSource, /data-intrigue-focus-target/);
   assert.match(webAppSource, /focusTarget\.state/);
+  assert.match(webAppSource, /data-intrigue-fog-state/);
   assert.match(webAppSource, /cible confirmée|hotspot confirmé/);
   assert.match(webAppSource, /zone probable/);
-  assert.match(webAppSource, /brouillard préservé/);
-  assert.match(webAppSource, /Information masquée/);
+  assert.match(webAppSource, /Partiellement révélé/);
+  assert.match(webAppSource, /Brouillard préservé: focus limité à la province/);
+  assert.match(webAppSource, /Cible masquée par le brouillard/);
+  assert.match(webAppSource, /sans révéler cellule ou opération/);
   assert.match(stylesSource, /map-intrigue-exposure-summary__item--confirmed/);
   assert.match(stylesSource, /map-intrigue-exposure-summary__item--probable/);
   assert.match(stylesSource, /map-intrigue-exposure-summary__item--masked/);
+  assert.match(stylesSource, /data-intrigue-fog-state="probable"/);
+  assert.match(stylesSource, /data-intrigue-fog-state="masked"/);
 });
