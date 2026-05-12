@@ -1883,6 +1883,61 @@ button { font: inherit; }
 .province-action-queue__item--ready { border-color: rgba(74, 222, 128, 0.28); }
 .province-action-queue__item--risky { border-color: rgba(251, 191, 36, 0.34); }
 .province-action-queue__item--blocked { border-color: rgba(251, 113, 133, 0.4); }
+.military-plan-impact {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.72), rgba(8, 15, 28, 0.58));
+  border: 1px solid rgba(94, 234, 212, 0.2);
+}
+.military-plan-impact__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.military-plan-impact__header span,
+.military-plan-impact__header small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-plan-impact__header strong {
+  display: block;
+  margin-top: 3px;
+}
+.military-plan-impact > p {
+  margin: 0;
+  color: #ccfbf1;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.military-plan-impact__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.military-plan-impact__metric {
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.44);
+  border: 1px solid rgba(148, 163, 184, 0.13);
+}
+.military-plan-impact__metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.military-plan-impact__metric strong {
+  font-size: 12px;
+}
+.military-plan-impact--ready { border-color: rgba(45, 212, 191, 0.32); }
+.military-plan-impact--warning { border-color: rgba(251, 191, 36, 0.34); }
+.military-plan-impact--danger { border-color: rgba(251, 113, 133, 0.4); }
 .resolved-conflict-deltas {
   display: grid;
   gap: 10px;
