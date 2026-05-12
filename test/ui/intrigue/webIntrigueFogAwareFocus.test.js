@@ -252,6 +252,22 @@ test('atlas counterintelligence previews schedule conflicts safely', () => {
   assert.match(stylesSource, /atlas-counterintelligence-schedule-conflicts/);
 });
 
+test('atlas counterintelligence turns previews into assignment orders safely', () => {
+  assert.match(webAppSource, /assignmentOrders/);
+  assert.match(webAppSource, /Ordres d’assignation/);
+  assert.match(webAppSource, /Ordres de balayage contre-espionnage fog-safe/);
+  assert.match(webAppSource, /prêt à confirmer/);
+  assert.match(webAppSource, /bloqué par conflit/);
+  assert.match(webAppSource, /Agents \/ ressources/);
+  assert.match(webAppSource, /Zone couverte/);
+  assert.match(webAppSource, /Conflit restant/);
+  assert.match(webAppSource, /Risque résiduel/);
+  assert.match(webAppSource, /Aucun balayage utile disponible pour préparer un ordre/);
+  assert.match(webAppSource, /aucun acteur, relais ou cause cachée révélé/);
+  assert.match(stylesSource, /atlas-counterintelligence-assignment-orders/);
+  assert.match(stylesSource, /atlas-counterintelligence-assignment-order--blocked/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
