@@ -10181,6 +10181,37 @@ button { font: inherit; }
   fill: #cbd5e1;
   font-size: 1.16px;
 }
+.atlas-military-operation-sequence__panel {
+  fill: rgba(15, 23, 42, 0.76);
+  stroke: rgba(248, 113, 113, 0.28);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-operation-sequence__title,
+.atlas-military-operation-step text,
+.atlas-military-operation-sequence__empty {
+  fill: #fee2e2;
+  font-size: 1.45px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.38;
+}
+.atlas-military-operation-step circle {
+  fill: rgba(248, 113, 113, 0.76);
+  stroke: rgba(254, 226, 226, 0.7);
+  stroke-width: 0.24;
+}
+.atlas-military-operation-step--support circle { fill: rgba(74, 222, 128, 0.72); }
+.atlas-military-operation-step__effect {
+  fill: #fde68a;
+  font-size: 1.16px;
+}
+.atlas-military-operation-step__reason,
+.atlas-military-operation-sequence__empty {
+  fill: #cbd5e1;
+  font-size: 1.05px;
+}
 .atlas-military-risk polygon {
   fill: rgba(251, 191, 36, 0.08);
   stroke: rgba(253, 230, 138, 0.26);
