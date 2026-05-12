@@ -2029,6 +2029,71 @@ button { font: inherit; }
 .military-plan-impact--ready { border-color: rgba(45, 212, 191, 0.32); }
 .military-plan-impact--warning { border-color: rgba(251, 191, 36, 0.34); }
 .military-plan-impact--danger { border-color: rgba(251, 113, 133, 0.4); }
+.culture-opportunity-reminders {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.68), rgba(15, 23, 42, 0.54));
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+.culture-opportunity-reminders__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.culture-opportunity-reminders__header span,
+.culture-opportunity-reminders__header small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-opportunity-reminders__header strong { display: block; margin-top: 3px; }
+.culture-opportunity-reminders > p {
+  margin: 0;
+  color: #cffafe;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.culture-opportunity-reminder-list {
+  display: grid;
+  gap: 7px;
+}
+.culture-opportunity-reminder {
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.13);
+}
+.culture-opportunity-reminder span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+.culture-opportunity-reminder strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.culture-opportunity-reminder p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.culture-opportunity-reminder--opportunity { border-color: rgba(74, 222, 128, 0.28); }
+.culture-opportunity-reminder--possible { border-color: rgba(56, 189, 248, 0.26); }
+.culture-opportunity-reminder--research { border-color: rgba(34, 211, 238, 0.28); }
+.culture-opportunity-reminder--risk,
+.culture-opportunity-reminder--warning { border-color: rgba(251, 191, 36, 0.3); }
+.culture-opportunity-reminders--quiet { border-color: rgba(148, 163, 184, 0.16); }
 .province-economy-budget-preview {
   display: grid;
   gap: 10px;
