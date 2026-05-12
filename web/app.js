@@ -424,6 +424,12 @@ const state = {
     alerts: true,
     sabotage: true,
   },
+  intrigueExposureOutcomeFilters: {
+    lowered: false,
+    unchanged: false,
+    increased: false,
+    hidden: false,
+  },
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
 };
@@ -5172,8 +5178,48 @@ function renderMapIntrigueExposureSummary(summary) {
   `;
 }
 
-function buildPostCommitIntrigueExposureMarkers(intrigueView = null) {
-  return (intrigueView?.map?.entries ?? [])
+function getActiveIntrigueExposureOutcomeFilters() {
+  return Object.entries(state.intrigueExposureOutcomeFilters)
+    .filter(([, active]) => active)
+    .map(([key]) => key);
+}
+
+function filterPostCommitIntrigueExposureMarkers(markers) {
+  const activeFilters = getActiveIntrigueExposureOutcomeFilters();
+
+  if (activeFilters.length === 0) {
+    return markers;
+  }
+
+  return markers.filter((marker) => activeFilters.includes(marker.direction));
+}
+
+function buildIntrigueExposureMarkerRollup(markers) {
+  const filteredMarkers = filterPostCommitIntrigueExposureMarkers(markers);
+  const counts = {
+    lowered: markers.filter((marker) => marker.direction === 'lowered').length,
+    unchanged: markers.filter((marker) => marker.direction === 'unchanged').length,
+    increased: markers.filter((marker) => marker.direction === 'increased').length,
+    hidden: markers.filter((marker) => marker.direction === 'hidden').length,
+  };
+  const activeFilters = getActiveIntrigueExposureOutcomeFilters();
+
+  return {
+    counts,
+    activeFilters,
+    filteredCount: filteredMarkers.length,
+    totalCount: markers.length,
+    summary: activeFilters.length > 0
+      ? `${filteredMarkers.length}/${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue visible${filteredMarkers.length > 1 ? 's' : ''} après filtre fog-safe.`
+      : `${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue post-commit visible${markers.length > 1 ? 's' : ''}; aucun filtre d’issue actif.`,
+    hiddenCopy: counts.hidden > 0
+      ? `${counts.hidden} résultat${counts.hidden > 1 ? 's' : ''} fog-limité${counts.hidden > 1 ? 's' : ''}: province inspectable, cible/cellule/relais masqués.`
+      : 'Aucun résultat fog-limité visible dans le rollup actuel.',
+  };
+}
+
+function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {}) {
+  const markers = (intrigueView?.map?.entries ?? [])
     .map((entry) => {
       const response = entry.drillDown?.quickResponses?.find((candidate) => candidate.code === entry.drillDown.recommendedResponseCode)
         ?? entry.drillDown?.quickResponses?.[0]
@@ -5230,6 +5276,40 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null) {
     .filter(Boolean)
     .sort((left, right) => left.locationName.localeCompare(right.locationName))
     .slice(0, 5);
+
+  return options.ignoreFilters ? markers : filterPostCommitIntrigueExposureMarkers(markers);
+}
+
+function renderIntrigueExposureMarkerRollup(rollup) {
+  if (rollup.totalCount === 0) {
+    return '';
+  }
+
+  const labels = {
+    lowered: 'Réduite',
+    unchanged: 'Stable',
+    increased: 'Accrue',
+    hidden: 'Fog-limité',
+  };
+
+  return `
+    <section class="intrigue-exposure-marker-rollup" aria-label="Filtres fog-safe des marqueurs exposition intrigue">
+      <div class="intrigue-exposure-marker-rollup__header">
+        <strong>Marqueurs exposition</strong>
+        <span>${rollup.filteredCount}/${rollup.totalCount} visibles</span>
+      </div>
+      <p>${rollup.summary}</p>
+      <div class="intrigue-exposure-marker-rollup__chips">
+        ${Object.entries(labels).map(([key, label]) => `
+          <button type="button" class="intrigue-exposure-marker-filter ${state.intrigueExposureOutcomeFilters[key] ? 'is-active' : ''}" data-intrigue-exposure-filter="${key}" aria-pressed="${state.intrigueExposureOutcomeFilters[key]}">
+            ${label} <b>${rollup.counts[key]}</b>
+          </button>
+        `).join('')}
+      </div>
+      <small>${rollup.hiddenCopy}</small>
+      <small>Rollup conservateur: les comptes agrègent uniquement les résultats visibles et ne nomment jamais cellule, cible ou relais.</small>
+    </section>
+  `;
 }
 
 function renderPostCommitIntrigueExposureMarkers(markers) {
@@ -7023,6 +7103,9 @@ function renderIntrigueSidePanel(intrigueView) {
     return null;
   }
 
+  const exposureMarkers = buildPostCommitIntrigueExposureMarkers(intrigueView, { ignoreFilters: true });
+  const exposureMarkerRollup = buildIntrigueExposureMarkerRollup(exposureMarkers);
+
   return `
     <section class="panel overlay-panel overlay-panel--intrigue">
       <div class="panel-header">
@@ -7040,6 +7123,7 @@ function renderIntrigueSidePanel(intrigueView) {
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.alerts ? 'is-active' : ''}" data-intrigue-filter="alerts">Alertes</button>
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.sabotage ? 'is-active' : ''}" data-intrigue-filter="sabotage">Sabotage</button>
       </section>
+      ${renderIntrigueExposureMarkerRollup(exposureMarkerRollup)}
       <section class="intrigue-alert-panel intrigue-alert-panel--${intrigueView.alertPanel.tone}" aria-label="Lecture du niveau d'alerte">
         <div class="intrigue-alert-panel__header">
           <div>
@@ -8742,6 +8826,14 @@ function render() {
     element.addEventListener('click', () => {
       const key = element.dataset.intrigueFilter;
       state.intrigueFilters[key] = !state.intrigueFilters[key];
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-intrigue-exposure-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const key = element.dataset.intrigueExposureFilter;
+      state.intrigueExposureOutcomeFilters[key] = !state.intrigueExposureOutcomeFilters[key];
       render();
     });
   });

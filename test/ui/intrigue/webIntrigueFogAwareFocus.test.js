@@ -215,3 +215,18 @@ test('post-commit intrigue exposure markers stay fog-safe on the map', () => {
   assert.match(stylesSource, /intrigue-post-commit-marker--increased/);
   assert.match(stylesSource, /intrigue-post-commit-marker--hidden/);
 });
+
+test('intrigue exposure marker rollup filters reveal only safe counts', () => {
+  assert.match(webAppSource, /intrigueExposureOutcomeFilters/);
+  assert.match(webAppSource, /function getActiveIntrigueExposureOutcomeFilters/);
+  assert.match(webAppSource, /function filterPostCommitIntrigueExposureMarkers/);
+  assert.match(webAppSource, /function buildIntrigueExposureMarkerRollup/);
+  assert.match(webAppSource, /function renderIntrigueExposureMarkerRollup/);
+  assert.match(webAppSource, /data-intrigue-exposure-filter="\$\{key\}"/);
+  assert.match(webAppSource, /state\.intrigueExposureOutcomeFilters\[key\] = !state\.intrigueExposureOutcomeFilters\[key\]/);
+  assert.match(webAppSource, /marqueur\$\{markers\.length > 1 \? 's' : ''\} intrigue post-commit visible/);
+  assert.match(webAppSource, /résultat\$\{counts\.hidden > 1 \? 's' : ''\} fog-limité/);
+  assert.match(webAppSource, /Rollup conservateur: les comptes agrègent uniquement les résultats visibles/);
+  assert.match(stylesSource, /intrigue-exposure-marker-rollup/);
+  assert.match(stylesSource, /intrigue-exposure-marker-filter\.is-active/);
+});
