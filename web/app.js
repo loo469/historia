@@ -2764,6 +2764,41 @@ function renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigue
   `;
 }
 
+function buildFrontStabilityDrivers(province, outcome, queuedAction, sensitiveNeighbor) {
+  const drivers = [];
+
+  if (province.contested || outcome.tone === 'danger') {
+    drivers.push({ label: 'Pression', value: province.contested ? 'front contesté actif' : outcome.summary });
+  }
+
+  if (queuedAction) {
+    drivers.push({
+      label: 'Appui',
+      value: queuedAction.status === 'ready'
+        ? `${queuedAction.label}: action prête à stabiliser le front.`
+        : queuedAction.status === 'risky'
+          ? `${queuedAction.label}: effet dépendant du timing et du contrôle.`
+          : `${queuedAction.label}: bloqueur encore présent avant résolution.`,
+    });
+  }
+
+  if (['collapsed', 'disrupted', 'strained'].includes(province.supplyLevel)) {
+    drivers.push({ label: 'Fatigue / supply', value: `Ravitaillement ${province.supplyLevel}: la projection reste fragile.` });
+  } else if (province.loyalty < 55) {
+    drivers.push({ label: 'Moral', value: `Loyauté ${province.loyalty}: attention à l’attrition locale.` });
+  }
+
+  if (sensitiveNeighbor) {
+    drivers.push({ label: 'Front voisin', value: `${sensitiveNeighbor.label} peut propager la pression si l’action échoue.` });
+  }
+
+  if (drivers.length === 0) {
+    drivers.push({ label: 'Terrain', value: 'Aucun signal critique: stabilité surtout portée par la position locale.' });
+  }
+
+  return drivers.slice(0, 3);
+}
+
 function buildProjectedFrontStability(province, shell, actionQueue) {
   const outcome = buildConflictOutcomePreview(province, shell);
   const queuedAction = actionQueue.find((entry) => entry.status === 'ready') ?? actionQueue[0] ?? null;
@@ -2772,6 +2807,7 @@ function buildProjectedFrontStability(province, shell, actionQueue) {
     .filter((neighbor) => neighbor && neighbor.controllingFactionId !== province.controllingFactionId);
   const sensitiveNeighbor = hostileNeighbors
     .sort((left, right) => (right.strategicValue - left.strategicValue) || left.label.localeCompare(right.label))[0] ?? null;
+  const drivers = buildFrontStabilityDrivers(province, outcome, queuedAction, sensitiveNeighbor);
 
   if (!queuedAction) {
     return {
@@ -2784,6 +2820,7 @@ function buildProjectedFrontStability(province, shell, actionQueue) {
         { label: 'Risque restant', value: outcome.summary },
         { label: 'Voisine sensible', value: sensitiveNeighbor?.label ?? 'aucune menace adjacente prioritaire' },
       ],
+      drivers,
     };
   }
 
@@ -2812,6 +2849,7 @@ function buildProjectedFrontStability(province, shell, actionQueue) {
       { label: 'Risque restant', value: residualRisk },
       { label: 'Voisine sensible', value: sensitiveNeighbor ? `${sensitiveNeighbor.label} · valeur ${sensitiveNeighbor.strategicValue}` : 'aucune menace adjacente prioritaire' },
     ],
+    drivers,
   };
 }
 
@@ -2834,6 +2872,15 @@ function renderProjectedFrontStability(province, shell, focusContext, intrigueVi
           <article class="projected-front-stability__line">
             <span>${line.label}</span>
             <strong>${line.value}</strong>
+          </article>
+        `).join('')}
+      </div>
+      <div class="projected-front-stability__drivers" aria-label="Facteurs de variation de stabilité">
+        <span>Pourquoi ça change</span>
+        ${projection.drivers.map((driver) => `
+          <article class="projected-front-stability__driver">
+            <strong>${driver.label}</strong>
+            <p>${driver.value}</p>
           </article>
         `).join('')}
       </div>

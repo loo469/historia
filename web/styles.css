@@ -2561,6 +2561,33 @@ button { font: inherit; }
   margin-top: 4px;
   font-size: 12px;
 }
+.projected-front-stability__drivers {
+  display: grid;
+  gap: 7px;
+  padding-top: 2px;
+}
+.projected-front-stability__drivers > span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.projected-front-stability__driver {
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.projected-front-stability__driver strong {
+  display: block;
+  font-size: 12px;
+}
+.projected-front-stability__driver p {
+  margin: 3px 0 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .projected-front-stability--ready { border-color: rgba(74, 222, 128, 0.28); }
 .projected-front-stability--warning { border-color: rgba(251, 191, 36, 0.34); }
 .projected-front-stability--danger { border-color: rgba(251, 113, 133, 0.4); }
