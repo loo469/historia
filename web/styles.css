@@ -2869,6 +2869,23 @@ button { font: inherit; }
   color: #f8fafc;
   font-size: 1rem;
 }
+.atlas-counterintelligence-window-risk {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.26);
+  background: rgba(120, 53, 15, 0.2);
+}
+.atlas-counterintelligence-window-risk p,
+.atlas-counterintelligence-window-risk small { margin: 0; color: #fde68a; }
+.atlas-counterintelligence-window-risk ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: #f8fafc;
+}
 .atlas-counterintelligence-card {
   display: grid;
   gap: 7px;
