@@ -84,6 +84,61 @@ function getRouteCause(route, localCity, localTension, mainResource) {
   };
 }
 
+
+function buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause) {
+  const choices = [
+    {
+      choiceId: 'reroute',
+      label: 'Reroute',
+      tone: route.totalCapacity >= 9 || route.riskLevel >= 55 ? 'high' : 'medium',
+      benefit: route.totalCapacity >= 9
+        ? `Désature ${route.routeName} en répartissant ${mainResource.label} vers un relais voisin.`
+        : `Contourne le risque ${route.riskLevel} et garde ${localCity.cityName} alimentée.`,
+      blocker: route.totalCapacity >= 9 ? 'relais disponible' : 'route alternative sûre',
+      rationale: `Répond à la cause: ${routeCause.label}.`,
+      score: (route.totalCapacity >= 9 ? 34 : 22) + (route.riskLevel >= 55 ? 12 : 0),
+    },
+    {
+      choiceId: 'repair',
+      label: 'Repair',
+      tone: !route.active ? 'high' : route.riskLevel >= 70 ? 'medium' : 'low',
+      benefit: !route.active
+        ? `Rouvre ${route.routeName} et restaure le flux de ${mainResource.label}.`
+        : `Stabilise les points faibles de ${route.routeName} avant le prochain tour.`,
+      blocker: !route.active ? 'équipe et stock outil' : 'fenêtre de maintenance',
+      rationale: `Répond à la cause: ${routeCause.label}.`,
+      score: (!route.active ? 44 : 14) + (route.riskLevel >= 70 ? 10 : 0),
+    },
+    {
+      choiceId: 'stockpile',
+      label: 'Stockpile',
+      tone: localTension !== 'low' ? 'high' : 'low',
+      benefit: `Ajoute un tampon local à ${localCity.cityName} pour absorber la tension sur ${mainResource.label}.`,
+      blocker: 'stock disponible',
+      rationale: `Répond à la cause: ${routeCause.label}.`,
+      score: (localTension === 'high' ? 42 : localTension === 'medium' ? 28 : 8) + mainResource.capacity,
+    },
+    {
+      choiceId: 'economic-priority',
+      label: 'Priorité économie',
+      tone: route.riskLevel >= 55 || route.totalCapacity >= 9 ? 'medium' : 'low',
+      benefit: `Réserve ordres et budget pour ${mainResource.label} au lieu de disperser les flux.`,
+      blocker: 'ordre économie disponible',
+      rationale: `Répond à la cause: ${routeCause.label}.`,
+      score: 16 + (route.riskLevel >= 55 ? 12 : 0) + (route.totalCapacity >= 9 ? 10 : 0),
+    },
+  ];
+
+  const rankedChoices = choices.sort((left, right) => right.score - left.score || left.label.localeCompare(right.label));
+  const topChoice = rankedChoices[0];
+
+  return rankedChoices.map((choice, index) => ({
+    ...choice,
+    recommended: index === 0,
+    comparison: index === 0 ? 'meilleur levier immédiat' : `moins urgent: ${topChoice.blocker} prioritaire`,
+  }));
+}
+
 function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) {
   const mainResource = getMainResource(route, resourceLabelById);
   const tone = getRouteTone(route, localTension);
@@ -114,6 +169,7 @@ function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) 
     : tone === 'medium'
       ? `Soulage ${mainResource.label} sans masquer le risque résiduel.`
       : `Maintient ${localCity.cityName} stable avec surveillance légère.`;
+  const recoveryChoices = buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause);
 
   return {
     routeId: route.routeId,
@@ -126,6 +182,7 @@ function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) 
     affectedCity: localCity.cityName,
     causeLabel: routeCause.label,
     cause: routeCause.detail,
+    recoveryChoices,
     residualRisk,
     impact,
     score: (TONE_RANK[tone] ?? 0) * 100 + route.riskLevel + route.totalCapacity + (localTension === 'high' ? 20 : localTension === 'medium' ? 10 : 0),
@@ -177,9 +234,10 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
 
   return {
     recommendedOptionId: recommended.optionId,
+    recoveryChoiceCount: recommended.recoveryChoices.length,
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
-      ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause}`
+      ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause} ${recommended.recoveryChoices[0].label} est prioritaire car ${recommended.recoveryChoices[0].benefit}`
       : `Logistique stable: ${recommended.routes[0]} et ${recommended.affectedCity} restent couverts.`,
     options: routeChoices,
   };

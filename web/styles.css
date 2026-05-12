@@ -2843,6 +2843,45 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.38;
 }
+.province-logistics-recovery-comparison {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.province-logistics-recovery {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 11px;
+  background: rgba(8, 15, 28, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-logistics-recovery.is-recommended {
+  background: rgba(12, 74, 110, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.14);
+}
+.province-logistics-recovery--high { border-color: rgba(251, 113, 133, 0.38); }
+.province-logistics-recovery--medium { border-color: rgba(245, 158, 11, 0.34); }
+.province-logistics-recovery--low { border-color: rgba(74, 222, 128, 0.24); }
+.province-logistics-recovery div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.province-logistics-recovery strong { color: #f8fafc; font-size: 12px; }
+.province-logistics-recovery span,
+.province-logistics-recovery small {
+  color: #bfdbfe;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.province-logistics-recovery p {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .province-logistics-choice dl {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
