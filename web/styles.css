@@ -1412,6 +1412,74 @@ button { font: inherit; }
 .military-outcome-filter__button--blocked.is-active { border-color: rgba(148, 163, 184, 0.48); color: #f8fafc; }
 .military-outcome-filter__button--risk.is-active { border-color: rgba(251, 191, 36, 0.52); color: #fde68a; }
 
+.military-outcome-trail {
+  position: absolute;
+  top: 112px;
+  right: 14px;
+  z-index: 8;
+  display: grid;
+  gap: 7px;
+  width: min(300px, calc(100% - 28px));
+  max-height: 180px;
+  overflow: auto;
+  padding: 9px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.78);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  backdrop-filter: blur(10px);
+}
+.military-outcome-trail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.military-outcome-trail__header span,
+.military-outcome-trail__header small {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-outcome-trail__header strong { color: #fde68a; font-size: 12px; }
+.military-outcome-trail p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.military-outcome-trail__list { display: grid; gap: 6px; }
+.military-outcome-trail__item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 7px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.52);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  text-align: left;
+  cursor: pointer;
+}
+.military-outcome-trail__item:hover,
+.military-outcome-trail__item:focus-visible {
+  border-color: rgba(251, 191, 36, 0.52);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.12);
+  outline: none;
+}
+.military-outcome-trail__item div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.military-outcome-trail__item strong { color: #f8fafc; }
+.military-outcome-trail__item code { color: #fde68a; font-size: 10px; }
+.military-outcome-trail__item small { color: var(--muted); font-size: 10px; }
+.military-outcome-trail__item--stabilized { border-color: rgba(74, 222, 128, 0.32); }
+.military-outcome-trail__item--worsened { border-color: rgba(251, 113, 133, 0.4); }
+.military-outcome-trail__item--blocked { border-color: rgba(148, 163, 184, 0.34); }
+.military-outcome-trail__item--risk { border-color: rgba(251, 191, 36, 0.36); }
+
 .military-front-marker-summary {
   position: absolute;
   top: 212px;
@@ -6535,6 +6603,74 @@ button { font: inherit; }
 .military-outcome-filter__button--worsened.is-active { border-color: rgba(251, 113, 133, 0.56); color: #fecdd3; }
 .military-outcome-filter__button--blocked.is-active { border-color: rgba(148, 163, 184, 0.48); color: #f8fafc; }
 .military-outcome-filter__button--risk.is-active { border-color: rgba(251, 191, 36, 0.52); color: #fde68a; }
+
+.military-outcome-trail {
+  position: absolute;
+  top: 112px;
+  right: 14px;
+  z-index: 8;
+  display: grid;
+  gap: 7px;
+  width: min(300px, calc(100% - 28px));
+  max-height: 180px;
+  overflow: auto;
+  padding: 9px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.78);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  backdrop-filter: blur(10px);
+}
+.military-outcome-trail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.military-outcome-trail__header span,
+.military-outcome-trail__header small {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-outcome-trail__header strong { color: #fde68a; font-size: 12px; }
+.military-outcome-trail p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.military-outcome-trail__list { display: grid; gap: 6px; }
+.military-outcome-trail__item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 7px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.52);
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  text-align: left;
+  cursor: pointer;
+}
+.military-outcome-trail__item:hover,
+.military-outcome-trail__item:focus-visible {
+  border-color: rgba(251, 191, 36, 0.52);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.12);
+  outline: none;
+}
+.military-outcome-trail__item div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.military-outcome-trail__item strong { color: #f8fafc; }
+.military-outcome-trail__item code { color: #fde68a; font-size: 10px; }
+.military-outcome-trail__item small { color: var(--muted); font-size: 10px; }
+.military-outcome-trail__item--stabilized { border-color: rgba(74, 222, 128, 0.32); }
+.military-outcome-trail__item--worsened { border-color: rgba(251, 113, 133, 0.4); }
+.military-outcome-trail__item--blocked { border-color: rgba(148, 163, 184, 0.34); }
+.military-outcome-trail__item--risk { border-color: rgba(251, 191, 36, 0.36); }
 
 .military-front-marker-summary {
   position: absolute;
