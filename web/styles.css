@@ -6280,6 +6280,32 @@ button { font: inherit; }
   margin-top: 2px;
   color: var(--muted);
 }
+.province-intrigue-detection-fallback {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(8, 47, 73, 0.24);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+.province-intrigue-detection-fallback--ready {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(20, 83, 45, 0.2);
+}
+.province-intrigue-detection-fallback--empty {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.28);
+}
+.province-intrigue-detection-fallback span {
+  color: #bae6fd;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.province-intrigue-detection-fallback small {
+  color: var(--muted);
+}
 
 .province-intrigue-risk-warnings {
   margin-top: 12px;
