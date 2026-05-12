@@ -46,6 +46,10 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /renderLogisticsOutcomeFilterControls/);
   assert.match(webAppSource, /renderLogisticsRouteDecisionList/);
   assert.match(webAppSource, /isLogisticsOutcomeVisible/);
+  assert.match(webAppSource, /selectedLogisticsOutcomeRouteId/);
+  assert.match(webAppSource, /data-logistics-route-summary/);
+  assert.match(webAppSource, /is-logistics-outcome-highlighted/);
+  assert.match(webAppSource, /is-logistics-outcome-dimmed/);
   assert.match(webAppSource, /logisticsOutcomeMarkers/);
   assert.match(webAppSource, /data-logistics-outcome-marker/);
   assert.match(webAppSource, /Pénurie résolue/);
@@ -56,6 +60,7 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Routes visibles/);
   assert.match(webAppSource, /Routes masquées par filtre/);
   assert.match(webAppSource, /Action conseillée/);
+  assert.match(webAppSource, /Route logistique sélectionnée depuis le résumé/);
   assert.match(webAppSource, /trié.*par gravité/);
   assert.match(webAppSource, /logistics-outcome-group:/);
   assert.match(webAppSource, /File logistique/);
@@ -112,6 +117,9 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(stylesSource, /province-logistics-outcome-filter\.is-active/);
   assert.match(stylesSource, /province-logistics-route-decision--unresolved/);
   assert.match(stylesSource, /province-logistics-route-decisions__empty/);
+  assert.match(stylesSource, /province-logistics-route-decision\.is-selected/);
+  assert.match(stylesSource, /economy-route-group\.is-logistics-outcome-highlighted/);
+  assert.match(stylesSource, /economy-route-group\.is-logistics-outcome-dimmed/);
   assert.match(stylesSource, /province-logistics-downstream-summary--résolue/);
   assert.match(stylesSource, /province-logistics-downstream-shortage--high/);
   assert.match(stylesSource, /province-logistics-timeline-summary--empty/);
