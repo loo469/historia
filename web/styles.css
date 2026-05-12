@@ -2200,6 +2200,18 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.35;
 }
+.culture-opportunity-reminder button {
+  margin-top: 7px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(14, 165, 233, 0.1);
+  color: #bae6fd;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.culture-opportunity-reminder button:hover { border-color: rgba(125, 211, 252, 0.5); }
 .culture-opportunity-reminder--opportunity { border-color: rgba(74, 222, 128, 0.28); }
 .culture-opportunity-reminder--possible { border-color: rgba(56, 189, 248, 0.26); }
 .culture-opportunity-reminder--research { border-color: rgba(34, 211, 238, 0.28); }

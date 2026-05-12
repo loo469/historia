@@ -52,6 +52,13 @@ function summarizeHint(hint, actionLabel) {
 }
 
 function buildReminder(hint, actionLabel) {
+  const focusTarget = hint.focusTarget ?? {
+    type: 'province',
+    id: hint.regionId,
+    regionId: hint.regionId,
+    label: 'Province liée',
+  };
+
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
     tone: reminderTone(hint),
@@ -61,6 +68,8 @@ function buildReminder(hint, actionLabel) {
     provinceId: hint.regionId,
     cultureName: hint.cultureName,
     actionLabel,
+    focusTarget,
+    focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };
 }
 
