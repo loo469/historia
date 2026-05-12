@@ -8077,6 +8077,102 @@ function renderWorldMapIntrigueSignalRollup(rollup) {
   `;
 }
 
+
+function buildAtlasCounterintelligenceSweepPlan(signals) {
+  const filteredSignals = filterWorldMapIntrigueSignals(signals);
+  const sweepCandidates = filteredSignals
+    .map((signal) => {
+      const freshnessWeight = signal.freshness === 'recent' ? 18 : signal.freshness === 'uncertain' ? 16 : 10;
+      const certaintyWeight = signal.certainty === 'probable' ? 14 : signal.certainty === 'confirmed' ? 10 : 8;
+      const exposureWeight = signal.tone === 'danger' ? 18 : signal.tone === 'warning' ? 12 : signal.shadowZone ? 9 : 4;
+      const score = freshnessWeight + certaintyWeight + exposureWeight + (signal.probableSabotage ? 8 : 0);
+      const sweepMode = signal.freshness === 'stale'
+        ? 'Revérification discrète'
+        : signal.freshness === 'uncertain'
+          ? 'Balayage prudent'
+          : signal.certainty === 'probable'
+            ? 'Balayage prioritaire'
+            : 'Veille ciblée';
+      const expectedReduction = signal.tone === 'danger'
+        ? 'réduction estimée forte si le signal visible se confirme'
+        : signal.tone === 'warning' || signal.certainty === 'probable'
+          ? 'réduction estimée modérée sans dévoiler la source'
+          : 'réduction légère, utile pour clarifier la zone';
+      const costDelay = signal.freshness === 'stale'
+        ? 'coût bas · délai court'
+        : signal.freshness === 'uncertain'
+          ? 'coût moyen · délai prudent'
+          : 'coût moyen · action ce tour';
+      const uncertainty = signal.freshness === 'uncertain' || signal.shadowZone
+        ? 'incertitude haute: confirmer la province avant action nominative'
+        : signal.certainty === 'probable'
+          ? 'incertitude moyenne: cause et relais restent masqués'
+          : 'incertitude limitée aux détails non visibles';
+
+      return {
+        ...signal,
+        score,
+        sweepMode,
+        expectedReduction,
+        costDelay,
+        uncertainty,
+      };
+    })
+    .filter((signal) => signal.score >= 28 || signal.freshness !== 'stale' || signal.certainty === 'probable')
+    .sort((left, right) => right.score - left.score || left.locationName.localeCompare(right.locationName))
+    .slice(0, 3);
+
+  return {
+    empty: sweepCandidates.length === 0,
+    totalFiltered: filteredSignals.length,
+    candidates: sweepCandidates,
+    summary: sweepCandidates.length > 0
+      ? `${sweepCandidates.length} zone${sweepCandidates.length > 1 ? 's' : ''} de balayage contre-espionnage proposée${sweepCandidates.length > 1 ? 's' : ''} depuis les filtres atlas actifs.`
+      : 'Aucun signal filtré ne justifie un balayage contre-espionnage ce tour.',
+  };
+}
+
+function renderAtlasCounterintelligenceSweepPlan(plan) {
+  if (plan.empty) {
+    return `
+      <section class="atlas-counterintelligence-plan is-empty" aria-label="Plan de balayage contre-espionnage atlas">
+        <div class="atlas-counterintelligence-plan__header">
+          <strong>Balayage contre-espionnage</strong>
+          <span>aucune zone</span>
+        </div>
+        <p>${plan.summary}</p>
+        <small>Activez un filtre récent, ancien, incertain ou probable pour préparer une vérification sans révéler de cause cachée.</small>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="atlas-counterintelligence-plan" aria-label="Plan de balayage contre-espionnage atlas">
+      <div class="atlas-counterintelligence-plan__header">
+        <strong>Balayage contre-espionnage</strong>
+        <span>${plan.candidates.length}/${plan.totalFiltered} priorités</span>
+      </div>
+      <p>${plan.summary}</p>
+      <div class="atlas-counterintelligence-plan__list">
+        ${plan.candidates.map((candidate, index) => `
+          <button type="button" class="atlas-counterintelligence-card atlas-counterintelligence-card--${candidate.tone}" data-province-id="${candidate.locationId}" aria-label="Choisir ${candidate.locationName} pour ${candidate.sweepMode}: ${candidate.uncertainty}">
+            <div>
+              <b>#${index + 1} ${candidate.locationName}</b>
+              <span>${candidate.sweepMode} · ${candidate.freshnessLabel} · ${candidate.assurance}</span>
+            </div>
+            <dl>
+              <div><dt>Effet</dt><dd>${candidate.expectedReduction}</dd></div>
+              <div><dt>Coût / délai</dt><dd>${candidate.costDelay}</dd></div>
+              <div><dt>Incertitude</dt><dd>${candidate.uncertainty}</dd></div>
+            </dl>
+            <small>${candidate.priorityReason}; cellule, relais, cible et cause restent masqués.</small>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const cultureContext = getSelectedCultureContext(province.provinceId);
@@ -10152,6 +10248,7 @@ function renderIntrigueSidePanel(intrigueView) {
   const exposureMarkerRollup = buildIntrigueExposureMarkerRollup(exposureMarkers);
   const worldMapSignals = buildWorldMapIntrigueSignals(intrigueView, { ignoreFilters: true });
   const worldMapSignalRollup = buildWorldMapIntrigueSignalRollup(worldMapSignals);
+  const counterintelligencePlan = buildAtlasCounterintelligenceSweepPlan(worldMapSignals);
 
   return `
     <section class="panel overlay-panel overlay-panel--intrigue">
@@ -10171,6 +10268,7 @@ function renderIntrigueSidePanel(intrigueView) {
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.sabotage ? 'is-active' : ''}" data-intrigue-filter="sabotage">Sabotage</button>
       </section>
       ${renderWorldMapIntrigueSignalRollup(worldMapSignalRollup)}
+      ${renderAtlasCounterintelligenceSweepPlan(counterintelligencePlan)}
       ${renderIntrigueExposureMarkerRollup(exposureMarkerRollup)}
       <section class="intrigue-alert-panel intrigue-alert-panel--${intrigueView.alertPanel.tone}" aria-label="Lecture du niveau d'alerte">
         <div class="intrigue-alert-panel__header">

@@ -2733,6 +2733,72 @@ button { font: inherit; }
 .world-map-intrigue-filter-chip b {
   color: #f8fafc;
 }
+.atlas-counterintelligence-plan {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  background: rgba(15, 23, 42, 0.5);
+}
+.atlas-counterintelligence-plan.is-empty {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+.atlas-counterintelligence-plan__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.atlas-counterintelligence-plan__header span,
+.atlas-counterintelligence-plan p,
+.atlas-counterintelligence-plan small { color: #cbd5e1; }
+.atlas-counterintelligence-plan__list {
+  display: grid;
+  gap: 8px;
+}
+.atlas-counterintelligence-card {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  padding: 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
+  background: rgba(2, 6, 23, 0.26);
+  cursor: pointer;
+}
+.atlas-counterintelligence-card--danger { border-left: 3px solid rgba(248, 113, 113, 0.82); }
+.atlas-counterintelligence-card--warning { border-left: 3px solid rgba(251, 191, 36, 0.82); }
+.atlas-counterintelligence-card--shadow { border-left: 3px solid rgba(148, 163, 184, 0.72); }
+.atlas-counterintelligence-card--watch { border-left: 3px solid rgba(96, 165, 250, 0.72); }
+.atlas-counterintelligence-card:hover,
+.atlas-counterintelligence-card:focus-visible {
+  border-color: rgba(45, 212, 191, 0.6);
+  background: rgba(20, 83, 45, 0.26);
+}
+.atlas-counterintelligence-card div {
+  display: grid;
+  gap: 2px;
+}
+.atlas-counterintelligence-card div span { color: #bae6fd; font-size: 0.82rem; }
+.atlas-counterintelligence-card dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+.atlas-counterintelligence-card dl div {
+  display: grid;
+  gap: 2px;
+}
+.atlas-counterintelligence-card dt {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.atlas-counterintelligence-card dd { margin: 0; color: #f8fafc; }
 .intrigue-exposure-marker-rollup {
   display: grid;
   gap: 8px;

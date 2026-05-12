@@ -197,6 +197,22 @@ test('final intrigue exposure summary is visible before turn commit', () => {
   assert.match(stylesSource, /province-intrigue-final-commit-summary__item--trop-risqué/);
 });
 
+test('atlas counterintelligence sweep planning uses filtered signals without spoilers', () => {
+  assert.match(webAppSource, /function buildAtlasCounterintelligenceSweepPlan/);
+  assert.match(webAppSource, /function renderAtlasCounterintelligenceSweepPlan/);
+  assert.match(webAppSource, /Balayage contre-espionnage/);
+  assert.match(webAppSource, /Revérification discrète/);
+  assert.match(webAppSource, /Balayage prudent/);
+  assert.match(webAppSource, /Balayage prioritaire/);
+  assert.match(webAppSource, /réduction estimée modérée sans dévoiler la source/);
+  assert.match(webAppSource, /coût moyen · délai prudent/);
+  assert.match(webAppSource, /incertitude haute: confirmer la province avant action nominative/);
+  assert.match(webAppSource, /Aucun signal filtré ne justifie un balayage contre-espionnage ce tour/);
+  assert.match(webAppSource, /cellule, relais, cible et cause restent masqués/);
+  assert.match(stylesSource, /atlas-counterintelligence-plan/);
+  assert.match(stylesSource, /atlas-counterintelligence-card--shadow/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
