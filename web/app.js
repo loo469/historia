@@ -1390,6 +1390,60 @@ function buildAtlasCorridorInterventionOptions(supplyForecasts) {
   }));
 }
 
+function buildAtlasCorridorActionBudget(interventions, actionCapacity = 3) {
+  const selected = [];
+  const deferred = [];
+  let remaining = actionCapacity;
+
+  for (const option of interventions) {
+    const actionCost = option.unknown
+      ? null
+      : option.tone === 'overload' && option.constraint.includes('critique')
+        ? 2
+        : 1;
+    const budgetedOption = {
+      ...option,
+      actionCost,
+      budgetLabel: actionCost === null ? 'coût inconnu' : `${actionCost} action${actionCost > 1 ? 's' : ''}`,
+    };
+
+    if (actionCost !== null && actionCost <= remaining && option.expectedGain > 0) {
+      selected.push(budgetedOption);
+      remaining -= actionCost;
+    } else {
+      deferred.push(budgetedOption);
+    }
+  }
+
+  const selectedGain = selected.reduce((total, option) => total + (option.expectedGain ?? 0), 0);
+  const deferredRisk = deferred.find((option) => option.tone === 'overload')
+    ?? deferred.find((option) => option.unknown)
+    ?? deferred[0]
+    ?? null;
+  const selectedLabel = selected.length > 0
+    ? selected.map((option) => option.routeName).join(' + ')
+    : 'aucune intervention sûre';
+  const deferredLabel = deferred.length > 0
+    ? deferred.slice(0, 2).map((option) => option.routeName).join(' + ')
+    : 'aucun report';
+  const tradeoff = deferredRisk
+    ? `Reporter ${deferredRisk.routeName}: ${deferredRisk.riskAvoided}`
+    : 'Budget couvre les options lisibles';
+
+  return {
+    capacity: actionCapacity,
+    used: actionCapacity - remaining,
+    remaining,
+    selected,
+    deferred,
+    selectedGain,
+    selectedLabel,
+    deferredLabel,
+    tradeoff,
+    empty: interventions.length === 0,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -1400,6 +1454,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const corridorMap = new Map();
   const supplyForecasts = buildAtlasSupplyCapacityForecasts(economyView);
   const interventionOptions = buildAtlasCorridorInterventionOptions(supplyForecasts);
+  const actionBudget = buildAtlasCorridorActionBudget(interventionOptions);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -1494,6 +1549,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     regions,
     forecasts: supplyForecasts.routes,
     interventions: interventionOptions,
+    actionBudget,
   };
 }
 
@@ -1506,7 +1562,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${24 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${34 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -1549,6 +1605,13 @@ function renderAtlasEconomyStressLegend(economyView) {
           </g>
         `;
       }).join('')}
+      <g class="atlas-corridor-budget ${rollup.actionBudget.empty ? 'is-empty' : ''}" aria-label="Budget de corridor: ${rollup.actionBudget.used}/${rollup.actionBudget.capacity} actions, sélection ${rollup.actionBudget.selectedLabel}, reports ${rollup.actionBudget.deferredLabel}">
+        <rect x="5" y="${31.8 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}" width="30.5" height="8.6" rx="1.4"></rect>
+        <text class="atlas-corridor-budget__title" x="6.2" y="${34.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Budget corridor ${rollup.actionBudget.used}/${rollup.actionBudget.capacity}</text>
+        <text class="atlas-corridor-budget__selected" x="6.2" y="${36.4 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Retenir: ${rollup.actionBudget.selectedLabel} · gain +${rollup.actionBudget.selectedGain}</text>
+        <text class="atlas-corridor-budget__deferred" x="6.2" y="${38.4 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Reporter: ${rollup.actionBudget.deferredLabel}</text>
+        <text class="atlas-corridor-budget__tradeoff" x="6.2" y="${40.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2)}">Compromis: ${rollup.actionBudget.tradeoff}</text>
+      </g>
     </g>
   `;
 }
