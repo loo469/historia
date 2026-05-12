@@ -1186,9 +1186,29 @@ function buildAtlasCultureMediation(zone) {
     découverte: ['protéger relais', 'découverte sécurisée', 'opportunité perdue'],
     'pression politique': ['conseil local', 'loyauté suivie', 'tension latente'],
   };
+  const consequenceByDriver = {
+    migration: ['apaisement du passage', 'tension déplacée', 'coût culturel modéré'],
+    'influence voisine': ['frontière clarifiée', 'pression voisine reportée', 'coût politique léger'],
+    événement: ['incident apaisé', 'tension vers relais', 'coût diplomatique'],
+    découverte: ['site sécurisé', 'attention déplacée', 'coût de protection'],
+    'pression politique': ['loyautés apaisées', 'tension latente déplacée', 'coût politique'],
+  };
   const [option, benefit, risk] = optionByDriver[zone.mainDriver] ?? optionByDriver['pression politique'];
+  const [appeasement, displacement, cost] = consequenceByDriver[zone.mainDriver] ?? consequenceByDriver['pression politique'];
+  const confidence = zone.selected || zone.drift.linkedToFocus
+    ? ['sûre', 'signal focalisé']
+    : zone.drift.causes.length >= 2
+      ? ['incertaine', 'causes multiples']
+      : ['inconnue', 'signal partiel'];
 
-  return { option, benefit, risk };
+  return {
+    option,
+    benefit,
+    risk,
+    confidence: confidence[0],
+    confidenceReason: confidence[1],
+    consequences: { appeasement, displacement, cost },
+  };
 }
 
 function renderAtlasCultureLayer(cultureView) {
@@ -1219,14 +1239,16 @@ function renderAtlasCultureLayer(cultureView) {
       `).join('')}
       ${features.borderZones.length > 0 ? `
         <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
-          <rect x="3" y="55" width="30" height="${9 + (features.borderZones.length * 7.2)}" rx="1.8"></rect>
+          <rect x="3" y="55" width="30" height="${11 + (features.borderZones.length * 10.4)}" rx="1.8"></rect>
           <text class="atlas-cultural-border-zones__title" x="5" y="58.4">Médiations culturelles</text>
           ${features.borderZones.map((zone, index) => `
-            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, bénéfice ${zone.mediation.benefit}, risque ${zone.mediation.risk}">
-              <text x="5" y="${62 + index * 7.2}">${zone.cultureName}</text>
-              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 7.2}">${zone.chips.join(' · ')}</text>
-              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 7.2}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${67.8 + index * 7.2}">si ignorée: ${zone.mediation.risk}</text>
+            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state} atlas-cultural-border-zone--confidence-${zone.mediation.confidence}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, confiance ${zone.mediation.confidence}, bénéfice ${zone.mediation.benefit}, risque ${zone.mediation.risk}, conséquences ${zone.mediation.consequences.appeasement}, ${zone.mediation.consequences.displacement}, ${zone.mediation.consequences.cost}">
+              <text x="5" y="${62 + index * 10.4}">${zone.cultureName}</text>
+              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 10.4}">${zone.chips.join(' · ')}</text>
+              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 10.4}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
+              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 10.4}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
+              <text class="atlas-cultural-border-zone__consequences" x="5" y="${69.5 + index * 10.4}">${zone.mediation.consequences.appeasement} · ${zone.mediation.consequences.displacement} · ${zone.mediation.consequences.cost}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${71.2 + index * 10.4}">si ignorée: ${zone.mediation.risk}</text>
             </g>
           `).join('')}
         </g>
