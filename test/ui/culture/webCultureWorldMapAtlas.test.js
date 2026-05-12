@@ -12,6 +12,10 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /getProvinceCenter\(entry\.regionId\)/);
   assert.match(webAppSource, /atlas-culture-zone--\$\{zone\.tone\}/);
   assert.match(webAppSource, /renderAtlasWorldCanvas\(shell, economyView, cultureView\)/);
+  assert.match(webAppSource, /regionSummaries/);
+  assert.match(webAppSource, /atlas-culture-summary/);
+  assert.match(webAppSource, /influence contestée/);
+  assert.match(webAppSource, /opportunité:/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -19,7 +23,14 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /atlas-discovery-site/);
   assert.match(webAppSource, /data-atlas-discovery="\$\{site\.discoveryId\}"/);
   assert.match(webAppSource, /Couche atlas culture et découvertes/);
+  assert.match(webAppSource, /focused: entry\.regionId === selectedRegionId/);
+  assert.match(webAppSource, /is-focused/);
+  assert.match(webAppSource, /is-related/);
+  assert.match(webAppSource, /atlas-discovery-site__link/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
+  assert.match(stylesSource, /\.atlas-culture-summary/);
+  assert.match(stylesSource, /\.atlas-discovery-site\.is-focused path/);
+  assert.match(stylesSource, /\.atlas-discovery-site__link/);
 });

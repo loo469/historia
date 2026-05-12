@@ -678,6 +678,7 @@ function renderAtlasMilitaryLayer(shell) {
 
 function buildAtlasCultureFeatures(cultureView) {
   const entries = cultureView?.overlay ?? [];
+  const selectedRegionId = cultureView?.selectedRegionId ?? state.selectedProvinceId;
   const dominantByRegion = new Map();
 
   entries.forEach((entry) => {
@@ -697,6 +698,8 @@ function buildAtlasCultureFeatures(cultureView) {
     score: entry.influenceScore,
   }));
 
+  const selectedDiscoveryId = entries
+    .find((entry) => entry.regionId === selectedRegionId)?.regionalDiscoveryLinks?.[0]?.discoveryId ?? null;
   const discoverySites = entries.flatMap((entry) => entry.regionalDiscoveryLinks.slice(0, 2).map((link, index) => ({
     siteId: `${entry.regionId}:${entry.cultureId}:${link.discoveryId}:${index}`,
     regionId: entry.regionId,
@@ -705,12 +708,37 @@ function buildAtlasCultureFeatures(cultureView) {
     tone: getCultureTone(entry),
     center: getProvinceCenter(entry.regionId),
     offset: (index - 0.5) * 2.8,
+    focused: entry.regionId === selectedRegionId && link.discoveryId === selectedDiscoveryId,
+    related: Boolean(selectedDiscoveryId) && link.discoveryId === selectedDiscoveryId && entry.regionId !== selectedRegionId,
   })));
+
+  const regionSummaries = influenceZones.map((zone) => {
+    const regionEntries = entries.filter((entry) => entry.regionId === zone.regionId);
+    const discoveryCount = new Set(regionEntries.flatMap((entry) => entry.regionalDiscoveryLinks.map((link) => link.discoveryId))).size;
+    const cultures = new Set(regionEntries.map((entry) => entry.cultureName));
+    const opportunity = regionEntries
+      .flatMap((entry) => entry.eventPopups ?? [])
+      .sort((left, right) => (right.importance ?? 0) - (left.importance ?? 0))[0];
+
+    return {
+      summaryId: `atlas-culture-summary:${zone.regionId}`,
+      regionId: zone.regionId,
+      cultureName: zone.cultureName,
+      tone: zone.tone,
+      center: zone.center,
+      influenceLabel: cultures.size > 1 ? 'influence contestée' : `${zone.influenceTier} dominante`,
+      discoveryLabel: `${discoveryCount} découverte${discoveryCount > 1 ? 's' : ''} active${discoveryCount > 1 ? 's' : ''}`,
+      opportunityLabel: opportunity ? `opportunité: ${opportunity.title}` : 'opportunité à surveiller',
+      selected: zone.regionId === selectedRegionId,
+    };
+  }).slice(0, 6);
 
   return {
     influenceZones,
     cultureMarkers: influenceZones.filter((zone) => zone.influenceTier === 'dominant' || zone.influenceTier === 'strong'),
     discoverySites,
+    focusedDiscovery: discoverySites.find((site) => site.focused) ?? null,
+    regionSummaries,
   };
 }
 
@@ -727,6 +755,12 @@ function renderAtlasCultureLayer(cultureView) {
       ${features.influenceZones.map((zone) => `
         <polygon class="atlas-culture-zone atlas-culture-zone--${zone.tone} atlas-culture-zone--${zone.influenceTier}" points="${zone.polygon}" aria-label="Zone d’influence ${zone.cultureName}: ${zone.influenceTier}"></polygon>
       `).join('')}
+      ${features.regionSummaries.map((summary, index) => `
+        <g class="atlas-culture-summary atlas-culture-summary--${summary.tone} ${summary.selected ? 'is-selected' : ''}" data-atlas-culture-summary="${summary.regionId}" aria-label="Résumé atlas culture ${summary.cultureName}: ${summary.influenceLabel}, ${summary.discoveryLabel}, ${summary.opportunityLabel}">
+          <text x="${Math.min(92, summary.center.x + 3.2)}%" y="${Math.max(7, summary.center.y - 6.2 + (index % 2) * 2.4)}%">${summary.cultureName}</text>
+          <text class="atlas-culture-summary__chip" x="${Math.min(92, summary.center.x + 3.2)}%" y="${Math.max(9.2, summary.center.y - 3.9 + (index % 2) * 2.4)}%">${summary.influenceLabel} · ${summary.discoveryLabel}</text>
+        </g>
+      `).join('')}
       ${features.cultureMarkers.map((marker) => `
         <g class="atlas-culture-marker atlas-culture-marker--${marker.tone}" data-atlas-culture-region="${marker.regionId}">
           <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="${marker.influenceTier === 'dominant' ? 2.35 : 1.85}"></circle>
@@ -737,9 +771,11 @@ function renderAtlasCultureLayer(cultureView) {
         const x = site.center.x + site.offset;
         const y = site.center.y - 4.8;
         return `
-          <g class="atlas-discovery-site atlas-discovery-site--${site.tone}" data-atlas-discovery="${site.discoveryId}">
+          <g class="atlas-discovery-site atlas-discovery-site--${site.tone} ${site.focused ? 'is-focused' : ''} ${site.related ? 'is-related' : ''}" data-atlas-discovery="${site.discoveryId}">
+            ${site.focused || site.related ? `<line class="atlas-discovery-site__link" x1="${site.center.x}%" y1="${site.center.y}%" x2="${x}%" y2="${y}%"></line>` : ''}
             <path d="M ${x} ${y - 1.05} L ${x + 1.05} ${y} L ${x} ${y + 1.05} L ${x - 1.05} ${y} Z"></path>
-            <title>${site.discoveryId} · ${site.cultureName}</title>
+            ${site.focused ? `<text x="${x + 1.8}%" y="${y - 0.9}%">focus découverte</text>` : ''}
+            <title>${site.discoveryId} · ${site.cultureName}${site.related ? ' · lien utile' : ''}</title>
           </g>
         `;
       }).join('')}

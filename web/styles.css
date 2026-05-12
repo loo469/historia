@@ -10030,3 +10030,44 @@ button { font: inherit; }
   font-weight: 700;
 }
 .atlas-economy-region-rollup__action { fill: #bae6fd; }
+
+.atlas-culture-summary text {
+  fill: #d1fae5;
+  font-size: 1.9px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.88);
+  stroke-width: 0.44;
+}
+.atlas-culture-summary__chip {
+  fill: #bae6fd;
+  font-size: 1.45px;
+  font-weight: 800;
+}
+.atlas-culture-summary--amber text { fill: #fde68a; }
+.atlas-culture-summary--rose text { fill: #fecdd3; }
+.atlas-culture-summary--cyan text { fill: #a5f3fc; }
+.atlas-culture-summary.is-selected text { stroke-width: 0.7; }
+.atlas-discovery-site.is-focused path {
+  fill: #ffffff;
+  stroke: rgba(20, 184, 166, 0.98);
+  stroke-width: 0.52;
+  filter: drop-shadow(0 0 4px rgba(45, 212, 191, 0.58));
+}
+.atlas-discovery-site.is-related path {
+  stroke: rgba(125, 211, 252, 0.94);
+  stroke-width: 0.42;
+}
+.atlas-discovery-site__link {
+  stroke: rgba(186, 230, 253, 0.48);
+  stroke-width: 0.32;
+  stroke-dasharray: 1.1 1.2;
+}
+.atlas-discovery-site text {
+  fill: #e0f2fe;
+  font-size: 1.45px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.38;
+}
