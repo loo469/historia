@@ -196,3 +196,22 @@ test('final intrigue exposure summary is visible before turn commit', () => {
   assert.match(stylesSource, /province-intrigue-final-commit-summary--danger/);
   assert.match(stylesSource, /province-intrigue-final-commit-summary__item--trop-risqué/);
 });
+
+test('post-commit intrigue exposure markers stay fog-safe on the map', () => {
+  assert.match(webAppSource, /function buildPostCommitIntrigueExposureMarkers/);
+  assert.match(webAppSource, /function renderPostCommitIntrigueExposureMarkers/);
+  assert.match(webAppSource, /Marqueurs intrigue post-commit fog-safe/);
+  assert.match(webAppSource, /Exposition réduite/);
+  assert.match(webAppSource, /Exposition stable/);
+  assert.match(webAppSource, /Exposition accrue/);
+  assert.match(webAppSource, /Résultat fog-limité/);
+  assert.match(webAppSource, /Voir synthèse finale exposition intrigue/);
+  assert.match(webAppSource, /résultat masqué par le brouillard; seule la province reste inspectable/);
+  assert.match(webAppSource, /détails fog-safe liés à la synthèse finale/);
+  assert.match(webAppSource, /renderPostCommitIntrigueExposureMarkers\(postCommitMarkers\)/);
+  assert.match(stylesSource, /intrigue-post-commit-marker/);
+  assert.match(stylesSource, /intrigue-post-commit-marker--lowered/);
+  assert.match(stylesSource, /intrigue-post-commit-marker--unchanged/);
+  assert.match(stylesSource, /intrigue-post-commit-marker--increased/);
+  assert.match(stylesSource, /intrigue-post-commit-marker--hidden/);
+});

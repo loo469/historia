@@ -1922,6 +1922,42 @@ button { font: inherit; }
 .intrigue-hotspot__marker { font-size: 4.2px; fill: #cffafe; }
 .intrigue-hotspot__label { font-size: 3.1px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .intrigue-hotspot__meta { font-size: 2.25px; fill: #bae6fd; opacity: 0.76; }
+.intrigue-post-commit-marker { cursor: help; }
+.intrigue-post-commit-marker__backplate {
+  fill: rgba(15, 23, 42, 0.9);
+  stroke: rgba(226, 232, 240, 0.74);
+  stroke-width: 0.34;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.28));
+}
+.intrigue-post-commit-marker--lowered .intrigue-post-commit-marker__backplate { stroke: rgba(34, 197, 94, 0.86); }
+.intrigue-post-commit-marker--unchanged .intrigue-post-commit-marker__backplate { stroke: rgba(96, 165, 250, 0.8); }
+.intrigue-post-commit-marker--increased .intrigue-post-commit-marker__backplate { stroke: rgba(248, 113, 113, 0.92); }
+.intrigue-post-commit-marker--hidden .intrigue-post-commit-marker__backplate { stroke: rgba(148, 163, 184, 0.68); }
+.intrigue-post-commit-marker__glyph {
+  fill: #f8fafc;
+  font-size: 4.4px;
+  font-weight: 900;
+  pointer-events: none;
+}
+.intrigue-post-commit-marker__label {
+  fill: #f8fafc;
+  font-size: 2.55px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.72);
+  stroke-width: 0.5px;
+}
+.intrigue-post-commit-marker__copy {
+  fill: #cbd5e1;
+  font-size: 2.05px;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.72);
+  stroke-width: 0.45px;
+}
+.intrigue-post-commit-marker:focus-visible .intrigue-post-commit-marker__backplate {
+  stroke-width: 0.72;
+  filter: drop-shadow(0 0 10px rgba(216, 180, 254, 0.68));
+}
 .overlay-anchor-shell--top { left: 18%; top: 3%; width: 64%; height: 9%; }
 .overlay-anchor-shell--left { left: 3%; top: 18%; width: 12%; height: 58%; }
 .overlay-anchor-shell--right { right: 3%; top: 18%; width: 12%; height: 58%; }
