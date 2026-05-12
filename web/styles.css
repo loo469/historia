@@ -3133,6 +3133,17 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.35;
 }
+.province-logistics-bottleneck {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-logistics-bottleneck--high { border-color: rgba(251, 113, 133, 0.36); color: #fecdd3; }
+.province-logistics-bottleneck--medium { border-color: rgba(245, 158, 11, 0.32); color: #fde68a; }
+.province-logistics-bottleneck--low { border-color: rgba(74, 222, 128, 0.22); color: #bbf7d0; }
 .province-logistics-recovery-timeline {
   display: grid;
   gap: 5px;
@@ -3155,11 +3166,13 @@ button { font: inherit; }
   color: #f8fafc;
   font-size: 11px;
 }
-.province-logistics-recovery-timeline__step span {
+.province-logistics-recovery-timeline__step span,
+.province-logistics-recovery-timeline__step small {
   color: #cbd5e1;
   font-size: 11px;
   line-height: 1.3;
 }
+.province-logistics-recovery-timeline__step small { color: #fde68a; }
 .province-logistics-neighbor-effects {
   display: grid;
   gap: 5px;

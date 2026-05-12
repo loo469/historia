@@ -165,7 +165,82 @@ function getNeighborEffect(choiceId, route, localCity, neighbor, mainResource) {
 }
 
 
-function buildRecoveryTimeline(choice, route, localCity, mainResource) {
+
+function inferRecoveryBottleneck(choice, route, localCity, localTension) {
+  const neighborBottleneck = choice.neighborEffects.find((effect) => effect.tone !== 'low') ?? null;
+
+  if (!route.active) {
+    return {
+      type: 'damage',
+      label: 'dégâts route',
+      detail: `${route.routeName} reste interrompue: réparation nécessaire avant gain visible.`,
+      tone: 'high',
+    };
+  }
+
+  if (route.totalCapacity >= 9) {
+    return {
+      type: 'capacity',
+      label: 'capacité saturée',
+      detail: `${route.routeName} porte ${route.totalCapacity} charges: le débit limite la récupération.`,
+      tone: 'high',
+    };
+  }
+
+  if (localTension === 'high') {
+    return {
+      type: 'unrest',
+      label: 'stock critique',
+      detail: `${localCity.cityName} absorbe le stock disponible avant que le réseau se normalise.`,
+      tone: 'high',
+    };
+  }
+
+  if (route.riskLevel >= 70) {
+    return {
+      type: 'climate-pressure',
+      label: 'pression risque',
+      detail: `Risque ${route.riskLevel} autour de ${route.routeName}: sécurisation lente avant stabilisation.`,
+      tone: 'high',
+    };
+  }
+
+  if (route.riskLevel >= 55) {
+    return {
+      type: 'distance',
+      label: 'trajet exposé',
+      detail: `${route.routeName} reste long ou exposé: escorte requise pour raccourcir le délai.`,
+      tone: 'medium',
+    };
+  }
+
+  if (neighborBottleneck) {
+    return {
+      type: 'neighbor-dependency',
+      label: 'dépendance voisine',
+      detail: `${neighborBottleneck.route} près de ${neighborBottleneck.target} peut encore retarder le gain.`,
+      tone: neighborBottleneck.tone,
+    };
+  }
+
+  if (localTension === 'medium') {
+    return {
+      type: 'unrest',
+      label: 'stock sous tension',
+      detail: `${localCity.cityName} demande un tampon local avant amélioration nette.`,
+      tone: 'medium',
+    };
+  }
+
+  return {
+    type: 'none',
+    label: 'aucun goulot clair',
+    detail: 'Aucun ralentisseur dominant détecté pour cette projection.',
+    tone: 'low',
+  };
+}
+
+function buildRecoveryTimeline(choice, route, localCity, mainResource, localTension) {
   const firstBottleneck = choice.neighborEffects.find((effect) => effect.tone !== 'low') ?? choice.neighborEffects[0] ?? null;
   const nextTurnLabel = choice.choiceId === 'repair'
     ? (!route.active ? 'route rouverte' : 'fragilité réduite')
@@ -182,6 +257,7 @@ function buildRecoveryTimeline(choice, route, localCity, mainResource) {
         ? Math.max(5, route.riskLevel - 6)
         : Math.max(5, route.riskLevel - 8);
   const riskTone = remainingRisk >= 55 || firstBottleneck?.tone === 'medium' ? 'medium' : 'low';
+  const bottleneck = inferRecoveryBottleneck(choice, route, localCity, localTension);
 
   return [
     {
@@ -195,11 +271,13 @@ function buildRecoveryTimeline(choice, route, localCity, mainResource) {
       detail: firstBottleneck
         ? `${nextTurnLabel}; ${firstBottleneck.label} sur ${firstBottleneck.route} près de ${firstBottleneck.target}.`
         : `${nextTurnLabel}; aucune route voisine critique détectée.`,
+      bottleneck: bottleneck.type === 'neighbor-dependency' ? bottleneck : null,
     },
     {
       step: 'Risque restant',
       tone: riskTone,
       detail: `Risque estimé ${remainingRisk} sur ${route.routeName}; ${firstBottleneck ? `${firstBottleneck.route} reste le goulot à surveiller.` : `${localCity.cityName} garde ${mainResource.label} sous veille.`}`,
+      bottleneck,
     },
   ];
 }
@@ -259,7 +337,8 @@ function buildRecoveryChoices(route, localCity, localTension, mainResource, rout
       recommended: index === 0,
       comparison: index === 0 ? 'meilleur levier immédiat' : `moins urgent: ${topChoice.blocker} prioritaire`,
       neighborEffects,
-      timeline: buildRecoveryTimeline({ ...choice, neighborEffects }, route, localCity, mainResource),
+      bottleneck: inferRecoveryBottleneck({ ...choice, neighborEffects }, route, localCity, localTension),
+      timeline: buildRecoveryTimeline({ ...choice, neighborEffects }, route, localCity, mainResource, localTension),
     };
   });
 }
@@ -365,7 +444,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     recoveryChoiceCount: recommended.recoveryChoices.length,
     timelineStatus: hasBlocker ? 'queued' : 'empty',
     timelineSummary: hasBlocker
-      ? `${recommended.recoveryChoices[0].label}: amélioration visible au prochain tour, risque restant ${recommended.recoveryChoices[0].timeline[2].detail}`
+      ? `${recommended.recoveryChoices[0].label}: amélioration visible au prochain tour; goulot ${recommended.recoveryChoices[0].bottleneck.label}. ${recommended.recoveryChoices[0].timeline[2].detail}`
       : 'Aucune action route/logistique en file: timeline vide.',
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
