@@ -1458,9 +1458,115 @@ function summarizeTurnResolutionPreview(province, actionQueue) {
   };
 }
 
+
+function findProvinceIntrigueDrillDown(province, intrigueView) {
+  const provinceId = province?.provinceId;
+  const selectedDrillDown = intrigueView?.selectedProvince?.drillDown ?? null;
+
+  if (selectedDrillDown?.locationId === provinceId) {
+    return selectedDrillDown;
+  }
+
+  return (intrigueView?.map?.entries ?? [])
+    .find((entry) => entry.locationId === provinceId)?.drillDown ?? null;
+}
+
+function buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) {
+  const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
+  const selectedResponse = drillDown?.quickResponses?.find((response) => response.code === drillDown.recommendedResponseCode)
+    ?? drillDown?.quickResponses?.[0]
+    ?? null;
+  const warningCandidates = [];
+  const plannedAction = actionQueue[0] ?? null;
+  const riskyActionCount = actionQueue.filter((entry) => entry.status !== 'ready').length;
+
+  if (!drillDown) {
+    warningCandidates.push({
+      tone: 'masked',
+      priority: 5,
+      label: 'Renseignement incomplet',
+      detail: 'Aucun signal confirmé: garder le plan discret jusqu’au prochain rafraîchissement intrigue.',
+      trigger: plannedAction?.actionCode ?? 'aucune action',
+    });
+  } else {
+    if (drillDown.signalType === 'sabotage' || drillDown.criticality === 'critical') {
+      warningCandidates.push({
+        tone: 'danger',
+        priority: 1,
+        label: 'Sabotage probable',
+        detail: `${drillDown.summary}; éviter de lancer ${plannedAction?.label ?? 'une action longue'} sans contre-mesure.`,
+        trigger: plannedAction?.actionCode ?? drillDown.recommendedResponseCode,
+      });
+    }
+
+    if ((drillDown.reasons ?? []).some((reason) => reason.includes('exposée'))) {
+      warningCandidates.push({
+        tone: 'warning',
+        priority: 2,
+        label: 'Exposition de cellule',
+        detail: 'La file d’actions peut révéler des relais: privilégier infiltration ou containment avant l’ordre principal.',
+        trigger: drillDown.primaryCelluleId ?? 'cellule locale',
+      });
+    }
+
+    if (selectedResponse?.cooldownTurns > 0 || selectedResponse?.escalationProbability === 'élevée') {
+      warningCandidates.push({
+        tone: selectedResponse.escalationProbability === 'élevée' ? 'danger' : 'watch',
+        priority: selectedResponse.escalationProbability === 'élevée' ? 1 : 3,
+        label: 'Cooldown / alerte active',
+        detail: `${selectedResponse.label}: cooldown ${selectedResponse.cooldownTurns} tour${selectedResponse.cooldownTurns > 1 ? 's' : ''}, chaleur +${selectedResponse.heatGenerated}, escalade ${selectedResponse.escalationProbability}.`,
+        trigger: selectedResponse.code,
+      });
+    }
+  }
+
+  if (province.supplyLevel !== 'stable' || province.loyalty < 50 || riskyActionCount > 0) {
+    warningCandidates.push({
+      tone: riskyActionCount > 0 ? 'warning' : 'watch',
+      priority: riskyActionCount > 0 ? 2 : 4,
+      label: 'Province vulnérable',
+      detail: `${province.label} cumule ${province.supplyLevel} / loyauté ${province.loyalty}; réduire l’empreinte avant d’empiler les ordres.`,
+      trigger: plannedAction?.actionCode ?? 'plan province',
+    });
+  }
+
+  return warningCandidates
+    .sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label))
+    .slice(0, 3);
+}
+
+function renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) {
+  const warnings = buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView);
+
+  if (warnings.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-intrigue-risk-warnings" aria-label="Warnings intrigue du planning de province">
+      <div class="province-intrigue-risk-warnings__header">
+        <strong>Warnings intrigue planning</strong>
+        <span>${warnings.length} signal${warnings.length > 1 ? 's' : ''}</span>
+      </div>
+      <div class="province-intrigue-risk-warning-list">
+        ${warnings.map((warning) => `
+          <article class="province-intrigue-risk-warning province-intrigue-risk-warning--${warning.tone}">
+            <div>
+              <strong>${warning.label}</strong>
+              <code>${warning.trigger}</code>
+            </div>
+            <p>${warning.detail}</p>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const resolution = summarizeTurnResolutionPreview(province, actionQueue);
+  const intrigueWarnings = renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView);
 
   return `
     <section class="province-action-queue" aria-label="File d’actions préparées pour la province sélectionnée">
@@ -1495,6 +1601,7 @@ function renderSelectedProvinceActionQueue(province, shell, focusContext, intrig
         `).join('')}
       </ol>
     </section>
+    ${intrigueWarnings}
   `;
 }
 
