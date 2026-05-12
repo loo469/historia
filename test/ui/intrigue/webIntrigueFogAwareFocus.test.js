@@ -97,3 +97,21 @@ test('queued intrigue detection projection explains fog-safe exposure sources', 
   assert.match(stylesSource, /province-intrigue-detection-source--danger/);
   assert.match(stylesSource, /province-intrigue-detection-source--mitigated/);
 });
+
+test('risky queued intrigue responses suggest fog-safe fallback actions', () => {
+  assert.match(webAppSource, /function buildSafeIntrigueFallbackAction/);
+  assert.match(webAppSource, /Alternative intrigue sûre/);
+  assert.match(webAppSource, /Fallback prudent/);
+  assert.match(webAppSource, /Aucune alternative sûre connue/);
+  assert.match(webAppSource, /Réduire chaleur/);
+  assert.match(webAppSource, /Collecter renseignement/);
+  assert.match(webAppSource, /Temporiser/);
+  assert.match(webAppSource, /Contenir/);
+  assert.match(webAppSource, /Surveiller/);
+  assert.match(webAppSource, /Protège les canaux visibles avant toute révélation publique, sans nommer cellule ou cible/);
+  assert.match(webAppSource, /Clarifie le signal et teste la couverture avant un contact plus exposé/);
+  assert.match(webAppSource, /Réduit la fenêtre d’exposition sans dévoiler la menace réelle/);
+  assert.match(stylesSource, /province-intrigue-detection-fallback/);
+  assert.match(stylesSource, /province-intrigue-detection-fallback--ready/);
+  assert.match(stylesSource, /province-intrigue-detection-fallback--empty/);
+});

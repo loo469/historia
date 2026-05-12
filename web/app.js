@@ -2472,6 +2472,64 @@ function buildIntrigueExposureSourceBreakdown(province, drillDown, response, loc
   return sources.slice(0, 3);
 }
 
+function buildSafeIntrigueFallbackAction(province, drillDown, response, projectionTone, confidence, rawDelta) {
+  if (!drillDown || !response) {
+    return {
+      empty: true,
+      action: 'Aucune alternative sûre connue',
+      detail: 'Attendre un signal confirmé avant de choisir une réponse intrigue.',
+    };
+  }
+
+  const riskyProjection = ['danger', 'warning'].includes(projectionTone) || ['partielle', 'brouillard'].includes(confidence) || rawDelta >= 8;
+
+  if (!riskyProjection) {
+    return {
+      empty: true,
+      action: 'Aucune alternative sûre connue',
+      detail: 'La réponse en file reste lisible; garder le plan actuel ou surveiller sans escalade.',
+    };
+  }
+
+  if (response.code === 'exposer') {
+    return {
+      empty: false,
+      action: 'Réduire chaleur',
+      detail: 'Protège les canaux visibles avant toute révélation publique, sans nommer cellule ou cible.',
+    };
+  }
+
+  if (response.code === 'infiltrer') {
+    return {
+      empty: false,
+      action: 'Collecter renseignement',
+      detail: 'Clarifie le signal et teste la couverture avant un contact plus exposé.',
+    };
+  }
+
+  if (response.code === 'contenir' && projectionTone === 'danger') {
+    return {
+      empty: false,
+      action: 'Temporiser',
+      detail: 'Préserve la marge de sécurité si le brouillard rend la contention trop visible.',
+    };
+  }
+
+  if (drillDown.criticality === 'critical' || drillDown.riskBand === 'high') {
+    return {
+      empty: false,
+      action: 'Contenir',
+      detail: 'Réduit la fenêtre d’exposition sans dévoiler la menace réelle.',
+    };
+  }
+
+  return {
+    empty: false,
+    action: 'Surveiller',
+    detail: 'Garde la province sous observation et clarifie le prochain signal sans ajouter de chaleur.',
+  };
+}
+
 function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
   const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
   const response = drillDown?.quickResponses?.find((candidate) => candidate.code === drillDown.recommendedResponseCode)
@@ -2491,6 +2549,7 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
       deltaLabel: 'stable',
       fogLimit: 'Le brouillard conserve les cellules, relais et objectifs masqués.',
       sources: buildIntrigueExposureSourceBreakdown(province, drillDown, response, []),
+      fallback: buildSafeIntrigueFallbackAction(province, drillDown, response, 'masked', 'brouillard', 0),
     };
   }
 
@@ -2518,6 +2577,7 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
   const tone = rawDelta < 0 ? 'mitigated' : afterRisk >= 60 ? 'danger' : afterRisk >= 40 ? 'warning' : 'watch';
   const deltaLabel = rawDelta < 0 ? `${rawDelta}` : `+${rawDelta}`;
   const sources = buildIntrigueExposureSourceBreakdown(province, drillDown, response, localOperations);
+  const fallback = buildSafeIntrigueFallbackAction(province, drillDown, response, tone, confidence, rawDelta);
 
   return {
     empty: false,
@@ -2532,6 +2592,7 @@ function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intri
       ? 'Basé sur les opérations visibles; les relais non confirmés restent masqués.'
       : 'Projection prudente: source, cellule et objectif exacts restent masqués par le brouillard.',
     sources,
+    fallback,
   };
 }
 
@@ -2557,6 +2618,11 @@ function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intr
             <span>${source.detail}</span>
           </article>
         `).join('')}
+      </div>
+      <div class="province-intrigue-detection-fallback province-intrigue-detection-fallback--${projection.fallback.empty ? 'empty' : 'ready'}" aria-label="Alternative intrigue sûre">
+        <span>Fallback prudent</span>
+        <strong>${projection.fallback.action}</strong>
+        <small>${projection.fallback.detail}</small>
       </div>
       <small>${projection.fogLimit}</small>
     </section>
