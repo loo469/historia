@@ -462,6 +462,44 @@ button { font: inherit; }
   color: #f8fafc;
   font-size: 12px;
 }
+.recommended-action-preview__queue {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.recommended-action-preview__queue div {
+  display: grid;
+  gap: 3px;
+}
+.recommended-action-preview__queue strong { color: #f8fafc; }
+.recommended-action-preview__queue span,
+.recommended-action-preview__queue small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.recommended-action-preview__queue button {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #38bdf8;
+  color: #082f49;
+  font-weight: 700;
+  cursor: pointer;
+}
+.recommended-action-preview__queue button:disabled {
+  background: rgba(148, 163, 184, 0.26);
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+.recommended-action-preview__queue--queued { border-color: rgba(74, 222, 128, 0.32); }
+.recommended-action-preview__queue--replace { border-color: rgba(251, 191, 36, 0.34); }
+.recommended-action-preview__queue--valid { border-color: rgba(56, 189, 248, 0.34); }
 .recommended-action-preview__side-effect {
   color: #bae6fd;
   font-size: 12px;
