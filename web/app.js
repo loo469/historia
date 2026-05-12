@@ -1280,6 +1280,63 @@ function renderQueuedLogisticsMapSummary(preview) {
   `;
 }
 
+
+function buildLogisticsTurnCommitSummary(province, preview) {
+  const queuedEntries = state.queuedLogisticsActions.filter((entry) => entry.provinceId === province.provinceId || preview.options.some((option) => option.routeId === entry.routeId));
+  const queuedRouteIds = new Set(queuedEntries.map((entry) => entry.routeId));
+  const unresolvedShortages = preview.options
+    .filter((option) => !queuedRouteIds.has(option.routeId))
+    .flatMap((option) => option.recoveryChoices[0]?.downstreamShortages.map((shortage) => ({ ...shortage, routeId: option.routeId, route: option.routes[0], city: option.affectedCity })) ?? [])
+    .filter((shortage) => shortage.status !== 'résolue')
+    .slice(0, 3);
+  const seenRoutes = new Set();
+  const redundantActions = queuedEntries.filter((entry) => {
+    const duplicate = seenRoutes.has(entry.routeId) || entry.status === 'redundant' || entry.status === 'conflict';
+    seenRoutes.add(entry.routeId);
+    return duplicate;
+  });
+
+  return {
+    status: unresolvedShortages.some((shortage) => shortage.status === 'aggravée') ? 'danger' : unresolvedShortages.length > 0 ? 'warning' : queuedEntries.length > 0 ? 'covered' : 'empty',
+    queuedEntries,
+    unresolvedShortages,
+    redundantActions,
+    summary: queuedEntries.length === 0
+      ? 'Aucune action logistique en attente: les pénuries restent à auditer avant résolution.'
+      : unresolvedShortages.length > 0
+        ? `${queuedEntries.length} action${queuedEntries.length > 1 ? 's' : ''} couvre${queuedEntries.length > 1 ? 'nt' : ''} la file; ${unresolvedShortages.length} pénurie${unresolvedShortages.length > 1 ? 's' : ''}/goulot${unresolvedShortages.length > 1 ? 's' : ''} reste${unresolvedShortages.length > 1 ? 'nt' : ''} dangereux.`
+        : `${queuedEntries.length} action${queuedEntries.length > 1 ? 's' : ''} logistique${queuedEntries.length > 1 ? 's' : ''} couvre${queuedEntries.length > 1 ? 'nt' : ''} les pénuries aval visibles.`,
+  };
+}
+
+function renderLogisticsTurnCommitSummary(province, preview) {
+  const summary = buildLogisticsTurnCommitSummary(province, preview);
+
+  return `
+    <div class="province-logistics-turn-summary province-logistics-turn-summary--${summary.status}" aria-label="Synthèse logistique avant validation du tour">
+      <div>
+        <b>Avant validation du tour</b>
+        <span>${summary.summary}</span>
+      </div>
+      ${summary.queuedEntries.length > 0 ? `
+        <ul class="province-logistics-turn-summary__queue">
+          ${summary.queuedEntries.map((entry) => `
+            <li><strong>${entry.label}</strong><span>${entry.target ?? entry.routeId} · ${entry.bottleneckRelieved ?? 'goulot à confirmer'} · ${entry.downstreamEffect ?? 'effet aval à confirmer'}</span></li>
+          `).join('')}
+        </ul>
+      ` : ''}
+      ${summary.unresolvedShortages.length > 0 ? `
+        <ul class="province-logistics-turn-summary__unresolved" aria-label="Pénuries ou goulots restant après estimation de la file">
+          ${summary.unresolvedShortages.map((shortage) => `
+            <li class="province-logistics-turn-summary__shortage province-logistics-turn-summary__shortage--${shortage.tone}"><strong>${shortage.status}</strong><span>${shortage.city} / ${shortage.route}: ${shortage.detail}</span></li>
+          `).join('')}
+        </ul>
+      ` : ''}
+      ${summary.redundantActions.length > 0 ? `<small>Actions redondantes ou moins prioritaires: ${summary.redundantActions.map((entry) => entry.label).join(', ')}.</small>` : ''}
+    </div>
+  `;
+}
+
 function renderProvinceLogisticsChoicePreview(province, economyView) {
   const preview = buildProvinceLogisticsChoicePreviewView(province, economyView);
 
@@ -1336,6 +1393,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
         <button type="button" data-logistics-queue-action="${preview.primaryLogisticsAction.actionId ?? ''}" ${preview.primaryLogisticsAction.disabled ? 'disabled' : ''}>Engager récupération</button>
       </div>
       ${renderQueuedLogisticsMapSummary(preview)}
+      ${renderLogisticsTurnCommitSummary(province, preview)}
       <div class="province-logistics-impact-preview province-logistics-impact-preview--${preview.selectedActionPreview.status}" aria-label="Impact projeté avant engagement logistique">
         <div>
           <b>Impact si engagé</b>
