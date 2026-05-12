@@ -126,6 +126,55 @@ function buildRecommendedAction(hint, focusTarget, urgency, actionLabel) {
   };
 }
 
+
+function buildActionTradeoff(hint, recommendedAction, focusTarget, urgency) {
+  const window = urgency.timingLabel ?? urgency.window;
+  const source = recommendedAction.source ?? urgency.sourceLabel ?? focusTarget.label;
+
+  if (recommendedAction.code === 'follow-event') {
+    return {
+      benefit: `Protège ${source}`,
+      risk: `Événement ignoré si ${urgency.window === 'ce tour' ? 'ce tour passe' : 'la fenêtre glisse'}`,
+      window,
+      summary: `Gain: repère culturel protégé. Risque: événement ignoré (${window}).`,
+    };
+  }
+
+  if (recommendedAction.code === 'accelerate-research') {
+    return {
+      benefit: `Accélère ${source}`,
+      risk: `Recherche retardée si l’action reste en attente`,
+      window,
+      summary: `Gain: recherche accélérée. Risque: retard culturel (${window}).`,
+    };
+  }
+
+  if (recommendedAction.code === 'protect-site') {
+    return {
+      benefit: `Protège ${focusTarget.label}`,
+      risk: `Site exposé et découverte moins exploitable`,
+      window,
+      summary: `Gain: site protégé. Risque: découverte exposée (${window}).`,
+    };
+  }
+
+  if (recommendedAction.code === 'accept-risk') {
+    return {
+      benefit: `Libère l’action province`,
+      risk: `${hint.cultureName} reste sans signal exploitable`,
+      window,
+      summary: `Gain: action libre. Risque: opportunité culturelle manquée (${window}).`,
+    };
+  }
+
+  return {
+    benefit: `Garde ${focusTarget.label} lisible`,
+    risk: `Fenêtre culturelle moins priorisée`,
+    window,
+    summary: `Gain: fenêtre surveillée. Risque: priorité floue (${window}).`,
+  };
+}
+
 function summarizeHint(hint, actionLabel, urgency) {
   const provinceCopy = hint.regionId ? ` (${hint.regionId})` : '';
   const urgencyCopy = ` ${urgency.label.toLowerCase()} · ${urgency.window}.`;
@@ -154,6 +203,7 @@ function buildReminder(hint, actionLabel) {
     urgency,
   };
   const recommendedAction = buildRecommendedAction(hint, focusTargetWithUrgency, urgency, actionLabel);
+  const tradeoff = buildActionTradeoff(hint, recommendedAction, focusTargetWithUrgency, urgency);
 
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
@@ -169,6 +219,8 @@ function buildReminder(hint, actionLabel) {
     reasonCopy: urgency.reason ?? `${urgency.sourceLabel ?? focusTarget.label} · ${urgency.timingLabel ?? urgency.window}`,
     recommendedAction,
     actionCopy: `${recommendedAction.label} · ${recommendedAction.timing}`,
+    tradeoff,
+    tradeoffCopy: `${tradeoff.benefit} · ${tradeoff.risk}`,
     focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };

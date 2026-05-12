@@ -12,6 +12,9 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /aria-label="Voir \$\{reminder\.focusCopy\}: \$\{reminder\.urgency\?\.detail/);
   assert.match(webAppSource, /culture-opportunity-reminder__action/);
   assert.match(webAppSource, /reminder\.recommendedAction\?\.summary/);
+  assert.match(webAppSource, /culture-opportunity-reminder__tradeoff/);
+  assert.match(webAppSource, /reminder\.tradeoff\?\.summary/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__reason/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__action/);
+  assert.match(stylesSource, /\.culture-opportunity-reminder__tradeoff/);
 });
