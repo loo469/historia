@@ -3116,6 +3116,59 @@ function buildIntrigueLinks(entries) {
   return [...links.values()];
 }
 
+function buildSelectedProvinceIntrigueFogHint(entry, selectedCellules, selectedOperations) {
+  if (!entry) {
+    return null;
+  }
+
+  const compromisedCount = selectedCellules.filter((cellule) => cellule.statusClass === 'compromised').length;
+  const exposedCount = entry.metrics.exposedCellCount + compromisedCount;
+  const heatedOperation = selectedOperations.find((operation) => operation.detectionRisk >= 50 || operation.heat >= 50) ?? null;
+  const activeSabotage = selectedOperations.find((operation) => operation.type === 'sabotage') ?? null;
+
+  if (exposedCount > 0) {
+    return {
+      tone: 'warning',
+      visibility: 'Partiellement révélé',
+      reason: `Cellule exposée signalée à ${entry.locationName}: les identifiants restent masqués tant que le renseignement local n'est pas consolidé.`,
+      safeAction: 'Réduire chaleur',
+      actionHint: 'Réduire chaleur avant d’exposer la cellule ou déplacer le focus sur une cible nominative.',
+      ariaLabel: `Raison brouillard intrigue pour ${entry.locationName}: cellule exposée, action sûre réduire chaleur`,
+    };
+  }
+
+  if (heatedOperation) {
+    return {
+      tone: 'danger',
+      visibility: 'Masqué',
+      reason: `Sécurité cible élevée à ${entry.locationName}: l'opération est active mais son relais exact reste couvert par le brouillard.`,
+      safeAction: 'Temporiser',
+      actionHint: 'Temporiser et baisser la pression; ne pas révéler cellule, relais ou objectif tant que le risque reste haut.',
+      ariaLabel: `Raison brouillard intrigue pour ${entry.locationName}: sécurité cible élevée, action sûre temporiser`,
+    };
+  }
+
+  if (entry.presenceLevel === 'high' || entry.sabotageRiskLevel === 'medium' || entry.sabotageRiskLevel === 'high' || activeSabotage) {
+    return {
+      tone: entry.sabotageRiskLevel === 'high' ? 'danger' : 'warning',
+      visibility: 'Partiellement révélé',
+      reason: `Renseignement incomplet à ${entry.locationName}: la présence clandestine est lisible, mais les relais précis ne sont pas confirmés.`,
+      safeAction: 'Collecter renseignement',
+      actionHint: 'Collecter renseignement pour confirmer le hotspot avant toute action qui révélerait une cible.',
+      ariaLabel: `Raison brouillard intrigue pour ${entry.locationName}: renseignement incomplet, action sûre collecter renseignement`,
+    };
+  }
+
+  return {
+    tone: 'watch',
+    visibility: 'Surveillance',
+    reason: `Signal faible à ${entry.locationName}: le brouillard masque les détails car aucun risque fort n'est confirmé.`,
+    safeAction: 'Surveiller',
+    actionHint: 'Surveiller sans escalade; garder la province en observation jusqu’à un signal plus net.',
+    ariaLabel: `Raison brouillard intrigue pour ${entry.locationName}: signal faible, action sûre surveiller`,
+  };
+}
+
 function getIntrigueViewModel() {
   const liveCellules = intrigueCellules.map(getIntrigueCelluleStateByTurn);
   const liveOperations = intrigueOperations.map(getIntrigueOperationStateByTurn);
@@ -3216,6 +3269,7 @@ function getIntrigueViewModel() {
       sleeperCellCount: selectedEntry.metrics.sleeperCellCount,
       activeOperationCount: selectedOperations.length,
       drillDown: selectedEntry.drillDown,
+      fogHint: buildSelectedProvinceIntrigueFogHint(selectedEntry, selectedCellules, selectedOperations),
       reasons: selectedRiskReasons.length > 0 ? selectedRiskReasons : ['Aucun signal Delta notable'],
       guidance: selectedEntry.sabotageRiskLevel === 'high'
         ? 'Priorite a la surveillance locale, les marqueurs rouges concentrent le risque actif.'
@@ -4044,6 +4098,16 @@ function renderIntrigueSidePanel(intrigueView) {
             <span>presence ${intrigueView.selectedProvince.presenceLevel} · risque ${intrigueView.selectedProvince.sabotageRiskLevel}</span>
           </div>
           <p>${intrigueView.selectedProvince.guidance}</p>
+          ${intrigueView.selectedProvince.fogHint ? `
+            <aside class="intrigue-fog-hint intrigue-fog-hint--${intrigueView.selectedProvince.fogHint.tone}" aria-label="${intrigueView.selectedProvince.fogHint.ariaLabel}">
+              <div>
+                <span>${intrigueView.selectedProvince.fogHint.visibility}</span>
+                <strong>${intrigueView.selectedProvince.fogHint.safeAction}</strong>
+              </div>
+              <p>${intrigueView.selectedProvince.fogHint.reason}</p>
+              <small>${intrigueView.selectedProvince.fogHint.actionHint}</small>
+            </aside>
+          ` : ''}
           <div class="intrigue-province-focus__stats">
             <span>${intrigueView.selectedProvince.celluleCount} cellules</span>
             <span>${intrigueView.selectedProvince.activeOperationCount} operations</span>
