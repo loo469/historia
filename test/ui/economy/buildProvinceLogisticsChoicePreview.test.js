@@ -12,6 +12,7 @@ function buildEconomyView() {
         { cityId: 'river-city', cityName: 'River Gate', regionId: 'river-gate' },
         { cityId: 'iron-city', cityName: 'Iron Plain', regionId: 'iron-plain' },
         { cityId: 'port-city', cityName: 'Crown Port', regionId: 'crown-heart' },
+        { cityId: 'hill-city', cityName: 'Hill Hub', regionId: 'hill-hub' },
       ],
       routes: [
         {
@@ -32,6 +33,15 @@ function buildEconomyView() {
           totalCapacity: 10,
           resources: [{ resourceId: 'tools', capacity: 6 }],
         },
+        {
+          routeId: 'hill-spur',
+          routeName: 'Hill Spur',
+          cityIds: ['river-city', 'hill-city'],
+          active: true,
+          riskLevel: 46,
+          totalCapacity: 8,
+          resources: [{ resourceId: 'tools', capacity: 3 }],
+        },
       ],
     },
     comparison: {
@@ -39,6 +49,7 @@ function buildEconomyView() {
         { cityId: 'river-city', tensionLevel: 'high' },
         { cityId: 'iron-city', tensionLevel: 'low' },
         { cityId: 'port-city', tensionLevel: 'low' },
+        { cityId: 'hill-city', tensionLevel: 'medium' },
       ],
     },
   };
@@ -49,7 +60,7 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
     resourceLabelById: { grain: 'Grain', tools: 'Outils' },
   });
 
-  assert.equal(preview.options.length, 2);
+  assert.equal(preview.options.length, 3);
   assert.equal(preview.recommendedOptionId, preview.options[0].optionId);
   assert.equal(preview.options[0].routeId, 'ember-line');
   assert.equal(preview.options[0].recommended, true);
@@ -66,6 +77,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.options[0].recoveryChoices[0].benefit, /Outils|River Gate|Ember Line/);
   assert.ok(preview.options[0].recoveryChoices[0].blocker.length > 0);
   assert.match(preview.options[0].recoveryChoices[1].comparison, /moins urgent/);
+  assert.ok(preview.options[0].recoveryChoices[0].neighborEffects.length >= 1);
+  assert.match(preview.options[0].recoveryChoices[0].neighborEffects[0].detail, /Iron Plain|Hill Hub|voisin|hub|trafic/);
+  assert.ok(['congestion déplacée', 'hub soulagé', 'route toujours fragile', 'stockpile consommé', 'hub priorisé', 'effet réseau limité'].includes(preview.options[0].recoveryChoices[0].neighborEffects[0].label));
 });
 
 test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and impact labels', () => {
@@ -79,6 +93,8 @@ test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and i
   assert.deepEqual(option.routes, ['Ember Line']);
   assert.ok(option.cause.length > 0);
   assert.deepEqual(option.recoveryChoices.map((choice) => choice.choiceId).sort(), ['economic-priority', 'repair', 'reroute', 'stockpile']);
+  assert.ok(option.recoveryChoices.every((choice) => Array.isArray(choice.neighborEffects)));
+  assert.ok(option.recoveryChoices.some((choice) => choice.neighborEffects.some((effect) => effect.target === 'Iron Plain')));
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {

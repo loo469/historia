@@ -1209,6 +1209,17 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   </div>
                   <p>${choice.benefit}</p>
                   <small>Contrainte: ${choice.blocker} · ${choice.rationale}</small>
+                  ${choice.neighborEffects.length > 0 ? `
+                    <ul class="province-logistics-neighbor-effects" aria-label="Effets voisins attendus">
+                      ${choice.neighborEffects.map((effect) => `
+                        <li class="province-logistics-neighbor-effect province-logistics-neighbor-effect--${effect.tone}">
+                          <b>${effect.label}</b>
+                          <span>${effect.target} · ${effect.route}</span>
+                          <small>${effect.detail}</small>
+                        </li>
+                      `).join('')}
+                    </ul>
+                  ` : ''}
                 </article>
               `).join('')}
             </div>

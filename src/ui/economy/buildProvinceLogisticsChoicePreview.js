@@ -85,7 +85,86 @@ function getRouteCause(route, localCity, localTension, mainResource) {
 }
 
 
-function buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause) {
+function getNeighborContexts(route, localCity, cities, routes, tensionByCityId) {
+  const cityById = new Map(cities.map((city) => [city.cityId, city]));
+  const directNeighbors = route.cityIds
+    .filter((cityId) => cityId !== localCity.cityId)
+    .map((cityId) => ({ city: cityById.get(cityId), route }))
+    .filter((context) => context.city);
+  const hubNeighbors = routes
+    .filter((candidate) => candidate.routeId !== route.routeId && candidate.cityIds.includes(localCity.cityId))
+    .map((candidate) => {
+      const neighborCityId = candidate.cityIds.find((cityId) => cityId !== localCity.cityId);
+      return { city: cityById.get(neighborCityId), route: candidate };
+    })
+    .filter((context) => context.city);
+
+  return [...directNeighbors, ...hubNeighbors]
+    .map((context) => ({
+      ...context,
+      tension: tensionByCityId[context.city.cityId] ?? 'low',
+      score: (context.route.riskLevel ?? 0) + (context.route.totalCapacity ?? 0) + (tensionByCityId[context.city.cityId] === 'high' ? 20 : tensionByCityId[context.city.cityId] === 'medium' ? 10 : 0),
+    }))
+    .sort((left, right) => right.score - left.score || left.city.cityName.localeCompare(right.city.cityName))
+    .slice(0, 2);
+}
+
+function getNeighborEffect(choiceId, route, localCity, neighbor, mainResource) {
+  const routeName = neighbor.route.routeName;
+  const cityName = neighbor.city.cityName;
+
+  if (choiceId === 'reroute') {
+    const displaced = route.totalCapacity >= 9 || neighbor.route.totalCapacity >= 9;
+    return {
+      target: cityName,
+      route: routeName,
+      tone: displaced ? 'medium' : 'low',
+      label: displaced ? 'congestion déplacée' : 'hub soulagé',
+      detail: displaced
+        ? `${cityName} peut récupérer une partie du trafic de ${localCity.cityName}; surveiller ${routeName}.`
+        : `${routeName} partage mieux ${mainResource.label} et soulage le hub proche.`,
+    };
+  }
+
+  if (choiceId === 'repair') {
+    const fragile = !neighbor.route.active || neighbor.route.riskLevel >= 55;
+    return {
+      target: cityName,
+      route: routeName,
+      tone: fragile ? 'medium' : 'low',
+      label: fragile ? 'route toujours fragile' : 'axe stabilisé',
+      detail: fragile
+        ? `${routeName} reste fragile près de ${cityName}; la réparation aide surtout ${localCity.cityName}.`
+        : `${routeName} profite de l'axe réparé sans nouvelle surcharge visible.`,
+    };
+  }
+
+  if (choiceId === 'stockpile') {
+    const strained = neighbor.tension !== 'low';
+    return {
+      target: cityName,
+      route: routeName,
+      tone: strained ? 'medium' : 'low',
+      label: 'stockpile consommé',
+      detail: strained
+        ? `${cityName} reste sous tension: le tampon protège ${localCity.cityName} mais ne diffuse pas assez.`
+        : `${cityName} garde son flux; le stockpile absorbe surtout le choc local.`,
+    };
+  }
+
+  const improvesNetwork = route.riskLevel >= 55 || route.totalCapacity >= 9 || neighbor.tension !== 'low';
+  return {
+    target: cityName,
+    route: routeName,
+    tone: improvesNetwork ? 'medium' : 'low',
+    label: improvesNetwork ? 'hub priorisé' : 'effet réseau limité',
+    detail: improvesNetwork
+      ? `${cityName} bénéficie de la priorité sur ${mainResource.label}, mais ${routeName} reste à suivre.`
+      : `${cityName} reçoit peu d'effet: correction surtout administrative pour ${localCity.cityName}.`,
+  };
+}
+
+function buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause, neighborContexts = []) {
   const choices = [
     {
       choiceId: 'reroute',
@@ -136,10 +215,11 @@ function buildRecoveryChoices(route, localCity, localTension, mainResource, rout
     ...choice,
     recommended: index === 0,
     comparison: index === 0 ? 'meilleur levier immédiat' : `moins urgent: ${topChoice.blocker} prioritaire`,
+    neighborEffects: neighborContexts.map((neighbor) => getNeighborEffect(choice.choiceId, route, localCity, neighbor, mainResource)),
   }));
 }
 
-function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) {
+function buildChoiceForRoute(route, localCity, localTension, resourceLabelById, context = {}) {
   const mainResource = getMainResource(route, resourceLabelById);
   const tone = getRouteTone(route, localTension);
   const routeCause = getRouteCause(route, localCity, localTension, mainResource);
@@ -169,7 +249,8 @@ function buildChoiceForRoute(route, localCity, localTension, resourceLabelById) 
     : tone === 'medium'
       ? `Soulage ${mainResource.label} sans masquer le risque résiduel.`
       : `Maintient ${localCity.cityName} stable avec surveillance légère.`;
-  const recoveryChoices = buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause);
+  const neighborContexts = getNeighborContexts(route, localCity, context.cities ?? [], context.routes ?? [], context.tensionByCityId ?? {});
+  const recoveryChoices = buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause, neighborContexts);
 
   return {
     routeId: route.routeId,
@@ -209,7 +290,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       const localCityId = route.cityIds.find((cityId) => provinceCityIds.has(cityId));
       const localCity = provinceCities.find((city) => city.cityId === localCityId) ?? provinceCities[0];
       const localTension = tensionByCityId[localCity?.cityId] ?? 'low';
-      return localCity ? buildChoiceForRoute(route, localCity, localTension, resourceLabelById) : null;
+      return localCity ? buildChoiceForRoute(route, localCity, localTension, resourceLabelById, { cities, routes, tensionByCityId }) : null;
     })
     .filter(Boolean)
     .sort((left, right) => right.score - left.score || left.action.localeCompare(right.action))
