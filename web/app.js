@@ -3621,6 +3621,117 @@ function renderFrontPriorityRanking(shell, intrigueView = null) {
 
 
 
+function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
+  const [priority] = buildFrontPriorityRanking(shell, intrigueView);
+
+  if (!priority) {
+    return {
+      empty: true,
+      tone: 'ready',
+      provinceLabel: 'Aucun front prioritaire',
+      actionCode: 'WAR-HOLD',
+      actionLabel: 'Aucune action militaire recommandée',
+      confidence: 'calculé: aucune priorité immédiate détectée',
+      effects: [
+        { label: 'Pression', value: 'aucun changement urgent', source: 'calculé' },
+        { label: 'Stabilité projetée', value: 'position maintenue', source: 'estimé prudent' },
+        { label: 'Risque critique restant', value: 'aucun signal critique prioritaire', source: 'calculé' },
+      ],
+      sideEffect: 'Dégradation propre: garder la file militaire actuelle ou surveiller les fronts voisins.',
+    };
+  }
+
+  const province = shell.provinces.find((candidate) => candidate.provinceId === priority.provinceId) ?? null;
+
+  if (!province) {
+    return {
+      empty: true,
+      tone: 'warning',
+      provinceLabel: priority.provinceLabel,
+      actionCode: priority.actionCode,
+      actionLabel: 'Action introuvable',
+      confidence: 'estimé prudent: province prioritaire non résolue',
+      effects: [
+        { label: 'Pression', value: 'donnée indisponible', source: 'estimé prudent' },
+        { label: 'Stabilité projetée', value: 'donnée indisponible', source: 'estimé prudent' },
+        { label: 'Risque critique restant', value: priority.leadRisk, source: 'calculé' },
+      ],
+      sideEffect: 'Province prioritaire introuvable: ne pas empiler de nouvel ordre sans vérifier la sélection.',
+    };
+  }
+
+  const focusContext = {
+    focusedProvinceId: province.provinceId,
+    focusedProvince: province,
+    neighborIds: new Set(province.neighborIds),
+  };
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const recommendedAction = actionQueue[0] ?? null;
+  const projection = buildProjectedFrontStability(province, shell, actionQueue);
+  const risks = buildCriticalFrontRiskWarnings(province, projection);
+  const criticalCount = risks.filter((risk) => risk.tone === 'critical').length;
+  const watchCount = risks.filter((risk) => risk.tone === 'watch').length;
+  const stabilityValue = projection.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? projection.title;
+  const residualRisk = risks[0]?.label ?? 'Risque acceptable';
+  const pressureValue = projection.drivers.some((driver) => driver.label === 'Pression')
+    ? 'pression traitée mais encore visible'
+    : projection.tone === 'ready'
+      ? 'pression en baisse estimée'
+      : 'pression encore contestée';
+  const sensitiveNeighbor = projection.lines.find((line) => line.label === 'Voisine sensible')?.value ?? 'aucune menace adjacente prioritaire';
+  const sideEffect = recommendedAction?.status === 'blocked'
+    ? `${recommendedAction.label}: province encore bloquée avant résolution.`
+    : risks.some((risk) => risk.driver === 'Front voisin')
+      ? `Front voisin soulagé partiellement: ${sensitiveNeighbor}.`
+      : criticalCount > 0 || watchCount > 0
+        ? 'Urgence qui demeure: prévoir un suivi au prochain tour.'
+        : 'Effet secondaire favorable: l’urgence locale baisse sans surcharge visible.';
+
+  return {
+    empty: !recommendedAction,
+    tone: criticalCount > 0 ? 'danger' : watchCount > 0 ? 'warning' : 'ready',
+    provinceLabel: province.label,
+    actionCode: recommendedAction?.actionCode ?? 'WAR-HOLD',
+    actionLabel: recommendedAction?.label ?? 'Aucune action militaire recommandée',
+    confidence: recommendedAction ? 'calculé: action recommandée + projection actuelle' : 'estimé prudent: aucune action disponible',
+    effects: [
+      { label: 'Pression', value: pressureValue, source: projection.drivers.some((driver) => driver.label === 'Pression') ? 'calculé' : 'estimé prudent' },
+      { label: 'Stabilité projetée', value: stabilityValue, source: 'calculé' },
+      { label: 'Risque critique restant', value: residualRisk, source: criticalCount > 0 || watchCount > 0 ? 'calculé' : 'estimé prudent' },
+    ],
+    sideEffect,
+  };
+}
+
+function renderRecommendedMilitaryActionPreview(shell, intrigueView = null) {
+  const preview = buildRecommendedMilitaryActionPreview(shell, intrigueView);
+
+  return `
+    <section class="recommended-action-preview recommended-action-preview--${preview.tone} ${preview.empty ? 'is-empty' : ''}" aria-label="Aperçu après action militaire recommandée">
+      <div class="recommended-action-preview__header">
+        <div>
+          <span>Aperçu action recommandée</span>
+          <strong>${preview.provinceLabel}</strong>
+        </div>
+        <code>${preview.actionCode}</code>
+      </div>
+      <p><strong>${preview.actionLabel}</strong> · ${preview.confidence}</p>
+      <div class="recommended-action-preview__effects">
+        ${preview.effects.map((effect) => `
+          <article class="recommended-action-preview__effect">
+            <span>${effect.label}</span>
+            <strong>${effect.value}</strong>
+            <small>${effect.source}</small>
+          </article>
+        `).join('')}
+      </div>
+      <small class="recommended-action-preview__side-effect">${preview.sideEffect}</small>
+    </section>
+  `;
+}
+
+
+
 function buildConflictReadinessWarnings(shell, intrigueView = null) {
   return shell.provinces
     .map((province) => {
@@ -6658,6 +6769,7 @@ function render() {
           <p class="turn-summary">${state.lastTurnSummary}</p>
           ${renderConflictReadinessWarnings(shell, intrigueView)}
           ${renderFrontPriorityRanking(shell, intrigueView)}
+          ${renderRecommendedMilitaryActionPreview(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
           ${renderMapClimateInterventionWindows(climateInterventionWindows)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
