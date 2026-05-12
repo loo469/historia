@@ -316,6 +316,7 @@ button { font: inherit; }
 }
 .map-climate-density--grouped { border-color: rgba(251, 191, 36, 0.3); }
 .map-climate-density--dense { border-color: rgba(56, 189, 248, 0.28); }
+.map-climate-density--clear { border-color: rgba(74, 222, 128, 0.22); }
 .map-climate-density div {
   display: flex;
   justify-content: space-between;

@@ -3049,30 +3049,54 @@ function buildPostCommitClimateImpactMarkers(shell, queuedClimateInterventions =
     .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel));
 }
 
-function buildClimateMarkerDensityControl(markers, maxVisible = 4) {
+function getClimateMarkerDensityThreshold({ zoom = 1, viewportWidth = 1024, mobileMapExpanded = true } = {}) {
+  const zoomAllowance = zoom >= 1.8 ? 3 : zoom >= 1.35 ? 1 : 0;
+  const viewportPenalty = viewportWidth < 720 ? 1 : viewportWidth > 1180 ? -1 : 0;
+  const collapsedPenalty = mobileMapExpanded ? 0 : 1;
+
+  return Math.max(3, Math.min(8, 4 + zoomAllowance - viewportPenalty - collapsedPenalty));
+}
+
+function buildClimateMarkerDensityControl(markers, options = {}) {
+  const maxVisible = getClimateMarkerDensityThreshold(options);
+  const selectedProvinceId = options.selectedProvinceId ?? null;
   const urgentMarkers = markers.filter((marker) => marker.status === 'cascade-active' || marker.status === 'hazard-unresolved');
-  const lowerPriorityMarkers = markers.filter((marker) => marker.status !== 'cascade-active' && marker.status !== 'hazard-unresolved');
-  const remainingSlots = Math.max(0, maxVisible - urgentMarkers.length);
-  const visibleMarkers = urgentMarkers.concat(lowerPriorityMarkers.slice(0, remainingSlots));
+  const selectedMarker = selectedProvinceId
+    ? markers.find((marker) => marker.provinceId === selectedProvinceId) ?? null
+    : null;
+  const pinnedMarkers = urgentMarkers.concat(selectedMarker && !urgentMarkers.some((marker) => marker.provinceId === selectedMarker.provinceId) ? [selectedMarker] : []);
+  const pinnedIds = new Set(pinnedMarkers.map((marker) => marker.provinceId));
+  const lowerPriorityMarkers = markers.filter((marker) => !pinnedIds.has(marker.provinceId));
+  const remainingSlots = Math.max(0, maxVisible - pinnedMarkers.length);
+  const visibleMarkers = pinnedMarkers.concat(lowerPriorityMarkers.slice(0, remainingSlots));
   const visibleIds = new Set(visibleMarkers.map((marker) => marker.provinceId));
-  const groupedMarkers = markers.filter((marker) => !visibleIds.has(marker.provinceId));
+  const groupedMarkers = markers
+    .filter((marker) => !visibleIds.has(marker.provinceId))
+    .map((marker) => ({
+      ...marker,
+      hiddenReason: `Agrégé par seuil adaptatif: zoom ${Math.round((options.zoom ?? 1) * 100)}%, viewport ${options.viewportWidth ?? 1024}px.`,
+    }));
   const groupedByStatus = groupedMarkers.reduce((counts, marker) => {
     counts[marker.status] = (counts[marker.status] ?? 0) + 1;
     return counts;
   }, {});
+  const thresholdReason = `Seuil ${maxVisible} marqueurs (zoom ${Math.round((options.zoom ?? 1) * 100)}%, viewport ${options.viewportWidth ?? 1024}px${options.mobileMapExpanded === false ? ', carte mobile réduite' : ''}).`;
 
   return {
     state: groupedMarkers.length > 0 ? 'grouped' : markers.length > maxVisible ? 'dense' : 'clear',
+    maxVisible,
     visibleMarkers,
     groupedMarkers,
     urgentCount: urgentMarkers.length,
+    selectedPinned: Boolean(selectedMarker),
     visibleCount: visibleMarkers.length,
     groupedCount: groupedMarkers.length,
     groupedByStatus,
+    thresholdReason,
     summary: groupedMarkers.length > 0
-      ? `${visibleMarkers.length} marqueur${visibleMarkers.length > 1 ? 's' : ''} climat affiché${visibleMarkers.length > 1 ? 's' : ''}; ${groupedMarkers.length} réduit${groupedMarkers.length > 1 ? 's' : ''}/retardé${groupedMarkers.length > 1 ? 's' : ''} regroupé${groupedMarkers.length > 1 ? 's' : ''} pour préserver la lisibilité. ${urgentMarkers.length} urgence${urgentMarkers.length > 1 ? 's' : ''} cascade/aléa reste${urgentMarkers.length > 1 ? 'nt' : ''} visible${urgentMarkers.length > 1 ? 's' : ''}.`
+      ? `${visibleMarkers.length} marqueur${visibleMarkers.length > 1 ? 's' : ''} climat affiché${visibleMarkers.length > 1 ? 's' : ''}; ${groupedMarkers.length} réduit${groupedMarkers.length > 1 ? 's' : ''}/retardé${groupedMarkers.length > 1 ? 's' : ''} regroupé${groupedMarkers.length > 1 ? 's' : ''} selon le zoom/viewport. ${urgentMarkers.length} urgence${urgentMarkers.length > 1 ? 's' : ''} cascade/aléa reste${urgentMarkers.length > 1 ? 'nt' : ''} visible${urgentMarkers.length > 1 ? 's' : ''}${selectedMarker ? '; la province sélectionnée reste accessible' : ''}.`
       : markers.length > 0
-        ? `${markers.length} marqueur${markers.length > 1 ? 's' : ''} climat affiché${markers.length > 1 ? 's' : ''}; aucune urgence masquée.`
+        ? `${markers.length} marqueur${markers.length > 1 ? 's' : ''} climat affiché${markers.length > 1 ? 's' : ''}; aucune urgence masquée. ${thresholdReason}`
         : 'Aucun marqueur climat post-résolution à densifier.',
   };
 }
@@ -3093,7 +3117,8 @@ function renderClimateMarkerDensityRollup(control) {
         <span>${control.visibleCount} visibles · ${control.groupedCount} regroupés</span>
       </div>
       <p>${control.summary}</p>
-      ${groupedStatuses ? `<small>Regroupés: ${groupedStatuses}. Priorité conservée aux cascades et aléas non résolus.</small>` : '<small>Cascades et aléas non résolus restent prioritaires sur la carte.</small>'}
+      <small>${control.thresholdReason}</small>
+      ${groupedStatuses ? `<small>Regroupés: ${groupedStatuses}. Priorité conservée aux cascades et aléas non résolus${control.selectedPinned ? '; détail de province sélectionnée préservé' : ''}.</small>` : '<small>Cascades et aléas non résolus restent prioritaires sur la carte.</small>'}
     </section>
   `;
 }
@@ -8455,7 +8480,13 @@ function render() {
   const climateInterventionWindows = buildMapClimateInterventionWindows(shell);
   const cumulativeClimateImpact = buildCumulativeClimateImpactSummary(shell, state.queuedClimateInterventions);
   const postCommitClimateMarkers = buildPostCommitClimateImpactMarkers(shell, state.queuedClimateInterventions);
-  const climateMarkerDensity = buildClimateMarkerDensityControl(postCommitClimateMarkers);
+  const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
+  const climateMarkerDensity = buildClimateMarkerDensityControl(postCommitClimateMarkers, {
+    zoom: state.mapZoom,
+    viewportWidth,
+    mobileMapExpanded: state.mobileMapExpanded,
+    selectedProvinceId: state.selectedProvinceId,
+  });
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
