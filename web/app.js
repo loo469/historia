@@ -10,6 +10,7 @@ import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
 import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonPanel.js';
 import { buildProvinceLogisticsChoicePreview } from '../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
 import { buildProvinceEconomyTurnReport } from '../src/ui/economy/buildProvinceEconomyTurnReport.js';
+import { buildProvinceEconomyBudgetPreview } from '../src/ui/economy/buildProvinceEconomyBudgetPreview.js';
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
@@ -1253,6 +1254,56 @@ function renderProvinceClimateTurnReport(province) {
   `;
 }
 
+function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const logisticsPreview = buildProvinceLogisticsChoicePreviewView(province, economyView);
+  const budget = buildProvinceEconomyBudgetPreview(province, economyView, {
+    actionQueue,
+    logisticsChoices: logisticsPreview.options,
+  });
+
+  if (budget.status === 'empty') {
+    return `
+      <section class="province-economy-budget-preview province-economy-budget-preview--empty" aria-label="Aperçu budget économie du plan de province">
+        <div class="province-economy-budget-preview__header">
+          <strong>Budget économie du plan</strong>
+          <span>stable</span>
+        </div>
+        <p>${budget.summary}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="province-economy-budget-preview province-economy-budget-preview--${budget.status}" aria-label="Aperçu budget économie du plan de province">
+      <div class="province-economy-budget-preview__header">
+        <strong>Budget économie du plan</strong>
+        <span>${budget.totalCost} unités</span>
+      </div>
+      <p>${budget.summary}</p>
+      <div class="province-economy-budget-preview__list">
+        ${budget.plans.map((plan) => `
+          <article class="province-economy-budget-card province-economy-budget-card--${plan.status}">
+            <div class="province-economy-budget-card__title">
+              <strong>${plan.logisticsAction}</strong>
+              <span>${plan.status}</span>
+            </div>
+            <p>${plan.effect}</p>
+            <dl>
+              <div><dt>Action</dt><dd>${plan.actionCode ?? plan.actionLabel}</dd></div>
+              <div><dt>Coût</dt><dd>${plan.consumedResources.map((resource) => `${resource.quantity} ${resource.label}`).join(', ')}</dd></div>
+              <div><dt>Route</dt><dd>${plan.routeNames.join(', ') || 'hub local'}</dd></div>
+              <div><dt>Hub</dt><dd>${plan.hubName}</dd></div>
+              <div><dt>Stock</dt><dd>${plan.surplusOrShortage}</dd></div>
+              <div><dt>Risque</dt><dd>${plan.risk}</dd></div>
+            </dl>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderProvinceEconomyTurnReport(province, economyView) {
   const previousChoice = buildProvinceLogisticsChoicePreviewView(province, economyView).options[0] ?? null;
   const report = buildProvinceEconomyTurnReport(province, economyView, { previousChoice });
@@ -1590,6 +1641,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
+      ${renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       ${renderProvinceClimateTurnReport(province)}
