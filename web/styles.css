@@ -691,8 +691,38 @@ button { font: inherit; }
 .critical-front-decision__dependency--military { border-color: rgba(248, 113, 113, 0.34); }
 .critical-front-decision__dependency--logistics { border-color: rgba(56, 189, 248, 0.3); }
 .critical-front-decision__dependency--stability { border-color: rgba(251, 191, 36, 0.3); }
-.critical-front-decision small {
+
+.critical-front-decision__ripples {
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
+}
+.critical-front-decision__ripples span {
   color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.critical-front-decision__ripple {
+  display: grid;
+  gap: 1px;
+  padding: 5px 6px;
+  border-radius: 9px;
+  background: rgba(2, 6, 23, 0.52);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.25;
+}
+.critical-front-decision__ripple b {
+  color: #f8fafc;
+  font-size: 11px;
+}
+.critical-front-decision__ripple--positive { border-color: rgba(74, 222, 128, 0.32); }
+.critical-front-decision__ripple--warning { border-color: rgba(251, 191, 36, 0.32); }
+.critical-front-decision__ripple--critical { border-color: rgba(251, 113, 133, 0.4); }
+.critical-front-decision small {  color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
 }

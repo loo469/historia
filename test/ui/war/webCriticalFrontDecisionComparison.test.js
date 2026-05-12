@@ -28,6 +28,18 @@ test('critical front decision comparison highlights immediate military and non-m
   assert.match(webAppSource, /dependencies\.slice\(0, 2\)/);
 });
 
+test('critical front decision comparison previews military and transversal ripple effects before queueing', () => {
+  assert.match(webAppSource, /function buildFrontDecisionRippleEffects/);
+  assert.match(webAppSource, /kind: 'military'/);
+  assert.match(webAppSource, /Front stabilisé|Front encore fragile/);
+  assert.match(webAppSource, /Province alliée impactée/);
+  assert.match(webAppSource, /kind: 'logistics'/);
+  assert.match(webAppSource, /Tension logistique/);
+  assert.match(webAppSource, /kind: 'culture'/);
+  assert.match(webAppSource, /Tension locale/);
+  assert.match(webAppSource, /effects[\s\S]*\.slice\(0, 3\)/);
+});
+
 test('critical front decision comparison renders compact navigation cards without changing filters', () => {
   assert.match(webAppSource, /function renderCriticalFrontDecisionComparison/);
   assert.match(webAppSource, /data-province-id="\$\{decision\.provinceId\}"/);
@@ -35,8 +47,10 @@ test('critical front decision comparison renders compact navigation cards withou
   assert.match(webAppSource, /sans perdre les filtres carte/);
   assert.match(webAppSource, /renderCriticalFrontDecisionComparison\(shell, intrigueView\)/);
   assert.match(webAppSource, /critical-front-decision__dependencies/);
+  assert.match(webAppSource, /critical-front-decision__ripples/);
   assert.match(stylesSource, /\.critical-front-decision-comparison/);
   assert.match(stylesSource, /\.critical-front-decision--danger/);
   assert.match(stylesSource, /\.critical-front-decision__dependency--military/);
   assert.match(stylesSource, /\.critical-front-decision__dependency--logistics/);
+  assert.match(stylesSource, /\.critical-front-decision__ripple--critical/);
 });

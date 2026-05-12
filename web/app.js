@@ -5693,6 +5693,66 @@ function buildFrontDecisionDependencies(province, shell, projection, actionQueue
   return dependencies.slice(0, 2);
 }
 
+function buildFrontDecisionRippleEffects(province, projection, recommendedAction, dependencies, risks) {
+  if (!province || !projection) {
+    return [];
+  }
+
+  const effects = [];
+  const stabilityValue = projection.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? projection.title;
+  const leadRisk = risks[0] ?? { label: 'Risque acceptable', tone: 'covered' };
+  const militaryDependency = dependencies.find((dependency) => dependency.kind === 'military');
+  const logisticsDependency = dependencies.find((dependency) => dependency.kind === 'logistics');
+
+  effects.push({
+    kind: 'military',
+    impact: projection.tone === 'ready' ? 'positive' : projection.tone === 'danger' ? 'critical' : 'warning',
+    label: projection.tone === 'ready' ? 'Front stabilisé' : 'Front encore fragile',
+    detail: recommendedAction ? `${recommendedAction.actionCode}: ${stabilityValue}` : stabilityValue,
+    rank: projection.tone === 'danger' ? 1 : projection.tone === 'warning' ? 2 : 4,
+  });
+
+  if (militaryDependency) {
+    effects.push({
+      kind: 'ally',
+      impact: 'warning',
+      label: 'Province alliée impactée',
+      detail: militaryDependency.reason,
+      rank: 2,
+    });
+  }
+
+  if (logisticsDependency) {
+    effects.push({
+      kind: 'logistics',
+      impact: 'warning',
+      label: 'Tension logistique',
+      detail: logisticsDependency.reason,
+      rank: 3,
+    });
+  } else if ((province.loyalty ?? 100) < 50) {
+    effects.push({
+      kind: 'culture',
+      impact: 'warning',
+      label: 'Tension locale',
+      detail: `Loyauté ${province.loyalty}: l’engagement peut raviver une fracture culturelle visible.`,
+      rank: 3,
+    });
+  }
+
+  effects.push({
+    kind: 'delay',
+    impact: leadRisk.tone === 'critical' ? 'critical' : 'warning',
+    label: 'Si retardée',
+    detail: leadRisk.summary ?? leadRisk.label,
+    rank: leadRisk.tone === 'critical' ? 1 : 5,
+  });
+
+  return effects
+    .sort((left, right) => left.rank - right.rank || left.label.localeCompare(right.label))
+    .slice(0, 3);
+}
+
 function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
   const priorities = buildFrontPriorityRanking(shell, intrigueView)
     .filter((priority) => priority.tone !== 'ready')
@@ -5748,6 +5808,7 @@ function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
           ? `${riskyCount} option${riskyCount > 1 ? 's' : ''} risquée${riskyCount > 1 ? 's' : ''}; garder une réserve.`
           : ignoredRisk;
     const dependencies = buildFrontDecisionDependencies(province, shell, projection, actionQueue, risks);
+    const rippleEffects = buildFrontDecisionRippleEffects(province, projection, recommendedAction, dependencies, risks);
 
     return {
       rank: index + 1,
@@ -5761,6 +5822,7 @@ function buildCriticalFrontDecisionComparison(shell, intrigueView = null) {
       costRisk,
       ignoredRisk,
       dependencies,
+      rippleEffects,
       comparison: index === 0
         ? 'Choix recommandé en premier: menace cumulée maximale.'
         : `Comparer après ${priorities[index - 1].provinceLabel}: menace ${priority.score} vs ${priorities[index - 1].score}.`,
@@ -5817,6 +5879,14 @@ function renderCriticalFrontDecisionComparison(shell, intrigueView = null) {
                 <span>Dépendances</span>
                 ${decision.dependencies.map((dependency) => `
                   <em class="critical-front-decision__dependency critical-front-decision__dependency--${dependency.kind}"><b>${dependency.label}</b>${dependency.reason}</em>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${decision.rippleEffects.length > 0 ? `
+              <div class="critical-front-decision__ripples" aria-label="Effets domino avant ajout à la file">
+                <span>Effets domino</span>
+                ${decision.rippleEffects.map((effect) => `
+                  <em class="critical-front-decision__ripple critical-front-decision__ripple--${effect.kind} critical-front-decision__ripple--${effect.impact}"><b>${effect.label}</b>${effect.detail}</em>
                 `).join('')}
               </div>
             ` : ''}
