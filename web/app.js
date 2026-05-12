@@ -1494,6 +1494,86 @@ function buildProvinceClimateMitigationPriorities(province, report = buildProvin
     .slice(0, 3);
 }
 
+function getProjectedClimateRiskAfterMitigation(currentRiskLevel, hasQueuedMitigation) {
+  if (!hasQueuedMitigation) {
+    return currentRiskLevel;
+  }
+
+  if (currentRiskLevel === 'critical') {
+    return 'strained';
+  }
+
+  if (currentRiskLevel === 'strained') {
+    return 'stable';
+  }
+
+  return 'stable';
+}
+
+function buildProvinceClimateRiskReductionForecast(province, shell, report = buildProvinceClimateTurnReport(province)) {
+  const priorities = buildProvinceClimateMitigationPriorities(province, report);
+  const queuedMitigation = priorities.find((priority) => priority.outcomeChange) ?? null;
+  const currentRisk = getProvinceClimateRiskLevel(province);
+  const projectedRisk = getProjectedClimateRiskAfterMitigation(currentRisk, Boolean(queuedMitigation));
+  const cues = buildProvinceClimateCountdownCues(province, report);
+  const criticalDeadline = queuedMitigation?.deadline ?? cues.find((cue) => cue.level !== 'stable')?.countdown ?? 'Aucune échéance critique';
+  const remainingCascades = buildProvinceClimateCascadePreview(province, shell, report)
+    .filter((cascade) => !queuedMitigation || !cascade.changesThisTurn)
+    .slice(0, 2);
+
+  if (!queuedMitigation) {
+    return {
+      state: 'empty',
+      currentRisk,
+      projectedRisk,
+      criticalDeadline,
+      queuedAction: null,
+      summary: 'Aucune mitigation climat décisive en file: la réduction de risque projetée reste inchangée.',
+      remainingCascades,
+    };
+  }
+
+  return {
+    state: projectedRisk === currentRisk ? 'unchanged' : 'reduced',
+    currentRisk,
+    projectedRisk,
+    criticalDeadline,
+    queuedAction: queuedMitigation.option,
+    summary: `${queuedMitigation.option} projette ${currentRisk} → ${projectedRisk} avant ${criticalDeadline}.`,
+    remainingCascades: remainingCascades.length > 0 ? remainingCascades : [{
+      type: 'surveillance résiduelle',
+      scope: 'Aucune cascade probable restante',
+      avoidedImpact: 'La mitigation couvre les cascades régionales lisibles; garder seulement une veille climat.',
+      changesThisTurn: false,
+      priority: 6,
+    }],
+  };
+}
+
+function renderProvinceClimateRiskReductionForecast(province, shell) {
+  const forecast = buildProvinceClimateRiskReductionForecast(province, shell);
+
+  return `
+    <section class="province-climate-risk-forecast province-climate-risk-forecast--${forecast.state}" aria-label="Prévision de réduction du risque climatique après mitigation en file">
+      <div class="province-climate-risk-forecast__header">
+        <strong>Réduction risque projetée</strong>
+        <span>${forecast.criticalDeadline}</span>
+      </div>
+      <div class="province-climate-risk-forecast__meter">
+        <b>${forecast.currentRisk}</b>
+        <i aria-hidden="true">→</i>
+        <b>${forecast.projectedRisk}</b>
+      </div>
+      <p>${forecast.summary}</p>
+      <div class="province-climate-risk-forecast__residuals">
+        ${forecast.remainingCascades.map((cascade) => `
+          <small><b>${cascade.type}</b> · ${cascade.scope}</small>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function buildProvinceClimateCascadePreview(province, shell, report = buildProvinceClimateTurnReport(province)) {
   const priorities = buildProvinceClimateMitigationPriorities(province, report);
   const decisivePriority = priorities.find((priority) => priority.outcomeChange) ?? null;
@@ -3013,6 +3093,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       ${renderProvinceClimateCountdownCues(province)}
       ${renderProvinceClimateMitigationPriorities(province)}
+      ${renderProvinceClimateRiskReductionForecast(province, shell)}
       ${renderProvinceClimateCascadePreview(province, shell)}
       ${renderProvinceClimateTurnReport(province)}
       <div class="context-summary">
