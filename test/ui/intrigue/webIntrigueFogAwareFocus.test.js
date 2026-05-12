@@ -67,3 +67,17 @@ test('selected intrigue province adds fog-safe confidence levels to responses', 
   assert.match(stylesSource, /intrigue-response-choice__confidence--dangereux/);
   assert.match(stylesSource, /intrigue-response-choice__confidence--information-insuffisante/);
 });
+
+test('queued province intrigue responses project detection risk without breaking fog', () => {
+  assert.match(webAppSource, /function buildQueuedIntrigueDetectionRiskProjection/);
+  assert.match(webAppSource, /function renderQueuedIntrigueDetectionRiskProjection/);
+  assert.match(webAppSource, /Projection détection intrigue/);
+  assert.match(webAppSource, /Aucune réponse intrigue en file/);
+  assert.match(webAppSource, /queuez une réponse intrigue pour estimer la tendance sans lever le brouillard/);
+  assert.match(webAppSource, /Projection prudente: source, cellule et objectif exacts restent masqués par le brouillard/);
+  assert.match(webAppSource, /Basé sur les opérations visibles; les relais non confirmés restent masqués/);
+  assert.match(webAppSource, /Projection détection \$\{visibleBaseRisk\} → \$\{afterRisk\}/);
+  assert.match(stylesSource, /province-intrigue-detection-projection/);
+  assert.match(stylesSource, /province-intrigue-detection-projection--mitigated/);
+  assert.match(stylesSource, /province-intrigue-detection-projection--masked/);
+});
