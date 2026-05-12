@@ -403,6 +403,7 @@ const state = {
   queuedLogisticsActions: [],
   logisticsOutcomeMarkers: [],
   queuedCultureActions: [],
+  cultureTensionMarkers: [],
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   mobilePanelSection: 'details',
@@ -6084,6 +6085,8 @@ function getCultureViewModel() {
     selectedRegionId,
     selectedMarkers,
     selectedMarker,
+    tensionMarkers: state.cultureTensionMarkers,
+    selectedTensionMarkers: state.cultureTensionMarkers.filter((marker) => marker.provinceId === selectedRegionId),
     metrics: {
       markerCount: overlay.length,
       cultureCount: seeds.length,
@@ -6437,6 +6440,116 @@ function renderCultureClusterPinList(cluster) {
   `;
 }
 
+
+function getCultureTensionMarkerVisual(marker) {
+  const visuals = {
+    eased: { code: 'OK', label: 'Tension apaisée', icon: '✓' },
+    unresolved: { code: '!', label: 'Tension non couverte', icon: '!' },
+    escalated: { code: '↑', label: 'Tension aggravée', icon: '▲' },
+    opportunity: { code: '+', label: 'Opportunité ouverte', icon: '+' },
+  };
+
+  return visuals[marker.state] ?? visuals.unresolved;
+}
+
+function buildCulturePostCommitTensionMarkers(province, report) {
+  if (!province || !report?.resolutionSummary) {
+    return [];
+  }
+
+  const queuedMarkers = (report.resolutionSummary.queuedActions ?? []).map((action, index) => {
+    const state = String(action.effect ?? '').toLowerCase().includes('opportun') ? 'opportunity' : 'eased';
+    return {
+      markerId: `culture-tension:${state}:${province.provinceId}:${action.actionCode}:${index}`,
+      provinceId: province.provinceId,
+      provinceLabel: province.label,
+      cultureName: action.cultureName,
+      state,
+      label: state === 'opportunity' ? 'Opportunité ouverte' : 'Tension apaisée',
+      summary: action.summary ?? `${action.cultureName}: ${action.effect}`,
+      detail: `${action.label}: ${action.effect}. ${action.reason}`,
+      source: 'Action culturelle résolue',
+    };
+  });
+
+  const uncoveredMarkers = (report.resolutionSummary.uncoveredUrgent ?? []).map((entry, index) => {
+    const state = entry.tone === 'aggravated' ? 'escalated' : 'unresolved';
+    return {
+      markerId: `culture-tension:${state}:${province.provinceId}:${entry.reminderId}:${index}`,
+      provinceId: province.provinceId,
+      provinceLabel: province.label,
+      cultureName: entry.cultureName,
+      state,
+      label: state === 'escalated' ? 'Tension aggravée' : 'Tension non couverte',
+      summary: entry.summary,
+      detail: entry.expectedImpact,
+      source: 'Recommandation urgente non couverte',
+    };
+  });
+
+  return [...queuedMarkers, ...uncoveredMarkers].slice(0, 4);
+}
+
+function buildPostCommitCultureTensionMarkers(shell) {
+  const provinces = shell.provinces ?? [];
+  const intrigueView = buildIntrigueView(shell);
+
+  return provinces.flatMap((province) => {
+    const focusContext = { focusedProvinceId: province.provinceId, focusedProvince: province, neighborIds: new Set(province.neighborIds) };
+    const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+    const cultureContext = getSelectedCultureContext(province.provinceId);
+    const unlockHintsByAction = buildCultureUnlockHintsForActions(province, actionQueue, cultureContext);
+    const report = buildCultureOpportunityReminders({ province, actionQueue, unlockHintsByAction });
+    return buildCulturePostCommitTensionMarkers(province, report);
+  }).slice(0, 8);
+}
+
+function renderCultureTensionMarker(marker, active) {
+  const center = getProvinceCenter(marker.provinceId);
+
+  if (!center || !active) {
+    return '';
+  }
+
+  const visual = getCultureTensionMarkerVisual(marker);
+  const selected = marker.provinceId === state.selectedProvinceId;
+  const y = center.y - 9.2;
+
+  return `
+    <g class="culture-tension-marker culture-tension-marker--${marker.state} ${selected ? 'is-selected' : ''}" data-culture-tension-region="${marker.provinceId}">
+      <title>${visual.label} · ${marker.cultureName} · ${marker.detail}</title>
+      <circle class="culture-tension-marker__pulse" cx="${center.x}%" cy="${y}%" r="3.5"></circle>
+      <rect x="${center.x - 3.2}%" y="${y - 2.35}%" width="6.4%" height="4.7%" rx="1.5%"></rect>
+      <text x="${center.x}%" y="${y + 0.62}%" text-anchor="middle">${visual.code}</text>
+    </g>
+  `;
+}
+
+function renderCultureTensionMarkerPanel(markers) {
+  if (!markers.length) {
+    return '';
+  }
+
+  return `
+    <article class="culture-tension-marker-panel" aria-label="Tensions culturelles après résolution">
+      <div class="culture-tension-marker-panel__header">
+        <span>Après commit</span>
+        <strong>${markers.length} tension${markers.length > 1 ? 's' : ''} visible${markers.length > 1 ? 's' : ''}</strong>
+      </div>
+      ${markers.map((marker) => {
+        const visual = getCultureTensionMarkerVisual(marker);
+        return `
+          <section class="culture-tension-marker-card culture-tension-marker-card--${marker.state}">
+            <b>${visual.icon} ${marker.label}</b>
+            <p>${marker.summary}</p>
+            <small>${marker.cultureName} · ${marker.provinceLabel} · ${marker.source} · ${marker.detail}</small>
+          </section>
+        `;
+      }).join('')}
+    </article>
+  `;
+}
+
 function renderCultureMapOverlay(cultureView) {
   const active = state.activeOverlaySlot === 'culture-overlay';
   const markerEntries = active
@@ -6445,6 +6558,7 @@ function renderCultureMapOverlay(cultureView) {
   const clusterSummaries = buildCultureClusterSummaries(markerEntries);
   const clusteredRegionIds = new Set(clusterSummaries.flatMap((cluster) => cluster.regionIds));
   const markerNodes = markerEntries.map((entry) => renderCultureMarker(entry, active, clusteredRegionIds)).join('');
+  const tensionMarkerNodes = (cultureView.tensionMarkers ?? []).map((marker) => renderCultureTensionMarker(marker, active)).join('');
   const clusterNodes = clusterSummaries.map((cluster) => renderCultureClusterSummary(cluster, active)).join('');
 
   const discoveryLinks = active ? cultureView.overlay.flatMap((entry) => {
@@ -6489,6 +6603,7 @@ function renderCultureMapOverlay(cultureView) {
         </filter>
       </defs>
       ${markerNodes}
+      ${tensionMarkerNodes}
       ${clusterNodes}
       ${discoveryLinks}
     </svg>
@@ -6529,6 +6644,7 @@ function renderCultureSidePanel(cultureView) {
         <div class="overlay-anchor"><span>Repères</span><strong>${cultureView.metrics.eventCount}</strong></div>
       </div>
       ${renderCultureLegendKey(cultureView)}
+      ${renderCultureTensionMarkerPanel(cultureView.selectedTensionMarkers ?? [])}
       ${renderCultureRecommendationPanel(recommendationView)}
       ${renderCultureLocalTimeline(localTimelineView)}
       ${renderCultureClusterPinList(selectedCluster)}
@@ -7717,6 +7833,7 @@ function advanceTurn() {
   const economyView = getEconomyViewModel();
   const logisticsOutcomeMarkers = buildLogisticsOutcomeMarkers(shell, economyView);
 
+  state.cultureTensionMarkers = buildPostCommitCultureTensionMarkers(shell);
   state.queuedCultureActions = [];
   state.lastMilitaryOutcomeMarkers = militaryOutcomeMarker ? [militaryOutcomeMarker] : [];
   state.logisticsOutcomeMarkers = logisticsOutcomeMarkers;

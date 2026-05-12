@@ -7827,3 +7827,48 @@ button { font: inherit; }
 .economy-logistics-outcome--reduced rect { stroke: rgba(56, 189, 248, 0.7); }
 .economy-logistics-outcome--unresolved rect { stroke: rgba(245, 158, 11, 0.72); }
 .economy-logistics-outcome--new-bottleneck rect { stroke: rgba(251, 113, 133, 0.76); }
+.culture-tension-marker { filter: url(#cultureHudGlow); pointer-events: none; }
+.culture-tension-marker__pulse { opacity: 0.22; }
+.culture-tension-marker rect { stroke-width: 0.42; }
+.culture-tension-marker text { fill: #020617; font-size: 2.9px; font-weight: 900; dominant-baseline: middle; }
+.culture-tension-marker--eased rect,
+.culture-tension-marker--opportunity rect { fill: #86efac; stroke: #dcfce7; }
+.culture-tension-marker--eased .culture-tension-marker__pulse,
+.culture-tension-marker--opportunity .culture-tension-marker__pulse { fill: #22c55e; }
+.culture-tension-marker--unresolved rect { fill: #fde68a; stroke: #fef3c7; }
+.culture-tension-marker--unresolved .culture-tension-marker__pulse { fill: #f59e0b; }
+.culture-tension-marker--escalated rect { fill: #fca5a5; stroke: #fee2e2; }
+.culture-tension-marker--escalated .culture-tension-marker__pulse { fill: #ef4444; }
+.culture-tension-marker.is-selected rect { stroke-width: 0.72; }
+.culture-tension-marker-panel {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+.culture-tension-marker-panel__header span {
+  display: block;
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.culture-tension-marker-panel__header strong { color: #f8fafc; font-size: 13px; }
+.culture-tension-marker-card {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.culture-tension-marker-card b { color: #f8fafc; font-size: 12px; }
+.culture-tension-marker-card p { margin: 0; color: #cbd5e1; font-size: 12px; line-height: 1.35; }
+.culture-tension-marker-card small { color: #94a3b8; font-size: 11px; line-height: 1.35; }
+.culture-tension-marker-card--eased,
+.culture-tension-marker-card--opportunity { border-color: rgba(74, 222, 128, 0.24); }
+.culture-tension-marker-card--unresolved { border-color: rgba(251, 191, 36, 0.28); }
+.culture-tension-marker-card--escalated { border-color: rgba(248, 113, 113, 0.3); }
