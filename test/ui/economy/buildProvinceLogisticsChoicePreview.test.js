@@ -79,9 +79,14 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(['aggravée', 'déplacée', 'résolue', 'inconnue'].includes(preview.downstreamStatus));
   assert.ok(preview.priorityActions.length >= 2);
   assert.equal(preview.priorityActions[0].recommended, true);
+  assert.ok(preview.selectedActionPreview.badges.length <= 3);
   assert.match(preview.prioritySummary, /recommandée/);
   assert.ok(preview.priorityActions.some((action) => /rapide mais limitée|plus lente mais structurante|équilibrée/.test(action.tradeoff)));
   assert.ok(preview.priorityActions.every((action) => action.impact.length > 0 && action.reason.length > 0 && action.delay.length > 0));
+  assert.match(preview.selectedActionPreview.summary, /pénurie|route|province|délai/);
+  assert.ok(['critical', 'improved', 'limited'].includes(preview.selectedActionPreview.status));
+  assert.equal(preview.selectedActionPreview.badges.length, 3);
+  assert.match(`${preview.selectedActionPreview.currentState} ${preview.selectedActionPreview.projectedState}`, /Actuel|Projeté/);
   assert.ok(preview.options[0].recoveryChoices.length >= 2);
   assert.equal(preview.options[0].recoveryChoices[0].recommended, true);
   assert.match(preview.options[0].recoveryChoices[0].benefit, /Outils|River Gate|Ember Line/);
@@ -131,6 +136,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.downstreamSummary, /Aucune pénurie aval/);
   assert.deepEqual(preview.priorityActions, []);
   assert.match(preview.prioritySummary, /Aucune action logistique prioritaire/);
+  assert.equal(preview.selectedActionPreview.status, 'empty');
+  assert.deepEqual(preview.selectedActionPreview.badges, []);
   assert.match(preview.timelineSummary, /timeline vide/);
   assert.match(preview.summary, /Logistique stable/);
 });
