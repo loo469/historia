@@ -10603,3 +10603,35 @@ button { font: inherit; }
   font-size: 1.04px;
   font-weight: 800;
 }
+.atlas-corridor-shortfall rect {
+  fill: rgba(69, 26, 3, 0.52);
+  stroke: rgba(251, 191, 36, 0.42);
+  stroke-width: 0.28;
+}
+.atlas-corridor-shortfall.is-empty rect {
+  fill: rgba(15, 23, 42, 0.44);
+  stroke: rgba(148, 163, 184, 0.26);
+}
+.atlas-corridor-shortfall__title {
+  fill: #fde68a;
+  font-size: 1.18px;
+  font-weight: 950;
+}
+.atlas-corridor-shortfall__empty {
+  fill: #cbd5e1;
+  font-size: 1px;
+  font-weight: 780;
+}
+.atlas-corridor-shortfall-item__route {
+  fill: #f8fafc;
+  font-size: 1.08px;
+  font-weight: 920;
+}
+.atlas-corridor-shortfall-item__action {
+  fill: #fed7aa;
+  font-size: 0.98px;
+  font-weight: 780;
+}
+.atlas-corridor-shortfall-item--overload .atlas-corridor-shortfall-item__action { fill: #fecdd3; }
+.atlas-corridor-shortfall-item--watch .atlas-corridor-shortfall-item__action { fill: #fde68a; }
+.atlas-corridor-shortfall-item--unknown .atlas-corridor-shortfall-item__action { fill: #ddd6fe; }
