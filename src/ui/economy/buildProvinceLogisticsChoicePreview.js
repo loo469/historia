@@ -591,6 +591,9 @@ function buildPrimaryLogisticsQueueAction(priorityAction, selectedActionPreview,
     delay: priorityAction.delay,
     gain: priorityAction.impact,
     downstreamImpact: selectedActionPreview.summary,
+    target: priorityAction.route,
+    bottleneckRelieved: priorityAction.reason.split(';')[0] ?? 'goulot logistique',
+    downstreamEffect: selectedActionPreview.projectedState,
     queueWarning,
   };
 }

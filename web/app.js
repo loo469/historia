@@ -1224,6 +1224,40 @@ function buildProvinceLogisticsChoicePreviewView(province, economyView) {
   });
 }
 
+
+function renderQueuedLogisticsMapSummary(preview) {
+  const queuedEntries = state.queuedLogisticsActions.filter((entry) => entry.routeId === preview.primaryLogisticsAction.routeId || entry.provinceId === state.selectedProvinceId);
+  const lastEntry = state.queuedLogisticsActions[state.queuedLogisticsActions.length - 1] ?? null;
+
+  if (queuedEntries.length === 0 && !lastEntry) {
+    return `
+      <div class="province-logistics-queued-summary province-logistics-queued-summary--empty" aria-label="File logistique carte">
+        <b>File logistique</b>
+        <span>Aucune récupération logistique engagée depuis la carte.</span>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="province-logistics-queued-summary" aria-label="File logistique carte">
+      <div>
+        <b>File logistique</b>
+        <span>${queuedEntries.length || state.queuedLogisticsActions.length} action${(queuedEntries.length || state.queuedLogisticsActions.length) > 1 ? 's' : ''} à auditer avant résolution</span>
+      </div>
+      <ul>
+        ${(queuedEntries.length > 0 ? queuedEntries : state.queuedLogisticsActions.slice(-1)).map((entry) => `
+          <li>
+            <strong>${entry.label}</strong>
+            <span>Cible: ${entry.target ?? entry.routeId} · Goulot: ${entry.bottleneckRelieved ?? 'à confirmer'}</span>
+            <small>${entry.downstreamEffect ?? 'Impact aval à confirmer avant résolution.'}</small>
+          </li>
+        `).join('')}
+      </ul>
+      ${lastEntry ? `<button type="button" data-logistics-undo-last="${lastEntry.actionId}" aria-label="Retirer la dernière action logistique ${lastEntry.label}">Annuler dernière action</button>` : ''}
+    </div>
+  `;
+}
+
 function renderProvinceLogisticsChoicePreview(province, economyView) {
   const preview = buildProvinceLogisticsChoicePreviewView(province, economyView);
 
@@ -1279,6 +1313,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
         <small>${preview.primaryLogisticsAction.queueWarning}</small>
         <button type="button" data-logistics-queue-action="${preview.primaryLogisticsAction.actionId ?? ''}" ${preview.primaryLogisticsAction.disabled ? 'disabled' : ''}>Engager récupération</button>
       </div>
+      ${renderQueuedLogisticsMapSummary(preview)}
       <div class="province-logistics-impact-preview province-logistics-impact-preview--${preview.selectedActionPreview.status}" aria-label="Impact projeté avant engagement logistique">
         <div>
           <b>Impact si engagé</b>
@@ -7590,8 +7625,36 @@ function render() {
 
       state.queuedLogisticsActions = [
         ...state.queuedLogisticsActions.filter((entry) => entry.actionId !== action.actionId),
-        { actionId: action.actionId, routeId: action.routeId, choiceId: action.choiceId, label: action.label, status: action.status },
+        {
+          actionId: action.actionId,
+          provinceId: state.selectedProvinceId,
+          routeId: action.routeId,
+          choiceId: action.choiceId,
+          label: action.label,
+          status: action.status,
+          target: action.target,
+          bottleneckRelieved: action.bottleneckRelieved,
+          downstreamEffect: action.downstreamEffect,
+        },
       ];
+      state.mobilePanelSection = 'details';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-logistics-undo-last]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const actionId = element.dataset.logisticsUndoLast;
+      if (!actionId) {
+        return;
+      }
+
+      const lastIndex = state.queuedLogisticsActions.map((entry) => entry.actionId).lastIndexOf(actionId);
+      if (lastIndex < 0) {
+        return;
+      }
+
+      state.queuedLogisticsActions = state.queuedLogisticsActions.filter((_, index) => index !== lastIndex);
       state.mobilePanelSection = 'details';
       render();
     });
