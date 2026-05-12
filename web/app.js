@@ -1865,10 +1865,42 @@ function buildProvinceLogisticsBottleneckComparison(province, economyView) {
     .slice(0, 3);
 }
 
+function buildProvinceLogisticsBottleneckWarnings(province, economyView, comparisons = null) {
+  if (!province || !economyView) {
+    return [];
+  }
+
+  const entries = comparisons ?? buildProvinceLogisticsBottleneckComparison(province, economyView);
+  const provinceCities = economyView.overlay.cities.filter((city) => city.regionId === province.provinceId);
+  const tensionByCityId = Object.fromEntries(economyView.comparison.rows.map((row) => [row.cityId, row]));
+  const localShortageCity = provinceCities.find((city) => tensionByCityId[city.cityId]?.tensionLevel === 'high')
+    ?? provinceCities.slice().sort((left, right) => left.resources.totalStock - right.resources.totalStock)[0]
+    ?? null;
+  const strainedRoutes = entries.filter((entry) => entry.tone === 'high' || entry.tone === 'medium');
+
+  if (strainedRoutes.length === 0) {
+    return [];
+  }
+
+  const priorityRoute = strainedRoutes[0];
+  const shortageContext = localShortageCity
+    ? `${localShortageCity.cityName}: ${tensionByCityId[localShortageCity.cityId]?.tensionLevel === 'high' ? 'stock en tension haute' : `${localShortageCity.resources.totalStock} unités disponibles`}`
+    : 'stock local à vérifier';
+  const relatedRoutes = strainedRoutes.slice(0, 2).map((entry) => entry.routeName).join(' + ');
+
+  return [{
+    tone: priorityRoute.tone,
+    label: priorityRoute.tone === 'high' ? 'Alerte goulot logistique' : 'Route logistique sous tension',
+    text: `${shortageContext}; ${relatedRoutes} explique le marqueur par ${priorityRoute.consequence.toLowerCase()}.`,
+    routeCount: strainedRoutes.length,
+  }];
+}
+
 function renderProvinceLogisticsBottleneckComparison(province, economyView) {
   const comparisons = buildProvinceLogisticsBottleneckComparison(province, economyView);
+  const warnings = buildProvinceLogisticsBottleneckWarnings(province, economyView, comparisons);
 
-  if (comparisons.length < 2) {
+  if (comparisons.length < 2 && warnings.length === 0) {
     return '';
   }
 
@@ -1876,8 +1908,15 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
     <section class="province-logistics-comparison" aria-label="Comparatif des goulets logistiques">
       <div class="province-logistics-comparison__header">
         <strong>Goulets logistiques comparés</strong>
-        <span>${comparisons.length} routes liées</span>
+        <span>${comparisons.length} route${comparisons.length > 1 ? 's' : ''} liée${comparisons.length > 1 ? 's' : ''}</span>
       </div>
+      ${warnings.map((warning) => `
+        <div class="province-logistics-bottleneck-warning province-logistics-bottleneck-warning--${warning.tone}" role="note">
+          <b>${warning.label}</b>
+          <span>${warning.text}</span>
+          <small>${warning.routeCount} route${warning.routeCount > 1 ? 's' : ''} sous tension autour de la province.</small>
+        </div>
+      `).join('')}
       ${comparisons.map((entry, index) => `
         <article class="province-logistics-route province-logistics-route--${entry.tone} ${index === 0 ? 'is-priority' : ''}">
           <div class="province-logistics-route__rank">${index === 0 ? 'Priorité' : `#${index + 1}`}</div>

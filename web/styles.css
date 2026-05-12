@@ -8677,3 +8677,30 @@ button { font: inherit; }
 .culture-tension-marker-card--trend-falling p mark { background: rgba(74, 222, 128, 0.14); color: #bbf7d0; }
 .culture-tension-marker-card--trend-stable p mark { background: rgba(251, 191, 36, 0.14); color: #fde68a; }
 .culture-tension-marker-card--trend-unknown p mark { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
+.province-logistics-bottleneck-warning {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+.province-logistics-bottleneck-warning b {
+  color: #e0f2fe;
+}
+.province-logistics-bottleneck-warning span {
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.province-logistics-bottleneck-warning small {
+  color: var(--muted);
+}
+.province-logistics-bottleneck-warning--high {
+  border-color: rgba(251, 113, 133, 0.5);
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.28), rgba(15, 23, 42, 0.62));
+}
+.province-logistics-bottleneck-warning--medium {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.24), rgba(15, 23, 42, 0.58));
+}
