@@ -1489,6 +1489,62 @@ function renderResolvedConflictDeltas(province, shell, focusContext, intrigueVie
   `;
 }
 
+function buildMilitaryPlanImpactSummary(province, shell, actionQueue) {
+  const outcome = buildConflictOutcomePreview(province, shell);
+  const affectedProvinceLabels = [province.label, ...province.neighborIds
+    .map((provinceId) => shell.provinces.find((candidate) => candidate.provinceId === provinceId)?.label)
+    .filter(Boolean)]
+    .slice(0, 4);
+  const readyActions = actionQueue.filter((entry) => entry.status === 'ready');
+  const riskyActions = actionQueue.filter((entry) => entry.status === 'risky');
+  const blockedActions = actionQueue.filter((entry) => entry.status === 'blocked');
+  const supplyRisk = province.supplyLevel === 'collapsed' || province.supplyLevel === 'disrupted'
+    ? 'routage fragile'
+    : province.supplyLevel === 'strained'
+      ? 'ravitaillement à surveiller'
+      : 'ravitaillement stable';
+
+  return {
+    turn: state.turn,
+    tone: blockedActions.length > 0 ? 'danger' : riskyActions.length > readyActions.length ? 'warning' : 'ready',
+    summary: actionQueue.length === 0
+      ? 'Aucune action militaire en file: le plan de tour ne modifie pas encore la carte.'
+      : `${actionQueue.length} action${actionQueue.length > 1 ? 's' : ''} en file: ${readyActions.length} prête${readyActions.length > 1 ? 's' : ''}, ${riskyActions.length} risquée${riskyActions.length > 1 ? 's' : ''}, ${blockedActions.length} bloquée${blockedActions.length > 1 ? 's' : ''}.`,
+    metrics: [
+      { label: 'Fronts / provinces', value: affectedProvinceLabels.join(', ') || province.label },
+      { label: 'Pression attendue', value: outcome.tone === 'success' ? 'pression en baisse' : outcome.tone === 'danger' ? 'pression en hausse' : 'pression contestée' },
+      { label: 'Contrôle probable', value: outcome.tone === 'success' ? 'contrôle consolidé' : outcome.tone === 'danger' ? 'contrôle menacé' : 'contrôle disputé' },
+      { label: 'Risque ravitaillement', value: supplyRisk },
+    ],
+  };
+}
+
+function renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const impact = buildMilitaryPlanImpactSummary(province, shell, actionQueue);
+
+  return `
+    <section class="military-plan-impact military-plan-impact--${impact.tone}" aria-label="Impact du plan militaire en file">
+      <div class="military-plan-impact__header">
+        <div>
+          <span>Impact du plan</span>
+          <strong>Tour ${impact.turn}</strong>
+        </div>
+        <small>mis à jour avec la file</small>
+      </div>
+      <p>${impact.summary}</p>
+      <div class="military-plan-impact__metrics">
+        ${impact.metrics.map((metric) => `
+          <article class="military-plan-impact__metric">
+            <span>${metric.label}</span>
+            <strong>${metric.value}</strong>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -1533,6 +1589,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
+      ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
       ${renderProvinceClimateTurnReport(province)}
