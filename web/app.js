@@ -1426,16 +1426,35 @@ function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = 
         return null;
       }
 
+      const selectedBlocker = urgentBlocker ?? mitigation;
+      const focusType = urgentBlocker
+        ? urgentBlocker.tone === 'delayed'
+          ? 'critical-season'
+          : 'hazard-zone'
+        : 'mitigation';
+
       return {
         provinceId: province.provinceId,
         provinceLabel: province.label,
-        tone: urgentBlocker?.tone ?? 'safe',
-        status: urgentBlocker?.status ?? mitigation.status,
-        label: urgentBlocker?.label ?? mitigation.label,
-        hazard: urgentBlocker?.hazard ?? mitigation.hazard,
-        action: urgentBlocker?.trigger ?? mitigation.trigger,
-        detail: urgentBlocker?.detail ?? mitigation.detail,
-        priority: urgentBlocker?.priority ?? 4,
+        tone: selectedBlocker.tone,
+        status: selectedBlocker.status,
+        label: selectedBlocker.label,
+        hazard: selectedBlocker.hazard,
+        action: selectedBlocker.trigger,
+        detail: selectedBlocker.detail,
+        priority: selectedBlocker.priority ?? 4,
+        focusTarget: {
+          type: focusType,
+          provinceId: province.provinceId,
+          targetId: `${province.provinceId}:${focusType}`,
+          label: focusType === 'critical-season'
+            ? `Saison critique · ${selectedBlocker.hazard}`
+            : focusType === 'mitigation'
+              ? `Mitigation · ${selectedBlocker.hazard}`
+              : `Zone de danger · ${selectedBlocker.hazard}`,
+          reason: selectedBlocker.detail,
+          mitigation: selectedBlocker.label.includes('Mitigation') ? selectedBlocker.hazard : selectedBlocker.action,
+        },
       };
     })
     .filter(Boolean)
@@ -1480,6 +1499,14 @@ function renderMapClimatePreparednessSummary(summary) {
             <b>${warning.provinceLabel}</b>
             <span>${warning.status}: ${warning.hazard}</span>
             <small>${warning.action} · ${warning.label}</small>
+            <button
+              type="button"
+              data-climate-preparedness-focus="true"
+              data-province-id="${warning.focusTarget.provinceId}"
+              data-climate-focus-type="${warning.focusTarget.type}"
+              data-climate-focus-id="${warning.focusTarget.targetId}"
+              aria-label="Focaliser ${warning.focusTarget.label}: ${warning.focusTarget.reason}"
+            >Voir ${warning.focusTarget.label}</button>
           </li>
         `).join('')}
       </ul>
@@ -4809,6 +4836,21 @@ function render() {
         state.selectedCityId = cityId;
         state.hoveredCityId = cityId;
       }
+
+      const viewport = document.querySelector('.map-viewport');
+      centerMapOnProvince(provinceId, viewport);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-climate-preparedness-focus]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.provinceId;
+      state.activeOverlaySlot = 'climate-overlay';
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.popupProvinceId = provinceId;
+      state.mobilePanelSection = element.dataset.climateFocusType === 'mitigation' ? 'details' : 'overlay';
 
       const viewport = document.querySelector('.map-viewport');
       centerMapOnProvince(provinceId, viewport);
