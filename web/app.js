@@ -2985,6 +2985,90 @@ function renderProjectedFrontStability(province, shell, focusContext, intrigueVi
   `;
 }
 
+function buildCriticalFrontRiskWarnings(province, projection) {
+  const risks = [];
+  const hasDriver = (label) => projection.drivers.some((driver) => driver.label === label);
+
+  if (projection.tone === 'danger') {
+    risks.push({
+      tone: 'critical',
+      label: 'Risque critique avant validation',
+      summary: 'Le plan laisse une brèche ou une perte de contrôle probable.',
+      driver: projection.drivers[0]?.label ?? 'Projection',
+    });
+  } else if (projection.tone === 'warning') {
+    risks.push({
+      tone: 'watch',
+      label: 'Risque à surveiller',
+      summary: 'La stabilité reste partielle: confirmer l’appui avant fin de tour.',
+      driver: projection.drivers[0]?.label ?? 'Projection',
+    });
+  }
+
+  if (hasDriver('Fatigue / supply')) {
+    risks.push({
+      tone: ['collapsed', 'disrupted'].includes(province.supplyLevel) ? 'critical' : 'watch',
+      label: 'Fatigue / supply résiduelle',
+      summary: `Ravitaillement ${province.supplyLevel}: l’action peut rester difficile à rattraper au tour suivant.`,
+      driver: 'Fatigue / supply',
+    });
+  }
+
+  if (hasDriver('Front voisin')) {
+    risks.push({
+      tone: projection.tone === 'ready' ? 'watch' : 'critical',
+      label: 'Pression voisine persistante',
+      summary: 'Un front adjacent peut propager la pression malgré l’action en file.',
+      driver: 'Front voisin',
+    });
+  }
+
+  if (risks.length === 0) {
+    risks.push({
+      tone: 'covered',
+      label: 'Risque acceptable',
+      summary: 'Le plan couvre correctement le front pour ce tour.',
+      driver: projection.drivers[0]?.label ?? 'Terrain',
+    });
+  }
+
+  const rank = { critical: 1, watch: 2, covered: 3 };
+  return risks
+    .sort((left, right) => rank[left.tone] - rank[right.tone] || left.label.localeCompare(right.label))
+    .slice(0, 3);
+}
+
+function renderCriticalFrontRiskWarnings(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const projection = buildProjectedFrontStability(province, shell, actionQueue);
+  const risks = buildCriticalFrontRiskWarnings(province, projection);
+  const leadRisk = risks[0] ?? null;
+
+  return `
+    <section class="critical-front-risks critical-front-risks--${leadRisk?.tone ?? 'covered'}" aria-label="Risques critiques restants du front">
+      <div class="critical-front-risks__header">
+        <div>
+          <span>Risques restants</span>
+          <strong>${leadRisk?.label ?? 'Risque acceptable'}</strong>
+        </div>
+        <small>${risks.length} signal${risks.length > 1 ? 's' : ''}</small>
+      </div>
+      <div class="critical-front-risks__list">
+        ${risks.map((risk) => `
+          <article class="critical-front-risk critical-front-risk--${risk.tone}">
+            <div>
+              <strong>${risk.label}</strong>
+              <code>${risk.driver}</code>
+            </div>
+            <p>${risk.summary}</p>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+
 
 function buildConflictReadinessWarnings(shell, intrigueView = null) {
   return shell.provinces
@@ -3347,6 +3431,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
       ${renderProjectedFrontStability(province, shell, focusContext, intrigueView)}
+      ${renderCriticalFrontRiskWarnings(province, shell, focusContext, intrigueView)}
       ${renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView)}
       ${renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}

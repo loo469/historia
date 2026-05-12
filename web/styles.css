@@ -2592,6 +2592,63 @@ button { font: inherit; }
 .projected-front-stability--warning { border-color: rgba(251, 191, 36, 0.34); }
 .projected-front-stability--danger { border-color: rgba(251, 113, 133, 0.4); }
 .projected-front-stability--neutral { border-color: rgba(148, 163, 184, 0.22); }
+.critical-front-risks {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(127, 29, 29, 0.18));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+.critical-front-risks__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.critical-front-risks__header span,
+.critical-front-risks__header small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.critical-front-risks__header strong {
+  display: block;
+  margin-top: 3px;
+}
+.critical-front-risks__list {
+  display: grid;
+  gap: 8px;
+}
+.critical-front-risk {
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.critical-front-risk div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.critical-front-risk code {
+  color: #bae6fd;
+  font-size: 11px;
+}
+.critical-front-risk p {
+  margin: 5px 0 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.critical-front-risks--critical,
+.critical-front-risk--critical { border-color: rgba(251, 113, 133, 0.42); }
+.critical-front-risks--watch,
+.critical-front-risk--watch { border-color: rgba(251, 191, 36, 0.34); }
+.critical-front-risks--covered,
+.critical-front-risk--covered { border-color: rgba(74, 222, 128, 0.28); }
 .culture-opportunity-reminders {
   display: grid;
   gap: 10px;
