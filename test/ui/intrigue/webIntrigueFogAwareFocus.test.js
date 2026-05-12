@@ -129,3 +129,19 @@ test('queued intrigue actions show cumulative exposure risk and mitigations', ()
   assert.match(stylesSource, /province-intrigue-cumulative-risk--danger/);
   assert.match(stylesSource, /province-intrigue-cumulative-risk--warning/);
 });
+
+test('queued intrigue preview shows exposure deltas before confirmation', () => {
+  assert.match(webAppSource, /function buildIntrigueQueueChangePreview/);
+  assert.match(webAppSource, /Aperçu avant confirmation des changements intrigue/);
+  assert.match(webAppSource, /Avant confirmation/);
+  assert.match(webAppSource, /Ajouter/);
+  assert.match(webAppSource, /Retirer/);
+  assert.match(webAppSource, /Remplacer/);
+  assert.match(webAppSource, /Alternative sûre: \$\{queueChangePreview\.safeAlternative\}/);
+  assert.match(webAppSource, /Prévisualisation fog-safe: seuls delta, province visible et type de réponse sont exposés/);
+  assert.match(webAppSource, /Remplacer par \$\{fallbackAction\} conserve un repli prudent sans révéler cellule ou cible/);
+  assert.match(stylesSource, /province-intrigue-queue-change-preview/);
+  assert.match(stylesSource, /province-intrigue-queue-change-preview__scenario--ajout/);
+  assert.match(stylesSource, /province-intrigue-queue-change-preview__scenario--retrait/);
+  assert.match(stylesSource, /province-intrigue-queue-change-preview__scenario--remplacement/);
+});
