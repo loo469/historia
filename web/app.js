@@ -441,6 +441,7 @@ const state = {
     uncertain: false,
     probable: false,
   },
+  atlasClimateForecastMode: 'current',
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
   militaryOutcomeMarkerFilters: {
@@ -467,6 +468,7 @@ function applyMapScenario(scenario) {
   state.selectedMapId = scenario.id;
   state.turn = 1;
   state.seasonIndex = 0;
+  state.atlasClimateForecastMode = 'current';
   state.mapZoom = 1;
   state.mapPanX = 0;
   state.mapPanY = 0;
@@ -4301,20 +4303,90 @@ function getWorldClimateSeasonCue(province, seasonIndex = state.seasonIndex) {
   };
 }
 
-function buildWorldClimateLayer(shell, seasonIndex = state.seasonIndex) {
-  const entries = shell.provinces.map((province) => getWorldClimateSeasonCue(province, seasonIndex));
+function getAtlasClimateForecastSeasonIndex(mode, currentSeasonIndex = state.seasonIndex) {
+  return mode === 'next-season' || mode === 'short-alert'
+    ? (currentSeasonIndex + 1) % seasonLabels.length
+    : currentSeasonIndex;
+}
+
+function buildAtlasClimateForecastTimeline(shell, mode = state.atlasClimateForecastMode, currentSeasonIndex = state.seasonIndex) {
+  const targetSeasonIndex = getAtlasClimateForecastSeasonIndex(mode, currentSeasonIndex);
+  const currentEntries = shell.provinces.map((province) => getWorldClimateSeasonCue(province, currentSeasonIndex));
+  const targetEntries = shell.provinces.map((province) => getWorldClimateSeasonCue(province, targetSeasonIndex));
+  const currentByProvinceId = new Map(currentEntries.map((entry) => [entry.provinceId, entry]));
+  const urgentCurrentEntries = currentEntries.filter((entry) => entry.disaster || entry.tone === 'disaster');
+  const decisionChanges = targetEntries
+    .map((entry) => {
+      const current = currentByProvinceId.get(entry.provinceId);
+      const changedDecision = Boolean(entry.disaster || entry.anomaly || current?.tone !== entry.tone || current?.seasonalPressure !== entry.seasonalPressure);
+      return {
+        ...entry,
+        currentTone: current?.tone ?? 'seasonal',
+        decisionReason: entry.disaster
+          ? 'catastrophe urgente à garder visible'
+          : entry.anomaly
+            ? 'anomalie qui peut modifier la priorité de carte'
+            : current?.seasonalPressure !== entry.seasonalPressure
+              ? 'variation saisonnière utile pour le prochain tour'
+              : 'changement faible, conservé en contexte',
+        changedDecision,
+      };
+    })
+    .filter((entry) => mode === 'current' ? entry.disaster || entry.anomaly : entry.changedDecision)
+    .sort((left, right) => (left.disaster ? 0 : left.anomaly ? 1 : 2) - (right.disaster ? 0 : right.anomaly ? 1 : 2)
+      || left.provinceLabel.localeCompare(right.provinceLabel));
+
+  return {
+    mode,
+    currentSeason: seasonLabels[currentSeasonIndex] ?? seasonLabels[0],
+    targetSeason: seasonLabels[targetSeasonIndex] ?? seasonLabels[0],
+    entries: mode === 'current' ? currentEntries : targetEntries,
+    decisionChanges,
+    urgentCurrentEntries,
+    summary: mode === 'current'
+      ? 'État actuel: biomes, anomalies et catastrophes visibles sans simulation parallèle.'
+      : mode === 'next-season'
+        ? `Prochaine saison (${seasonLabels[targetSeasonIndex] ?? seasonLabels[0]}): seuls les changements qui modifient une décision de carte remontent.`
+        : `Alerte court terme: ${urgentCurrentEntries.length} risque${urgentCurrentEntries.length > 1 ? 's' : ''} urgent${urgentCurrentEntries.length > 1 ? 's' : ''} reste${urgentCurrentEntries.length > 1 ? 'nt' : ''} visible${urgentCurrentEntries.length > 1 ? 's' : ''} pendant la prévision.`,
+  };
+}
+
+function buildWorldClimateLayer(shell, seasonIndex = state.seasonIndex, mode = state.atlasClimateForecastMode) {
+  const timeline = buildAtlasClimateForecastTimeline(shell, mode, seasonIndex);
+  const entries = timeline.entries;
   const disasterCount = entries.filter((entry) => entry.disaster).length;
   const anomalyCount = entries.filter((entry) => entry.anomaly && !entry.disaster).length;
   const biomeCount = new Set(entries.map((entry) => entry.biome)).size;
 
   return {
     entries,
-    season: seasonLabels[seasonIndex] ?? seasonLabels[0],
+    season: timeline.targetSeason,
     biomeCount,
     disasterCount,
     anomalyCount,
-    summary: `${biomeCount} biomes visibles en ${seasonLabels[seasonIndex] ?? seasonLabels[0]} · ${disasterCount} catastrophe${disasterCount > 1 ? 's' : ''} · ${anomalyCount} anomalie${anomalyCount > 1 ? 's' : ''}.`,
+    timeline,
+    summary: `${biomeCount} biomes visibles en ${timeline.targetSeason} · ${disasterCount} catastrophe${disasterCount > 1 ? 's' : ''} · ${anomalyCount} anomalie${anomalyCount > 1 ? 's' : ''}. ${timeline.summary}`,
   };
+}
+
+function renderAtlasClimateForecastToggles(layer) {
+  if (state.activeOverlaySlot !== 'climate-overlay') {
+    return '';
+  }
+
+  const options = [
+    ['current', 'Actuel'],
+    ['next-season', 'Prochaine saison'],
+    ['short-alert', 'Alerte courte'],
+  ];
+
+  return `
+    <div class="map-world-climate__toggles" aria-label="Bascules temporelles climat atlas">
+      ${options.map(([mode, label]) => `
+        <button type="button" class="map-world-climate__toggle ${layer.timeline.mode === mode ? 'is-active' : ''}" data-atlas-climate-forecast-mode="${mode}" aria-pressed="${layer.timeline.mode === mode}">${label}</button>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderWorldClimateLayerSummary(layer) {
@@ -4322,8 +4394,12 @@ function renderWorldClimateLayerSummary(layer) {
     return '';
   }
 
-  const highlighted = layer.entries
-    .filter((entry) => entry.disaster || entry.anomaly)
+  const highlighted = (layer.timeline.mode === 'short-alert'
+    ? layer.timeline.urgentCurrentEntries.concat(layer.timeline.decisionChanges)
+    : layer.timeline.decisionChanges.length > 0
+      ? layer.timeline.decisionChanges
+      : layer.entries.filter((entry) => entry.disaster || entry.anomaly))
+    .filter((entry, index, all) => all.findIndex((candidate) => candidate.provinceId === entry.provinceId) === index)
     .slice(0, 3);
 
   return `
@@ -4332,13 +4408,14 @@ function renderWorldClimateLayerSummary(layer) {
         <strong>Carte monde climat · ${layer.season}</strong>
         <span>${layer.biomeCount} biomes · ${layer.disasterCount} catastrophes · ${layer.anomalyCount} anomalies</span>
       </div>
+      ${renderAtlasClimateForecastToggles(layer)}
       <p>${layer.summary}</p>
       <ul class="map-world-climate__list">
         ${(highlighted.length > 0 ? highlighted : layer.entries.slice(0, 3)).map((entry) => `
           <li class="map-world-climate__item map-world-climate__item--${entry.tone}">
             <b>${entry.provinceLabel}</b>
             <span>${entry.summary}</span>
-            <small>${entry.detail}</small>
+            <small>${entry.decisionReason ?? entry.detail}</small>
           </li>
         `).join('')}
       </ul>
@@ -10901,7 +10978,7 @@ function render() {
   });
   const climateSeverityLegend = buildClimateSeverityLegend(postCommitClimateMarkers, climateMarkerDensity, shell);
   const climateFollowUpDebt = buildClimateFollowUpDebtSummary(postCommitClimateMarkers, climateSeverityLegend.mitigationSequence ?? []);
-  const worldClimateLayer = buildWorldClimateLayer(shell, state.seasonIndex);
+  const worldClimateLayer = buildWorldClimateLayer(shell, state.seasonIndex, state.atlasClimateForecastMode);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -11617,6 +11694,14 @@ function render() {
     element.addEventListener('click', () => {
       const key = element.dataset.atlasIntrigueSignalFilter;
       state.atlasIntrigueSignalFilters[key] = !state.atlasIntrigueSignalFilters[key];
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-atlas-climate-forecast-mode]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.atlasClimateForecastMode = element.dataset.atlasClimateForecastMode ?? 'current';
+      state.activeOverlaySlot = 'climate-overlay';
       render();
     });
   });

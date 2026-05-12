@@ -432,6 +432,25 @@ button { font: inherit; }
 .map-world-climate__item--anomaly,
 .map-world-climate__item--watch { border-color: rgba(251, 191, 36, 0.34); }
 .map-world-climate__item--seasonal { border-color: rgba(74, 222, 128, 0.28); }
+.map-world-climate__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map-world-climate__toggle {
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  background: rgba(15, 23, 42, 0.58);
+  color: #dbeafe;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.map-world-climate__toggle.is-active {
+  color: #082f49;
+  background: #7dd3fc;
+  border-color: rgba(186, 230, 253, 0.74);
+}
 
 .map-climate-severity-legend {
   display: grid;
