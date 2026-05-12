@@ -11,6 +11,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /buildProvinceLogisticsBottleneckPriorities/);
   assert.match(webAppSource, /buildProvinceLogisticsInterventionTradeoff/);
   assert.match(webAppSource, /buildProvinceLogisticsInterventionSequence/);
+  assert.match(webAppSource, /buildProvinceLogisticsPressureComparison/);
+  assert.match(webAppSource, /renderProvinceLogisticsPressureComparison/);
   assert.match(webAppSource, /province-logistics-bottleneck-warning/);
   assert.match(webAppSource, /province-logistics-bottleneck-priorities/);
   assert.match(webAppSource, /Priorités aval/);
@@ -19,6 +21,12 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Compromis d’intervention logistique/);
   assert.match(webAppSource, /Séquence recommandée d’interventions logistiques/);
   assert.match(webAppSource, /Séquence recommandée/);
+  assert.match(webAppSource, /Prévu vs résolu/);
+  assert.match(webAppSource, /Comparaison pression logistique prévue et résolue/);
+  assert.match(webAppSource, /Reste à traiter/);
+  assert.match(webAppSource, /goulot amélioré/);
+  assert.match(webAppSource, /pénurie persistante/);
+  assert.match(webAppSource, /nouvelle contrainte aval/);
   assert.match(webAppSource, /alternative équivalente/);
   assert.match(webAppSource, /ordre dépendant du choix militaire/);
   assert.match(webAppSource, /ordre dépendant du choix culturel\/production/);
@@ -126,6 +134,9 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(stylesSource, /province-logistics-bottleneck-priorities/);
   assert.match(stylesSource, /province-logistics-bottleneck-tradeoff/);
   assert.match(stylesSource, /province-logistics-intervention-sequence/);
+  assert.match(stylesSource, /province-logistics-pressure-comparison/);
+  assert.match(stylesSource, /province-logistics-pressure-comparison__row--improved/);
+  assert.match(stylesSource, /province-logistics-pressure-comparison__row--danger/);
   assert.match(stylesSource, /province-logistics-bottleneck-priority--high/);
   assert.match(stylesSource, /province-logistics-bottleneck-priority--medium/);
   assert.match(stylesSource, /province-logistics-bottleneck--low/);
