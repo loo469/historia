@@ -5845,6 +5845,43 @@ button { font: inherit; }
   color: #bae6fd;
 }
 
+.province-intrigue-detection-projection {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+}
+.province-intrigue-detection-projection--danger { border-color: rgba(248, 113, 113, 0.34); }
+.province-intrigue-detection-projection--warning { border-color: rgba(250, 204, 21, 0.3); }
+.province-intrigue-detection-projection--watch { border-color: rgba(96, 165, 250, 0.28); }
+.province-intrigue-detection-projection--mitigated { border-color: rgba(34, 197, 94, 0.32); }
+.province-intrigue-detection-projection--masked { border-color: rgba(148, 163, 184, 0.18); }
+.province-intrigue-detection-projection__header,
+.province-intrigue-detection-projection__scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-intrigue-detection-projection__header span,
+.province-intrigue-detection-projection p,
+.province-intrigue-detection-projection small {
+  color: var(--muted);
+}
+.province-intrigue-detection-projection p {
+  margin: 7px 0;
+}
+.province-intrigue-detection-projection__scale {
+  flex-wrap: wrap;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.28);
+}
+.province-intrigue-detection-projection__scale b {
+  color: #bfdbfe;
+}
+
 .province-intrigue-risk-warnings {
   margin-top: 12px;
   padding: 12px;

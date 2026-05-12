@@ -2226,6 +2226,86 @@ function buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) 
     .slice(0, 3);
 }
 
+function buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
+  const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
+  const response = drillDown?.quickResponses?.find((candidate) => candidate.code === drillDown.recommendedResponseCode)
+    ?? drillDown?.quickResponses?.[0]
+    ?? null;
+  const queuedIntrigueAction = actionQueue.find((entry) => entry.label.includes('Signal local') || entry.label.includes('Signal prioritaire')) ?? null;
+
+  if (!queuedIntrigueAction || !drillDown || !response) {
+    return {
+      empty: true,
+      tone: 'masked',
+      label: 'Aucune réponse intrigue en file',
+      summary: 'Aucune projection de détection: queuez une réponse intrigue pour estimer la tendance sans lever le brouillard.',
+      confidence: 'information limitée',
+      beforeLabel: '—',
+      afterLabel: '—',
+      deltaLabel: 'stable',
+      fogLimit: 'Le brouillard conserve les cellules, relais et objectifs masqués.',
+    };
+  }
+
+  const localOperations = (intrigueView?.panels?.operations ?? []).filter((operation) => operation.locationId === province.provinceId);
+  const visibleBaseRisk = localOperations.length > 0
+    ? Math.max(...localOperations.map((operation) => operation.detectionRisk))
+    : drillDown.riskBand === 'high'
+      ? 62
+      : drillDown.riskBand === 'medium'
+        ? 42
+        : 24;
+  const responseDeltaByCode = {
+    contenir: -Math.max(6, Math.round(response.heatGenerated / 2)),
+    surveiller: Math.max(1, Math.round(response.heatGenerated / 3)),
+    infiltrer: Math.max(4, Math.round(response.heatGenerated / 2)),
+    exposer: Math.max(10, response.heatGenerated),
+  };
+  const rawDelta = responseDeltaByCode[response.code] ?? Math.round(response.heatGenerated / 2);
+  const afterRisk = Math.max(0, Math.min(100, visibleBaseRisk + rawDelta));
+  const confidence = localOperations.length > 0
+    ? 'visible'
+    : drillDown.criticality === 'critical'
+      ? 'partielle'
+      : 'brouillard';
+  const tone = rawDelta < 0 ? 'mitigated' : afterRisk >= 60 ? 'danger' : afterRisk >= 40 ? 'warning' : 'watch';
+  const deltaLabel = rawDelta < 0 ? `${rawDelta}` : `+${rawDelta}`;
+
+  return {
+    empty: false,
+    tone,
+    label: `${response.label}: risque ${deltaLabel}`,
+    summary: `Projection détection ${visibleBaseRisk} → ${afterRisk}: ${response.aftermathSummary ?? response.summary}.`,
+    confidence: confidence === 'visible' ? 'confiance visible' : confidence === 'partielle' ? 'confiance partielle' : 'confiance sous brouillard',
+    beforeLabel: `${visibleBaseRisk}`,
+    afterLabel: `${afterRisk}`,
+    deltaLabel,
+    fogLimit: confidence === 'visible'
+      ? 'Basé sur les opérations visibles; les relais non confirmés restent masqués.'
+      : 'Projection prudente: source, cellule et objectif exacts restent masqués par le brouillard.',
+  };
+}
+
+function renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView) {
+  const projection = buildQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
+
+  return `
+    <section class="province-intrigue-detection-projection province-intrigue-detection-projection--${projection.tone}" aria-label="Projection du risque de détection intrigue">
+      <div class="province-intrigue-detection-projection__header">
+        <strong>Projection détection intrigue</strong>
+        <span>${projection.confidence}</span>
+      </div>
+      <p>${projection.summary}</p>
+      <div class="province-intrigue-detection-projection__scale">
+        <span>Avant <b>${projection.beforeLabel}</b></span>
+        <span>Après <b>${projection.afterLabel}</b></span>
+        <span>Tendance <b>${projection.deltaLabel}</b></span>
+      </div>
+      <small>${projection.fogLimit}</small>
+    </section>
+  `;
+}
+
 function renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) {
   const warnings = buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView);
 
@@ -2378,6 +2458,7 @@ function renderSelectedProvinceActionQueue(province, shell, focusContext, intrig
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const resolution = summarizeTurnResolutionPreview(province, actionQueue);
   const intrigueWarnings = renderProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView);
+  const intrigueDetectionProjection = renderQueuedIntrigueDetectionRiskProjection(province, actionQueue, intrigueView);
   const climateHazardBlockers = renderProvinceClimateHazardBlockers(province, actionQueue);
 
   return `
@@ -2413,6 +2494,7 @@ function renderSelectedProvinceActionQueue(province, shell, focusContext, intrig
         `).join('')}
       </ol>
     </section>
+    ${intrigueDetectionProjection}
     ${intrigueWarnings}
     ${climateHazardBlockers}
   `;
