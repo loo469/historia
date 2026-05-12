@@ -419,6 +419,7 @@ const state = {
     alerts: true,
     sabotage: true,
   },
+  acceptedRecommendedMilitaryAction: null,
 };
 
 function getSelectedMapScenario() {
@@ -2190,7 +2191,8 @@ function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = 
 
       return {
         provinceId: province.provinceId,
-        provinceLabel: province.label,
+        provinceId: province.provinceId,
+    provinceLabel: province.label,
         tone: selectedBlocker.tone,
         status: selectedBlocker.status,
         label: selectedBlocker.label,
@@ -3715,6 +3717,48 @@ function renderFrontPriorityRanking(shell, intrigueView = null) {
 
 
 
+function buildRecommendedMilitaryQueueState(province, recommendedAction) {
+  const acceptedAction = state.acceptedRecommendedMilitaryAction;
+
+  if (!recommendedAction) {
+    return {
+      status: 'empty',
+      label: 'Aucune recommandation à engager',
+      detail: 'La carte reste en surveillance: aucun ordre prioritaire ne peut être ajouté maintenant.',
+      buttonLabel: 'Rien à ajouter',
+      disabled: true,
+    };
+  }
+
+  if (acceptedAction?.provinceId === province.provinceId && acceptedAction?.actionCode === recommendedAction.actionCode) {
+    return {
+      status: 'queued',
+      label: 'Déjà en file depuis la carte',
+      detail: `${recommendedAction.actionCode} reste attachée à ${province.label} sans doublon ambigu.`,
+      buttonLabel: 'Déjà en file',
+      disabled: true,
+    };
+  }
+
+  if (acceptedAction) {
+    return {
+      status: 'replace',
+      label: 'Remplace l’action carte précédente',
+      detail: `${recommendedAction.actionCode} remplacera ${acceptedAction.actionCode} (${acceptedAction.provinceLabel}).`,
+      buttonLabel: 'Remplacer par cette action',
+      disabled: false,
+    };
+  }
+
+  return {
+    status: 'valid',
+    label: 'Prête à ajouter à la file',
+    detail: `${recommendedAction.orderCost} · ${recommendedAction.mainRisk}`,
+    buttonLabel: 'Ajouter à la file',
+    disabled: false,
+  };
+}
+
 function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
   const [priority] = buildFrontPriorityRanking(shell, intrigueView);
 
@@ -3722,6 +3766,7 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
     return {
       empty: true,
       tone: 'ready',
+      provinceId: null,
       provinceLabel: 'Aucun front prioritaire',
       actionCode: 'WAR-HOLD',
       actionLabel: 'Aucune action militaire recommandée',
@@ -3732,6 +3777,8 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
         { label: 'Risque critique restant', value: 'aucun signal critique prioritaire', source: 'calculé' },
       ],
       sideEffect: 'Dégradation propre: garder la file militaire actuelle ou surveiller les fronts voisins.',
+      queueState: buildRecommendedMilitaryQueueState(null, null),
+      horizon: 'Horizon prévu: surveillance au prochain tour.',
     };
   }
 
@@ -3741,6 +3788,7 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
     return {
       empty: true,
       tone: 'warning',
+      provinceId: priority.provinceId,
       provinceLabel: priority.provinceLabel,
       actionCode: priority.actionCode,
       actionLabel: 'Action introuvable',
@@ -3751,6 +3799,8 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
         { label: 'Risque critique restant', value: priority.leadRisk, source: 'calculé' },
       ],
       sideEffect: 'Province prioritaire introuvable: ne pas empiler de nouvel ordre sans vérifier la sélection.',
+      queueState: buildRecommendedMilitaryQueueState(null, null),
+      horizon: 'Horizon prévu: vérifier la sélection avant engagement.',
     };
   }
 
@@ -3780,6 +3830,7 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
       : criticalCount > 0 || watchCount > 0
         ? 'Urgence qui demeure: prévoir un suivi au prochain tour.'
         : 'Effet secondaire favorable: l’urgence locale baisse sans surcharge visible.';
+  const queueState = buildRecommendedMilitaryQueueState(province, recommendedAction);
 
   return {
     empty: !recommendedAction,
@@ -3788,6 +3839,8 @@ function buildRecommendedMilitaryActionPreview(shell, intrigueView = null) {
     actionCode: recommendedAction?.actionCode ?? 'WAR-HOLD',
     actionLabel: recommendedAction?.label ?? 'Aucune action militaire recommandée',
     confidence: recommendedAction ? 'calculé: action recommandée + projection actuelle' : 'estimé prudent: aucune action disponible',
+    queueState,
+    horizon: recommendedAction?.expectedResult ?? 'Horizon prévu: aucun engagement militaire recommandé.',
     effects: [
       { label: 'Pression', value: pressureValue, source: projection.drivers.some((driver) => driver.label === 'Pression') ? 'calculé' : 'estimé prudent' },
       { label: 'Stabilité projetée', value: stabilityValue, source: 'calculé' },
@@ -3818,6 +3871,14 @@ function renderRecommendedMilitaryActionPreview(shell, intrigueView = null) {
             <small>${effect.source}</small>
           </article>
         `).join('')}
+      </div>
+      <div class="recommended-action-preview__queue recommended-action-preview__queue--${preview.queueState.status}">
+        <div>
+          <strong>${preview.queueState.label}</strong>
+          <span>${preview.queueState.detail}</span>
+          <small>${preview.horizon}</small>
+        </div>
+        <button type="button" data-queue-recommended-action="true" data-province-id="${preview.provinceId ?? ''}" data-action-code="${preview.actionCode}" ${preview.queueState.disabled ? 'disabled' : ''}>${preview.queueState.buttonLabel}</button>
       </div>
       <small class="recommended-action-preview__side-effect">${preview.sideEffect}</small>
     </section>
@@ -7078,6 +7139,32 @@ function render() {
 
       const viewport = document.querySelector('.map-viewport');
       centerMapOnProvince(provinceId, viewport);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-queue-recommended-action]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const provinceId = element.dataset.provinceId;
+      const actionCode = element.dataset.actionCode;
+      const shell = getShell();
+      const province = shell.provinces.find((candidate) => candidate.provinceId === provinceId) ?? null;
+
+      if (!province || !actionCode) {
+        return;
+      }
+
+      state.acceptedRecommendedMilitaryAction = {
+        provinceId,
+        provinceLabel: province.label,
+        actionCode,
+        turn: state.turn,
+      };
+      state.selectedProvinceId = provinceId;
+      state.focusedProvinceId = provinceId;
+      state.readinessFocusProvinceId = provinceId;
+      state.readinessFocusTone = 'ready';
+      state.lastTurnSummary = `${actionCode} ajouté à la file militaire depuis la carte pour ${province.label}.`;
       render();
     });
   });
