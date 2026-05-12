@@ -1990,13 +1990,18 @@ function buildConflictReadinessWarnings(shell, intrigueView = null) {
       const plannedAction = actionQueue[0] ?? null;
       const score = (outcome.tone === 'danger' ? 40 : outcome.tone === 'warning' ? 24 : 8) + (blockedCount * 8) + (riskyCount * 4) + (province.contested ? 6 : 0);
 
+      const tone = blockedCount > 0 || outcome.tone === 'danger' ? 'danger' : riskyCount > 0 || outcome.tone === 'warning' ? 'warning' : 'ready';
+
       return {
         provinceId: province.provinceId,
         provinceLabel: province.label,
+        focusTargetLabel: province.contested ? 'front contesté' : `province ${province.label}`,
         actionCode: plannedAction?.actionCode ?? 'WAR-HOLD',
         actionLabel: plannedAction?.label ?? 'Aucune action planifiée',
-        tone: blockedCount > 0 || outcome.tone === 'danger' ? 'danger' : riskyCount > 0 || outcome.tone === 'warning' ? 'warning' : 'ready',
-        score,
+        tone,
+        severityRank: tone === 'danger' ? 1 : tone === 'warning' ? 2 : 3,
+        expectedImpact: score,
+        priorityLabel: tone === 'danger' ? 'Priorité critique' : tone === 'warning' ? 'À vérifier' : 'Couvert',
         detail: outcome.tone === 'danger'
           ? `${outcome.title}: défense et ravitaillement restent mal couverts.`
           : outcome.tone === 'warning'
@@ -2004,7 +2009,7 @@ function buildConflictReadinessWarnings(shell, intrigueView = null) {
             : `${outcome.title}: couverture suffisante avant fin de tour.`,
       };
     })
-    .sort((left, right) => right.score - left.score || left.provinceLabel.localeCompare(right.provinceLabel))
+    .sort((left, right) => left.severityRank - right.severityRank || right.expectedImpact - left.expectedImpact || left.provinceLabel.localeCompare(right.provinceLabel))
     .slice(0, 3);
 }
 
@@ -2019,13 +2024,14 @@ function renderConflictReadinessWarnings(shell, intrigueView = null) {
       </div>
       <div class="conflict-readiness-summary__list">
         ${warnings.map((warning) => `
-          <article class="conflict-readiness-warning conflict-readiness-warning--${warning.tone}">
+          <button class="conflict-readiness-warning conflict-readiness-warning--${warning.tone}" type="button" data-province-id="${warning.provinceId}" data-readiness-focus="${warning.provinceId}" aria-label="Focaliser ${warning.focusTargetLabel}: ${warning.priorityLabel}">
             <div>
               <strong>${warning.provinceLabel}</strong>
-              <span>${warning.actionCode} · ${warning.actionLabel}</span>
+              <span>${warning.priorityLabel} · ${warning.focusTargetLabel}</span>
             </div>
+            <small>${warning.actionCode} · ${warning.actionLabel}</small>
             <p>${warning.detail}</p>
-          </article>
+          </button>
         `).join('')}
       </div>
     </div>
