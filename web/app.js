@@ -1320,6 +1320,89 @@ function buildProvinceClimateTurnReport(province) {
   });
 }
 
+function buildProvinceClimateCountdownCues(province, report = buildProvinceClimateTurnReport(province)) {
+  const hazard = province.hazards?.[0] ?? null;
+  const hazardRisk = hazard?.riskLevel ?? null;
+  const riskDelta = report.deltas.find((delta) => delta.deltaId.includes(':risk') || delta.deltaId.includes(':anomaly')) ?? null;
+  const upcomingDelta = report.deltas.find((delta) => delta.deltaId.includes(':upcoming')) ?? null;
+  const recoveryDelta = report.deltas.find((delta) => delta.deltaId.includes(':recovery')) ?? null;
+  const cues = [];
+
+  if (report.state === 'risk' || hazardRisk === 'high' || getProvinceClimateRiskLevel(province) === 'critical') {
+    cues.push({
+      level: 'immediate',
+      countdown: 'Immédiat',
+      label: riskDelta?.label ?? (hazard ? `Catastrophe ${hazard.type}` : 'Risque climat critique'),
+      detail: riskDelta?.reason ?? `${province.label} cumule instabilité, sévérité locale et exposition climatique visible.`,
+      action: province.supplyLevel === 'collapsed' || province.contested ? 'Évacuer / mitiger' : 'Renforcer stabilité',
+      priority: 1,
+    });
+  }
+
+  if (upcomingDelta) {
+    cues.push({
+      level: 'next-turn',
+      countdown: 'Prochain tour',
+      label: 'Saison à risque',
+      detail: upcomingDelta.reason,
+      action: 'Préparer réserves',
+      priority: 2,
+    });
+  }
+
+  if (recoveryDelta || hazardRisk === 'moderate' || getProvinceClimateRiskLevel(province) === 'strained') {
+    cues.push({
+      level: 'watch',
+      countdown: 'Surveiller',
+      label: recoveryDelta?.label ?? (hazard ? `Aléa ${hazard.type}` : 'Pression climat'),
+      detail: recoveryDelta?.reason ?? 'Température/précipitations et sévérité restent à confirmer avant validation du tour.',
+      action: recoveryDelta?.tone === 'improved' ? 'Conserver mitigation' : 'Surveiller',
+      priority: 3,
+    });
+  }
+
+  if (cues.length === 0) {
+    cues.push({
+      level: 'stable',
+      countdown: 'Stable',
+      label: 'Climat stable',
+      detail: 'Aucune catastrophe, anomalie ou dérive température/précipitations prioritaire visible.',
+      action: 'Surveiller',
+      priority: 4,
+    });
+  }
+
+  return cues
+    .sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label))
+    .slice(0, 3);
+}
+
+function renderProvinceClimateCountdownCues(province) {
+  const report = buildProvinceClimateTurnReport(province);
+  const cues = buildProvinceClimateCountdownCues(province, report);
+
+  return `
+    <section class="province-climate-countdown" aria-label="Compte à rebours des risques climat de province">
+      <div class="province-climate-countdown__header">
+        <strong>Urgence climat</strong>
+        <span>${cues[0]?.countdown ?? 'Stable'}</span>
+      </div>
+      <div class="province-climate-countdown__list">
+        ${cues.map((cue) => `
+          <article class="province-climate-countdown__cue province-climate-countdown__cue--${cue.level}">
+            <div>
+              <b>${cue.countdown}</b>
+              <code>${cue.action}</code>
+            </div>
+            <strong>${cue.label}</strong>
+            <p>${cue.detail}</p>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderProvinceClimateTurnReport(province) {
   const report = buildProvinceClimateTurnReport(province);
 
@@ -2481,6 +2564,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
+      ${renderProvinceClimateCountdownCues(province)}
       ${renderProvinceClimateTurnReport(province)}
       <div class="context-summary">
         <strong>Comparaison rapide</strong>

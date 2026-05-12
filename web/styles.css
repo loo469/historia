@@ -2839,6 +2839,64 @@ button { font: inherit; }
   margin: 3px 0 0;
   font-size: 12px;
 }
+.province-climate-countdown {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(14, 116, 144, 0.28), rgba(15, 23, 42, 0.58));
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+.province-climate-countdown__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.province-climate-countdown__header span {
+  color: #fde68a;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.province-climate-countdown__list {
+  display: grid;
+  gap: 7px;
+}
+.province-climate-countdown__cue {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.34);
+  border-left: 3px solid rgba(148, 163, 184, 0.48);
+}
+.province-climate-countdown__cue--immediate { border-left-color: rgba(248, 113, 113, 0.86); }
+.province-climate-countdown__cue--next-turn { border-left-color: rgba(251, 191, 36, 0.78); }
+.province-climate-countdown__cue--watch { border-left-color: rgba(56, 189, 248, 0.72); }
+.province-climate-countdown__cue--stable { border-left-color: rgba(74, 222, 128, 0.68); }
+.province-climate-countdown__cue div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-climate-countdown__cue code {
+  color: #a5f3fc;
+  font-size: 0.72rem;
+}
+.province-climate-countdown__cue strong,
+.province-climate-countdown__cue b {
+  color: #ecfeff;
+}
+.province-climate-countdown__cue p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .province-climate-turn-report {
   display: grid;
   gap: 9px;
