@@ -1426,6 +1426,50 @@ function renderProvinceClimateHazardBlockers(province, actionQueue) {
   `;
 }
 
+function getClimatePreparednessFocusRank(blocker, focusType) {
+  if (blocker.tone === 'blocked') {
+    return {
+      riskCategory: 'critical',
+      riskRank: 1,
+      riskRankLabel: 'Risque critique',
+      badge: 'P1',
+    };
+  }
+
+  if (blocker.tone === 'risky' || blocker.tone === 'delayed') {
+    return {
+      riskCategory: 'elevated',
+      riskRank: 2,
+      riskRankLabel: focusType === 'critical-season' ? 'Risque élevé saisonnier' : 'Risque élevé',
+      badge: 'P2',
+    };
+  }
+
+  return {
+    riskCategory: 'recovery',
+    riskRank: 3,
+    riskRankLabel: 'Récupération / opportunité',
+    badge: 'P3',
+  };
+}
+
+function buildClimatePreparednessFocusTooltip(province, selectedBlocker, rank) {
+  const expectedImpact = selectedBlocker.tone === 'blocked'
+    ? `Impact attendu: ${selectedBlocker.hazard} peut bloquer ${selectedBlocker.trigger}.`
+    : selectedBlocker.tone === 'delayed' || selectedBlocker.tone === 'risky'
+      ? `Impact attendu: ${selectedBlocker.hazard} augmente le coût ou le délai de ${selectedBlocker.trigger}.`
+      : `Impact attendu: ${selectedBlocker.hazard} ouvre une fenêtre de récupération.`;
+  const preparednessAction = selectedBlocker.label.includes('Mitigation')
+    ? selectedBlocker.hazard
+    : selectedBlocker.trigger;
+
+  return {
+    expectedImpact,
+    preparednessAction,
+    tooltip: `${rank.riskRankLabel} · ${province.label}: ${expectedImpact} Préparation: ${preparednessAction}.`,
+  };
+}
+
 function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = null) {
   const warnings = shell.provinces
     .map((province) => {
@@ -1444,6 +1488,8 @@ function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = 
           ? 'critical-season'
           : 'hazard-zone'
         : 'mitigation';
+      const rank = getClimatePreparednessFocusRank(selectedBlocker, focusType);
+      const tooltip = buildClimatePreparednessFocusTooltip(province, selectedBlocker, rank);
 
       return {
         provinceId: province.provinceId,
@@ -1455,6 +1501,13 @@ function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = 
         action: selectedBlocker.trigger,
         detail: selectedBlocker.detail,
         priority: selectedBlocker.priority ?? 4,
+        riskCategory: rank.riskCategory,
+        riskRank: rank.riskRank,
+        riskRankLabel: rank.riskRankLabel,
+        rankBadge: rank.badge,
+        expectedImpact: tooltip.expectedImpact,
+        preparednessAction: tooltip.preparednessAction,
+        tooltip: tooltip.tooltip,
         focusTarget: {
           type: focusType,
           provinceId: province.provinceId,
@@ -1470,7 +1523,7 @@ function buildMapClimatePreparednessSummary(shell, focusContext, intrigueView = 
       };
     })
     .filter(Boolean)
-    .sort((left, right) => left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel))
+    .sort((left, right) => left.riskRank - right.riskRank || left.priority - right.priority || left.provinceLabel.localeCompare(right.provinceLabel))
     .slice(0, 4);
   const exposedCount = warnings.filter((warning) => warning.tone !== 'safe').length;
   const mitigatedCount = warnings.filter((warning) => warning.tone === 'safe').length;
@@ -1507,7 +1560,11 @@ function renderMapClimatePreparednessSummary(summary) {
       <p>${summary.summary}</p>
       <ul class="map-climate-preparedness__list">
         ${summary.warnings.map((warning) => `
-          <li class="map-climate-preparedness__item map-climate-preparedness__item--${warning.tone}">
+          <li class="map-climate-preparedness__item map-climate-preparedness__item--${warning.tone} map-climate-preparedness__item--${warning.riskCategory}">
+            <div class="map-climate-preparedness__rank">
+              <strong>${warning.rankBadge}</strong>
+              <span>${warning.riskRankLabel}</span>
+            </div>
             <b>${warning.provinceLabel}</b>
             <span>${warning.status}: ${warning.hazard}</span>
             <small>${warning.action} · ${warning.label}</small>
@@ -1517,8 +1574,12 @@ function renderMapClimatePreparednessSummary(summary) {
               data-province-id="${warning.focusTarget.provinceId}"
               data-climate-focus-type="${warning.focusTarget.type}"
               data-climate-focus-id="${warning.focusTarget.targetId}"
-              aria-label="Focaliser ${warning.focusTarget.label}: ${warning.focusTarget.reason}"
+              data-climate-risk-rank="${warning.riskRank}"
+              data-climate-risk-category="${warning.riskCategory}"
+              title="${warning.tooltip}"
+              aria-label="Focaliser ${warning.focusTarget.label}: ${warning.tooltip}"
             >Voir ${warning.focusTarget.label}</button>
+            <small class="map-climate-preparedness__tooltip">${warning.expectedImpact} Préparation: ${warning.preparednessAction}.</small>
           </li>
         `).join('')}
       </ul>
