@@ -5412,6 +5412,77 @@ function buildAtlasSeasonalMitigationWindows(synergyView, worldClimateLayer) {
   };
 }
 
+function buildAtlasSeasonalMitigationPlanComparison(seasonalWindows) {
+  if (!seasonalWindows || seasonalWindows.windows.length === 0) {
+    return {
+      state: 'empty',
+      plans: [],
+      bestPlan: null,
+      summary: 'Aucun plan saisonnier comparable: fenêtre ou synergie insuffisante.',
+    };
+  }
+
+  const plans = seasonalWindows.windows.slice(0, 3).map((window, index) => {
+    const score = (window.intensity === 'critical' ? 3 : window.intensity === 'elevated' ? 2 : 1) * 10
+      + Math.max(0, 3 - window.urgencyRank)
+      + (window.badges.includes('route protégée') ? 2 : 0)
+      + (window.badges.includes('cascade évitée') ? 2 : 0);
+    const delayedCascade = window.intensity === 'critical'
+      ? 'Cascade retardée seulement si action immédiate.'
+      : 'Cascade retardée au prochain jalon saisonnier.';
+    const probableCascade = window.deferredConsequence.replace(/^Report: /, 'Probable si report: ');
+
+    return {
+      ...window,
+      planRank: index + 1,
+      score,
+      avoidedCascade: window.avoidedImpact,
+      delayedCascade,
+      probableCascade,
+      verdict: score >= 34 ? 'meilleur choix' : score >= 24 ? 'bon compromis' : 'compromis prudent',
+    };
+  });
+  const sorted = plans.slice().sort((left, right) => right.score - left.score || left.planRank - right.planRank);
+  const bestPlan = sorted[0] ?? null;
+  const hasClearBest = sorted.length > 1 ? (sorted[0].score - sorted[1].score) >= 4 : Boolean(bestPlan);
+
+  return {
+    state: hasClearBest ? 'best' : 'tradeoff',
+    plans,
+    bestPlan: hasClearBest ? bestPlan : null,
+    summary: hasClearBest
+      ? `Meilleur choix: ${bestPlan.provinceLabel} (${bestPlan.criticalSeason}) maximise cascades évitées et routes protégées.`
+      : `Compromis principal: ${plans.map((plan) => plan.provinceLabel).join(' vs ')} équilibrent saison critique, cascade retardée et risque encore probable.`,
+  };
+}
+
+function renderAtlasSeasonalMitigationPlanComparison(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-plan-compare map-world-climate-plan-compare--${view.state}" aria-label="Comparaison des plans saisonniers de mitigation climat">
+      <div class="map-world-climate-plan-compare__header">
+        <strong>Plans saisonniers comparés</strong>
+        <span>${view.bestPlan ? `Choix: ${view.bestPlan.provinceLabel}` : 'Compromis à arbitrer'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-plan-compare__list">
+        ${view.plans.map((plan) => `
+          <li class="map-world-climate-plan-compare__item map-world-climate-plan-compare__item--${plan.intensity} ${view.bestPlan?.provinceId === plan.provinceId ? 'is-best' : ''}">
+            <b>${plan.planRank}. ${plan.provinceLabel}</b>
+            <span>${plan.action} · ${plan.verdict} · saison ${plan.criticalSeason}</span>
+            <small><b>Évitée</b> · ${plan.avoidedCascade}</small>
+            <small><b>Retardée</b> · ${plan.delayedCascade}</small>
+            <small><b>Encore probable</b> · ${plan.probableCascade}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasSeasonalMitigationWindows(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -12291,6 +12362,7 @@ function render() {
   const atlasClimateCascadeImpact = buildAtlasClimateCascadeImpactPreview(shell, worldClimateLayer);
   const atlasClimateMitigationSynergies = buildAtlasClimateMitigationSynergies(shell, atlasClimateCascadeImpact, worldClimateLayer);
   const atlasSeasonalMitigationWindows = buildAtlasSeasonalMitigationWindows(atlasClimateMitigationSynergies, worldClimateLayer);
+  const atlasSeasonalPlanComparison = buildAtlasSeasonalMitigationPlanComparison(atlasSeasonalMitigationWindows);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -12324,6 +12396,7 @@ function render() {
           ${renderAtlasClimateCascadeImpactPreview(atlasClimateCascadeImpact)}
           ${renderAtlasClimateMitigationSynergies(atlasClimateMitigationSynergies)}
           ${renderAtlasSeasonalMitigationWindows(atlasSeasonalMitigationWindows)}
+          ${renderAtlasSeasonalMitigationPlanComparison(atlasSeasonalPlanComparison)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
