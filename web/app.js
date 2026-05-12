@@ -20,6 +20,7 @@ import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTi
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
 import { buildCultureUnlockHints } from '../src/ui/culture/buildCultureUnlockHints.js';
+import { buildCultureOpportunityReminders } from '../src/ui/culture/buildCultureOpportunityReminders.js';
 import { buildClimateTurnReportDeltas } from '../src/ui/climate/buildClimateTurnReportDeltas.js';
 
 const culturePayload = {
@@ -888,6 +889,45 @@ function renderCultureUnlockHints(hints) {
         </span>
       `).join('')}
     </div>
+  `;
+}
+
+function buildCultureUnlockHintsForActions(province, actions, cultureContext) {
+  return actions.map((action) => ({
+    action,
+    hints: buildCultureUnlockHints({
+      province,
+      action: { title: action.title, label: action.label },
+      selectedMarker: cultureContext.selectedMarker,
+      selectedCluster: cultureContext.selectedCluster,
+      localTimeline: cultureContext.localTimeline,
+    }),
+  }));
+}
+
+function renderCultureOpportunityReminders(report) {
+  return `
+    <section class="culture-opportunity-reminders culture-opportunity-reminders--${report.state}" aria-label="Rappels culturels de fin de tour">
+      <div class="culture-opportunity-reminders__header">
+        <div>
+          <span>Rappels culture fin de tour</span>
+          <strong>${report.provinceLabel}</strong>
+        </div>
+        <small>${report.reminders.length} signal${report.reminders.length > 1 ? 's' : ''}</small>
+      </div>
+      <p>${report.summary}</p>
+      ${report.reminders.length > 0 ? `
+        <div class="culture-opportunity-reminder-list">
+          ${report.reminders.map((reminder) => `
+            <article class="culture-opportunity-reminder culture-opportunity-reminder--${reminder.tone}">
+              <span>${reminder.label}</span>
+              <strong>${reminder.cultureName}</strong>
+              <p>${reminder.summary}</p>
+            </article>
+          `).join('')}
+        </div>
+      ` : ''}
+    </section>
   `;
 }
 
@@ -1878,6 +1918,19 @@ function renderConflictReadinessWarnings(shell, intrigueView = null) {
   `;
 }
 
+function renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView = null) {
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const cultureContext = getSelectedCultureContext(province.provinceId);
+  const unlockHintsByAction = buildCultureUnlockHintsForActions(province, actionQueue, cultureContext);
+  const report = buildCultureOpportunityReminders({
+    province,
+    actionQueue,
+    unlockHintsByAction,
+  });
+
+  return renderCultureOpportunityReminders(report);
+}
+
 function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -1923,6 +1976,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceActionQueue(province, shell, focusContext, intrigueView)}
       ${renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigueView)}
+      ${renderCultureOpportunityEndTurnSummary(province, shell, focusContext, intrigueView)}
       ${renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView)}
       ${renderResolvedConflictDeltas(province, shell, focusContext, intrigueView)}
       ${renderIntrigueTurnReportDeltas(province, intrigueView)}
