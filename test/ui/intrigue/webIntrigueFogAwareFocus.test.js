@@ -226,7 +226,20 @@ test('intrigue exposure marker rollup filters reveal only safe counts', () => {
   assert.match(webAppSource, /state\.intrigueExposureOutcomeFilters\[key\] = !state\.intrigueExposureOutcomeFilters\[key\]/);
   assert.match(webAppSource, /marqueur\$\{markers\.length > 1 \? 's' : ''\} intrigue post-commit visible/);
   assert.match(webAppSource, /résultat\$\{counts\.hidden > 1 \? 's' : ''\} fog-limité/);
-  assert.match(webAppSource, /Rollup conservateur: les comptes agrègent uniquement les résultats visibles/);
+  assert.match(webAppSource, /Certitude fog-safe: les zones inconnues restent séparées des faibles risques confirmés/);
   assert.match(stylesSource, /intrigue-exposure-marker-rollup/);
   assert.match(stylesSource, /intrigue-exposure-marker-filter\.is-active/);
+});
+
+test('intrigue exposure rollups separate confirmed suspected and unknown certainty', () => {
+  assert.match(webAppSource, /certaintyGroups/);
+  assert.match(webAppSource, /confirmed: markers\.filter\(\(marker\) => marker\.certainty === 'confirmed'\)/);
+  assert.match(webAppSource, /suspected: markers\.filter\(\(marker\) => marker\.certainty === 'suspected'\)/);
+  assert.match(webAppSource, /unknown: markers\.filter\(\(marker\) => marker\.certainty === 'unknown'\)/);
+  assert.match(webAppSource, /certitude partielle: tendance visible, identité et relais non confirmés/);
+  assert.match(webAppSource, /certitude inconnue: zone fog-limitée séparée des faibles risques confirmés/);
+  assert.match(webAppSource, /ne pas assimiler à un faible risque confirmé/);
+  assert.match(webAppSource, /Certitude fog-safe: les zones inconnues restent séparées des faibles risques confirmés/);
+  assert.match(webAppSource, /aria-label="Niveau de certitude fog-safe des marqueurs intrigue"/);
+  assert.match(stylesSource, /intrigue-exposure-certainty-rollup/);
 });
