@@ -18,7 +18,7 @@ test('map exposes compact post-commit climate impact markers and detail copy', (
   assert.match(webAppSource, /has-climate-post-commit/);
   assert.match(webAppSource, /province-node__climate-marker/);
   assert.match(webAppSource, /marqueur climat post-résolution/);
-  assert.match(webAppSource, /renderProvinceCard\(province, focusContext, postCommitClimateMarkers, selectedClimateCascadeGroup\)/);
+  assert.match(webAppSource, /renderProvinceCard\(province, focusContext, postCommitClimateMarkers, selectedClimateCascadeGroup, worldClimateLayer\)/);
   assert.match(webAppSource, /renderPostCommitClimateMarkerDetail\(province, buildPostCommitClimateImpactMarkers/);
 
   assert.match(stylesSource, /\.province-node\.has-climate-post-commit/);
