@@ -26,6 +26,7 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /function buildAtlasSupplyCapacityForecasts/);
   assert.match(webAppSource, /function buildAtlasSupplyRouteCapacityForecast/);
   assert.match(webAppSource, /function buildAtlasCorridorInterventionOptions/);
+  assert.match(webAppSource, /function buildAtlasCorridorActionBudget/);
   assert.match(webAppSource, /function renderAtlasEconomyStressLegend/);
   assert.match(webAppSource, /atlas-world-economy-layer/);
   assert.match(webAppSource, /atlas-economy-stress-rollup/);
@@ -43,6 +44,12 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /gain inconnu/);
   assert.match(webAppSource, /pénurie évitée élevée/);
   assert.match(webAppSource, /ex æquo/);
+  assert.match(webAppSource, /Budget corridor/);
+  assert.match(webAppSource, /Retenir:/);
+  assert.match(webAppSource, /Reporter:/);
+  assert.match(webAppSource, /Compromis:/);
+  assert.match(webAppSource, /aucune intervention sûre/);
+  assert.match(webAppSource, /coût inconnu/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);
   assert.match(stylesSource, /\.atlas-world-canvas/);
@@ -58,6 +65,8 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(stylesSource, /\.atlas-logistics-route--forecast-uncertain/);
   assert.match(stylesSource, /\.atlas-corridor-intervention--overload/);
   assert.match(stylesSource, /\.atlas-corridor-intervention__rank/);
+  assert.match(stylesSource, /\.atlas-corridor-budget/);
+  assert.match(stylesSource, /\.atlas-corridor-budget__tradeoff/);
   assert.match(stylesSource, /\.atlas-logistics-route--major/);
   assert.match(stylesSource, /\.atlas-economy-city--high/);
   assert.match(stylesSource, /\.atlas-economy-city__resources/);
