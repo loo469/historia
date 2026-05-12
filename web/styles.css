@@ -7736,3 +7736,58 @@ button { font: inherit; }
   border-color: rgba(216, 180, 254, 0.62);
   outline: none;
 }
+.province-node__logistics-outcome {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 3px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  color: #eff6ff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.32);
+}
+.province-node__logistics-outcome b {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.16);
+  font-size: 10px;
+}
+.province-node__logistics-outcome small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.province-node__logistics-outcome--resolved { border-color: rgba(74, 222, 128, 0.48); }
+.province-node__logistics-outcome--reduced { border-color: rgba(56, 189, 248, 0.46); }
+.province-node__logistics-outcome--unresolved { border-color: rgba(245, 158, 11, 0.48); }
+.province-node__logistics-outcome--new-bottleneck { border-color: rgba(251, 113, 133, 0.52); }
+.economy-logistics-outcome {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.economy-logistics-outcome rect {
+  fill: rgba(15, 23, 42, 0.84);
+  stroke: rgba(226, 232, 240, 0.3);
+  stroke-width: 0.35;
+}
+.economy-logistics-outcome text {
+  fill: #f8fafc;
+  font-size: 2.15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.economy-logistics-outcome--resolved rect { stroke: rgba(74, 222, 128, 0.72); }
+.economy-logistics-outcome--reduced rect { stroke: rgba(56, 189, 248, 0.7); }
+.economy-logistics-outcome--unresolved rect { stroke: rgba(245, 158, 11, 0.72); }
+.economy-logistics-outcome--new-bottleneck rect { stroke: rgba(251, 113, 133, 0.76); }

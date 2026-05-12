@@ -401,6 +401,7 @@ const state = {
   hoveredRouteId: null,
   selectedRouteId: null,
   queuedLogisticsActions: [],
+  logisticsOutcomeMarkers: [],
   queuedCultureActions: [],
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
@@ -765,6 +766,108 @@ function renderProvinceSurface(shell, focusContext) {
   `;
 }
 
+
+function getLogisticsOutcomeTone(status) {
+  if (status === 'resolved') return 'resolved';
+  if (status === 'reduced') return 'reduced';
+  if (status === 'new-bottleneck') return 'new-bottleneck';
+  return 'unresolved';
+}
+
+function getLogisticsOutcomeLabel(status) {
+  return {
+    resolved: 'Pénurie résolue',
+    reduced: 'Pénurie réduite',
+    unresolved: 'Pénurie restante',
+    'new-bottleneck': 'Nouveau goulot',
+  }[status] ?? 'Logistique à vérifier';
+}
+
+function getLogisticsOutcomeCode(status) {
+  return {
+    resolved: 'OK',
+    reduced: '↓',
+    unresolved: '!',
+    'new-bottleneck': '⧉',
+  }[status] ?? '?';
+}
+
+function buildLogisticsOutcomeMarkers(shell, economyView, queuedLogisticsActions = state.queuedLogisticsActions) {
+  if (!queuedLogisticsActions.length) {
+    return [];
+  }
+
+  return queuedLogisticsActions.map((entry) => {
+    const province = shell.provinces.find((candidate) => candidate.provinceId === entry.provinceId) ?? shell.provinces.find((candidate) => {
+      const cityIds = new Set(economyView.overlay.cities.filter((city) => city.regionId === candidate.provinceId).map((city) => city.cityId));
+      const route = economyView.overlay.routes.find((candidateRoute) => candidateRoute.routeId === entry.routeId);
+      return route?.cityIds.some((cityId) => cityIds.has(cityId));
+    }) ?? null;
+    const preview = province ? buildProvinceLogisticsChoicePreviewView(province, economyView) : null;
+    const option = preview?.options.find((candidate) => candidate.routeId === entry.routeId) ?? null;
+    const shortage = option?.recoveryChoices[0]?.downstreamShortages.find((candidate) => candidate.status !== 'résolue') ?? option?.recoveryChoices[0]?.downstreamShortages[0] ?? null;
+    const bottleneck = option?.recoveryChoices[0]?.bottleneck ?? null;
+    const status = entry.status === 'conflict'
+      ? 'new-bottleneck'
+      : shortage?.status === 'résolue'
+        ? 'resolved'
+        : shortage?.status === 'déplacée'
+          ? 'reduced'
+          : shortage?.status === 'aggravée' || bottleneck?.tone === 'high'
+            ? 'new-bottleneck'
+            : 'unresolved';
+    const label = getLogisticsOutcomeLabel(status);
+    const detail = shortage
+      ? `${shortage.city} / ${shortage.route}: ${shortage.detail}`
+      : entry.downstreamEffect ?? 'Effet aval estimé depuis la file logistique.';
+
+    return {
+      markerId: `logistics-outcome:${entry.actionId}`,
+      status,
+      tone: getLogisticsOutcomeTone(status),
+      code: getLogisticsOutcomeCode(status),
+      label,
+      detail,
+      provinceId: province?.provinceId ?? entry.provinceId,
+      provinceLabel: province?.label ?? entry.provinceId,
+      routeId: entry.routeId,
+      routeLabel: option?.routes[0] ?? entry.target ?? entry.routeId,
+      actionLabel: entry.label,
+      summaryLink: 'Synthèse pénuries restantes',
+    };
+  });
+}
+
+function getLogisticsOutcomeMarkerForProvince(provinceId) {
+  return state.logisticsOutcomeMarkers.find((marker) => marker.provinceId === provinceId) ?? null;
+}
+
+function renderProvinceLogisticsOutcomeMarker(marker) {
+  if (!marker) {
+    return '';
+  }
+
+  return `
+    <span class="province-node__logistics-outcome province-node__logistics-outcome--${marker.tone}" data-logistics-outcome-marker="${marker.markerId}" title="${marker.label}: ${marker.detail}">
+      <b>${marker.code}</b><small>${marker.label}</small>
+    </span>
+  `;
+}
+
+function renderLogisticsOutcomeRouteBadge(marker, visual) {
+  if (!marker) {
+    return '';
+  }
+
+  const midpoint = getQuadraticPoint(visual.origin, visual.control, visual.destination, 0.58);
+  return `
+    <g class="economy-logistics-outcome economy-logistics-outcome--${marker.tone}" data-logistics-outcome-marker="${marker.markerId}" aria-label="${marker.label}: ${marker.detail}">
+      <rect x="${midpoint.x - 8.8}" y="${midpoint.y + 3.8}" width="17.6" height="4.8" rx="2.4" />
+      <text x="${midpoint.x}" y="${midpoint.y + 7.1}" text-anchor="middle">${marker.code} ${marker.routeLabel}</text>
+    </g>
+  `;
+}
+
 function renderProvinceCard(province, focusContext) {
   const layout = province.geometry.layout ?? getProvinceLayout(province.provinceId);
   const badges = province.badges.map((badge) => `<span class="province-badge">${badge}</span>`).join('');
@@ -775,9 +878,11 @@ function renderProvinceCard(province, focusContext) {
   const readinessTone = state.readinessFocusProvinceId === province.provinceId ? state.readinessFocusTone : null;
   const economyBlocker = state.economyReadinessFocus?.provinceId === province.provinceId ? state.economyReadinessFocus : null;
   const militaryOutcomeMarker = getMilitaryOutcomeMarkerForProvince(province.provinceId);
+  const logisticsOutcomeMarker = getLogisticsOutcomeMarkerForProvince(province.provinceId);
   const isReadinessHighlight = Boolean(readinessTone);
   const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
-  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
+  const isLogisticsOutcomeHighlight = Boolean(logisticsOutcomeMarker);
+  const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && !isMilitaryOutcomeHighlight && !isLogisticsOutcomeHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
   const readinessLabel = readinessTone === 'danger' ? 'menace immédiate' : readinessTone === 'warning' ? 'préparation insuffisante' : readinessTone === 'ready' ? 'opportunité tactique' : null;
   const economyBlockerLabel = economyBlocker ? `${economyBlocker.blocker}: ${economyBlocker.summary}` : null;
@@ -793,6 +898,8 @@ function renderProvinceCard(province, focusContext) {
     economyBlocker ? `has-economy-blocker--${economyBlocker.tone}` : '',
     isMilitaryOutcomeHighlight ? 'has-military-outcome' : '',
     militaryOutcomeMarker ? `has-military-outcome--${militaryOutcomeMarker.tone}` : '',
+    logisticsOutcomeMarker ? 'has-logistics-outcome' : '',
+    logisticsOutcomeMarker ? `has-logistics-outcome--${logisticsOutcomeMarker.tone}` : '',
     readinessTone ? `is-readiness-${readinessTone}` : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
@@ -808,10 +915,11 @@ function renderProvinceCard(province, focusContext) {
       data-readiness-highlight="${readinessTone ?? ''}"
       data-economy-blocker="${economyBlockerLabel ?? ''}"
       data-military-outcome="${militaryOutcomeMarker?.label ?? ''}"
-      title="${economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
+      data-logistics-outcome="${logisticsOutcomeMarker?.label ?? ''}"
+      title="${logisticsOutcomeMarker ? `${logisticsOutcomeMarker.label}: ${logisticsOutcomeMarker.detail}` : economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : militaryOutcomeMarker ? `${militaryOutcomeMarker.label} — ${militaryOutcomeMarker.changed}` : province.label}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
-      aria-label="${province.label}, ${economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
+      aria-label="${province.label}, ${logisticsOutcomeMarker ? `résultat logistique post-commit: ${logisticsOutcomeMarker.label}, ${logisticsOutcomeMarker.detail}` : economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : militaryOutcomeMarker ? `issue militaire post-commit: ${militaryOutcomeMarker.label}, ${militaryOutcomeMarker.changed}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
     >
       <span class="province-node__terrain"></span>
       <span class="province-node__focus-rail"></span>
@@ -819,6 +927,7 @@ function renderProvinceCard(province, focusContext) {
       <span class="province-node__name">${province.label}</span>
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
       ${economyBlocker ? `<span class="province-node__economy-blocker"><b>${economyBlocker.blocker}</b>${economyBlocker.summary}<small>${economyBlocker.effect}</small></span>` : ''}
+      ${renderProvinceLogisticsOutcomeMarker(logisticsOutcomeMarker)}
       <span class="province-node__badges">${badges}</span>
       ${renderPostCommitMilitaryOutcomeMarker(militaryOutcomeMarker)}
       ${isNeighbor ? '<span class="province-node__link">Voisine directe</span>' : ''}
@@ -6473,6 +6582,7 @@ function renderEconomyMapOverlay(economyView) {
     const routeFocused = state.hoveredRouteId === route.routeId || state.selectedRouteId === route.routeId;
     const routeBlocker = economyBlockerFocus?.routeId === route.routeId ? economyBlockerFocus : null;
     const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
+    const logisticsOutcomeMarker = state.logisticsOutcomeMarkers.find((marker) => marker.routeId === route.routeId) ?? null;
 
     return `
       <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''} ${routeBlocker ? `has-economy-blocker has-economy-blocker--${routeBlocker.tone}` : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${routeBlocker ? `${routeBlocker.summary}. ${routeBlocker.effect}` : stress.summary}">
@@ -6484,6 +6594,7 @@ function renderEconomyMapOverlay(economyView) {
         <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
         ${renderRouteHudMarkers(route, visual, { compact: !emphasizeRoute || routeFiltered })}
         ${routeBlocker ? renderEconomyBlockerRouteBadge(routeBlocker, visual) : routeFocused ? renderRouteStressBadge(route, stress, visual) : ''}
+        ${renderLogisticsOutcomeRouteBadge(logisticsOutcomeMarker, visual)}
         ${showRouteLabel ? `<text class="economy-route__label" text-anchor="middle">
           <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
         </text>` : ''}
@@ -7519,9 +7630,18 @@ function advanceTurn() {
     'Le froid coupe certains flux, les provinces exposées repassent en posture défensive.',
   ];
 
+  const economyView = getEconomyViewModel();
+  const logisticsOutcomeMarkers = buildLogisticsOutcomeMarkers(shell, economyView);
+
   state.queuedCultureActions = [];
-  state.lastTurnSummary = summaries[(state.turn - 2) % summaries.length];
   state.lastMilitaryOutcomeMarkers = militaryOutcomeMarker ? [militaryOutcomeMarker] : [];
+  state.logisticsOutcomeMarkers = logisticsOutcomeMarkers;
+  state.queuedLogisticsActions = [];
+  state.lastTurnSummary = logisticsOutcomeMarkers.length > 0
+    ? `${logisticsOutcomeMarkers.length} marqueur${logisticsOutcomeMarkers.length > 1 ? 's' : ''} logistique${logisticsOutcomeMarkers.length > 1 ? 's' : ''} post-commit visible${logisticsOutcomeMarkers.length > 1 ? 's' : ''} sur la carte: ${logisticsOutcomeMarkers.map((marker) => `${marker.provinceLabel} ${marker.code}`).join(', ')}.`
+    : militaryOutcomeMarker
+      ? `${militaryOutcomeMarker.label}: ${militaryOutcomeMarker.changed}`
+      : summaries[(state.turn - 2) % summaries.length];
   state.acceptedRecommendedMilitaryAction = null;
 }
 
@@ -7834,6 +7954,25 @@ function render() {
       state.focusedProvinceId = element.dataset.provinceId;
       state.selectedProvinceId = element.dataset.provinceId;
       state.popupProvinceId = element.dataset.provinceId;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-logistics-outcome-marker]').forEach((element) => {
+    element.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const marker = state.logisticsOutcomeMarkers.find((candidate) => candidate.markerId === element.dataset.logisticsOutcomeMarker);
+      if (!marker) {
+        return;
+      }
+      state.selectedProvinceId = marker.provinceId;
+      state.focusedProvinceId = marker.provinceId;
+      state.popupProvinceId = marker.provinceId;
+      state.selectedRouteId = marker.routeId;
+      state.hoveredRouteId = marker.routeId;
+      state.activeOverlaySlot = 'economy-overlay';
+      state.mobilePanelSection = 'details';
+      state.lastTurnSummary = `${marker.label}: ${marker.detail} (${marker.summaryLink}).`;
       render();
     });
   });
