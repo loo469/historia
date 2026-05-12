@@ -49,6 +49,9 @@ test('buildEconomyReadinessWarnings ranks blocked economy budgets first', () => 
   assert.equal(report.warnings[0].provinceLabel, 'Porte du Fleuve');
   assert.match(report.warnings[0].detail, /Ember Line/);
   assert.match(report.warnings[0].detail, /Outils/);
+  assert.equal(report.warnings[0].blockerLabel, 'budget');
+  assert.match(report.warnings[0].mapSummary, /manquantes/);
+  assert.match(report.warnings[0].nextTurnEffect, /action impossible/);
   assert.deepEqual(report.warnings[0].focusTarget, {
     kind: 'hub',
     provinceId: 'river-gate',
@@ -81,6 +84,9 @@ test('buildEconomyReadinessWarnings falls back to high logistics route stress', 
   assert.match(report.warnings[0].detail, /Iron Road/);
   assert.equal(report.warnings[0].focusTarget.kind, 'route');
   assert.equal(report.warnings[0].focusTarget.hubName, 'Iron Hub');
+  assert.equal(report.warnings[0].blockerLabel, 'logistique');
+  assert.match(report.warnings[0].mapSummary, /Outils sous stress/);
+  assert.match(report.warnings[0].nextTurnEffect, /prochain tour/);
 });
 
 test('buildEconomyReadinessWarnings returns compact ready state without warnings', () => {

@@ -14,10 +14,17 @@ test('playable map wires economy readiness warnings into end-turn summary', () =
   assert.match(webAppSource, /logisticsByProvinceId/);
   assert.match(webAppSource, /function getEconomyReadinessFocusTarget/);
   assert.match(webAppSource, /data-economy-readiness-focus/);
+  assert.match(webAppSource, /data-blocker-label/);
+  assert.match(webAppSource, /data-next-turn-effect/);
+  assert.match(webAppSource, /economyReadinessFocus/);
+  assert.match(webAppSource, /renderEconomyBlockerRouteBadge/);
+  assert.match(webAppSource, /renderEconomyBlockerCityBadge/);
   assert.match(webAppSource, /state\.activeOverlaySlot = 'economy-overlay'/);
   assert.match(webAppSource, /renderEconomyReadinessWarnings\(shell, economyView, focusContext, intrigueView\)/);
   assert.match(stylesSource, /\.economy-readiness-warnings/);
   assert.match(stylesSource, /economy-readiness-warning--critical/);
   assert.match(stylesSource, /economy-readiness-warnings--risky/);
+  assert.match(stylesSource, /has-economy-blocker/);
+  assert.match(stylesSource, /economy-blocker-badge/);
   assert.match(stylesSource, /\.economy-readiness-warning button/);
 });

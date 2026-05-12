@@ -393,6 +393,7 @@ const state = {
   hoveredProvinceId: null,
   readinessFocusProvinceId: null,
   readinessFocusTone: null,
+  economyReadinessFocus: null,
   activeOverlaySlot: 'culture-overlay',
   popupProvinceId: 'river-gate',
   hoveredCityId: 'river-gate-city',
@@ -444,6 +445,7 @@ function applyMapScenario(scenario) {
   state.hoveredProvinceId = null;
   state.readinessFocusProvinceId = null;
   state.readinessFocusTone = null;
+  state.economyReadinessFocus = null;
   state.hoveredRouteId = null;
   state.selectedRouteId = null;
   state.economyFilters = {
@@ -679,11 +681,13 @@ function renderProvinceCard(province, focusContext) {
   const isFocused = province.selectionState.focused;
   const isHovered = province.selectionState.hovered;
   const readinessTone = state.readinessFocusProvinceId === province.provinceId ? state.readinessFocusTone : null;
+  const economyBlocker = state.economyReadinessFocus?.provinceId === province.provinceId ? state.economyReadinessFocus : null;
   const isReadinessHighlight = Boolean(readinessTone);
   const isMuted = !isSelected && !isFocused && !isHovered && !isNeighbor && !isReadinessHighlight && (focusContext.selectedProvince || focusContext.focusedProvince || focusContext.hoveredProvince || state.readinessFocusProvinceId);
   const tacticalState = province.contested ? 'front contesté' : province.occupied ? 'occupation' : 'contrôle stable';
   const readinessLabel = readinessTone === 'danger' ? 'menace immédiate' : readinessTone === 'warning' ? 'préparation insuffisante' : readinessTone === 'ready' ? 'opportunité tactique' : null;
-  const selectionSignal = isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
+  const economyBlockerLabel = economyBlocker ? `${economyBlocker.blocker}: ${economyBlocker.summary}` : null;
+  const selectionSignal = economyBlocker ? 'BLOCAGE' : isReadinessHighlight ? 'ALERTE' : isSelected ? 'ACTIF' : isHovered ? 'SURVOL' : isFocused ? 'FOCUS' : isNeighbor ? 'VOISIN' : 'SCAN';
   const classes = [
     'province-node',
     isSelected ? 'is-selected' : '',
@@ -691,6 +695,8 @@ function renderProvinceCard(province, focusContext) {
     isHovered ? 'is-hovered' : '',
     isNeighbor ? 'is-neighbor' : '',
     isReadinessHighlight ? 'is-readiness-highlight' : '',
+    economyBlocker ? 'has-economy-blocker' : '',
+    economyBlocker ? `has-economy-blocker--${economyBlocker.tone}` : '',
     readinessTone ? `is-readiness-${readinessTone}` : '',
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
@@ -704,15 +710,18 @@ function renderProvinceCard(province, focusContext) {
       data-province-id="${province.provinceId}"
       data-tactical-state="${readinessLabel ?? tacticalState}"
       data-readiness-highlight="${readinessTone ?? ''}"
+      data-economy-blocker="${economyBlockerLabel ?? ''}"
+      title="${economyBlocker ? `${economyBlocker.summary} — ${economyBlocker.effect}` : province.label}"
       style="left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;--province-fill:${province.style.fill};--province-border:${province.style.border};--province-shape:${getProvinceShape(province.provinceId)};"
       aria-pressed="${province.selectionState.selected}"
-      aria-label="${province.label}, ${readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
+      aria-label="${province.label}, ${economyBlocker ? `blocage économie/logistique: ${economyBlocker.summary}, ${economyBlocker.effect}` : readinessLabel ? `cible préparation conflit: ${readinessLabel}` : tacticalState}, approvisionnement ${province.supplyTone}, loyauté ${province.loyalty}"
     >
       <span class="province-node__terrain"></span>
       <span class="province-node__focus-rail"></span>
       <span class="province-node__signal">${selectionSignal}</span>
       <span class="province-node__name">${province.label}</span>
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
+      ${economyBlocker ? `<span class="province-node__economy-blocker"><b>${economyBlocker.blocker}</b>${economyBlocker.summary}<small>${economyBlocker.effect}</small></span>` : ''}
       <span class="province-node__badges">${badges}</span>
       ${isNeighbor ? '<span class="province-node__link">Voisine directe</span>' : ''}
     </button>
@@ -1692,6 +1701,10 @@ function renderEconomyReadinessWarnings(shell, economyView, focusContext, intrig
                   data-province-id="${target.provinceId}"
                   data-route-id="${target.routeId}"
                   data-city-id="${target.cityId}"
+                  data-readiness-tone="${warning.status === 'blocked' ? 'danger' : 'warning'}"
+                  data-blocker-label="${warning.blockerLabel}"
+                  data-map-summary="${warning.mapSummary}"
+                  data-next-turn-effect="${warning.nextTurnEffect}"
                 >Voir ${target.label}</button>
               </li>
             `;
@@ -2604,6 +2617,31 @@ function renderRouteStressBadge(route, stress, visual) {
     <g class="economy-route-stress economy-route-stress--${stress.tone}" aria-label="${stress.headline}: ${stress.summary}">
       <rect x="${midpoint.x - 9.4}" y="${midpoint.y - 8.6}" width="18.8" height="4.4" rx="2.2" />
       <text x="${midpoint.x}" y="${midpoint.y - 5.55}" text-anchor="middle">${stress.headline}</text>
+    </g>
+  `;
+}
+
+function renderEconomyBlockerRouteBadge(blocker, visual) {
+  const midpoint = getQuadraticPoint(visual.origin, visual.control, visual.destination, 0.5);
+
+  return `
+    <g class="economy-blocker-badge economy-blocker-badge--${blocker.tone}" aria-label="${blocker.summary}: ${blocker.effect}">
+      <rect x="${midpoint.x - 10.8}" y="${midpoint.y - 9.2}" width="21.6" height="5.2" rx="2.6" />
+      <text x="${midpoint.x}" y="${midpoint.y - 5.55}" text-anchor="middle">${blocker.blocker}</text>
+    </g>
+  `;
+}
+
+function renderEconomyBlockerCityBadge(blocker, position) {
+  const labelDx = Number.isFinite(position.labelDx) ? position.labelDx / 5 : 0;
+  const labelDy = Number.isFinite(position.labelDy) ? position.labelDy / 5 : 0;
+  const x = position.x + labelDx;
+  const y = position.y + labelDy - 7.2;
+
+  return `
+    <g class="economy-blocker-city-badge economy-blocker-city-badge--${blocker.tone}" aria-label="${blocker.summary}: ${blocker.effect}">
+      <circle cx="${x}%" cy="${y}%" r="2.45" />
+      <text x="${x}%" y="calc(${y}% + 1px)" text-anchor="middle">!</text>
     </g>
   `;
 }
@@ -3626,6 +3664,7 @@ function renderEconomyMapOverlay(economyView) {
     `;
   }).join('');
 
+  const economyBlockerFocus = state.economyReadinessFocus;
   const routeLines = economyView.overlay.routes.map((route, index) => {
     const origin = cityLayoutsById[route.originCityId];
     const destination = cityLayoutsById[route.destinationCityId];
@@ -3646,18 +3685,19 @@ function renderEconomyMapOverlay(economyView) {
     const routeFiltered = filters.criticalRoutes && !emphasizeRoute;
     const showRouteLabel = !routeFiltered && (emphasizeRoute || tensionClass === 'has-medium-tension');
     const routeFocused = state.hoveredRouteId === route.routeId || state.selectedRouteId === route.routeId;
+    const routeBlocker = economyBlockerFocus?.routeId === route.routeId ? economyBlockerFocus : null;
     const stress = getRouteStressSummary(route, tensionByCityId, cityNameById);
 
     return `
-      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${stress.summary}">
-        <title>${route.routeName}: ${stress.headline} — ${stress.summary}</title>
+      <g class="economy-route-group ${visual.classes} ${tensionClass} ${emphasizeRoute ? 'is-emphasized' : 'is-muted'} ${routeFiltered ? 'is-filtered' : ''} ${routeFocused ? 'is-focused' : ''} ${routeBlocker ? `has-economy-blocker has-economy-blocker--${routeBlocker.tone}` : ''}" data-route-id="${route.routeId}" aria-label="${routeFiltered ? 'Route secondaire atténuée par filtre' : 'Route économie visible'}: ${routeBlocker ? `${routeBlocker.summary}. ${routeBlocker.effect}` : stress.summary}">
+        <title>${route.routeName}: ${routeBlocker ? `${routeBlocker.summary} — ${routeBlocker.effect}` : `${stress.headline} — ${stress.summary}`}</title>
         <path class="economy-route-hitbox" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__halo" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__casing" d="${visual.pathD}" pathLength="100" />
         <path class="economy-route__line" d="${visual.pathD}" pathLength="100" marker-end="url(#${visual.markerId})" />
         <path class="economy-route__flow" d="${visual.pathD}" pathLength="100" />
         ${renderRouteHudMarkers(route, visual, { compact: !emphasizeRoute || routeFiltered })}
-        ${routeFocused ? renderRouteStressBadge(route, stress, visual) : ''}
+        ${routeBlocker ? renderEconomyBlockerRouteBadge(routeBlocker, visual) : routeFocused ? renderRouteStressBadge(route, stress, visual) : ''}
         ${showRouteLabel ? `<text class="economy-route__label" text-anchor="middle">
           <textPath href="#route-label-${route.routeId}" startOffset="50%">${route.routeName}</textPath>
         </text>` : ''}
@@ -3676,19 +3716,21 @@ function renderEconomyMapOverlay(economyView) {
     const tension = tensionByCityId[city.cityId]?.tensionLevel ?? 'low';
     const isHub = city.tradeRouteIds.length >= 2 || city.resources.totalStock >= 16;
     const isSelected = state.selectedCityId === city.cityId || state.hoveredCityId === city.cityId;
-    const expandResources = isSelected || tension === 'high';
+    const cityBlocker = economyBlockerFocus?.cityId === city.cityId ? economyBlockerFocus : null;
+    const expandResources = isSelected || tension === 'high' || Boolean(cityBlocker);
     const keepResourceWarning = tension === 'high';
     const showResources = keepResourceWarning || (filters.resourceMarkers && (expandResources || city.capital || isHub));
     const showCityLabels = filters.cityLabels && (isSelected || city.capital || isHub || tension !== 'low');
 
     return `
-      <g class="economy-city-group ${isSelected ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension ${!filters.resourceMarkers && showResources ? 'has-forced-resource-warning' : ''}" data-city-id="${city.cityId}">
+      <g class="economy-city-group ${isSelected ? 'is-selected' : ''} ${city.capital ? 'is-capital' : ''} ${isHub ? 'is-hub' : ''} is-${tension}-tension ${cityBlocker ? `has-economy-blocker has-economy-blocker--${cityBlocker.tone}` : ''} ${!filters.resourceMarkers && showResources ? 'has-forced-resource-warning' : ''}" data-city-id="${city.cityId}">
         <circle class="economy-city-tension-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 9.2}" />
         ${city.capital ? `<circle class="economy-city-capital-ring" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 10.8}" />` : ''}
         ${isHub ? `<rect class="economy-city-hub-frame" x="calc(${position.x}% - ${city.marker.size * 7.4}px)" y="calc(${position.y}% - ${city.marker.size * 7.4}px)" width="${city.marker.size * 14.8}" height="${city.marker.size * 14.8}" rx="${city.marker.size * 3.2}" ry="${city.marker.size * 3.2}" />` : ''}
         <circle class="economy-city economy-city--${city.marker.tone}" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 6.6}" />
         ${city.capital ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">★</text>` : isHub ? `<text class="economy-city-glyph" x="${position.x}%" y="calc(${position.y}% + 1px)" text-anchor="middle">◆</text>` : ''}
         ${showResources ? renderResourceHudBadges(city, position, { expanded: expandResources && filters.resourceMarkers }) : ''}
+        ${cityBlocker ? renderEconomyBlockerCityBadge(cityBlocker, position) : ''}
         <circle class="economy-city-hitbox" cx="${position.x}%" cy="${position.y}%" r="${city.marker.size * 12}" />
         <text class="economy-city-label ${showCityLabels ? '' : 'economy-city-label--sr'}" x="${position.x}%" y="calc(${position.y}% - 14px)" text-anchor="middle">${city.cityName}</text>
         <text class="economy-city-resource ${showCityLabels ? '' : 'economy-city-resource--sr'}" x="${position.x}%" y="calc(${position.y}% + 18px)" text-anchor="middle">${city.resources.primaryResourceId ?? 'stock vide'}</text>
@@ -5018,10 +5060,22 @@ function render() {
       const provinceId = element.dataset.provinceId;
       const routeId = element.dataset.routeId;
       const cityId = element.dataset.cityId;
+      const readinessTone = element.dataset.readinessTone ?? 'warning';
       state.activeOverlaySlot = 'economy-overlay';
       state.selectedProvinceId = provinceId;
       state.focusedProvinceId = provinceId;
       state.popupProvinceId = provinceId;
+      state.readinessFocusProvinceId = provinceId;
+      state.readinessFocusTone = readinessTone;
+      state.economyReadinessFocus = {
+        provinceId,
+        routeId,
+        cityId,
+        tone: readinessTone,
+        blocker: element.dataset.blockerLabel ?? 'logistique',
+        summary: element.dataset.mapSummary ?? 'contrainte économie/logistique',
+        effect: element.dataset.nextTurnEffect ?? 'Effet à surveiller au prochain tour.',
+      };
 
       if (routeId) {
         state.selectedRouteId = routeId;

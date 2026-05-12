@@ -25,6 +25,7 @@ function buildPlanWarning(province, plan, budgetStatus) {
   const route = plan.routeNames?.[0] ?? 'route locale';
   const hubName = plan.hubName ?? null;
   const status = plan.status === 'blocked' ? 'blocked' : plan.status === 'risky' ? 'risky' : budgetStatus;
+  const blockerLabel = status === 'blocked' && budgetStatus === 'blocked' ? 'budget' : resource.label;
 
   return {
     tone: getWarningTone(status),
@@ -33,9 +34,14 @@ function buildPlanWarning(province, plan, budgetStatus) {
     provinceLabel: province.label ?? province.provinceId,
     label: status === 'blocked' ? 'Blocage budget' : status === 'risky' ? 'Compromis logistique' : 'Capacité sécurisée',
     detail: `${province.label ?? province.provinceId}: ${plan.logisticsAction} sollicite ${resource.quantity} ${resource.label} via ${route}; ${plan.surplusOrShortage}.`,
+    mapSummary: `${blockerLabel}: ${plan.surplusOrShortage}`,
+    nextTurnEffect: plan.effect ?? (status === 'blocked'
+      ? `${resource.label}: action impossible sans stock ou relais avant le prochain tour.`
+      : `${resource.label}: risque de pénurie ou surcharge au prochain tour.`),
     routeName: route,
     hubName,
     resourceLabel: resource.label,
+    blockerLabel,
     focusTarget: {
       kind: status === 'blocked' ? 'hub' : 'route',
       provinceId: province.provinceId,
@@ -59,9 +65,12 @@ function buildChoiceWarning(province, choice) {
     provinceLabel: province.label ?? province.provinceId,
     label: choice.tone === 'high' ? 'Route sous stress' : 'Route surveillée',
     detail: `${province.label ?? province.provinceId}: ${route} garde un risque ${choice.residualRisk ?? 0} sur ${resource}.`,
+    mapSummary: `logistique: ${resource} sous stress`,
+    nextTurnEffect: `${route}: risque ${choice.residualRisk ?? 0}, prévoir relais ou reroutage au prochain tour.`,
     routeName: route,
     hubName: choice.affectedCity ?? null,
     resourceLabel: resource,
+    blockerLabel: 'logistique',
     focusTarget: {
       kind: 'route',
       provinceId: province.provinceId,
