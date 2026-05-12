@@ -64,11 +64,19 @@ test('buildCultureUnlockHints ranks probable, possible, and missing unlock signa
   ]);
   assert.equal(hints[0].explanation, 'Ouverture des archives peut suivre “Préparer la manœuvre”.');
   assert.deepEqual(hints.map((hint) => hint.focusTarget.type), ['timeline', 'cluster', 'marker']);
+  assert.equal(hints[0].urgency.label, 'Expire bientôt');
+  assert.equal(hints[0].urgency.window, 'ce tour');
   assert.deepEqual(hints[0].focusTarget, {
     type: 'timeline',
     id: 'river-gate:event:archives-open',
     regionId: 'river-gate',
     label: 'Ouverture des archives',
+    urgency: {
+      level: 'soon',
+      label: 'Expire bientôt',
+      window: 'ce tour',
+      detail: 'Ouverture des archives: fenêtre courte, à traiter avant de clore le tour.',
+    },
   });
 });
 
@@ -86,11 +94,23 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
       regionId: 'quiet-field',
       cultureName: 'Aucun signal',
       sourceId: 'Garder en observation',
+      urgency: {
+        level: 'stable',
+        label: 'À préparer',
+        window: 'stable',
+        detail: 'Province sans unlock: signal incomplet, aucune expiration active.',
+      },
       focusTarget: {
         type: 'province',
         id: 'quiet-field',
         regionId: 'quiet-field',
         label: 'Province sans unlock',
+        urgency: {
+          level: 'stable',
+          label: 'À préparer',
+          window: 'stable',
+          detail: 'Province sans unlock: signal incomplet, aucune expiration active.',
+        },
       },
     },
   ]);
@@ -113,11 +133,23 @@ test('buildCultureUnlockHints returns readable missing-condition fallbacks', () 
     regionId: 'shared-bay',
     cultureName: 'Delta Scribes, Harbor Compact',
     sourceId: 'shared-bay:culture-cluster',
+    urgency: {
+      level: 'stable',
+      label: 'À préparer',
+      window: 'stable',
+      detail: 'Delta Scribes, Harbor Compact: signal incomplet, aucune expiration active.',
+    },
     focusTarget: {
       type: 'cluster',
       id: 'shared-bay:culture-cluster',
       regionId: 'shared-bay',
       label: 'Delta Scribes, Harbor Compact',
+      urgency: {
+        level: 'stable',
+        label: 'À préparer',
+        window: 'stable',
+        detail: 'Delta Scribes, Harbor Compact: signal incomplet, aucune expiration active.',
+      },
     },
   });
 });
