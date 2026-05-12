@@ -16,6 +16,9 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /atlas-culture-summary/);
   assert.match(webAppSource, /influence contestée/);
   assert.match(webAppSource, /opportunité:/);
+  assert.match(webAppSource, /function buildAtlasCultureDrift/);
+  assert.match(webAppSource, /driftPreviews/);
+  assert.match(webAppSource, /atlas-culture-drift--\$\{summary\.drift\.state\}/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -27,10 +30,15 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /is-focused/);
   assert.match(webAppSource, /is-related/);
   assert.match(webAppSource, /atlas-discovery-site__link/);
+  assert.match(webAppSource, /linkedToFocus/);
+  assert.match(webAppSource, /summary\.drift\.causes\.join/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
   assert.match(stylesSource, /\.atlas-culture-summary/);
   assert.match(stylesSource, /\.atlas-discovery-site\.is-focused path/);
   assert.match(stylesSource, /\.atlas-discovery-site__link/);
+  assert.match(stylesSource, /\.atlas-culture-summary__drift/);
+  assert.match(stylesSource, /\.atlas-culture-drift--migre/);
+  assert.match(stylesSource, /\.atlas-culture-drift\.is-linked-focus path/);
 });
