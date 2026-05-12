@@ -1209,6 +1209,10 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
         <b>Timeline récupération</b>
         <span>${preview.timelineSummary ?? 'Aucune action route/logistique en file.'}</span>
       </div>
+      <div class="province-logistics-downstream-summary province-logistics-downstream-summary--${preview.downstreamStatus ?? 'neutre'}">
+        <b>Pénuries aval</b>
+        <span>${preview.downstreamSummary ?? 'Aucune pénurie aval claire détectée.'}</span>
+      </div>
       ${preview.options.length > 0 ? `
         <div class="province-logistics-choice-list">
           ${preview.options.map((option) => `
@@ -1229,6 +1233,17 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   <p>${choice.benefit}</p>
                   <small>Contrainte: ${choice.blocker} · ${choice.rationale}</small>
                   <small class="province-logistics-bottleneck province-logistics-bottleneck--${choice.bottleneck.tone}">Goulot: ${choice.bottleneck.label} · ${choice.bottleneck.detail}</small>
+                  ${choice.downstreamShortages.length > 0 ? `
+                    <ul class="province-logistics-downstream-shortages" aria-label="Pénuries aval prévues">
+                      ${choice.downstreamShortages.map((shortage) => `
+                        <li class="province-logistics-downstream-shortage province-logistics-downstream-shortage--${shortage.tone}">
+                          <b>${shortage.status}</b>
+                          <span>${shortage.target} · ${shortage.resource}</span>
+                          <small>${shortage.detail}</small>
+                        </li>
+                      `).join('')}
+                    </ul>
+                  ` : ''}
                   ${choice.timeline.length > 0 ? `
                     <ol class="province-logistics-recovery-timeline" aria-label="Timeline de récupération logistique">
                       ${choice.timeline.map((step) => `

@@ -282,6 +282,67 @@ function buildRecoveryTimeline(choice, route, localCity, mainResource, localTens
   ];
 }
 
+
+function buildDownstreamShortages(choice, route, localCity, localTension, mainResource) {
+  const pressureEffects = choice.neighborEffects.filter((effect) => effect.tone !== 'low').slice(0, 2);
+
+  if (pressureEffects.length > 0) {
+    return pressureEffects.map((effect) => {
+      const aggravated = choice.choiceId === 'stockpile' || choice.bottleneck.type === 'capacity';
+      const displaced = effect.label === 'congestion déplacée' || choice.choiceId === 'reroute' || choice.bottleneck.type === 'neighbor-dependency';
+      const status = aggravated ? 'aggravée' : displaced ? 'déplacée' : 'inconnue';
+
+      return {
+        target: effect.target,
+        route: effect.route,
+        resource: mainResource.label,
+        status,
+        tone: aggravated ? 'high' : 'medium',
+        detail: status === 'aggravée'
+          ? `${effect.target} risque de manquer de ${mainResource.label}: ${effect.label} maintient la pression aval.`
+          : status === 'déplacée'
+            ? `${effect.target} récupère une partie de la pression de ${localCity.cityName}; ${effect.route} reste à surveiller.`
+            : `${effect.target} manque de signal clair: ${effect.detail}`,
+      };
+    });
+  }
+
+  if (localTension !== 'low') {
+    const resolved = choice.choiceId === 'stockpile' || choice.choiceId === 'economic-priority';
+
+    return [{
+      target: localCity.cityName,
+      route: route.routeName,
+      resource: mainResource.label,
+      status: resolved ? 'résolue' : 'inconnue',
+      tone: resolved ? 'low' : 'medium',
+      detail: resolved
+        ? `${mainResource.label} couvert localement; aucune pénurie aval nette détectée.`
+        : `${localCity.cityName} reste sous tension: confirmer le stock aval après l'action.`,
+    }];
+  }
+
+  if (choice.bottleneck.type === 'none') {
+    return [{
+      target: localCity.cityName,
+      route: route.routeName,
+      resource: mainResource.label,
+      status: 'résolue',
+      tone: 'low',
+      detail: `${mainResource.label} reste couvert; aucune pénurie aval claire détectée.`,
+    }];
+  }
+
+  return [{
+    target: localCity.cityName,
+    route: route.routeName,
+    resource: mainResource.label,
+    status: 'inconnue',
+    tone: 'medium',
+    detail: `Données aval insuffisantes: vérifier ${mainResource.label} après ${choice.label}.`,
+  }];
+}
+
 function buildRecoveryChoices(route, localCity, localTension, mainResource, routeCause, neighborContexts = []) {
   const choices = [
     {
@@ -331,14 +392,17 @@ function buildRecoveryChoices(route, localCity, localTension, mainResource, rout
 
   return rankedChoices.map((choice, index) => {
     const neighborEffects = neighborContexts.map((neighbor) => getNeighborEffect(choice.choiceId, route, localCity, neighbor, mainResource));
+    const bottleneck = inferRecoveryBottleneck({ ...choice, neighborEffects }, route, localCity, localTension);
+    const enrichedChoice = { ...choice, neighborEffects, bottleneck };
 
     return {
       ...choice,
       recommended: index === 0,
       comparison: index === 0 ? 'meilleur levier immédiat' : `moins urgent: ${topChoice.blocker} prioritaire`,
       neighborEffects,
-      bottleneck: inferRecoveryBottleneck({ ...choice, neighborEffects }, route, localCity, localTension),
-      timeline: buildRecoveryTimeline({ ...choice, neighborEffects }, route, localCity, mainResource, localTension),
+      bottleneck,
+      timeline: buildRecoveryTimeline(enrichedChoice, route, localCity, mainResource, localTension),
+      downstreamShortages: buildDownstreamShortages(enrichedChoice, route, localCity, localTension, mainResource),
     };
   });
 }
@@ -399,7 +463,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const resourceLabelById = requireObject(normalizedOptions.resourceLabelById ?? {}, 'ProvinceLogisticsChoicePreview resourceLabelById');
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -430,6 +494,8 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       recommendedOptionId: null,
       timelineStatus: 'empty',
       timelineSummary: 'Aucune action route/logistique en file: timeline vide.',
+      downstreamStatus: 'neutre',
+      downstreamSummary: 'Aucune pénurie aval claire détectée.',
       status: 'stable',
       summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
       options: [],
@@ -446,6 +512,10 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     timelineSummary: hasBlocker
       ? `${recommended.recoveryChoices[0].label}: amélioration visible au prochain tour; goulot ${recommended.recoveryChoices[0].bottleneck.label}. ${recommended.recoveryChoices[0].timeline[2].detail}`
       : 'Aucune action route/logistique en file: timeline vide.',
+    downstreamStatus: hasBlocker ? recommended.recoveryChoices[0].downstreamShortages[0]?.status ?? 'inconnue' : 'neutre',
+    downstreamSummary: hasBlocker
+      ? `${recommended.recoveryChoices[0].downstreamShortages[0]?.status ?? 'inconnue'}: ${recommended.recoveryChoices[0].downstreamShortages[0]?.detail ?? 'Aucune pénurie aval claire détectée.'}`
+      : 'Aucune pénurie aval claire détectée.',
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
       ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause} ${recommended.recoveryChoices[0].label} est prioritaire car ${recommended.recoveryChoices[0].benefit}`

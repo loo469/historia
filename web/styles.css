@@ -3069,13 +3069,29 @@ button { font: inherit; }
 }
 .province-logistics-timeline-summary--queued { border-color: rgba(125, 211, 252, 0.28); }
 .province-logistics-timeline-summary--empty { border-color: rgba(74, 222, 128, 0.18); }
-.province-logistics-timeline-summary b {
+.province-logistics-downstream-summary {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(8, 15, 28, 0.46);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.province-logistics-downstream-summary--aggravée { border-color: rgba(251, 113, 133, 0.36); }
+.province-logistics-downstream-summary--déplacée,
+.province-logistics-downstream-summary--inconnue { border-color: rgba(245, 158, 11, 0.32); }
+.province-logistics-downstream-summary--résolue,
+.province-logistics-downstream-summary--neutre { border-color: rgba(74, 222, 128, 0.2); }
+.province-logistics-timeline-summary b,
+.province-logistics-downstream-summary b {
   color: #bfdbfe;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.province-logistics-timeline-summary span {
+.province-logistics-timeline-summary span,
+.province-logistics-downstream-summary span {
   color: #dbeafe;
   font-size: 12px;
   line-height: 1.35;
@@ -3156,6 +3172,31 @@ button { font: inherit; }
 .province-logistics-bottleneck--high { border-color: rgba(251, 113, 133, 0.36); color: #fecdd3; }
 .province-logistics-bottleneck--medium { border-color: rgba(245, 158, 11, 0.32); color: #fde68a; }
 .province-logistics-bottleneck--low { border-color: rgba(74, 222, 128, 0.22); color: #bbf7d0; }
+.province-logistics-downstream-shortages {
+  display: grid;
+  gap: 5px;
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.province-logistics-downstream-shortage {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.48);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.province-logistics-downstream-shortage--high { border-color: rgba(251, 113, 133, 0.34); }
+.province-logistics-downstream-shortage--medium { border-color: rgba(245, 158, 11, 0.3); }
+.province-logistics-downstream-shortage--low { border-color: rgba(74, 222, 128, 0.2); }
+.province-logistics-downstream-shortage b { color: #fde68a; font-size: 11px; }
+.province-logistics-downstream-shortage span,
+.province-logistics-downstream-shortage small {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.3;
+}
 .province-logistics-recovery-timeline {
   display: grid;
   gap: 5px;
