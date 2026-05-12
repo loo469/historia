@@ -181,3 +181,18 @@ test('queued intrigue map responses show fog-safe confirmation and undo affordan
   assert.match(stylesSource, /province-intrigue-map-confirmation--confirmed/);
   assert.match(stylesSource, /province-intrigue-map-confirmation__undo:disabled/);
 });
+
+test('final intrigue exposure summary is visible before turn commit', () => {
+  assert.match(webAppSource, /function buildFinalIntrigueExposureCommitSummary/);
+  assert.match(webAppSource, /Synthèse finale exposition intrigue avant commit du tour/);
+  assert.match(webAppSource, /Avant commit du tour/);
+  assert.match(webAppSource, /Cellule masquée · \$\{contribution\.provinceLabel\}/);
+  assert.match(webAppSource, /exposition estimée après résolution \$\{cumulativeRisk\.totalLabel\}/);
+  assert.match(webAppSource, /cellule\$\{finalCommitSummary\.riskyCells\.length > 1 \? 's' : ''\} encore trop risquée/);
+  assert.match(webAppSource, /Combinaison gênante: plusieurs réponses visibles peuvent cumuler chaleur et réduire la couverture/);
+  assert.match(webAppSource, /Dernière confirmation conservée; undo encore possible avant commit du tour/);
+  assert.match(webAppSource, /Synthèse finale fog-safe: cellule, cible et relais restent masqués/);
+  assert.match(stylesSource, /province-intrigue-final-commit-summary/);
+  assert.match(stylesSource, /province-intrigue-final-commit-summary--danger/);
+  assert.match(stylesSource, /province-intrigue-final-commit-summary__item--trop-risqué/);
+});
