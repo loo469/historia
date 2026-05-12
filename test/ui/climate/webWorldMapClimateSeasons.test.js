@@ -17,7 +17,7 @@ test('world map climate layer exposes seasons biomes anomalies and disasters wit
   assert.match(webAppSource, /Anomalie climat/);
   assert.match(webAppSource, /Biome saisonnier/);
   assert.match(webAppSource, /state\.activeOverlaySlot !== 'climate-overlay'/);
-  assert.match(webAppSource, /worldClimateLayer = buildWorldClimateLayer\(shell, state\.seasonIndex\)/);
+  assert.match(webAppSource, /worldClimateLayer = buildWorldClimateLayer\(shell, state\.seasonIndex, state\.atlasClimateForecastMode\)/);
   assert.match(webAppSource, /renderWorldClimateLayerSummary\(worldClimateLayer\)/);
   assert.match(webAppSource, /renderMapLayerStack\(shell, economyView, focusContext, cultureView, climateMarkerDensity\.visibleMarkers, climateMarkerDensity\.selectedCascadeGroup, worldClimateLayer\)/);
   assert.match(webAppSource, /renderProvinceCard\(province, focusContext, postCommitClimateMarkers, selectedClimateCascadeGroup, worldClimateLayer\)/);
