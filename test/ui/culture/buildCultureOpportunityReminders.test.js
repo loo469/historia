@@ -98,6 +98,13 @@ test('buildCultureOpportunityReminders prioritizes actionable culture end-turn r
   ]);
   assert.equal(report.reminders[1].confidenceCue.summary, 'Recherche encore partielle: garder le signal visible sans sur-prioriser.');
   assert.equal(report.reminders[2].confidenceCopy, 'Confiance risquée · Signal culturel manquant');
+  assert.deepEqual(report.reminders.map((reminder) => [reminder.inactionCost.level, reminder.inactionCost.label]), [
+    ['closing', 'Se ferme ce tour'],
+    ['low', 'Inaction tolérée'],
+    ['low', 'Inaction tolérée'],
+  ]);
+  assert.equal(report.reminders[0].inactionCost.summary, 'Ouverture des archives risque de sortir de la timeline locale sans action (ce tour).');
+  assert.equal(report.reminders[1].inactionCopy, 'Inaction tolérée · Pas de perte culturelle claire si la recommandation attend.');
   assert.deepEqual(report.reminders[0].urgency, {
     level: 'soon',
     label: 'Expire bientôt',

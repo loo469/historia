@@ -2763,6 +2763,20 @@ button { font: inherit; }
 .culture-opportunity-reminder__confidence--high { border-color: rgba(74, 222, 128, 0.32); background: rgba(22, 163, 74, 0.09); }
 .culture-opportunity-reminder__confidence--mixed { border-color: rgba(56, 189, 248, 0.32); background: rgba(14, 165, 233, 0.08); }
 .culture-opportunity-reminder__confidence--risky { border-color: rgba(251, 191, 36, 0.34); background: rgba(217, 119, 6, 0.08); }
+.culture-opportunity-reminder__inaction {
+  margin-top: 5px !important;
+  padding: 6px 7px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.44);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #cbd5e1 !important;
+}
+.culture-opportunity-reminder__inaction b { color: #f8fafc; }
+.culture-opportunity-reminder__inaction--closing { border-color: rgba(248, 113, 113, 0.36); background: rgba(127, 29, 29, 0.14); color: #fecaca !important; }
+.culture-opportunity-reminder__inaction--degrades,
+.culture-opportunity-reminder__inaction--risky,
+.culture-opportunity-reminder__inaction--blocked { border-color: rgba(251, 191, 36, 0.34); background: rgba(120, 53, 15, 0.12); color: #fde68a !important; }
+.culture-opportunity-reminder__inaction--low { border-color: rgba(148, 163, 184, 0.14); opacity: 0.82; }
 .culture-opportunity-reminder__ripples {
   display: grid;
   gap: 5px;

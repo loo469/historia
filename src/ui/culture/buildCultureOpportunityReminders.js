@@ -237,6 +237,65 @@ function buildRippleEffects(hint, recommendedAction, focusTarget, urgency) {
 }
 
 
+
+function buildInactionCost(hint, recommendedAction, focusTarget, urgency) {
+  const window = urgency.timingLabel ?? urgency.window;
+  const source = recommendedAction.source ?? urgency.sourceLabel ?? focusTarget.label;
+  const isUrgent = urgency.level === 'soon' || urgency.window === 'ce tour' || hint.status === 'probable';
+
+  if (!isUrgent) {
+    return {
+      level: 'low',
+      label: 'Inaction tolérée',
+      source,
+      summary: 'Pas de perte culturelle claire si la recommandation attend.',
+    };
+  }
+
+  if (recommendedAction.code === 'follow-event') {
+    return {
+      level: 'closing',
+      label: 'Se ferme ce tour',
+      source,
+      summary: `${source} risque de sortir de la timeline locale sans action (${window}).`,
+    };
+  }
+
+  if (recommendedAction.code === 'accelerate-research') {
+    return {
+      level: 'degrades',
+      label: 'Recherche ralentie',
+      source,
+      summary: `${source} reste bloquée et perd son avance culturelle (${window}).`,
+    };
+  }
+
+  if (recommendedAction.code === 'protect-site') {
+    return {
+      level: 'degrades',
+      label: 'Site exposé',
+      source: focusTarget.label,
+      summary: `${focusTarget.label} peut se dégrader avant d’être exploité (${window}).`,
+    };
+  }
+
+  if (hint.tone === 'risk') {
+    return {
+      level: 'risky',
+      label: 'Tension culturelle',
+      source,
+      summary: `${hint.cultureName} garde une tension active si rien n’est mis en file (${window}).`,
+    };
+  }
+
+  return {
+    level: 'blocked',
+    label: 'Signal bloqué',
+    source,
+    summary: `${source} reste bloqué si aucune action culturelle n’est planifiée (${window}).`,
+  };
+}
+
 function buildConfidenceCue(hint, recommendedAction, urgency, rippleEffects) {
   if (hint.status === 'missing') {
     return {
@@ -309,6 +368,7 @@ function buildReminder(hint, actionLabel) {
   const tradeoff = buildActionTradeoff(hint, recommendedAction, focusTargetWithUrgency, urgency);
   const rippleEffects = buildRippleEffects(hint, recommendedAction, focusTargetWithUrgency, urgency);
   const confidenceCue = buildConfidenceCue(hint, recommendedAction, urgency, rippleEffects);
+  const inactionCost = buildInactionCost(hint, recommendedAction, focusTargetWithUrgency, urgency);
 
   return {
     reminderId: `${hint.status}:${hint.tone}:${hint.regionId}:${hint.label}:${actionLabel}`,
@@ -332,6 +392,8 @@ function buildReminder(hint, actionLabel) {
       : 'Aucun effet de propagation culturel en file.',
     confidenceCue,
     confidenceCopy: `${confidenceCue.label} · ${confidenceCue.dissent}`,
+    inactionCost,
+    inactionCopy: `${inactionCost.label} · ${inactionCost.summary}`,
     focusTarget: focusTargetWithUrgency,
     focusCopy: `${focusTarget.type}: ${focusTarget.label}`,
   };
