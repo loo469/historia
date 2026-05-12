@@ -860,7 +860,69 @@ function renderAtlasMilitaryOperationSequence(sequence) {
   `;
 }
 
+function buildAtlasMilitaryOperationOutcomeForecasts(sequence) {
+  if (!sequence || sequence.empty || !sequence.steps.length) {
+    return {
+      options: [],
+      summary: 'Prévisions indisponibles: aucune opération militaire candidate visible.',
+      empty: true,
+    };
+  }
+
+  const focusedStep = sequence.steps[0];
+  const templates = [
+    { key: 'push', label: 'Percée rapide', gain: 14, overextension: 'élevée', delay: 'court', riskBias: 2 },
+    { key: 'hold', label: 'Tenir et fixer', gain: 7, overextension: 'modérée', delay: 'moyen', riskBias: 1 },
+    { key: 'reserve', label: 'Réserve prudente', gain: -3, overextension: 'faible', delay: 'long', riskBias: -1 },
+  ];
+
+  const options = templates.map((template, index) => {
+    const danger = focusedStep.tone === 'danger' ? 2 : 0;
+    const gain = template.gain - danger + Math.max(0, Math.min(3, Math.round(focusedStep.priority / 55)));
+    const riskScore = Math.max(1, Math.min(5, 3 + template.riskBias + danger));
+    const frontChange = gain > 8 ? `front +${gain}` : gain >= 0 ? `front +${gain}` : `front ${gain}`;
+    const risk = riskScore >= 5 ? 'surextension critique' : riskScore >= 4 ? 'surextension élevée' : riskScore >= 3 ? 'surextension contrôlée' : 'surextension basse';
+    return {
+      optionId: `forecast:${focusedStep.stepId}:${template.key}`,
+      label: template.label,
+      target: focusedStep.target,
+      frontChange,
+      overextension: template.overextension,
+      delay: template.delay,
+      risk,
+      detail: `${focusedStep.effect}; risque ${focusedStep.risk}; raison ${focusedStep.reason}.`,
+      tone: riskScore >= 5 ? 'danger' : gain >= 8 ? 'gain' : gain < 0 ? 'delay' : 'balanced',
+      rank: index + 1,
+    };
+  });
+
+  return {
+    options,
+    summary: `Prévisions ${focusedStep.target}: ${options.map((option) => `${option.label} ${option.frontChange}`).join(' · ')}`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryOperationOutcomeForecasts(forecasts) {
+  const height = forecasts.empty ? 9 : 11 + (forecasts.options.length * 4.8);
+  return `
+    <g class="atlas-military-outcome-forecasts" aria-label="Prévisions comparées des opérations militaires: ${forecasts.summary}">
+      <rect class="atlas-military-outcome-forecasts__panel" x="42" y="54" width="55" height="${height}" rx="2.5"></rect>
+      <text class="atlas-military-outcome-forecasts__title" x="44" y="58.3">Issues probables</text>
+      ${forecasts.empty ? `<text class="atlas-military-outcome-forecasts__empty" x="44" y="63">${forecasts.summary}</text>` : forecasts.options.map((option, index) => `
+        <g class="atlas-military-outcome-option atlas-military-outcome-option--${option.tone}" data-atlas-military-outcome-option="${option.optionId}" tabindex="0" aria-label="${option.label}: ${option.frontChange}, ${option.risk}, délai ${option.delay}. ${option.detail}">
+          <circle cx="45.1" cy="${63 + index * 4.8}" r="1.15"></circle>
+          <text class="atlas-military-outcome-option__line" x="47" y="${62.4 + index * 4.8}">${option.label}: ${option.frontChange} · ${option.risk}</text>
+          <text class="atlas-military-outcome-option__detail" x="47" y="${64.5 + index * 4.8}">délai ${option.delay} · ${option.detail}</text>
+          <title>${option.target}: ${option.detail}</title>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
+
 
   const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
   const routes = buildProvinceRelations(shell)
@@ -925,6 +987,7 @@ function renderAtlasMilitaryLayer(shell) {
   const playbackSummary = getAtlasConflictPlaybackSummary(playback);
   const comparison = buildAtlasConflictRouteComparison(playback);
   const operationSequence = buildAtlasMilitaryOperationSequence(playback, comparison);
+  const outcomeForecasts = buildAtlasMilitaryOperationOutcomeForecasts(operationSequence);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -949,6 +1012,7 @@ function renderAtlasMilitaryLayer(shell) {
       </g>
       ${renderAtlasConflictRouteComparison(comparison)}
       ${renderAtlasMilitaryOperationSequence(operationSequence)}
+      ${renderAtlasMilitaryOperationOutcomeForecasts(outcomeForecasts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
           <polygon points="${zone.polygon}"></polygon>

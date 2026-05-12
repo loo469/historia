@@ -10179,7 +10179,8 @@ button { font: inherit; }
   opacity: 0.9;
 }
 .atlas-conflict-playback,
-.atlas-conflict-comparison {
+.atlas-conflict-comparison,
+.atlas-military-outcome-forecasts {
   pointer-events: auto;
 }
 .atlas-conflict-playback__panel {
@@ -10280,6 +10281,39 @@ button { font: inherit; }
 .atlas-military-operation-sequence__empty {
   fill: #cbd5e1;
   font-size: 1.05px;
+}
+.atlas-military-outcome-forecasts__panel {
+  fill: rgba(8, 47, 73, 0.74);
+  stroke: rgba(125, 211, 252, 0.32);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-outcome-forecasts__title,
+.atlas-military-outcome-option text,
+.atlas-military-outcome-forecasts__empty {
+  fill: #e0f2fe;
+  font-size: 1.42px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.38;
+}
+.atlas-military-outcome-option circle {
+  fill: rgba(125, 211, 252, 0.72);
+  stroke: rgba(224, 242, 254, 0.72);
+  stroke-width: 0.24;
+}
+.atlas-military-outcome-option--danger circle { fill: rgba(248, 113, 113, 0.78); }
+.atlas-military-outcome-option--gain circle { fill: rgba(74, 222, 128, 0.76); }
+.atlas-military-outcome-option--delay circle { fill: rgba(251, 191, 36, 0.76); }
+.atlas-military-outcome-option__detail,
+.atlas-military-outcome-forecasts__empty {
+  fill: #cbd5e1;
+  font-size: 1.05px;
+}
+.atlas-military-outcome-option:focus .atlas-military-outcome-option__detail,
+.atlas-military-outcome-option:hover .atlas-military-outcome-option__detail {
+  fill: #f8fafc;
 }
 .atlas-military-risk polygon {
   fill: rgba(251, 191, 36, 0.08);
