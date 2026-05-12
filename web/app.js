@@ -1244,6 +1244,21 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           `).join('')}
         </div>
       ` : ''}
+      <div class="province-logistics-impact-preview province-logistics-impact-preview--${preview.selectedActionPreview.status}" aria-label="Impact projeté avant engagement logistique">
+        <div>
+          <b>Impact si engagé</b>
+          <span>${preview.selectedActionPreview.summary}</span>
+        </div>
+        <p>${preview.selectedActionPreview.currentState} → ${preview.selectedActionPreview.projectedState}</p>
+        ${preview.selectedActionPreview.badges.length > 0 ? `
+          <ul>
+            ${preview.selectedActionPreview.badges.slice(0, 3).map((badge) => `
+              <li class="province-logistics-impact-badge province-logistics-impact-badge--${badge.tone}"><strong>${badge.value}</strong><span>${badge.label}</span></li>
+            `).join('')}
+          </ul>
+        ` : ''}
+        ${preview.selectedActionPreview.criticalRemaining ? '<small>Pénurie critique encore possible malgré la meilleure action.</small>' : ''}
+      </div>
       ${preview.options.length > 0 ? `
         <div class="province-logistics-choice-list">
           ${preview.options.map((option) => `

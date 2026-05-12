@@ -481,6 +481,9 @@ function buildRecoveryPriorityActions(routeChoices) {
 
       return {
         actionId: `${option.routeId}:${choice.choiceId}`,
+        optionId: option.optionId,
+        routeId: option.routeId,
+        choiceId: choice.choiceId,
         action: `${choice.label} · ${option.routes[0]}`,
         route: option.routes[0],
         resource: option.resources[0],
@@ -504,12 +507,57 @@ function buildRecoveryPriorityActions(routeChoices) {
   return candidates;
 }
 
+
+function buildSelectedActionImpactPreview(priorityAction, routeChoices) {
+  if (!priorityAction) {
+    return {
+      status: 'empty',
+      summary: 'Aucune action candidate sélectionnée: impact à confirmer après choix logistique.',
+      currentState: 'Données insuffisantes',
+      projectedState: 'Projection indisponible',
+      badges: [],
+      criticalRemaining: false,
+    };
+  }
+
+  const option = routeChoices.find((candidate) => candidate.routeId === priorityAction.routeId) ?? routeChoices[0] ?? null;
+  const choice = option?.recoveryChoices.find((candidate) => candidate.choiceId === priorityAction.choiceId) ?? option?.recoveryChoices[0] ?? null;
+  const shortages = choice?.downstreamShortages ?? [];
+  const neighborEffects = choice?.neighborEffects ?? [];
+  const criticalBefore = option?.recoveryChoices.flatMap((candidate) => candidate.downstreamShortages).filter((shortage) => shortage.status === 'aggravée').length ?? 0;
+  const criticalAfter = shortages.filter((shortage) => shortage.status === 'aggravée').length;
+  const reducedShortages = Math.max(priorityAction.shortagesAvoided, criticalBefore - criticalAfter, shortages.filter((shortage) => shortage.status === 'résolue').length);
+  const relievedRoutes = new Set([
+    priorityAction.route,
+    ...neighborEffects.filter((effect) => effect.label === 'hub soulagé' || effect.label === 'axe stabilisé' || effect.tone === 'low').map((effect) => effect.route),
+  ]).size;
+  const delay = priorityAction.delay ?? option?.delay ?? '1 tour';
+  const criticalRemaining = criticalAfter > 0 || choice?.bottleneck?.tone === 'high';
+
+  return {
+    status: criticalRemaining ? 'critical' : reducedShortages > 0 || relievedRoutes > 1 ? 'improved' : 'limited',
+    summary: `${priorityAction.action}: ${reducedShortages} pénurie${reducedShortages > 1 ? 's' : ''} aval réduite${reducedShortages > 1 ? 's' : ''}, ${relievedRoutes} route${relievedRoutes > 1 ? 's' : ''}/province${relievedRoutes > 1 ? 's' : ''} soulagée${relievedRoutes > 1 ? 's' : ''}, délai ${delay}.`,
+    currentState: criticalBefore > 0
+      ? `Actuel: ${criticalBefore} pénurie${criticalBefore > 1 ? 's' : ''} critique${criticalBefore > 1 ? 's' : ''} ou déplacée${criticalBefore > 1 ? 's' : ''}.`
+      : `Actuel: ${priorityAction.downstreamStatus} sur ${priorityAction.route}.`,
+    projectedState: criticalRemaining
+      ? `Projeté: pénurie critique encore possible (${choice?.bottleneck?.label ?? 'goulot restant'}).`
+      : `Projeté: ${priorityAction.downstreamStatus} après ${priorityAction.action}.`,
+    badges: [
+      { label: 'Pénuries réduites', value: String(reducedShortages), tone: reducedShortages > 0 ? 'low' : 'medium' },
+      { label: 'Axes soulagés', value: String(relievedRoutes), tone: relievedRoutes > 1 ? 'low' : 'medium' },
+      { label: 'Délai', value: delay, tone: getDelayTurns(delay) > 1 ? 'medium' : 'low' },
+    ],
+    criticalRemaining,
+  };
+}
+
 export function buildProvinceLogisticsChoicePreview(province, economyView, options = {}) {
   const normalizedOptions = requireObject(options, 'ProvinceLogisticsChoicePreview options');
   const resourceLabelById = requireObject(normalizedOptions.resourceLabelById ?? {}, 'ProvinceLogisticsChoicePreview resourceLabelById');
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', selectedActionPreview: buildSelectedActionImpactPreview(null, []), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -544,6 +592,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       downstreamSummary: 'Aucune pénurie aval claire détectée.',
       priorityActions: [],
       prioritySummary: 'Aucune action logistique prioritaire disponible.',
+      selectedActionPreview: buildSelectedActionImpactPreview(null, []),
       status: 'stable',
       summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
       options: [],
@@ -554,6 +603,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const hasBlocker = routeChoices.some((choice) => choice.tone === 'high' || choice.tone === 'medium');
   const priorityActions = buildRecoveryPriorityActions(routeChoices);
   const recommendedPriority = priorityActions[0] ?? null;
+  const selectedActionPreview = buildSelectedActionImpactPreview(recommendedPriority, routeChoices);
 
   return {
     recommendedOptionId: recommended.optionId,
@@ -570,6 +620,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     prioritySummary: recommendedPriority
       ? `${recommendedPriority.action} recommandée: ${recommendedPriority.reason} (${recommendedPriority.tradeoff}, ${recommendedPriority.delay}).`
       : 'Aucune action logistique prioritaire disponible.',
+    selectedActionPreview,
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
       ? `${recommended.action} recommandé sur ${recommended.routes[0]}: ${recommended.cause} ${recommended.recoveryChoices[0].label} est prioritaire car ${recommended.recoveryChoices[0].benefit}`

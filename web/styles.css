@@ -3436,6 +3436,56 @@ button { font: inherit; }
   font-size: 12px;
   line-height: 1.35;
 }
+.province-logistics-impact-preview {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.48);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+.province-logistics-impact-preview--improved { border-color: rgba(74, 222, 128, 0.28); }
+.province-logistics-impact-preview--limited { border-color: rgba(245, 158, 11, 0.28); }
+.province-logistics-impact-preview--critical { border-color: rgba(251, 113, 133, 0.34); }
+.province-logistics-impact-preview div {
+  display: grid;
+  gap: 3px;
+}
+.province-logistics-impact-preview b {
+  color: #bfdbfe;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.province-logistics-impact-preview span,
+.province-logistics-impact-preview p,
+.province-logistics-impact-preview small {
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.province-logistics-impact-preview p { margin: 0; }
+.province-logistics-impact-preview ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.province-logistics-impact-badge {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.province-logistics-impact-badge--low { border-color: rgba(74, 222, 128, 0.24); }
+.province-logistics-impact-badge--medium { border-color: rgba(245, 158, 11, 0.28); }
+.province-logistics-impact-badge strong { color: #f8fafc; font-size: 13px; }
+.province-logistics-impact-badge span { color: #bfdbfe; font-size: 10px; }
 .province-logistics-cause-summary--high { border-color: rgba(251, 113, 133, 0.38); }
 .province-logistics-cause-summary--medium { border-color: rgba(245, 158, 11, 0.34); }
 .province-logistics-cause-summary--stable,
