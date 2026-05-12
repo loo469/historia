@@ -493,6 +493,58 @@ button { font: inherit; }
 .map-world-climate-cascade__item--critical { border-color: rgba(248, 113, 113, 0.44); }
 .map-world-climate-cascade__item--elevated { border-color: rgba(251, 191, 36, 0.34); }
 .map-world-climate-cascade__item--watch { border-color: rgba(125, 211, 252, 0.24); }
+.map-world-climate-synergy {
+  display: grid;
+  gap: 8px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.64), rgba(6, 78, 59, 0.22));
+  border: 1px solid rgba(110, 231, 183, 0.24);
+}
+.map-world-climate-synergy--priority { border-color: rgba(74, 222, 128, 0.44); }
+.map-world-climate-synergy--quiet { border-color: rgba(148, 163, 184, 0.2); }
+.map-world-climate-synergy__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-synergy p,
+.map-world-climate-synergy span,
+.map-world-climate-synergy small {
+  color: #d1fae5;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-synergy__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.map-world-climate-synergy__item {
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(110, 231, 183, 0.22);
+}
+.map-world-climate-synergy__item--critical { border-color: rgba(74, 222, 128, 0.48); }
+.map-world-climate-synergy__item--elevated { border-color: rgba(251, 191, 36, 0.34); }
+.map-world-climate-synergy__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 5px 0;
+}
+.map-world-climate-synergy__badges small {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #052e16;
+  background: #86efac;
+}
 
 .map-climate-severity-legend {
   display: grid;
