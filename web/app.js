@@ -11,6 +11,7 @@ import { buildCityComparisonPanel } from '../src/ui/economy/buildCityComparisonP
 import { buildProvinceLogisticsChoicePreview } from '../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
 import { buildProvinceEconomyTurnReport } from '../src/ui/economy/buildProvinceEconomyTurnReport.js';
 import { buildProvinceEconomyBudgetPreview } from '../src/ui/economy/buildProvinceEconomyBudgetPreview.js';
+import { buildEconomyReadinessWarnings } from '../src/ui/economy/buildEconomyReadinessWarnings.js';
 import { Cellule } from '../src/domain/intrigue/Cellule.js';
 import { OperationClandestine } from '../src/domain/intrigue/OperationClandestine.js';
 import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js';
@@ -1483,13 +1484,18 @@ function renderMapClimatePreparednessSummary(summary) {
   `;
 }
 
-function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView = null) {
+function buildProvinceEconomyBudgetPreviewView(province, economyView, shell, focusContext, intrigueView = null) {
   const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
   const logisticsPreview = buildProvinceLogisticsChoicePreviewView(province, economyView);
-  const budget = buildProvinceEconomyBudgetPreview(province, economyView, {
+
+  return buildProvinceEconomyBudgetPreview(province, economyView, {
     actionQueue,
     logisticsChoices: logisticsPreview.options,
   });
+}
+
+function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusContext, intrigueView = null) {
+  const budget = buildProvinceEconomyBudgetPreviewView(province, economyView, shell, focusContext, intrigueView);
 
   if (budget.status === 'empty') {
     return `
@@ -1529,6 +1535,41 @@ function renderProvinceEconomyBudgetPreview(province, economyView, shell, focusC
           </article>
         `).join('')}
       </div>
+    </section>
+  `;
+}
+
+function renderEconomyReadinessWarnings(shell, economyView, focusContext, intrigueView = null) {
+  const provinces = shell.provinces.slice(0, 6);
+  const logisticsByProvinceId = Object.fromEntries(
+    provinces.map((province) => [province.provinceId, buildProvinceLogisticsChoicePreviewView(province, economyView)]),
+  );
+  const budgetByProvinceId = Object.fromEntries(
+    provinces.map((province) => [province.provinceId, buildProvinceEconomyBudgetPreviewView(province, economyView, shell, focusContext, intrigueView)]),
+  );
+  const readiness = buildEconomyReadinessWarnings(provinces, {
+    budgetByProvinceId,
+    logisticsByProvinceId,
+    maxWarnings: 3,
+  });
+
+  return `
+    <section class="economy-readiness-warnings economy-readiness-warnings--${readiness.status}" aria-label="Alertes économie et logistique avant fin de tour">
+      <div class="economy-readiness-warnings__header">
+        <strong>Readiness économie</strong>
+        <span>${readiness.warnings.length > 0 ? `${readiness.warnings.length} alerte${readiness.warnings.length > 1 ? 's' : ''}` : 'sécurisé'}</span>
+      </div>
+      <p>${readiness.summary}</p>
+      ${readiness.warnings.length > 0 ? `
+        <ul class="economy-readiness-warnings__list">
+          ${readiness.warnings.map((warning) => `
+            <li class="economy-readiness-warning economy-readiness-warning--${warning.tone}">
+              <b>${warning.label}</b>
+              <span>${warning.detail}</span>
+            </li>
+          `).join('')}
+        </ul>
+      ` : ''}
     </section>
   `;
 }
@@ -4507,6 +4548,7 @@ function render() {
               <span>${economyView.pulse.city.name}, stock ${economyView.pulse.delta.stockDelta > 0 ? '+' : ''}${economyView.pulse.delta.stockDelta}, stabilité ${economyView.pulse.delta.stabilityDelta > 0 ? '+' : ''}${economyView.pulse.delta.stabilityDelta}, prospérité ${economyView.pulse.delta.prosperityDelta > 0 ? '+' : ''}${economyView.pulse.delta.prosperityDelta}</span>
             </div>
           ` : ''}
+          ${renderEconomyReadinessWarnings(shell, economyView, focusContext, intrigueView)}
           ${renderCultureTurnReport(cultureTurnReport)}
         </div>
         <div class="hero-stats">
