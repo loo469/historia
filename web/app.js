@@ -426,6 +426,12 @@ const state = {
   },
   acceptedRecommendedMilitaryAction: null,
   lastMilitaryOutcomeMarkers: [],
+  militaryOutcomeMarkerFilters: {
+    stabilized: true,
+    worsened: true,
+    blocked: true,
+    risk: true,
+  },
 };
 
 function getSelectedMapScenario() {
@@ -657,8 +663,65 @@ function getProvinceShape(provinceId) {
   return getProvinceGeometry(provinceId).shape ?? `polygon(${getProvincePolygon(provinceId).split(' ').map((point) => point.split(',').join('% ')).join('%, ') }%)`;
 }
 
+const militaryOutcomeMarkerCategories = [
+  { tone: 'stabilized', label: 'Front stabilisé', shortLabel: 'Stabilisé' },
+  { tone: 'worsened', label: 'Front aggravé', shortLabel: 'Aggravé' },
+  { tone: 'blocked', label: 'Action bloquée', shortLabel: 'Bloqué' },
+  { tone: 'risk', label: 'Risque de suivi', shortLabel: 'Risque' },
+];
+
+function isMilitaryOutcomeMarkerVisible(marker) {
+  return Boolean(marker && state.militaryOutcomeMarkerFilters[marker.tone] !== false);
+}
+
 function getMilitaryOutcomeMarkerForProvince(provinceId) {
+  const marker = state.lastMilitaryOutcomeMarkers.find((candidate) => candidate.provinceId === provinceId) ?? null;
+
+  return isMilitaryOutcomeMarkerVisible(marker) ? marker : null;
+}
+
+function getAnyMilitaryOutcomeMarkerForProvince(provinceId) {
   return state.lastMilitaryOutcomeMarkers.find((marker) => marker.provinceId === provinceId) ?? null;
+}
+
+function buildMilitaryOutcomeMarkerFilterState(markers = state.lastMilitaryOutcomeMarkers) {
+  return militaryOutcomeMarkerCategories.map((category) => {
+    const count = markers.filter((marker) => marker.tone === category.tone).length;
+    const enabled = state.militaryOutcomeMarkerFilters[category.tone] !== false;
+
+    return {
+      ...category,
+      count,
+      enabled,
+      hiddenCount: enabled ? 0 : count,
+    };
+  });
+}
+
+function renderMilitaryOutcomeMarkerFilters(markers = state.lastMilitaryOutcomeMarkers) {
+  const filters = buildMilitaryOutcomeMarkerFilterState(markers);
+  const total = markers.length;
+  const hiddenTotal = filters.reduce((sum, filter) => sum + filter.hiddenCount, 0);
+
+  return `
+    <section class="military-outcome-filter" aria-label="Filtres des marqueurs d’issue militaire">
+      <div class="military-outcome-filter__header">
+        <div>
+          <span>Marqueurs militaires</span>
+          <strong>${total} post-commit</strong>
+        </div>
+        <small>${hiddenTotal} masqué${hiddenTotal > 1 ? 's' : ''}</small>
+      </div>
+      <div class="military-outcome-filter__buttons">
+        ${filters.map((filter) => `
+          <button type="button" class="military-outcome-filter__button military-outcome-filter__button--${filter.tone} ${filter.enabled ? 'is-active' : 'is-muted'}" data-military-outcome-filter="${filter.tone}" aria-pressed="${filter.enabled}">
+            <span>${filter.shortLabel}</span>
+            <strong>${filter.count}</strong>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
 }
 
 function buildPostCommitMilitaryOutcomeMarker(province, shell, intrigueView = null) {
@@ -723,7 +786,7 @@ function renderPostCommitMilitaryOutcomeMarker(marker) {
 }
 
 function renderSelectedProvinceMilitaryOutcomeMarker(province) {
-  const marker = getMilitaryOutcomeMarkerForProvince(province.provinceId);
+  const marker = getAnyMilitaryOutcomeMarkerForProvince(province.provinceId);
 
   if (!marker) {
     return '';
@@ -738,6 +801,7 @@ function renderSelectedProvinceMilitaryOutcomeMarker(province) {
       </div>
       <p>${marker.changed}</p>
       <small>${marker.why}</small>
+      ${isMilitaryOutcomeMarkerVisible(marker) ? '' : '<em>Marqueur masqué par le filtre de légende.</em>'}
     </section>
   `;
 }
@@ -8172,6 +8236,7 @@ function render() {
           </div>
           <div class="map-stage" data-map-stage="true" tabindex="0" aria-label="Carte opérationnelle zoomable. Utilisez plus, moins, zéro ou C pour naviguer.">
             ${renderMapControls()}
+            ${renderMilitaryOutcomeMarkerFilters(state.lastMilitaryOutcomeMarkers)}
             <div class="map-viewport" style="transform:${getMapViewportTransform()};">
               ${renderMapLayerStack(shell, economyView, focusContext, cultureView, postCommitClimateMarkers)}
               ${renderIntrigueMapOverlay(intrigueView)}
@@ -8529,6 +8594,14 @@ function render() {
   document.querySelectorAll('[data-mobile-map-toggle]').forEach((element) => {
     element.addEventListener('click', () => {
       state.mobileMapExpanded = !state.mobileMapExpanded;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-military-outcome-filter]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const tone = element.dataset.militaryOutcomeFilter;
+      state.militaryOutcomeMarkerFilters[tone] = state.militaryOutcomeMarkerFilters[tone] === false;
       render();
     });
   });

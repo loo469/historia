@@ -1069,6 +1069,69 @@ button { font: inherit; }
   border: 1px solid rgba(148, 163, 184, 0.18);
   backdrop-filter: blur(10px);
 }
+.military-outcome-filter {
+  position: absolute;
+  top: 74px;
+  right: 14px;
+  z-index: 7;
+  display: grid;
+  gap: 7px;
+  width: min(280px, calc(100% - 28px));
+  padding: 9px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(10px);
+}
+.military-outcome-filter__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.military-outcome-filter__header span,
+.military-outcome-filter__header small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-outcome-filter__header strong { color: #e0f2fe; font-size: 12px; }
+.military-outcome-filter__buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.military-outcome-filter__button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.military-outcome-filter__button strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.5);
+}
+.military-outcome-filter__button.is-muted {
+  opacity: 0.48;
+  filter: grayscale(0.7);
+}
+.military-outcome-filter__button--stabilized.is-active { border-color: rgba(74, 222, 128, 0.5); color: #bbf7d0; }
+.military-outcome-filter__button--worsened.is-active { border-color: rgba(251, 113, 133, 0.56); color: #fecdd3; }
+.military-outcome-filter__button--blocked.is-active { border-color: rgba(148, 163, 184, 0.48); color: #f8fafc; }
+.military-outcome-filter__button--risk.is-active { border-color: rgba(251, 191, 36, 0.52); color: #fde68a; }
+
 .map-control-button {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.72);
@@ -3633,7 +3696,8 @@ button { font: inherit; }
 }
 .post-commit-military-outcome span,
 .post-commit-military-outcome code,
-.post-commit-military-outcome small {
+.post-commit-military-outcome small,
+.post-commit-military-outcome em {
   color: var(--muted);
   font-size: 11px;
 }
@@ -3642,6 +3706,7 @@ button { font: inherit; }
   text-transform: uppercase;
 }
 .post-commit-military-outcome strong { color: #f8fafc; }
+.post-commit-military-outcome em { font-style: normal; color: #fde68a; }
 .post-commit-military-outcome p {
   margin: 0;
   color: #dbeafe;
@@ -5968,7 +6033,70 @@ button { font: inherit; }
     justify-content: center;
     border-radius: 18px;
   }
-  .map-control-button {
+  .military-outcome-filter {
+  position: absolute;
+  top: 74px;
+  right: 14px;
+  z-index: 7;
+  display: grid;
+  gap: 7px;
+  width: min(280px, calc(100% - 28px));
+  padding: 9px;
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(10px);
+}
+.military-outcome-filter__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.military-outcome-filter__header span,
+.military-outcome-filter__header small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.military-outcome-filter__header strong { color: #e0f2fe; font-size: 12px; }
+.military-outcome-filter__buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.military-outcome-filter__button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.military-outcome-filter__button strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.5);
+}
+.military-outcome-filter__button.is-muted {
+  opacity: 0.48;
+  filter: grayscale(0.7);
+}
+.military-outcome-filter__button--stabilized.is-active { border-color: rgba(74, 222, 128, 0.5); color: #bbf7d0; }
+.military-outcome-filter__button--worsened.is-active { border-color: rgba(251, 113, 133, 0.56); color: #fecdd3; }
+.military-outcome-filter__button--blocked.is-active { border-color: rgba(148, 163, 184, 0.48); color: #f8fafc; }
+.military-outcome-filter__button--risk.is-active { border-color: rgba(251, 191, 36, 0.52); color: #fde68a; }
+
+.map-control-button {
     min-width: 44px;
     height: 44px;
   }
