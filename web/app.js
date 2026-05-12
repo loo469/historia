@@ -4178,6 +4178,131 @@ function renderRecommendedMilitaryActionPreview(shell, intrigueView = null) {
 
 
 
+function buildQueuedMilitaryResolutionSummary(shell, intrigueView = null) {
+  const queuedAction = state.acceptedRecommendedMilitaryAction;
+
+  if (!queuedAction) {
+    return {
+      empty: true,
+      tone: 'ready',
+      title: 'Aucune résolution militaire en attente',
+      summary: 'Aucune action militaire ajoutée depuis la carte: le tour peut être validé sans changement de front immédiat.',
+      items: [],
+      conflicts: [],
+    };
+  }
+
+  const province = shell.provinces.find((candidate) => candidate.provinceId === queuedAction.provinceId) ?? null;
+
+  if (!province) {
+    return {
+      empty: false,
+      tone: 'warning',
+      title: 'Action en file à vérifier',
+      summary: `${queuedAction.actionCode} référence une province introuvable avant résolution.`,
+      items: [{
+        provinceLabel: queuedAction.provinceLabel,
+        actionCode: queuedAction.actionCode,
+        target: 'province indisponible',
+        effect: 'résolution suspendue tant que la cible n’est pas retrouvée',
+        pressure: 'pression inconnue',
+        residualRisk: 'risque à vérifier',
+        status: 'risky',
+      }],
+      conflicts: ['Cible introuvable: vérifier la sélection avant de valider le tour.'],
+    };
+  }
+
+  const focusContext = {
+    focusedProvinceId: province.provinceId,
+    focusedProvince: province,
+    neighborIds: new Set(province.neighborIds),
+  };
+  const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+  const action = actionQueue.find((entry) => entry.actionCode === queuedAction.actionCode) ?? actionQueue[0] ?? null;
+  const projection = buildProjectedFrontStability(province, shell, actionQueue);
+  const risks = buildCriticalFrontRiskWarnings(province, projection);
+  const stability = projection.lines.find((line) => line.label === 'Stabilité attendue')?.value ?? projection.title;
+  const pressure = projection.drivers.some((driver) => driver.label === 'Pression')
+    ? 'pression ennemie encore visible'
+    : projection.tone === 'ready'
+      ? 'pression en baisse'
+      : 'pression contestée';
+  const residualRisk = risks[0]?.label ?? 'Risque acceptable';
+  const duplicateCount = actionQueue.filter((entry) => entry.actionCode === queuedAction.actionCode).length;
+  const conflicts = [];
+
+  if (duplicateCount > 1) {
+    conflicts.push(`${queuedAction.actionCode} apparaît ${duplicateCount} fois dans la file locale.`);
+  }
+
+  if (action?.status === 'blocked') {
+    conflicts.push('Action bloquée: la province resterait critique après résolution.');
+  }
+
+  if (action?.status === 'risky') {
+    conflicts.push('Action risquée: confirmer l’appui avant commit du tour.');
+  }
+
+  return {
+    empty: false,
+    tone: conflicts.length > 0 ? (action?.status === 'blocked' ? 'danger' : 'warning') : 'ready',
+    title: 'Résolution militaire prête',
+    summary: `${queuedAction.actionCode} sera résolue au prochain commit de tour pour ${province.label}.`,
+    items: [{
+      provinceLabel: province.label,
+      actionCode: queuedAction.actionCode,
+      target: province.contested ? `Front contesté ${province.label}` : `Province ${province.label}`,
+      effect: action?.expectedResult ?? `Stabilité prévue: ${stability}.`,
+      pressure,
+      residualRisk,
+      status: action?.status ?? 'ready',
+      stability,
+    }],
+    conflicts,
+  };
+}
+
+function renderQueuedMilitaryResolutionSummary(shell, intrigueView = null) {
+  const report = buildQueuedMilitaryResolutionSummary(shell, intrigueView);
+
+  return `
+    <section class="queued-military-resolution queued-military-resolution--${report.tone} ${report.empty ? 'is-empty' : ''}" aria-label="Résumé de résolution militaire avant validation du tour">
+      <div class="queued-military-resolution__header">
+        <div>
+          <span>Résolution avant commit</span>
+          <strong>${report.title}</strong>
+        </div>
+        <small>${report.items.length} action${report.items.length > 1 ? 's' : ''}</small>
+      </div>
+      <p>${report.summary}</p>
+      ${report.items.length > 0 ? `
+        <div class="queued-military-resolution__items">
+          ${report.items.map((item) => `
+            <article class="queued-military-resolution__item queued-military-resolution__item--${item.status}">
+              <div>
+                <strong>${item.provinceLabel}</strong>
+                <code>${item.actionCode}</code>
+              </div>
+              <dl>
+                <div><dt>Cible / front</dt><dd>${item.target}</dd></div>
+                <div><dt>Stabilité</dt><dd>${item.stability}</dd></div>
+                <div><dt>Pression ennemie</dt><dd>${item.pressure}</dd></div>
+                <div><dt>Risque restant</dt><dd>${item.residualRisk}</dd></div>
+              </dl>
+              <p>${item.effect}</p>
+            </article>
+          `).join('')}
+        </div>
+      ` : ''}
+      <div class="queued-military-resolution__conflicts ${report.conflicts.length > 0 ? 'has-conflicts' : ''}">
+        <strong>${report.conflicts.length > 0 ? 'Conflits à vérifier' : 'Aucun conflit de file détecté'}</strong>
+        <span>${report.conflicts.length > 0 ? report.conflicts.join(' · ') : 'Pas de doublon militaire carte avant validation du tour.'}</span>
+      </div>
+    </section>
+  `;
+}
+
 function buildQueuedMilitaryMapActionConfirmation(province, shell, intrigueView = null) {
   const queuedAction = state.acceptedRecommendedMilitaryAction;
 
@@ -7281,6 +7406,7 @@ function render() {
           ${renderConflictReadinessWarnings(shell, intrigueView)}
           ${renderFrontPriorityRanking(shell, intrigueView)}
           ${renderRecommendedMilitaryActionPreview(shell, intrigueView)}
+          ${renderQueuedMilitaryResolutionSummary(shell, intrigueView)}
           ${renderMapClimatePreparednessSummary(climatePreparednessSummary)}
           ${renderMapClimateInterventionWindows(climateInterventionWindows)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
