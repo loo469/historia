@@ -197,6 +197,23 @@ test('final intrigue exposure summary is visible before turn commit', () => {
   assert.match(stylesSource, /province-intrigue-final-commit-summary__item--trop-risqué/);
 });
 
+test('world map intrigue signals show presence risk shadows and probable sabotage safely', () => {
+  assert.match(webAppSource, /function buildWorldMapIntrigueSignals/);
+  assert.match(webAppSource, /function renderWorldMapIntrigueSignals/);
+  assert.match(webAppSource, /function renderWorldMapIntrigueSignalRollup/);
+  assert.match(webAppSource, /Signaux intrigue sur la carte monde fog-safe/);
+  assert.match(webAppSource, /Résumé intrigue carte monde fog-safe/);
+  assert.match(webAppSource, /présence forte/);
+  assert.match(webAppSource, /risque sabotage probable/);
+  assert.match(webAppSource, /zone d’ombre conservée/);
+  assert.match(webAppSource, /les cellules, relais, objectifs et causes cachées restent masqués/);
+  assert.match(webAppSource, /aucun détail caché révélé/);
+  assert.match(webAppSource, /renderWorldMapIntrigueSignals\(worldMapSignals\)/);
+  assert.match(stylesSource, /world-map-intrigue-signal/);
+  assert.match(stylesSource, /world-map-intrigue-signal--shadow/);
+  assert.match(stylesSource, /world-map-intrigue-rollup/);
+});
+
 test('post-commit intrigue exposure markers stay fog-safe on the map', () => {
   assert.match(webAppSource, /function buildPostCommitIntrigueExposureMarkers/);
   assert.match(webAppSource, /function renderPostCommitIntrigueExposureMarkers/);
