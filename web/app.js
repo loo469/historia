@@ -4009,6 +4009,105 @@ function renderProvinceIntrigueExposureTimelineHints(province, intrigueView) {
   `;
 }
 
+function buildSafeIntrigueResponseTimingOptions(province, intrigueView) {
+  const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
+  const entry = (intrigueView?.map?.entries ?? []).find((candidate) => candidate.locationId === province?.provinceId) ?? null;
+  const responses = drillDown?.quickResponses ?? [];
+
+  if (!drillDown || responses.length === 0) {
+    return [];
+  }
+
+  const baseExposure = drillDown.riskBand === 'high' || drillDown.criticality === 'critical'
+    ? 3
+    : drillDown.riskBand === 'medium'
+      ? 2
+      : 1;
+
+  return responses.map((response) => {
+    const lowersExposure = ['contenir', 'surveiller'].includes(response.code) && response.escalationProbability !== 'élevée';
+    const fogState = !entry?.showSecondaryDetails
+      ? 'brouillard conservé'
+      : (entry.metrics?.exposedCellCount ?? 0) > 0
+        ? 'signal confirmé visible'
+        : 'signal partiel visible';
+    const delayTurns = response.cooldownTurns > 0
+      ? response.cooldownTurns
+      : lowersExposure
+        ? 2
+        : response.escalationProbability === 'élevée'
+          ? 0
+          : 1;
+    const secondaryRisk = response.escalationProbability === 'élevée' || response.heatGenerated >= 10
+      ? 'risque secondaire élevé: chaleur visible à compenser'
+      : response.heatGenerated >= 5
+        ? 'risque secondaire modéré: surveiller la chaleur'
+        : 'risque secondaire faible: garder la couverture discrète';
+    const waitingRisk = delayTurns <= 0 || (!lowersExposure && baseExposure >= 2)
+      ? 'sûr maintenant, risqué si le joueur attend'
+      : delayTurns === 1
+        ? 'fenêtre courte: revalider au prochain tour'
+        : 'marge de délai confortable sous signaux visibles';
+    const tone = waitingRisk.includes('risqué') || response.escalationProbability === 'élevée'
+      ? 'danger'
+      : lowersExposure
+        ? 'mitigated'
+        : 'watch';
+    const score = (lowersExposure ? 40 : 0) + delayTurns * 10 - (response.heatGenerated ?? 0) - (response.escalationProbability === 'élevée' ? 20 : 0);
+
+    return {
+      code: response.code,
+      label: response.label,
+      tone,
+      score,
+      exposureChange: lowersExposure ? 'exposition réduite' : response.code === 'exposer' ? 'exposition assumée' : 'exposition surveillée',
+      fogState,
+      delayLabel: delayTurns <= 0 ? 'aggravation possible immédiate' : `${delayTurns} tour${delayTurns > 1 ? 's' : ''} avant aggravation probable`,
+      secondaryRisk,
+      waitingRisk,
+      summary: response.aftermathSummary ?? response.summary,
+    };
+  })
+    .sort((left, right) => right.score - left.score || left.label.localeCompare(right.label))
+    .slice(0, 4);
+}
+
+function renderSafeIntrigueResponseTimingComparison(province, intrigueView) {
+  const options = buildSafeIntrigueResponseTimingOptions(province, intrigueView);
+
+  if (options.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="province-intrigue-response-timing" aria-label="Comparaison fog-safe des réponses intrigue sous timing d’exposition">
+      <div class="province-intrigue-response-timing__header">
+        <strong>Réponses intrigue sûres</strong>
+        <span>exposition · délai · risque secondaire</span>
+      </div>
+      <div class="province-intrigue-response-timing__grid">
+        ${options.map((option) => `
+          <article class="province-intrigue-response-option province-intrigue-response-option--${option.tone}">
+            <div>
+              <b>${option.label}</b>
+              <code>${option.code}</code>
+            </div>
+            <dl>
+              <div><dt>Exposition</dt><dd>${option.exposureChange}</dd></div>
+              <div><dt>Incertitude</dt><dd>${option.fogState}</dd></div>
+              <div><dt>Délai</dt><dd>${option.delayLabel}</dd></div>
+              <div><dt>Risque</dt><dd>${option.secondaryRisk}</dd></div>
+            </dl>
+            <p>${option.waitingRisk}</p>
+            <small>${option.summary}</small>
+          </article>
+        `).join('')}
+      </div>
+      <small>Comparaison prudente: seules les tendances visibles sont comparées; cellule, cible, relais et état caché restent masqués.</small>
+    </section>
+  `;
+}
+
 function buildProvinceIntrigueRiskWarnings(province, actionQueue, intrigueView) {
   const drillDown = findProvinceIntrigueDrillDown(province, intrigueView);
   const selectedResponse = drillDown?.quickResponses?.find((response) => response.code === drillDown.recommendedResponseCode)
@@ -6185,6 +6284,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       </div>
       ${renderProvinceActionRecommendations(province, focusContext, intrigueView)}
       ${renderProvinceIntrigueExposureTimelineHints(province, intrigueView)}
+      ${renderSafeIntrigueResponseTimingComparison(province, intrigueView)}
       ${renderConflictOutcomePreview(province, shell)}
       ${renderSelectedProvinceConflictNextAction(province, shell, focusContext, intrigueView)}
       ${renderQueuedMilitaryMapActionConfirmation(province, shell, intrigueView)}
