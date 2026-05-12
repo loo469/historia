@@ -87,6 +87,11 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(['critical', 'improved', 'limited'].includes(preview.selectedActionPreview.status));
   assert.equal(preview.selectedActionPreview.badges.length, 3);
   assert.match(`${preview.selectedActionPreview.currentState} ${preview.selectedActionPreview.projectedState}`, /Actuel|Projeté/);
+  assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
+  assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
+  assert.match(preview.primaryLogisticsAction.downstreamImpact, /pénurie|route|province|délai/);
+  assert.ok(['ready', 'risky'].includes(preview.primaryLogisticsAction.status));
+  assert.equal(preview.primaryLogisticsAction.disabled, false);
   assert.ok(preview.options[0].recoveryChoices.length >= 2);
   assert.equal(preview.options[0].recoveryChoices[0].recommended, true);
   assert.match(preview.options[0].recoveryChoices[0].benefit, /Outils|River Gate|Ember Line/);
@@ -138,8 +143,26 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.prioritySummary, /Aucune action logistique prioritaire/);
   assert.equal(preview.selectedActionPreview.status, 'empty');
   assert.deepEqual(preview.selectedActionPreview.badges, []);
+  assert.equal(preview.primaryLogisticsAction.status, 'empty');
+  assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
   assert.match(preview.summary, /Logistique stable/);
+});
+
+test('buildProvinceLogisticsChoicePreview flags redundant queued logistics actions', () => {
+  const baseline = buildProvinceLogisticsChoicePreview(province, buildEconomyView(), {
+    resourceLabelById: { grain: 'Grain', tools: 'Outils' },
+  });
+  const queuedAction = baseline.primaryLogisticsAction;
+
+  const preview = buildProvinceLogisticsChoicePreview(province, buildEconomyView(), {
+    resourceLabelById: { grain: 'Grain', tools: 'Outils' },
+    queuedLogisticsActions: [{ actionId: queuedAction.actionId, routeId: queuedAction.routeId, choiceId: queuedAction.choiceId, label: queuedAction.label }],
+  });
+
+  assert.equal(preview.primaryLogisticsAction.status, 'redundant');
+  assert.equal(preview.primaryLogisticsAction.disabled, true);
+  assert.match(preview.primaryLogisticsAction.queueWarning, /déjà en file|doublon/);
 });
 
 test('buildProvinceLogisticsChoicePreview exposes stable local route causes', () => {

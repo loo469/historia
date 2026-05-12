@@ -400,6 +400,7 @@ const state = {
   selectedCityId: 'river-gate-city',
   hoveredRouteId: null,
   selectedRouteId: null,
+  queuedLogisticsActions: [],
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
   mobilePanelSection: 'details',
@@ -1207,6 +1208,7 @@ function renderProvinceLogisticsBottleneckComparison(province, economyView) {
 function buildProvinceLogisticsChoicePreviewView(province, economyView) {
   return buildProvinceLogisticsChoicePreview(province, economyView, {
     resourceLabelById: Object.fromEntries(Object.entries(resourceHudById).map(([resourceId, hud]) => [resourceId, hud.label])),
+    queuedLogisticsActions: state.queuedLogisticsActions,
   });
 }
 
@@ -1251,6 +1253,20 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           `).join('')}
         </div>
       ` : ''}
+      <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">
+        <div>
+          <b>Action carte</b>
+          <strong>${preview.primaryLogisticsAction.label}</strong>
+        </div>
+        <p>${preview.primaryLogisticsAction.gain}</p>
+        <dl>
+          <div><dt>Coût</dt><dd>${preview.primaryLogisticsAction.cost}</dd></div>
+          <div><dt>Délai</dt><dd>${preview.primaryLogisticsAction.delay}</dd></div>
+          <div><dt>Impact aval</dt><dd>${preview.primaryLogisticsAction.downstreamImpact}</dd></div>
+        </dl>
+        <small>${preview.primaryLogisticsAction.queueWarning}</small>
+        <button type="button" data-logistics-queue-action="${preview.primaryLogisticsAction.actionId ?? ''}" ${preview.primaryLogisticsAction.disabled ? 'disabled' : ''}>Engager récupération</button>
+      </div>
       <div class="province-logistics-impact-preview province-logistics-impact-preview--${preview.selectedActionPreview.status}" aria-label="Impact projeté avant engagement logistique">
         <div>
           <b>Impact si engagé</b>
@@ -7258,6 +7274,31 @@ function render() {
     element.addEventListener('click', () => {
       const key = element.dataset.economyFilter;
       state.economyFilters[key] = !state.economyFilters[key];
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-logistics-queue-action]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const actionId = element.dataset.logisticsQueueAction;
+      if (!actionId || element.disabled) {
+        return;
+      }
+
+      const shell = getShell();
+      const province = shell.provinces.find((candidate) => candidate.provinceId === state.selectedProvinceId) ?? null;
+      const economyView = getEconomyViewModel();
+      const preview = province ? buildProvinceLogisticsChoicePreviewView(province, economyView) : null;
+      const action = preview?.primaryLogisticsAction;
+      if (!action || action.disabled) {
+        return;
+      }
+
+      state.queuedLogisticsActions = [
+        ...state.queuedLogisticsActions.filter((entry) => entry.actionId !== action.actionId),
+        { actionId: action.actionId, routeId: action.routeId, choiceId: action.choiceId, label: action.label, status: action.status },
+      ];
+      state.mobilePanelSection = 'details';
       render();
     });
   });
