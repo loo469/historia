@@ -6801,6 +6801,12 @@ function buildIntrigueExposureMarkerRollup(markers) {
     uncertain: markers.filter((marker) => marker.freshness === 'uncertain').length,
   };
   const freshnessCopy = `${freshnessCounts.recent} récent${freshnessCounts.recent > 1 ? 's' : ''} · ${freshnessCounts.stale} ancien${freshnessCounts.stale > 1 ? 's' : ''} · ${freshnessCounts.uncertain} incertain${freshnessCounts.uncertain > 1 ? 's' : ''}; fraîcheur déduite seulement des signaux visibles.`;
+  const resolutionCounts = {
+    resolved: markers.filter((marker) => marker.resolutionStatus === 'resolved').length,
+    active: markers.filter((marker) => marker.resolutionStatus === 'active').length,
+    fogCalmed: markers.filter((marker) => marker.resolutionStatus === 'fog-calmed').length,
+  };
+  const resolutionCopy = `${resolutionCounts.resolved} traité${resolutionCounts.resolved > 1 ? 's' : ''} récemment · ${resolutionCounts.active} encore actif${resolutionCounts.active > 1 ? 's' : ''} · ${resolutionCounts.fogCalmed} rumeur${resolutionCounts.fogCalmed > 1 ? 's' : ''} calmée${resolutionCounts.fogCalmed > 1 ? 's' : ''}; l’assurance reste confirmée, probable ou rumeur calmée selon les données visibles.`;
 
   return {
     counts,
@@ -6811,6 +6817,8 @@ function buildIntrigueExposureMarkerRollup(markers) {
     certaintyCopy,
     freshnessCounts,
     freshnessCopy,
+    resolutionCounts,
+    resolutionCopy,
     summary: activeFilters.length > 0
       ? `${filteredMarkers.length}/${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue visible${filteredMarkers.length > 1 ? 's' : ''} après filtre fog-safe.`
       : `${markers.length} marqueur${markers.length > 1 ? 's' : ''} intrigue post-commit visible${markers.length > 1 ? 's' : ''}; aucun filtre d’issue actif.`,
@@ -6889,6 +6897,29 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {
         : freshness === 'stale'
           ? 'soupçon ancien à revérifier avant intervention lourde'
           : 'fraîcheur incertaine sous brouillard; vérifier la province sans inférer de cible';
+      const resolutionStatus = direction === 'lowered'
+        ? 'resolved'
+        : direction === 'hidden'
+          ? 'fog-calmed'
+          : 'active';
+      const resolutionLabels = {
+        resolved: 'Traité récemment',
+        active: 'Menace active',
+        'fog-calmed': 'Rumeur calmée',
+      };
+      const assuranceLevel = resolutionStatus === 'fog-calmed'
+        ? 'rumeur calmée'
+        : certainty === 'confirmed'
+          ? 'confirmé'
+          : 'probable';
+      const activeAfterResponse = resolutionStatus === 'active';
+      const resolutionDetail = resolutionStatus === 'resolved'
+        ? 'alerte calmée par une réponse visible; garder une vérification légère au prochain tour'
+        : resolutionStatus === 'fog-calmed'
+          ? 'rumeur calmée sous brouillard; aucune source ou cause cachée n’est révélée'
+          : direction === 'increased'
+            ? 'menace encore active malgré la réponse; chaleur visible à compenser'
+            : 'menace encore à surveiller malgré la réponse; ne pas révéler de cause cachée';
 
       return {
         locationId: entry.locationId,
@@ -6907,9 +6938,14 @@ function buildPostCommitIntrigueExposureMarkers(intrigueView = null, options = {
         freshness,
         freshnessLabel: freshnessLabels[freshness],
         freshnessExplanation,
+        resolutionStatus,
+        resolutionLabel: resolutionLabels[resolutionStatus],
+        assuranceLevel,
+        activeAfterResponse,
+        resolutionDetail,
         residualRisk,
-        copy: `${directionLabels[direction]} après résolution · ${certaintyLabels[certainty]} · ${freshnessLabels[freshness]} · ${residualRisk}. Voir synthèse finale exposition intrigue.`,
-        ariaLabel: `${directionLabels[direction]} en ${entry.locationName}: certitude ${certaintyLabels[certainty]}; ${freshnessLabels[freshness]}; ${freshnessExplanation}; détails fog-safe liés à la synthèse finale`,
+        copy: `${resolutionLabels[resolutionStatus]} · assurance ${assuranceLevel} · ${directionLabels[direction]} après résolution · ${freshnessLabels[freshness]} · ${resolutionDetail}.`,
+        ariaLabel: `${resolutionLabels[resolutionStatus]} en ${entry.locationName}: assurance ${assuranceLevel}; ${activeAfterResponse ? 'menace reste active' : 'alerte calmée'}; ${freshnessExplanation}; aucun détail caché révélé`,
       };
     })
     .filter(Boolean)
@@ -6955,6 +6991,11 @@ function renderIntrigueExposureMarkerRollup(rollup) {
         <span>${rollup.freshnessCopy}</span>
         <small>Récent = signal visible actif; ancien = soupçon à revérifier; incertain = zone inconnue sans détail caché.</small>
       </div>
+      <div class="intrigue-exposure-resolution-rollup" aria-label="Menaces intrigue traitées ou encore actives">
+        <b>Résolution récente</b>
+        <span>${rollup.resolutionCopy}</span>
+        <small>Une menace active malgré réponse reste affichée sans source ni cause cachée.</small>
+      </div>
       <small>${rollup.hiddenCopy}</small>
       <small>Certitude fog-safe: les zones inconnues restent séparées des faibles risques confirmés et ne nomment jamais cellule, cible ou relais.</small>
     </section>
@@ -6969,12 +7010,12 @@ function renderPostCommitIntrigueExposureMarkers(markers) {
   return `
     <g class="intrigue-post-commit-marker-layer" aria-label="Marqueurs intrigue post-commit fog-safe">
       ${markers.map((marker) => `
-        <g class="intrigue-post-commit-marker intrigue-post-commit-marker--${marker.direction}" data-intrigue-location="${marker.locationId}" tabindex="0" aria-label="${marker.ariaLabel}">
+        <g class="intrigue-post-commit-marker intrigue-post-commit-marker--${marker.direction} intrigue-post-commit-marker--${marker.resolutionStatus}" data-intrigue-location="${marker.locationId}" tabindex="0" aria-label="${marker.ariaLabel}">
           <title>${marker.copy}</title>
           <circle class="intrigue-post-commit-marker__backplate" cx="${marker.center.x}%" cy="${marker.center.y}%" r="3.3"></circle>
           <text class="intrigue-post-commit-marker__glyph" x="${marker.center.x}%" y="${marker.center.y + 1.15}%" text-anchor="middle">${marker.glyph}</text>
-          <text class="intrigue-post-commit-marker__label" x="${marker.center.x + 4.1}%" y="${marker.center.y - 1.15}%" text-anchor="start">${marker.label}</text>
-          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.freshnessLabel} · ${marker.certaintyLabel} · ${marker.direction === 'hidden' ? 'fog conservé' : 'voir synthèse finale'}</text>
+          <text class="intrigue-post-commit-marker__label" x="${marker.center.x + 4.1}%" y="${marker.center.y - 1.15}%" text-anchor="start">${marker.resolutionLabel}</text>
+          <text class="intrigue-post-commit-marker__copy" x="${marker.center.x + 4.1}%" y="${marker.center.y + 2.25}%" text-anchor="start">${marker.assuranceLevel} · ${marker.activeAfterResponse ? 'reste active' : 'calmée'} · ${marker.freshnessLabel}</text>
         </g>
       `).join('')}
     </g>
