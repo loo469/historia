@@ -463,6 +463,58 @@ function buildPriorityConflicts(reminders) {
     .slice(0, 2);
 }
 
+
+function buildStabilityPreview(reminder, priorityConflicts = []) {
+  const knownRipple = reminder.rippleEffects?.find((effect) => effect.tone === 'positive' || effect.tone === 'risky' || effect.tone === 'uncertain');
+  const relatedConflict = priorityConflicts.find((conflict) => conflict.primaryReminderId === reminder.reminderId
+    || conflict.secondaryReminderId === reminder.reminderId);
+
+  if (!knownRipple && reminder.inactionCost?.level === 'low' && !relatedConflict) {
+    return null;
+  }
+
+  const stabilityDelta = reminder.inactionCost?.level === 'closing' || reminder.urgency?.level === 'soon'
+    ? '+ stabilité locale'
+    : knownRipple?.tone === 'risky'
+      ? 'stabilité fragile'
+      : knownRipple?.tone === 'positive'
+        ? '+ cohésion culturelle'
+        : 'effet limité';
+  const urgencyDelta = reminder.inactionCost?.level === 'closing'
+    ? 'urgence baisse si action validée'
+    : reminder.urgency?.level === 'soon'
+      ? 'fenêtre sécurisée'
+      : 'urgence stable';
+  const dissentDelta = reminder.confidenceCue?.level === 'risky'
+    ? 'dissidence à surveiller'
+    : reminder.confidenceCue?.level === 'mixed'
+      ? 'dissidence clarifiée'
+      : 'dissidence faible';
+  const conflictImpact = relatedConflict
+    ? `${relatedConflict.label}: peut aggraver ${relatedConflict.secondaryReminderId === reminder.reminderId ? 'la priorité adverse' : 'le conflit détecté'}.`
+    : 'Aucun conflit culturel aggravé détecté.';
+  const reason = reminder.inactionCost?.level !== 'low'
+    ? reminder.inactionCost.summary
+    : (knownRipple?.summary ?? reminder.reasonCopy);
+
+  return {
+    level: relatedConflict?.level ?? (knownRipple?.tone === 'risky' ? 'watch' : 'steady'),
+    stabilityDelta,
+    urgencyDelta,
+    dissentDelta,
+    conflictImpact,
+    reason,
+    summary: `${stabilityDelta}; ${urgencyDelta}; ${dissentDelta}. ${reason}`,
+  };
+}
+
+function attachStabilityPreviews(reminders, priorityConflicts) {
+  return reminders.map((reminder) => ({
+    ...reminder,
+    stabilityPreview: buildStabilityPreview(reminder, priorityConflicts),
+  }));
+}
+
 function dedupeAndSort(reminders) {
   const remindersByKey = new Map();
 
@@ -509,12 +561,13 @@ export function buildCultureOpportunityReminders({
   const probableCount = reminders.filter((reminder) => reminder.status === 'probable').length;
   const missingCount = reminders.filter((reminder) => reminder.status === 'missing').length;
   const priorityConflicts = buildPriorityConflicts(reminders);
+  const remindersWithStabilityPreviews = attachStabilityPreviews(reminders, priorityConflicts);
 
   return {
     state: 'active',
     provinceLabel,
     summary: `${provinceLabel}: ${probableCount} opportunité${probableCount > 1 ? 's' : ''} probable${probableCount > 1 ? 's' : ''}, ${missingCount} condition${missingCount > 1 ? 's' : ''} à surveiller.`,
-    reminders,
+    reminders: remindersWithStabilityPreviews,
     priorityConflicts,
   };
 }

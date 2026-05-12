@@ -964,6 +964,13 @@ function renderCultureOpportunityReminders(report) {
               <p class="culture-opportunity-reminder__tradeoff"><b>Compromis</b> · ${reminder.tradeoff?.summary ?? reminder.tradeoffCopy ?? 'Bénéfice culturel contre risque narratif.'}</p>
               <p class="culture-opportunity-reminder__confidence culture-opportunity-reminder__confidence--${reminder.confidenceCue?.level ?? 'mixed'}"><b>${reminder.confidenceCue?.label ?? 'Confiance mixte'}</b> · ${reminder.confidenceCue?.summary ?? reminder.confidenceCopy ?? 'Effet culturel à confirmer.'}</p>
               <p class="culture-opportunity-reminder__inaction culture-opportunity-reminder__inaction--${reminder.inactionCost?.level ?? 'low'}"><b>Inaction</b> · ${reminder.inactionCost?.summary ?? reminder.inactionCopy ?? 'Pas de perte culturelle claire si la recommandation attend.'}</p>
+              ${reminder.stabilityPreview ? `
+                <div class="culture-opportunity-reminder__stability-preview culture-opportunity-reminder__stability-preview--${reminder.stabilityPreview.level}" aria-label="Aperçu de stabilité culturelle">
+                  <b>Aperçu stabilité</b>
+                  <span>${reminder.stabilityPreview.stabilityDelta} · ${reminder.stabilityPreview.urgencyDelta} · ${reminder.stabilityPreview.dissentDelta}</span>
+                  <small>${reminder.stabilityPreview.conflictImpact}</small>
+                </div>
+              ` : ''}
               <div class="culture-opportunity-reminder__ripples" aria-label="Effets de propagation culturelle">
                 <b>Propagation</b>
                 ${(reminder.rippleEffects ?? []).length > 0 ? `
