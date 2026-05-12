@@ -4093,7 +4093,8 @@ button { font: inherit; }
 .province-climate-risk-forecast__selected b {
   color: #fef3c7;
 }
-.province-climate-risk-forecast__queue {
+.province-climate-risk-forecast__queue,
+.province-climate-risk-forecast__confirmation {
   display: grid;
   gap: 6px;
   padding: 9px 10px;
@@ -4102,35 +4103,49 @@ button { font: inherit; }
   border: 1px solid rgba(74, 222, 128, 0.22);
 }
 .province-climate-risk-forecast__queue--blocked { border-color: rgba(248, 113, 113, 0.26); }
-.province-climate-risk-forecast__queue div:first-child {
+.province-climate-risk-forecast__confirmation {
+  background: rgba(20, 83, 45, 0.24);
+  border-color: rgba(134, 239, 172, 0.34);
+}
+.province-climate-risk-forecast__confirmation--warning { border-color: rgba(251, 191, 36, 0.38); }
+.province-climate-risk-forecast__queue div:first-child,
+.province-climate-risk-forecast__confirmation div:first-child {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   align-items: center;
 }
-.province-climate-risk-forecast__queue dl {
+.province-climate-risk-forecast__queue dl,
+.province-climate-risk-forecast__confirmation dl {
   display: grid;
   gap: 4px;
   margin: 0;
 }
-.province-climate-risk-forecast__queue dl div {
+.province-climate-risk-forecast__queue dl div,
+.province-climate-risk-forecast__confirmation dl div {
   display: flex;
   justify-content: space-between;
   gap: 8px;
 }
 .province-climate-risk-forecast__queue dt,
-.province-climate-risk-forecast__queue small {
+.province-climate-risk-forecast__queue small,
+.province-climate-risk-forecast__confirmation dt,
+.province-climate-risk-forecast__confirmation p,
+.province-climate-risk-forecast__confirmation small {
   color: #cbd5e1;
   font-size: 12px;
   line-height: 1.35;
+  margin: 0;
 }
-.province-climate-risk-forecast__queue dd {
+.province-climate-risk-forecast__queue dd,
+.province-climate-risk-forecast__confirmation dd {
   margin: 0;
   color: #ecfeff;
   font-size: 12px;
   text-align: right;
 }
-.province-climate-risk-forecast__queue button {
+.province-climate-risk-forecast__queue button,
+.province-climate-risk-forecast__confirmation button {
   justify-self: start;
   border: 1px solid rgba(74, 222, 128, 0.32);
   background: rgba(22, 101, 52, 0.32);
@@ -4140,6 +4155,11 @@ button { font: inherit; }
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
+}
+.province-climate-risk-forecast__confirmation button {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fee2e2;
 }
 .province-climate-risk-forecast__queue button:disabled {
   opacity: 0.55;

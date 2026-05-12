@@ -1911,7 +1911,12 @@ function buildClimateInterventionQueueEntry(province, plan) {
     status: plan.missedDeadline ? 'risky' : 'ready',
     tone: plan.missedDeadline ? 'warning' : 'ready',
     provinceId: province.provinceId,
+    provinceLabel: province.label,
     category: 'climate',
+    deadlineWindow: plan.window,
+    riskReduction: plan.riskReduction,
+    tradeoff: plan.tradeoff,
+    missedDeadline: plan.missedDeadline,
   };
 }
 
@@ -1940,6 +1945,32 @@ function buildClimateInterventionQueuePlan(province, forecast, actionQueue = [],
     missedDeadline,
     cta: disabled ? (alreadyQueued ? 'Déjà en file' : 'Aucune action climat') : 'Planifier intervention climat',
   };
+}
+
+function renderQueuedClimateInterventionConfirmation(province, queuedClimateInterventions = []) {
+  const queuedIntervention = [...queuedClimateInterventions].reverse()
+    .find((entry) => entry.provinceId === province.provinceId) ?? null;
+
+  if (!queuedIntervention) {
+    return '';
+  }
+
+  return `
+    <div class="province-climate-risk-forecast__confirmation province-climate-risk-forecast__confirmation--${queuedIntervention.tone}" aria-label="Confirmation de l’intervention climat en file">
+      <div>
+        <strong>Intervention climat confirmée</strong>
+        <code>${queuedIntervention.actionCode}</code>
+      </div>
+      <p>${queuedIntervention.label} est en file pour ${queuedIntervention.provinceLabel ?? province.label}.</p>
+      <dl>
+        <div><dt>Deadline confirmée</dt><dd>${queuedIntervention.deadlineWindow}</dd></div>
+        <div><dt>Impact risque</dt><dd>${queuedIntervention.riskReduction}</dd></div>
+        <div><dt>Tradeoff confirmé</dt><dd>${queuedIntervention.tradeoff}</dd></div>
+      </dl>
+      ${queuedIntervention.missedDeadline ? `<small><b>${queuedIntervention.missedDeadline}</b></small>` : '<small>Prête avant résolution du tour; vous pouvez encore annuler ce choix.</small>'}
+      <button type="button" data-undo-climate-intervention="true" data-climate-action-code="${queuedIntervention.actionCode}">Annuler intervention climat</button>
+    </div>
+  `;
 }
 
 function renderClimateInterventionQueueAction(province, forecast, actionQueue = [], queuedClimateInterventions = []) {
@@ -1985,6 +2016,7 @@ function renderProvinceClimateRiskReductionForecast(province, shell, actionQueue
         </div>
       ` : ''}
       ${renderSelectedClimateInterventionRiskPreview(forecast.selectedInterventionPreview)}
+      ${renderQueuedClimateInterventionConfirmation(province, queuedClimateInterventions)}
       ${renderClimateInterventionQueueAction(province, forecast, actionQueue, queuedClimateInterventions)}
       <div class="province-climate-risk-forecast__deadline province-climate-risk-forecast__deadline--${forecast.deadlineCoverage.state}">
         <span><b>Deadline</b> · ${forecast.deadlineCoverage.label}</span>
@@ -7492,6 +7524,23 @@ function render() {
 
       state.queuedCultureActions = state.queuedCultureActions.filter((entry) => entry.actionCode !== actionCode);
       state.lastTurnSummary = 'Action culturelle retirée de la file avant résolution du tour.';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-undo-climate-intervention]').forEach((element) => {
+    element.addEventListener('click', () => {
+      const actionCode = element.dataset.climateActionCode;
+      const removed = [...state.queuedClimateInterventions].reverse()
+        .find((entry) => !actionCode || entry.actionCode === actionCode) ?? null;
+      if (!removed) {
+        return;
+      }
+      state.queuedClimateInterventions = state.queuedClimateInterventions.filter((entry) => entry !== removed);
+      state.selectedProvinceId = removed.provinceId;
+      state.focusedProvinceId = removed.provinceId;
+      state.activeOverlaySlot = 'climate-overlay';
+      state.lastTurnSummary = `Intervention climat annulée: ${removed.actionCode} sur ${removed.provinceLabel ?? removed.provinceId}.`;
       render();
     });
   });
