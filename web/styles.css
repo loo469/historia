@@ -2964,6 +2964,52 @@ button { font: inherit; }
   color: #f8fafc;
   font-size: 1rem;
 }
+.atlas-counterintelligence-assignment-orders {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(20, 83, 45, 0.2);
+}
+.atlas-counterintelligence-assignment-orders p,
+.atlas-counterintelligence-assignment-orders small { margin: 0; color: #ccfbf1; }
+.atlas-counterintelligence-assignment-orders__list {
+  display: grid;
+  gap: 7px;
+}
+.atlas-counterintelligence-assignment-order {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 11px;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  background: rgba(2, 6, 23, 0.26);
+  color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+}
+.atlas-counterintelligence-assignment-order--ready { border-left: 3px solid rgba(34, 197, 94, 0.78); }
+.atlas-counterintelligence-assignment-order--blocked { border-left: 3px solid rgba(248, 113, 113, 0.82); }
+.atlas-counterintelligence-assignment-order span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.atlas-counterintelligence-assignment-order em { color: #bae6fd; font-style: normal; }
+.atlas-counterintelligence-assignment-order dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+.atlas-counterintelligence-assignment-order dt {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.atlas-counterintelligence-assignment-order dd { margin: 0; color: #f8fafc; }
 .atlas-counterintelligence-schedule-conflicts {
   display: grid;
   gap: 6px;
