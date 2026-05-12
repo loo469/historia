@@ -7125,6 +7125,41 @@ function inferCultureTensionTrend(marker) {
   return 'unknown';
 }
 
+function buildCultureTensionCause(marker) {
+  const trend = marker.trend ?? inferCultureTensionTrend(marker);
+  const detail = marker.detail ?? marker.summary ?? 'Cause culturelle à confirmer.';
+
+  if (trend === 'rising') {
+    return {
+      label: 'Urgence',
+      detail: `${marker.source ?? 'Signal culturel'}: ${detail}`,
+      priority: 4,
+    };
+  }
+
+  if (trend === 'falling') {
+    return {
+      label: 'Action',
+      detail: `${marker.source ?? 'Action validée'}: ${detail}`,
+      priority: 2,
+    };
+  }
+
+  if (trend === 'stable') {
+    return {
+      label: 'File vide',
+      detail: `${marker.source ?? 'Recommandation'}: ${detail}`,
+      priority: 3,
+    };
+  }
+
+  return {
+    label: 'Cause floue',
+    detail: `${marker.source ?? 'Signal ambigu'}: ${detail}`,
+    priority: 1,
+  };
+}
+
 function buildCulturePostCommitTensionMarkers(province, report) {
   if (!province || !report?.resolutionSummary) {
     return [];
@@ -7144,6 +7179,8 @@ function buildCulturePostCommitTensionMarkers(province, report) {
       source: 'Action culturelle résolue',
       trend: inferCultureTensionTrend({ state }),
     };
+    marker.cause = buildCultureTensionCause(marker);
+    return marker;
   });
 
   const uncoveredMarkers = (report.resolutionSummary.uncoveredUrgent ?? []).map((entry, index) => {
@@ -7160,6 +7197,8 @@ function buildCulturePostCommitTensionMarkers(province, report) {
       source: 'Recommandation urgente non couverte',
       trend: inferCultureTensionTrend({ state }),
     };
+    marker.cause = buildCultureTensionCause(marker);
+    return marker;
   });
 
   return [...queuedMarkers, ...uncoveredMarkers].slice(0, 4);
@@ -7195,6 +7234,10 @@ function cultureTensionTrendPriority(marker) {
   return getCultureTensionTrendVisual(marker).priority;
 }
 
+function cultureTensionCausePriority(marker) {
+  return (marker.cause ?? buildCultureTensionCause(marker)).priority;
+}
+
 function renderCultureTensionFilters(cultureView) {
   const markers = cultureView.allTensionMarkers ?? [];
 
@@ -7221,6 +7264,7 @@ function renderCultureTensionQuickJump(markers) {
   const entries = [...markers]
     .sort((left, right) => cultureTensionPriority(right) - cultureTensionPriority(left)
       || cultureTensionTrendPriority(right) - cultureTensionTrendPriority(left)
+      || cultureTensionCausePriority(right) - cultureTensionCausePriority(left)
       || left.provinceLabel.localeCompare(right.provinceLabel))
     .slice(0, 4);
 
@@ -7237,11 +7281,12 @@ function renderCultureTensionQuickJump(markers) {
       ${entries.map((marker) => {
         const visual = getCultureTensionMarkerVisual(marker);
         const trend = getCultureTensionTrendVisual(marker);
+        const cause = marker.cause ?? buildCultureTensionCause(marker);
         return `
-          <button type="button" class="culture-tension-jump culture-tension-jump--${marker.state} culture-tension-jump--trend-${marker.trend ?? 'unknown'}" data-culture-tension-jump="${marker.provinceId}" aria-label="Aller à ${marker.provinceLabel}: ${marker.label}, tendance ${trend.shortLabel}">
+          <button type="button" class="culture-tension-jump culture-tension-jump--${marker.state} culture-tension-jump--trend-${marker.trend ?? 'unknown'}" data-culture-tension-jump="${marker.provinceId}" aria-label="Aller à ${marker.provinceLabel}: ${marker.label}, tendance ${trend.shortLabel}, cause ${cause.label}">
             <b>${visual.icon}</b>
             <span>${marker.provinceLabel}<i>${trend.code}</i></span>
-            <small>${marker.label} · ${trend.shortLabel} · ${marker.cultureName}</small>
+            <small>${marker.label} · ${trend.shortLabel} · ${cause.label}</small>
           </button>
         `;
       }).join('')}
@@ -7258,16 +7303,18 @@ function renderCultureTensionMarker(marker, active) {
 
   const visual = getCultureTensionMarkerVisual(marker);
   const trend = getCultureTensionTrendVisual(marker);
+  const cause = marker.cause ?? buildCultureTensionCause(marker);
   const selected = marker.provinceId === state.selectedProvinceId;
   const y = center.y - 9.2;
 
   return `
     <g class="culture-tension-marker culture-tension-marker--${marker.state} culture-tension-marker--trend-${marker.trend ?? 'unknown'} ${selected ? 'is-selected' : ''}" data-culture-tension-region="${marker.provinceId}">
-      <title>${visual.label} · ${trend.label} · ${marker.cultureName} · ${marker.detail}</title>
+      <title>${visual.label} · ${trend.label} · ${cause.label} · ${marker.cultureName} · ${cause.detail}</title>
       <circle class="culture-tension-marker__pulse" cx="${center.x}%" cy="${y}%" r="3.5"></circle>
       <rect x="${center.x - 3.2}%" y="${y - 2.35}%" width="6.4%" height="4.7%" rx="1.5%"></rect>
       <text x="${center.x}%" y="${y + 0.62}%" text-anchor="middle">${visual.code}</text>
       <text class="culture-tension-marker__trend" x="${center.x + 3.7}%" y="${y - 2.65}%" text-anchor="middle">${trend.code}</text>
+      <text class="culture-tension-marker__cause" x="${center.x}%" y="${y + 4.8}%" text-anchor="middle">${cause.label}</text>
     </g>
   `;
 }
@@ -7286,11 +7333,12 @@ function renderCultureTensionMarkerPanel(markers) {
       ${markers.map((marker) => {
         const visual = getCultureTensionMarkerVisual(marker);
         const trend = getCultureTensionTrendVisual(marker);
+        const cause = marker.cause ?? buildCultureTensionCause(marker);
         return `
           <section class="culture-tension-marker-card culture-tension-marker-card--${marker.state} culture-tension-marker-card--trend-${marker.trend ?? 'unknown'}">
             <b>${visual.icon} ${marker.label}<i>${trend.code} ${trend.shortLabel}</i></b>
-            <p>${marker.summary}</p>
-            <small>${marker.cultureName} · ${marker.provinceLabel} · ${marker.source} · ${trend.label} · ${marker.detail}</small>
+            <p><mark>${cause.label}</mark>${marker.summary}</p>
+            <small>${marker.cultureName} · ${marker.provinceLabel} · ${marker.source} · ${trend.label} · ${cause.detail}</small>
           </section>
         `;
       }).join('')}
