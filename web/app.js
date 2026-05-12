@@ -2093,6 +2093,90 @@ function buildProvinceLogisticsBottleneckWarnings(province, economyView, compari
   }];
 }
 
+function buildProvinceLogisticsPressureComparison(province, economyView) {
+  if (!province || !economyView) {
+    return null;
+  }
+
+  const planned = buildProvinceLogisticsBottleneckPriorities(buildProvinceLogisticsBottleneckComparison(province, economyView));
+  const outcomeMarker = getLogisticsOutcomeMarkerForFocusedProvince(province.provinceId);
+  const resolvedDetails = sortLogisticsOutcomeDetails(outcomeMarker?.details ?? []);
+  const detailByRouteId = new Map(resolvedDetails.map((detail) => [detail.routeId, detail]));
+  const rows = planned.slice(0, 3).map((entry) => {
+    const detail = detailByRouteId.get(entry.routeId) ?? resolvedDetails.find((candidate) => candidate.routeLabel === entry.routeName) ?? null;
+    const status = detail?.status ?? 'planned-only';
+    const delta = status === 'resolved' || status === 'reduced'
+      ? 'goulot amélioré'
+      : status === 'new-bottleneck'
+        ? 'nouvelle contrainte aval'
+        : status === 'unresolved'
+          ? 'pénurie persistante'
+          : 'reste à traiter';
+    const tone = status === 'resolved' || status === 'reduced'
+      ? 'improved'
+      : status === 'new-bottleneck' || status === 'unresolved'
+        ? 'danger'
+        : 'pending';
+
+    return {
+      routeId: entry.routeId,
+      routeName: entry.routeName,
+      planned: `${entry.headline}: ${entry.downstreamImpact}`,
+      resolved: detail ? `${detail.label}: ${detail.detail}` : 'Pas encore confirmé par les marqueurs post-résolution.',
+      nextStep: tone === 'improved'
+        ? 'Préparer le relais vers le prochain goulot.'
+        : tone === 'danger'
+          ? 'Replanifier avant le prochain tour.'
+          : 'Conserver dans la file de suivi.',
+      delta,
+      tone,
+    };
+  });
+
+  if (rows.length === 0 && !outcomeMarker) {
+    return null;
+  }
+
+  return {
+    hasNotableDelta: rows.some((row) => row.tone !== 'pending'),
+    summary: rows.some((row) => row.tone === 'danger')
+      ? 'Écart logistique notable: une pression reste ou se déplace.'
+      : rows.some((row) => row.tone === 'improved')
+        ? 'Plan confirmé: une pression logistique s’améliore.'
+        : 'Pression prévue en attente de résolution.',
+    rows,
+  };
+}
+
+function renderProvinceLogisticsPressureComparison(province, economyView) {
+  const comparison = buildProvinceLogisticsPressureComparison(province, economyView);
+
+  if (!comparison) {
+    return '';
+  }
+
+  return `
+    <section class="province-logistics-pressure-comparison ${comparison.hasNotableDelta ? 'has-notable-delta' : 'is-discreet'}" aria-label="Comparaison pression logistique prévue et résolue">
+      <div class="province-logistics-pressure-comparison__header">
+        <strong>Prévu vs résolu</strong>
+        <span>${comparison.summary}</span>
+      </div>
+      ${comparison.rows.length > 0 ? `
+        <ol>
+          ${comparison.rows.map((row) => `
+            <li class="province-logistics-pressure-comparison__row province-logistics-pressure-comparison__row--${row.tone}">
+              <strong>${row.routeName}</strong>
+              <div><b>Prévu</b><span>${row.planned}</span></div>
+              <div><b>Résolu</b><span>${row.resolved}</span></div>
+              <div><b>Reste à traiter</b><span>${row.delta} · ${row.nextStep}</span></div>
+            </li>
+          `).join('')}
+        </ol>
+      ` : '<small>Aucun écart notable sur les routes suivies.</small>'}
+    </section>
+  `;
+}
+
 function renderProvinceLogisticsBottleneckComparison(province, economyView) {
   const comparisons = buildProvinceLogisticsBottleneckComparison(province, economyView);
   const warnings = buildProvinceLogisticsBottleneckWarnings(province, economyView, comparisons);
@@ -7064,6 +7148,7 @@ function renderActiveProvince(shell, economyView = null, intrigueView = null) {
       </div>
       ${renderProvinceEconomyConsequences(province, economyView)}
       ${renderProvinceEconomyTurnReport(province, economyView)}
+      ${renderProvinceLogisticsPressureComparison(province, economyView)}
       ${renderProvinceLogisticsBottleneckComparison(province, economyView)}
       ${renderFocusedLogisticsOutcomeGroup(province)}
       ${renderProvinceLogisticsChoicePreview(province, economyView)}
