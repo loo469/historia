@@ -292,3 +292,19 @@ test('safe intrigue responses compare exposure timing without breaking fog', () 
   assert.match(stylesSource, /province-intrigue-response-option--mitigated/);
   assert.match(stylesSource, /province-intrigue-response-option--danger/);
 });
+
+test('intrigue responses warn about queued map choice conflicts without leaking fog', () => {
+  assert.match(webAppSource, /function buildIntrigueQueuedMapChoiceConflicts/);
+  assert.match(webAppSource, /function renderIntrigueQueuedMapChoiceConflicts/);
+  assert.match(webAppSource, /collectQueuedMapChoiceConflictSources/);
+  assert.match(webAppSource, /attention: conflit avec/);
+  assert.match(webAppSource, /ressource détournée/);
+  assert.match(webAppSource, /délai consommé/);
+  assert.match(webAppSource, /exposition accrue/);
+  assert.match(webAppSource, /attention: conflit possible sous brouillard/);
+  assert.match(webAppSource, /ne pas inférer cellule, cible, relais ni objectif caché/);
+  assert.match(webAppSource, /Conflits fog-safe entre réponses intrigue et choix carte en file/);
+  assert.match(webAppSource, /renderIntrigueQueuedMapChoiceConflicts\(province, intrigueView\)/);
+  assert.match(stylesSource, /province-intrigue-queue-conflicts/);
+  assert.match(stylesSource, /province-intrigue-queue-conflict--masked/);
+});

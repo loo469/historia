@@ -8023,7 +8023,52 @@ button { font: inherit; }
   color: #e0f2fe;
 }
 
-
+.province-intrigue-queue-conflicts {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.62), rgba(88, 28, 135, 0.24));
+  border: 1px solid rgba(216, 180, 254, 0.18);
+}
+.province-intrigue-queue-conflicts__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-intrigue-queue-conflicts__header span,
+.province-intrigue-queue-conflicts > small,
+.province-intrigue-queue-conflict small {
+  color: var(--muted);
+}
+.province-intrigue-queue-conflict-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.province-intrigue-queue-conflict {
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.32);
+  border-left: 3px solid rgba(250, 204, 21, 0.74);
+}
+.province-intrigue-queue-conflict--danger { border-left-color: rgba(248, 113, 113, 0.84); }
+.province-intrigue-queue-conflict--warning { border-left-color: rgba(250, 204, 21, 0.78); }
+.province-intrigue-queue-conflict--masked { border-left-color: rgba(148, 163, 184, 0.62); }
+.province-intrigue-queue-conflict div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.province-intrigue-queue-conflict code {
+  color: #f5d0fe;
+  font-size: 0.72rem;
+}
+.province-intrigue-queue-conflict p {
+  margin: 5px 0;
+  color: #f8fafc;
+}
 
 .province-climate-hazard-blockers {
   margin-top: 12px;
