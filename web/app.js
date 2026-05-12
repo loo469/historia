@@ -1821,6 +1821,63 @@ function renderMilitaryPlanImpactSummary(province, shell, focusContext, intrigue
   `;
 }
 
+function buildConflictReadinessWarnings(shell, intrigueView = null) {
+  return shell.provinces
+    .map((province) => {
+      const focusContext = {
+        focusedProvinceId: province.provinceId,
+        focusedProvince: province,
+        neighborIds: new Set(province.neighborIds),
+      };
+      const actionQueue = buildSelectedProvinceActionQueue(province, shell, focusContext, intrigueView);
+      const outcome = buildConflictOutcomePreview(province, shell);
+      const blockedCount = actionQueue.filter((entry) => entry.status === 'blocked').length;
+      const riskyCount = actionQueue.filter((entry) => entry.status === 'risky').length;
+      const plannedAction = actionQueue[0] ?? null;
+      const score = (outcome.tone === 'danger' ? 40 : outcome.tone === 'warning' ? 24 : 8) + (blockedCount * 8) + (riskyCount * 4) + (province.contested ? 6 : 0);
+
+      return {
+        provinceId: province.provinceId,
+        provinceLabel: province.label,
+        actionCode: plannedAction?.actionCode ?? 'WAR-HOLD',
+        actionLabel: plannedAction?.label ?? 'Aucune action planifiée',
+        tone: blockedCount > 0 || outcome.tone === 'danger' ? 'danger' : riskyCount > 0 || outcome.tone === 'warning' ? 'warning' : 'ready',
+        score,
+        detail: outcome.tone === 'danger'
+          ? `${outcome.title}: défense et ravitaillement restent mal couverts.`
+          : outcome.tone === 'warning'
+            ? `${outcome.title}: confirmer seulement avec appui adjacent.`
+            : `${outcome.title}: couverture suffisante avant fin de tour.`,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+}
+
+function renderConflictReadinessWarnings(shell, intrigueView = null) {
+  const warnings = buildConflictReadinessWarnings(shell, intrigueView);
+
+  return `
+    <div class="conflict-readiness-summary" aria-label="Préparation conflit avant fin de tour">
+      <div class="conflict-readiness-summary__header">
+        <strong>Préparation conflit</strong>
+        <span>${warnings.length} points clés</span>
+      </div>
+      <div class="conflict-readiness-summary__list">
+        ${warnings.map((warning) => `
+          <article class="conflict-readiness-warning conflict-readiness-warning--${warning.tone}">
+            <div>
+              <strong>${warning.provinceLabel}</strong>
+              <span>${warning.actionCode} · ${warning.actionLabel}</span>
+            </div>
+            <p>${warning.detail}</p>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function renderActiveProvince(shell, economyView = null, intrigueView = null) {
   const focusContext = getFocusContext(shell);
   const province = shell.activeProvince ?? shell.provinces[0] ?? null;
@@ -4314,6 +4371,7 @@ function render() {
             <button type="button" class="turn-button turn-button--secondary" data-open-launcher="true">Changer de carte</button>
           </div>
           <p class="turn-summary">${state.lastTurnSummary}</p>
+          ${renderConflictReadinessWarnings(shell, intrigueView)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
               <strong>Variation visible</strong>
