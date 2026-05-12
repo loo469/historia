@@ -1510,6 +1510,34 @@ function getProjectedClimateRiskAfterMitigation(currentRiskLevel, hasQueuedMitig
   return 'stable';
 }
 
+function buildClimateMitigationPayoffTradeoff(province, queuedMitigation, currentRisk, projectedRisk) {
+  if (!queuedMitigation) {
+    return null;
+  }
+
+  const tradeoffType = province.contested || province.occupied
+    ? 'exposition militaire'
+    : province.loyalty < 55
+      ? 'friction culturelle'
+      : queuedMitigation.tradeoff.includes('logistique') || queuedMitigation.tradeoff.includes('ressources')
+        ? 'pression économie/logistique'
+        : queuedMitigation.deadline === 'Ce tour' || queuedMitigation.deadline === 'Immédiat'
+          ? 'temps'
+          : queuedMitigation.tradeoff.includes('retarde') || queuedMitigation.tradeoff.includes('Compromis')
+            ? 'coût d’opportunité'
+            : null;
+
+  if (!tradeoffType) {
+    return null;
+  }
+
+  return {
+    benefit: `Bénéfice attendu: risque ${currentRisk} → ${projectedRisk}.`,
+    tradeoffType,
+    tradeoff: queuedMitigation.tradeoff,
+  };
+}
+
 function buildProvinceClimateRiskReductionForecast(province, shell, report = buildProvinceClimateTurnReport(province)) {
   const priorities = buildProvinceClimateMitigationPriorities(province, report);
   const queuedMitigation = priorities.find((priority) => priority.outcomeChange) ?? null;
@@ -1517,6 +1545,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
   const projectedRisk = getProjectedClimateRiskAfterMitigation(currentRisk, Boolean(queuedMitigation));
   const cues = buildProvinceClimateCountdownCues(province, report);
   const criticalDeadline = queuedMitigation?.deadline ?? cues.find((cue) => cue.level !== 'stable')?.countdown ?? 'Aucune échéance critique';
+  const payoffTradeoff = buildClimateMitigationPayoffTradeoff(province, queuedMitigation, currentRisk, projectedRisk);
   const remainingCascades = buildProvinceClimateCascadePreview(province, shell, report)
     .filter((cascade) => !queuedMitigation || !cascade.changesThisTurn)
     .slice(0, 2);
@@ -1528,6 +1557,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
       projectedRisk,
       criticalDeadline,
       queuedAction: null,
+      payoffTradeoff: null,
       summary: 'Aucune mitigation climat décisive en file: la réduction de risque projetée reste inchangée.',
       remainingCascades,
     };
@@ -1539,6 +1569,7 @@ function buildProvinceClimateRiskReductionForecast(province, shell, report = bui
     projectedRisk,
     criticalDeadline,
     queuedAction: queuedMitigation.option,
+    payoffTradeoff,
     summary: `${queuedMitigation.option} projette ${currentRisk} → ${projectedRisk} avant ${criticalDeadline}.`,
     remainingCascades: remainingCascades.length > 0 ? remainingCascades : [{
       type: 'surveillance résiduelle',
@@ -1565,6 +1596,12 @@ function renderProvinceClimateRiskReductionForecast(province, shell) {
         <b>${forecast.projectedRisk}</b>
       </div>
       <p>${forecast.summary}</p>
+      ${forecast.payoffTradeoff ? `
+        <div class="province-climate-risk-forecast__payoff">
+          <span>${forecast.payoffTradeoff.benefit}</span>
+          <small><b>${forecast.payoffTradeoff.tradeoffType}</b> · ${forecast.payoffTradeoff.tradeoff}</small>
+        </div>
+      ` : ''}
       <div class="province-climate-risk-forecast__residuals">
         ${forecast.remainingCascades.map((cascade) => `
           <small><b>${cascade.type}</b> · ${cascade.scope}</small>

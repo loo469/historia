@@ -7,6 +7,7 @@ const stylesSource = readFileSync(new URL('../../../web/styles.css', import.meta
 
 test('selected province panel forecasts climate risk reduction after queued mitigation', () => {
   assert.match(webAppSource, /function getProjectedClimateRiskAfterMitigation/);
+  assert.match(webAppSource, /function buildClimateMitigationPayoffTradeoff/);
   assert.match(webAppSource, /function buildProvinceClimateRiskReductionForecast/);
   assert.match(webAppSource, /function renderProvinceClimateRiskReductionForecast/);
   assert.match(webAppSource, /Prévision de réduction du risque climatique après mitigation en file/);
@@ -15,6 +16,12 @@ test('selected province panel forecasts climate risk reduction after queued miti
   assert.match(webAppSource, /projectedRisk/);
   assert.match(webAppSource, /criticalDeadline/);
   assert.match(webAppSource, /queuedAction/);
+  assert.match(webAppSource, /payoffTradeoff/);
+  assert.match(webAppSource, /Bénéfice attendu: risque/);
+  assert.match(webAppSource, /pression économie\/logistique/);
+  assert.match(webAppSource, /friction culturelle/);
+  assert.match(webAppSource, /exposition militaire/);
+  assert.match(webAppSource, /coût d’opportunité/);
   assert.match(webAppSource, /remainingCascades/);
   assert.match(webAppSource, /Aucune mitigation climat décisive en file/);
   assert.match(webAppSource, /surveillance résiduelle/);
@@ -25,5 +32,6 @@ test('selected province panel forecasts climate risk reduction after queued miti
   assert.match(stylesSource, /\.province-climate-risk-forecast--unchanged/);
   assert.match(stylesSource, /\.province-climate-risk-forecast--reduced/);
   assert.match(stylesSource, /\.province-climate-risk-forecast__meter/);
+  assert.match(stylesSource, /\.province-climate-risk-forecast__payoff/);
   assert.match(stylesSource, /\.province-climate-risk-forecast__residuals/);
 });
