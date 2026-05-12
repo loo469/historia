@@ -18,7 +18,7 @@ import { buildIntrigueWebDemo } from '../src/ui/intrigue/buildIntrigueWebDemo.js
 import { buildIntrigueTurnReportDeltas } from '../src/ui/intrigue/buildIntrigueTurnReportDeltas.js';
 import { buildCultureMapRecommendations } from '../src/ui/culture/buildCultureMapRecommendations.js';
 import { buildCultureLocalTimeline } from '../src/ui/culture/buildCultureLocalTimeline.js';
-import { buildCultureDiscoveryUrgencyGroups, buildCultureInterventionPriorities } from '../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
+import { buildCultureBlockerResolutionHistory, buildCultureDiscoveryUrgencyGroups, buildCultureInterventionPriorities } from '../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
 import { buildCultureConsequenceChips } from '../src/ui/culture/buildCultureConsequenceChips.js';
 import { buildCultureTurnReportDeltas } from '../src/ui/culture/buildCultureTurnReportDeltas.js';
 import { buildCultureUnlockHints } from '../src/ui/culture/buildCultureUnlockHints.js';
@@ -407,6 +407,7 @@ const state = {
   selectedLogisticsOutcomeRouteId: null,
   queuedCultureActions: [],
   cultureTensionMarkers: [],
+  cultureBlockerHistory: [],
   cultureTensionFilters: { eased: true, unresolved: true, escalated: true, opportunity: true },
   comparedCityIds: ['river-gate-city', 'crown-port'],
   comparisonProvinceIds: ['river-gate', 'crown-heart'],
@@ -8436,6 +8437,31 @@ function renderCultureInterventionPriorities(priorityView) {
   `;
 }
 
+function renderCultureBlockerResolutionHistory(history) {
+  if (!history.length) {
+    return '';
+  }
+
+  return `
+    <article class="culture-blocker-history" aria-label="Historique récent des blocages culturels">
+      <div class="culture-blocker-history__header">
+        <span>Blocages récents</span>
+        <strong>${history.length} trace${history.length > 1 ? 's' : ''} utile${history.length > 1 ? 's' : ''}</strong>
+      </div>
+      <ol>
+        ${history.map((entry) => `
+          <li class="culture-blocker-history__item culture-blocker-history__item--${entry.urgency}">
+            <b>${entry.status}</b>
+            <span>${entry.effect}</span>
+            <small>${entry.cultureName} · ${entry.source} · ${entry.next}</small>
+            <em>${entry.risk}</em>
+          </li>
+        `).join('')}
+      </ol>
+    </article>
+  `;
+}
+
 function renderCultureClusterPinList(cluster) {
   if (!cluster) {
     return '';
@@ -8594,6 +8620,26 @@ function buildPostCommitCultureTensionMarkers(shell) {
     const unlockHintsByAction = buildCultureUnlockHintsForActions(province, actionQueue, cultureContext);
     const report = buildCultureOpportunityReminders({ province, actionQueue, unlockHintsByAction });
     return buildCulturePostCommitTensionMarkers(province, report);
+  }).slice(0, 8);
+}
+
+function buildPostCommitCultureBlockerHistory(shell) {
+  const overlay = strategicMap.overlays.culture;
+  const clusters = buildCultureClusterSummaries(overlay);
+
+  return (shell.provinces ?? []).flatMap((province) => {
+    const selectedMarker = overlay.find((entry) => entry.regionId === province.provinceId) ?? null;
+    const selectedCluster = clusters.find((cluster) => cluster.regionIds.includes(province.provinceId)) ?? null;
+    const groups = buildCultureDiscoveryUrgencyGroups({ selectedMarker, selectedCluster });
+    const priorityView = buildCultureInterventionPriorities(groups);
+
+    return buildCultureBlockerResolutionHistory({
+      priorityView,
+      previousHistory: state.cultureBlockerHistory,
+      provinceId: province.provinceId,
+      provinceLabel: province.label,
+      turn: state.turn,
+    });
   }).slice(0, 8);
 }
 
@@ -8799,6 +8845,12 @@ function renderCultureSidePanel(cultureView) {
     selectedCluster,
   });
   const interventionPriorities = buildCultureInterventionPriorities(discoveryUrgencyGroups);
+  const blockerHistory = buildCultureBlockerResolutionHistory({
+    previousHistory: state.cultureBlockerHistory,
+    provinceId: state.selectedProvinceId,
+    provinceLabel: state.selectedProvinceId,
+    turn: state.turn,
+  });
   const recommendationView = buildCultureMapRecommendations({
     selectedRegionId: state.selectedProvinceId,
     selectedMarker: focus,
@@ -8831,6 +8883,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureLocalTimeline(localTimelineView)}
       ${renderCultureDiscoveryUrgencyGroups(discoveryUrgencyGroups)}
       ${renderCultureInterventionPriorities(interventionPriorities)}
+      ${renderCultureBlockerResolutionHistory(blockerHistory)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
@@ -10024,6 +10077,7 @@ function advanceTurn() {
   const logisticsOutcomeMarkers = buildLogisticsOutcomeMarkers(shell, economyView);
 
   state.cultureTensionMarkers = buildPostCommitCultureTensionMarkers(shell);
+  state.cultureBlockerHistory = buildPostCommitCultureBlockerHistory(shell);
   state.queuedCultureActions = [];
   state.lastMilitaryOutcomeMarkers = militaryOutcomeMarker ? [militaryOutcomeMarker] : [];
   state.logisticsOutcomeMarkers = logisticsOutcomeMarkers;

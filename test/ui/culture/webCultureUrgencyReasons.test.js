@@ -53,6 +53,7 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /cultureTensionCausePriority/);
   assert.match(webAppSource, /buildCultureDiscoveryUrgencyGroups/);
   assert.match(webAppSource, /buildCultureInterventionPriorities/);
+  assert.match(webAppSource, /buildCultureBlockerResolutionHistory/);
   assert.match(webAppSource, /renderCultureDiscoveryUrgencyGroups/);
   assert.match(webAppSource, /renderCultureInterventionPriorities/);
   assert.match(webAppSource, /Découvertes culturelles groupées par urgence/);
@@ -61,6 +62,8 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(webAppSource, /culture-intervention-priority__follow-up/);
   assert.match(webAppSource, /culture-intervention-priority__resolution-gain/);
   assert.match(webAppSource, /resolutionGain\.riskAvoided/);
+  assert.match(webAppSource, /culture-blocker-history/);
+  assert.match(webAppSource, /Blocages récents/);
   assert.match(webAppSource, /Urgence/);
   assert.match(webAppSource, /Cause floue/);
   assert.match(webAppSource, /urgence puis tendance/);
@@ -102,6 +105,8 @@ test('culture urgency badges render compact local timeline reasons', () => {
   assert.match(stylesSource, /\.culture-intervention-priority__blocker/);
   assert.match(stylesSource, /\.culture-intervention-priority__follow-up/);
   assert.match(stylesSource, /\.culture-intervention-priority__resolution-gain/);
+  assert.match(stylesSource, /\.culture-blocker-history/);
+  assert.match(stylesSource, /\.culture-blocker-history__item--urgent/);
   assert.match(stylesSource, /\.culture-tension-marker-card--trend-rising/);
   assert.match(stylesSource, /\.culture-tension-marker-card--trend-unknown/);
   assert.match(stylesSource, /\.culture-opportunity-reminder__queue-confirmation/);

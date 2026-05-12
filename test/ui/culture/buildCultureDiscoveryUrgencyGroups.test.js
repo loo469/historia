@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCultureDiscoveryUrgencyGroups, buildCultureInterventionPriorities } from '../../../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
+import { buildCultureBlockerResolutionHistory, buildCultureDiscoveryUrgencyGroups, buildCultureInterventionPriorities } from '../../../src/ui/culture/buildCultureDiscoveryUrgencyGroups.js';
 
 test('buildCultureDiscoveryUrgencyGroups orders urgent and active culture signals before background lore', () => {
   const groups = buildCultureDiscoveryUrgencyGroups({
@@ -163,4 +163,63 @@ test('buildCultureInterventionPriorities flags local priority conflicts', () => 
   assert.match(priorities.priorities[0].resolutionGain.gain, /tension réduite entre Compact d’Aurora et Ligues des Forges/);
   assert.equal(priorities.conflicts[0].label, 'Même province');
   assert.match(priorities.conflicts[0].summary, /concurrence/);
+});
+
+test('buildCultureBlockerResolutionHistory keeps recent resolved blockers and useful unlocks compact', () => {
+  const priorities = buildCultureInterventionPriorities({
+    groups: [{
+      key: 'urgent',
+      items: [
+        {
+          itemId: 'discovery:river:aurora',
+          kind: 'discovery',
+          group: 'urgent',
+          label: 'routes-célestes',
+          shortLabel: 'routes-célestes',
+          cultureName: 'Compact d’Aurora',
+          regionId: 'river-gate',
+          cause: 'Tension locale',
+          detail: 'route critique',
+          priority: 330,
+        },
+        {
+          itemId: 'discovery:river:aurora:catalogue',
+          kind: 'discovery',
+          group: 'active',
+          label: 'catalogues-publics',
+          shortLabel: 'catalogues-publics',
+          cultureName: 'Compact d’Aurora',
+          regionId: 'river-gate',
+          cause: 'Recherche active',
+          detail: 'suite utile',
+          priority: 220,
+        },
+      ],
+    }],
+  });
+
+  const history = buildCultureBlockerResolutionHistory({
+    priorityView: priorities,
+    previousHistory: [{
+      historyId: 'old',
+      provinceId: 'river-gate',
+      cultureName: 'Ancienne trace',
+      source: 'ancien signal',
+      status: 'gain reporté',
+      effect: 'ancienne option masquée',
+      next: 'ne devrait pas dominer',
+      risk: 'ancien risque',
+      turn: 1,
+      priority: 1,
+    }],
+    provinceId: 'river-gate',
+    provinceLabel: 'Porte du Fleuve',
+    turn: 4,
+  });
+
+  assert.equal(history[0].status, 'blocage levé');
+  assert.match(history[0].effect, /tension réduite/);
+  assert.match(history[0].next, /catalogues-publics/);
+  assert.match(history[0].risk, /risque social/);
+  assert.ok(history.length <= 4);
 });

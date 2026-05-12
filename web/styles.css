@@ -9490,6 +9490,7 @@ button { font: inherit; }
   font-size: 10px;
   line-height: 1.3;
 }
+
 .province-logistics-pressure-comparison {
   display: grid;
   gap: 8px;
@@ -9539,3 +9540,56 @@ button { font: inherit; }
   text-transform: uppercase;
 }
 .province-logistics-pressure-comparison__row span { color: #dbeafe; font-size: 11px; line-height: 1.3; }
+
+.culture-blocker-history {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+.culture-blocker-history__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.culture-blocker-history__header span {
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-blocker-history__header strong { color: #e0f2fe; font-size: 12px; }
+.culture-blocker-history ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.culture-blocker-history__item {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.42);
+  border-left: 3px solid rgba(45, 212, 191, 0.58);
+}
+.culture-blocker-history__item--urgent { border-left-color: rgba(251, 113, 133, 0.72); }
+.culture-blocker-history__item b {
+  color: #a7f3d0;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.culture-blocker-history__item span { color: #f8fafc; font-size: 12px; font-weight: 800; }
+.culture-blocker-history__item small,
+.culture-blocker-history__item em {
+  color: #cbd5e1;
+  font-size: 10px;
+  line-height: 1.3;
+  font-style: normal;
+}

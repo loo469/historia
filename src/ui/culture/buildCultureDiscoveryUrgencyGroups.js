@@ -348,6 +348,56 @@ export function buildCultureDiscoveryUrgencyGroups({
 }
 
 
+
+export function buildCultureBlockerResolutionHistory({
+  priorityView = {},
+  previousHistory = [],
+  provinceId = 'province',
+  provinceLabel = provinceId,
+  turn = 0,
+} = {}) {
+  const priorities = priorityView.priorities ?? [];
+  const freshEntries = priorities
+    .filter((priority) => priority.blocker || priority.followUp || priority.resolutionGain)
+    .map((priority) => {
+      const status = priority.blocker
+        ? priority.conflict ? 'suivi nécessaire' : 'blocage levé'
+        : priority.followUp ? 'option débloquée' : 'gain reporté';
+      const source = priority.blocker?.shortReason ?? priority.followUp?.action ?? priority.sourceLabel;
+
+      return {
+        historyId: `culture-blocker-history:${provinceId}:${priority.priorityId}:${turn}`,
+        provinceId,
+        provinceLabel,
+        cultureName: priority.cultureName,
+        status,
+        source,
+        effect: priority.resolutionGain?.gain ?? priority.effect,
+        next: priority.resolutionGain?.next ?? priority.followUp?.reason ?? 'suivi culturel à confirmer',
+        risk: priority.resolutionGain?.riskAvoided ?? priority.waitRisk,
+        urgency: priority.urgency,
+        turn,
+        priority: (priority.urgency === 'urgent' ? 3 : 2) + (priority.blocker ? 2 : 0) + (priority.conflict ? 1 : 0),
+      };
+    });
+
+  const merged = [...freshEntries, ...previousHistory]
+    .filter((entry) => !entry.provinceId || entry.provinceId === provinceId)
+    .sort((left, right) => (right.turn ?? 0) - (left.turn ?? 0) || (right.priority ?? 0) - (left.priority ?? 0));
+  const seen = new Set();
+
+  return merged
+    .filter((entry) => {
+      const key = `${entry.provinceId}:${entry.cultureName}:${entry.source}:${entry.status}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 4);
+}
+
 export function buildCultureInterventionPriorities(groupView = {}) {
   const items = (groupView.groups ?? [])
     .flatMap((group) => (group.items ?? []).map((item) => ({ ...item, group: item.group ?? group.key })))
