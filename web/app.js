@@ -1083,8 +1083,8 @@ function renderAtlasMilitaryLayer(shell) {
         <text class="atlas-conflict-playback__summary" x="63" y="20.1">${playbackSummary}</text>
         ${playback.steps.map((step, index) => `
           <g class="atlas-conflict-playback-step ${playback.activeStep === step.step ? 'is-active' : ''}" data-atlas-conflict-playback-step="${step.step}" aria-label="Afficher ${step.label}">
-            <rect x="${63 + index * 10.4}" y="11" width="9.2" height="4.7" rx="1.5"></rect>
-            <text x="${67.6 + index * 10.4}" y="14.1" text-anchor="middle">${step.label}</text>
+            <rect x="${63 + index * 12.2}" y="11" width="9.2" height="4.7" rx="1.5"></rect>
+            <text x="${67.6 + index * 12.2}" y="14.1" text-anchor="middle">${step.label}</text>
           </g>
         `).join('')}
       </g>
@@ -1239,9 +1239,12 @@ function buildAtlasCultureFeatures(cultureView) {
         chips: [mainDriver, summary.drift.label, stabilization].slice(0, 3),
       };
 
+      const mediation = buildAtlasCultureMediation(borderZone);
+      const mediatedZone = { ...borderZone, mediation };
+
       return {
-        ...borderZone,
-        mediation: buildAtlasCultureMediation(borderZone),
+        ...mediatedZone,
+        commitment: buildAtlasMediationCommitment(mediatedZone),
       };
     })
     .slice(0, 4);
@@ -1290,6 +1293,34 @@ function buildAtlasCultureMediation(zone) {
   };
 }
 
+function buildAtlasMediationCommitment(zone) {
+  const confidenceRank = { sûre: 3, incertaine: 2, inconnue: 1 }[zone.mediation.confidence] ?? 1;
+  const status = confidenceRank >= 3 || zone.selected ? 'stable' : 'à risque';
+  const remainingConfidence = confidenceRank >= 3
+    ? 'forte'
+    : confidenceRank === 2
+      ? 'moyenne'
+      : 'faible';
+  const nextConsequence = status === 'stable'
+    ? zone.mediation.consequences.appeasement
+    : zone.mediation.consequences.displacement;
+  const phase = zone.drift.linkedToFocus
+    ? 'phase focus'
+    : zone.drift.state === 'migre'
+      ? 'phase passage'
+      : zone.mainDriver === 'événement'
+        ? 'phase repère'
+        : 'phase suivi';
+
+  return {
+    status,
+    remainingConfidence,
+    nextConsequence,
+    phase,
+    label: status === 'stable' ? 'engagement stable' : 'engagement à risque',
+  };
+}
+
 function renderAtlasCultureLayer(cultureView) {
   const features = buildAtlasCultureFeatures(cultureView);
   const active = state.activeOverlaySlot === 'culture-overlay';
@@ -1318,16 +1349,17 @@ function renderAtlasCultureLayer(cultureView) {
       `).join('')}
       ${features.borderZones.length > 0 ? `
         <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
-          <rect x="3" y="55" width="30" height="${11 + (features.borderZones.length * 10.4)}" rx="1.8"></rect>
+          <rect x="3" y="55" width="30" height="${12 + (features.borderZones.length * 12.2)}" rx="1.8"></rect>
           <text class="atlas-cultural-border-zones__title" x="5" y="58.4">Médiations culturelles</text>
           ${features.borderZones.map((zone, index) => `
-            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state} atlas-cultural-border-zone--confidence-${zone.mediation.confidence}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, confiance ${zone.mediation.confidence}, bénéfice ${zone.mediation.benefit}, risque ${zone.mediation.risk}, conséquences ${zone.mediation.consequences.appeasement}, ${zone.mediation.consequences.displacement}, ${zone.mediation.consequences.cost}">
-              <text x="5" y="${62 + index * 10.4}">${zone.cultureName}</text>
-              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 10.4}">${zone.chips.join(' · ')}</text>
-              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 10.4}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
-              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 10.4}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
-              <text class="atlas-cultural-border-zone__consequences" x="5" y="${69.5 + index * 10.4}">${zone.mediation.consequences.appeasement} · ${zone.mediation.consequences.displacement} · ${zone.mediation.consequences.cost}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${71.2 + index * 10.4}">si ignorée: ${zone.mediation.risk}</text>
+            <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state} atlas-cultural-border-zone--confidence-${zone.mediation.confidence} atlas-cultural-border-zone--commitment-${zone.commitment.status === 'stable' ? 'stable' : 'risk'}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, confiance ${zone.mediation.confidence}, engagement ${zone.commitment.status}, confiance restante ${zone.commitment.remainingConfidence}, prochaine conséquence ${zone.commitment.nextConsequence}, échéance ${zone.commitment.phase}">
+              <text x="5" y="${62 + index * 12.2}">${zone.cultureName}</text>
+              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 12.2}">${zone.chips.join(' · ')}</text>
+              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 12.2}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
+              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 12.2}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
+              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 12.2}">${zone.commitment.label} · reste ${zone.commitment.remainingConfidence} · ${zone.commitment.phase}</text>
+              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 12.2}">prochain: ${zone.commitment.nextConsequence} · coût: ${zone.mediation.consequences.cost}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">si ignorée: ${zone.mediation.risk}</text>
             </g>
           `).join('')}
         </g>
@@ -1335,7 +1367,7 @@ function renderAtlasCultureLayer(cultureView) {
         <g class="atlas-cultural-border-zones is-stable" aria-label="Frontières culturelles stables ou données insuffisantes">
           <rect x="3" y="58" width="27" height="8.4" rx="1.8"></rect>
           <text class="atlas-cultural-border-zones__title" x="5" y="61.4">Médiations culturelles</text>
-          <text class="atlas-cultural-border-zone__empty" x="5" y="64">frontières stables · données limitées</text>
+          <text class="atlas-cultural-border-zone__empty" x="5" y="64">aucun engagement · frontières stables</text>
         </g>
       `}
       ${features.cultureMarkers.map((marker) => `
