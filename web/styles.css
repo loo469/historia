@@ -11200,3 +11200,35 @@ button { font: inherit; }
 .atlas-mediation-outcome--instable text { fill: #fde68a; }
 .atlas-mediation-outcome--contredit circle { stroke: rgba(251, 113, 133, 0.82); }
 .atlas-mediation-outcome--contredit text { fill: #fecdd3; }
+.atlas-secondary-bottleneck rect {
+  fill: rgba(88, 28, 135, 0.46);
+  stroke: rgba(196, 181, 253, 0.4);
+  stroke-width: 0.28;
+}
+.atlas-secondary-bottleneck.is-empty rect {
+  fill: rgba(15, 23, 42, 0.42);
+  stroke: rgba(148, 163, 184, 0.24);
+}
+.atlas-secondary-bottleneck__title {
+  fill: #ddd6fe;
+  font-size: 1.16px;
+  font-weight: 950;
+}
+.atlas-secondary-bottleneck__empty {
+  fill: #cbd5e1;
+  font-size: 1px;
+  font-weight: 780;
+}
+.atlas-secondary-bottleneck-item__route {
+  fill: #f8fafc;
+  font-size: 1.06px;
+  font-weight: 920;
+}
+.atlas-secondary-bottleneck-item__detail {
+  fill: #ddd6fe;
+  font-size: 0.94px;
+  font-weight: 760;
+}
+.atlas-secondary-bottleneck-item--saturated .atlas-secondary-bottleneck-item__detail { fill: #fecdd3; }
+.atlas-secondary-bottleneck-item--secondary .atlas-secondary-bottleneck-item__detail { fill: #fde68a; }
+.atlas-secondary-bottleneck-item--resolved .atlas-secondary-bottleneck-item__detail { fill: #bbf7d0; }
