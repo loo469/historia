@@ -2615,60 +2615,80 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
   const requiredRelief = Math.max(1, Math.abs(forecast.delta ?? 0));
   const sourceHasRisk = forecast.uncertain || forecast.highHubs > 0;
   const targetHasRisk = (matchingForecast?.highHubs ?? 0) > 0 || matchingForecast?.uncertain;
+  const fundingGap = matchingProjection?.fundingGap
+    ?? neighborProjections.find((projection) => projection.fundingGap > 0)?.fundingGap
+    ?? 0;
+  const capacityGap = Math.max(1, requiredRelief - Math.max(0, reroute.spareCapacity ?? 0));
+  const buildReadiness = (status, label, reason, unblockAction = null) => ({
+    status,
+    label,
+    reason,
+    unblockAction,
+  });
 
   if (!reroute.available) {
     if (forecast.uncertain || sourceHasRisk) {
-      return {
-        status: 'blocked-risk',
-        label: 'bloqué risque',
-        reason: 'instabilité régionale à qualifier',
-      };
+      const riskAction = forecast.uncertain
+        ? 'qualifier flux et ressource manquants'
+        : `stabiliser ${forecast.highHubs} hub${forecast.highHubs > 1 ? 's' : ''} critique${forecast.highHubs > 1 ? 's' : ''}`;
+      return buildReadiness(
+        'blocked-risk',
+        'bloqué risque',
+        'instabilité régionale à qualifier',
+        riskAction,
+      );
     }
 
     if (neighborProjections.some((projection) => projection.fundingGap > 0)) {
-      return {
-        status: 'blocked-funding',
-        label: 'bloqué financement',
-        reason: 'marge voisine encore à financer',
-      };
+      return buildReadiness(
+        'blocked-funding',
+        'bloqué financement',
+        'marge voisine encore à financer',
+        `ajouter ${fundingGap} budget corridor`,
+      );
     }
 
-    return {
-      status: 'blocked-capacity',
-      label: 'bloqué capacité',
-      reason: 'aucun voisin avec marge exécutable',
-    };
+    return buildReadiness(
+      'blocked-capacity',
+      'bloqué capacité',
+      'aucun voisin avec marge exécutable',
+      `libérer +${capacityGap} capacité voisine`,
+    );
   }
 
   if (matchingProjection?.fundingGap > 0 || (reroute.source === 'capacité financée' && !matchingProjection?.sufficient)) {
-    return {
-      status: 'blocked-funding',
-      label: 'bloqué financement',
-      reason: 'budget de délestage incomplet',
-    };
+    return buildReadiness(
+      'blocked-funding',
+      'bloqué financement',
+      'budget de délestage incomplet',
+      `ajouter ${Math.max(1, fundingGap)} budget corridor`,
+    );
   }
 
   if ((reroute.spareCapacity ?? 0) < requiredRelief || matchingProjection?.stillSaturated || matchingForecast?.tone === 'overload') {
-    return {
-      status: 'blocked-capacity',
-      label: 'bloqué capacité',
-      reason: `marge ${reroute.spareCapacity ?? 0}/${requiredRelief} insuffisante`,
-    };
+    return buildReadiness(
+      'blocked-capacity',
+      'bloqué capacité',
+      `marge ${reroute.spareCapacity ?? 0}/${requiredRelief} insuffisante`,
+      `libérer +${capacityGap} capacité hub voisin`,
+    );
   }
 
   if (sourceHasRisk || targetHasRisk) {
-    return {
-      status: 'blocked-risk',
-      label: 'bloqué risque',
-      reason: 'hub instable avant exécution',
-    };
+    const unstableHubs = Math.max(1, forecast.highHubs, matchingForecast?.highHubs ?? 0);
+    return buildReadiness(
+      'blocked-risk',
+      'bloqué risque',
+      'hub instable avant exécution',
+      `stabiliser ${unstableHubs} hub${unstableHubs > 1 ? 's' : ''} critique${unstableHubs > 1 ? 's' : ''}`,
+    );
   }
 
-  return {
-    status: 'ready',
-    label: 'prêt maintenant',
-    reason: 'financement, capacité et risque OK',
-  };
+  return buildReadiness(
+    'ready',
+    'prêt maintenant',
+    'financement, capacité et risque OK',
+  );
 }
 
 function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecasts) {
@@ -2976,11 +2996,11 @@ function renderAtlasEconomyStressLegend(economyView) {
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
           const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
-              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}</text>
             </g>
           `;
         }).join('')}
