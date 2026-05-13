@@ -6489,6 +6489,82 @@ function buildAtlasClimateActionUrgencyTimeline(rankingView) {
   };
 }
 
+function buildAtlasClimateMitigationReadinessComparison(timelineView) {
+  if (!timelineView || timelineView.state === 'empty' || timelineView.steps.length === 0) {
+    return {
+      state: 'empty',
+      regions: [],
+      summary: 'Aucun plan urgent en attente: readiness climat non affichée.',
+    };
+  }
+
+  const regions = timelineView.steps.map((step) => {
+    const readinessStatus = step.intensity === 'critical' && step.noCloseWindowAlert
+      ? 'too-late'
+      : step.intensity === 'critical'
+        ? 'just-in-time'
+        : step.noCloseWindowAlert
+          ? 'insufficient'
+          : 'ready';
+    const mitigationAvailable = readinessStatus === 'ready'
+      ? 'mitigation prête'
+      : readinessStatus === 'just-in-time'
+        ? 'mitigation juste-à-temps'
+        : readinessStatus === 'insufficient'
+          ? 'capacité insuffisante avant fenêtre'
+          : 'fenêtre dépassée';
+    const timingProblem = readinessStatus === 'insufficient' || readinessStatus === 'too-late'
+      ? 'Timing prioritaire: la capacité disponible arrive après l’exposition régionale.'
+      : readinessStatus === 'just-in-time'
+        ? 'Timing serré: jouer maintenant évite le basculement cascade.'
+        : 'Timing couvert: la mitigation précède la cascade probable.';
+
+    return {
+      provinceId: step.provinceId,
+      provinceLabel: step.provinceLabel,
+      status: readinessStatus,
+      deadline: step.deadline,
+      mitigationAvailable,
+      cascadeRisk: step.reason,
+      exposure: step.exposure,
+      timingProblem,
+    };
+  });
+
+  return {
+    state: regions.some((region) => region.status === 'too-late' || region.status === 'insufficient') ? 'timing-risk' : 'ready',
+    regions,
+    summary: `${regions.length} région${regions.length > 1 ? 's' : ''} compare${regions.length > 1 ? 'nt' : ''} deadline, mitigation disponible et risque de cascade.`,
+  };
+}
+
+function renderAtlasClimateMitigationReadinessComparison(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-readiness map-world-climate-readiness--${view.state}" aria-label="Comparaison readiness mitigation climat atlas">
+      <div class="map-world-climate-readiness__header">
+        <strong>Readiness mitigation climat</strong>
+        <span>${view.state === 'timing-risk' ? 'timing à risque' : 'timing couvert'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-readiness__list">
+        ${view.regions.map((region) => `
+          <li class="map-world-climate-readiness__item map-world-climate-readiness__item--${region.status}">
+            <b>${region.provinceLabel}</b>
+            <span>${region.deadline} · ${region.mitigationAvailable}</span>
+            <small><b>Cascade</b> · ${region.cascadeRisk}</small>
+            <small><b>Exposition</b> · ${region.exposure}</small>
+            <small><b>Problème timing</b> · ${region.timingProblem}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateActionUrgencyTimeline(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -13757,6 +13833,7 @@ function render() {
   const atlasClimateActionPlan = buildAtlasClimateActionPlanFromComparison(atlasSeasonalPlanComparison);
   const atlasClimateActionPlanRanking = buildAtlasClimateActionPlanRanking(atlasClimateActionPlan);
   const atlasClimateActionUrgencyTimeline = buildAtlasClimateActionUrgencyTimeline(atlasClimateActionPlanRanking);
+  const atlasClimateMitigationReadiness = buildAtlasClimateMitigationReadinessComparison(atlasClimateActionUrgencyTimeline);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -13794,6 +13871,7 @@ function render() {
           ${renderAtlasClimateActionPlan(atlasClimateActionPlan)}
           ${renderAtlasClimateActionPlanRanking(atlasClimateActionPlanRanking)}
           ${renderAtlasClimateActionUrgencyTimeline(atlasClimateActionUrgencyTimeline)}
+          ${renderAtlasClimateMitigationReadinessComparison(atlasClimateMitigationReadiness)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
