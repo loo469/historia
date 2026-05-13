@@ -2940,6 +2940,53 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
   );
 }
 
+function buildAtlasSecondaryBottleneckExecuteVerdict(item, index) {
+  if (index > 0 || item.readiness.status === 'ready' || !item.readiness.unblockAction || !item.readiness.tradeoffComparison) {
+    return null;
+  }
+
+  const selectedAction = item.readiness.tradeoffComparison.selected;
+  const rejectedAlternative = item.readiness.tradeoffComparison.rejected;
+  const routeStress = item.status === 'encore saturé' || item.impact.includes('pénurie');
+  const budgetPressure = item.readiness.status === 'blocked-funding';
+  const hubCapacityPressure = item.readiness.status === 'blocked-capacity';
+  const instabilityRisk = item.readiness.status === 'blocked-risk';
+
+  if (instabilityRisk) {
+    return {
+      status: 'too-risky',
+      label: 'attendre: trop risqué',
+      reason: `${selectedAction} avant ${rejectedAlternative}`,
+    };
+  }
+
+  if (routeStress) {
+    return {
+      status: 'execute-now',
+      label: 'exécuter maintenant',
+      reason: `${selectedAction} maintenant; ${rejectedAlternative} attend`,
+    };
+  }
+
+  if (budgetPressure) {
+    return {
+      status: 'wait-for-budget',
+      label: 'attendre budget',
+      reason: `${selectedAction} avant ${rejectedAlternative}`,
+    };
+  }
+
+  if (hubCapacityPressure) {
+    return {
+      status: 'wait-for-capacity',
+      label: 'attendre capacité',
+      reason: `${selectedAction} avant ${rejectedAlternative}`,
+    };
+  }
+
+  return null;
+}
+
 function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecasts) {
   if (fundedCapacityProjections.empty) {
     return {
@@ -2993,7 +3040,11 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
       };
     })
     .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
-    .slice(0, 3);
+    .slice(0, 3)
+    .map((item, index) => ({
+      ...item,
+      executeVerdict: buildAtlasSecondaryBottleneckExecuteVerdict(item, index),
+    }));
 
   return {
     empty: secondary.length === 0 || secondary.every((item) => item.status === 'résolu'),
@@ -3245,11 +3296,11 @@ function renderAtlasEconomyStressLegend(economyView) {
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
           const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
-              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}</text>
             </g>
           `;
         }).join('')}
