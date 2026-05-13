@@ -7206,6 +7206,84 @@ function renderAtlasClimateReadinessBoostRecommendations(view) {
   `;
 }
 
+function buildAtlasClimatePostBoostDeadlineRiskPreview(boostView) {
+  if (!boostView || boostView.state !== 'actionable' || boostView.boosts.length === 0) {
+    return {
+      state: 'empty',
+      previews: [],
+      summary: 'Aucun aperçu post-boost: aucun plan urgent sous-prêt avec boost recommandé.',
+    };
+  }
+
+  const previews = boostView.boosts.slice(0, 3).map((boost) => {
+    const deadlinePressure = /fenêtre courte|deadline|Timing serré|maintenant/i.test(`${boost.smallestBoost} ${boost.consequence}`);
+    const outcome = boost.status === 'too-late'
+      ? 'insufficient'
+      : boost.missingDimension === 'regional coordination' && boost.status === 'just-in-time'
+        ? 'executable'
+        : deadlinePressure
+          ? 'still-tight'
+          : 'executable';
+    const label = outcome === 'executable'
+      ? 'risque abaissé: exécutable'
+      : outcome === 'still-tight'
+        ? 'risque réduit mais serré'
+        : 'boost insuffisant avant deadline';
+    const postBoostSignal = outcome === 'executable'
+      ? 'Le boost couvre la dimension manquante et replace le plan dans une fenêtre jouable.'
+      : outcome === 'still-tight'
+        ? 'Le boost réduit la pression, mais la deadline impose encore une exécution immédiate.'
+        : 'Même après boost, la fenêtre reste probablement dépassée avant exécution fiable.';
+
+    return {
+      provinceId: boost.provinceId,
+      provinceLabel: boost.provinceLabel,
+      deadline: boost.deadline,
+      outcome,
+      label,
+      missingDimension: boost.missingDimension,
+      appliedBoost: boost.smallestBoost,
+      postBoostSignal,
+    };
+  });
+
+  return {
+    state: previews.some((preview) => preview.outcome === 'insufficient')
+      ? 'blocked'
+      : previews.some((preview) => preview.outcome === 'still-tight')
+        ? 'tight'
+        : 'executable',
+    previews,
+    summary: `${previews.length} aperçu${previews.length > 1 ? 's' : ''} post-boost compare${previews.length > 1 ? 'nt' : ''} deadline, readiness corrigée et pression résiduelle.`,
+  };
+}
+
+function renderAtlasClimatePostBoostDeadlineRiskPreview(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-post-boost-risk map-world-climate-post-boost-risk--${view.state}" aria-label="Aperçu du risque de deadline après boost readiness climat">
+      <div class="map-world-climate-post-boost-risk__header">
+        <strong>Risque post-boost</strong>
+        <span>${view.state === 'executable' ? 'exécutable' : view.state === 'tight' ? 'encore serré' : 'insuffisant'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-post-boost-risk__list">
+        ${view.previews.map((preview) => `
+          <li class="map-world-climate-post-boost-risk__item map-world-climate-post-boost-risk__item--${preview.outcome}">
+            <b>${preview.provinceLabel}</b>
+            <span>${preview.deadline} · ${preview.label}</span>
+            <small><b>Boost appliqué</b> · ${preview.appliedBoost}</small>
+            <small><b>Pression résiduelle</b> · ${preview.postBoostSignal}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -14681,6 +14759,7 @@ function render() {
   const atlasClimateMitigationReadiness = buildAtlasClimateMitigationReadinessComparison(atlasClimateActionUrgencyTimeline);
   const atlasClimateUnderReadyExecutionGaps = buildAtlasClimateUnderReadyExecutionGaps(atlasClimateMitigationReadiness);
   const atlasClimateReadinessBoostRecommendations = buildAtlasClimateReadinessBoostRecommendations(atlasClimateUnderReadyExecutionGaps);
+  const atlasClimatePostBoostDeadlineRiskPreview = buildAtlasClimatePostBoostDeadlineRiskPreview(atlasClimateReadinessBoostRecommendations);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -14721,6 +14800,7 @@ function render() {
           ${renderAtlasClimateMitigationReadinessComparison(atlasClimateMitigationReadiness)}
           ${renderAtlasClimateUnderReadyExecutionGaps(atlasClimateUnderReadyExecutionGaps)}
           ${renderAtlasClimateReadinessBoostRecommendations(atlasClimateReadinessBoostRecommendations)}
+          ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

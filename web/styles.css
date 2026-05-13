@@ -11720,3 +11720,46 @@ button { font: inherit; }
 .atlas-cultural-consolidation-action--followup-stale-risk .atlas-cultural-consolidation-action__followup { fill: #fecdd3; }
 .atlas-cultural-consolidation-action--fragile .atlas-cultural-consolidation-action__reason { fill: #fde68a; }
 .atlas-cultural-consolidation-action--expiring .atlas-cultural-consolidation-action__reason { fill: #fecdd3; }
+.map-world-climate-post-boost-risk {
+  display: grid;
+  gap: 8px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(8, 47, 73, 0.24));
+  border: 1px solid rgba(56, 189, 248, 0.34);
+}
+.map-world-climate-post-boost-risk--tight { border-color: rgba(251, 191, 36, 0.4); }
+.map-world-climate-post-boost-risk--blocked { border-color: rgba(248, 113, 113, 0.48); }
+.map-world-climate-post-boost-risk__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-post-boost-risk p,
+.map-world-climate-post-boost-risk span,
+.map-world-climate-post-boost-risk small {
+  color: #e0f2fe;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-post-boost-risk__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.map-world-climate-post-boost-risk__item {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+.map-world-climate-post-boost-risk__item--executable { border-color: rgba(110, 231, 183, 0.38); }
+.map-world-climate-post-boost-risk__item--still-tight { border-color: rgba(251, 191, 36, 0.44); }
+.map-world-climate-post-boost-risk__item--insufficient { border-color: rgba(248, 113, 113, 0.52); }
