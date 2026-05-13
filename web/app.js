@@ -1392,11 +1392,15 @@ function buildAtlasMilitaryCommitmentNextTurnWarnings(prioritySummary, debtSumma
       const frontRoute = debt.provinceId ? `front ${debt.label}` : `route ${commitment?.selectedOption?.target ?? debt.label}`;
       return {
         warningId: `next-turn:${debt.debtId}`,
+        sourceId: debt.provinceId ?? debt.debtId,
+        debtId: debt.debtId,
+        debtTone: debt.tone,
         label: debt.label,
         frontRoute,
         tone: priority.tone,
         urgencyScore: priority.urgencyScore,
         reason: debt.reason,
+        frontRisk: debt.priority,
         degradation: getAtlasCommitmentDebtDegradation(debt),
         action: getAtlasCommitmentDebtImmediateAction(debt, commitment),
         center: debt.center,
@@ -1433,6 +1437,78 @@ function renderAtlasMilitaryCommitmentNextTurnWarnings(warningSummary) {
         <g class="atlas-military-warning-marker atlas-military-warning-marker--${warning.tone}" data-atlas-commitment-warning-marker="${warning.warningId}" aria-label="Alerte ${warning.label}: ${warning.degradation}">
           <circle cx="${warning.center.x}%" cy="${warning.center.y}%" r="2.35"></circle>
           <text x="${warning.center.x}%" y="${warning.center.y + 0.55}%" text-anchor="middle">A${index + 1}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
+
+function getAtlasMilitaryWarningDegradationScore(warning) {
+  if (warning.debtTone === 'absent') return 24;
+  if (warning.debtTone === 'threat') return 18;
+  return 12;
+}
+
+function getAtlasMilitaryWarningRouteExposure(warning, features) {
+  if (!warning.sourceId) return 0;
+  return Math.max(0, ...(features?.routes ?? [])
+    .filter((route) => route.sourceId === warning.sourceId || route.targetId === warning.sourceId)
+    .map((route) => Math.round(route.pressure / 4)));
+}
+
+function buildAtlasMilitaryWarningPriorityStack(warningSummary, features) {
+  if (!warningSummary || warningSummary.empty || !warningSummary.warnings.length) {
+    return {
+      stack: [],
+      summary: 'Pile priorité inactive: aucune alerte militaire high-risk non résolue.',
+      empty: true,
+    };
+  }
+
+  const stack = warningSummary.warnings
+    .map((warning) => {
+      const uncoveredDebt = warning.debtTone === 'absent' ? 24 : warning.debtTone === 'partial' ? 14 : 8;
+      const routeExposure = getAtlasMilitaryWarningRouteExposure(warning, features);
+      const degradationScore = getAtlasMilitaryWarningDegradationScore(warning);
+      const stackScore = warning.frontRisk + uncoveredDebt + routeExposure + degradationScore;
+      return {
+        ...warning,
+        stackId: `stack:${warning.warningId}`,
+        stackScore,
+        routeExposure,
+        whyFirst: `${warning.reason}; risque ${warning.frontRisk}, dette ${uncoveredDebt}, route ${routeExposure}, prochain tour ${degradationScore}`,
+      };
+    })
+    .sort((left, right) => right.stackScore - left.stackScore || left.sourceId.localeCompare(right.sourceId) || left.label.localeCompare(right.label))
+    .slice(0, 3);
+
+  return {
+    stack,
+    summary: stack.length > 0
+      ? `Priorité opération: ${stack[0].label} d’abord — ${stack[0].whyFirst}.`
+      : 'Pile priorité inactive: aucune alerte militaire high-risk non résolue.',
+    empty: stack.length === 0,
+  };
+}
+
+function renderAtlasMilitaryWarningPriorityStack(priorityStack) {
+  if (!priorityStack || priorityStack.empty) return '';
+  const [topPriority, ...lowerPriorities] = priorityStack.stack;
+  const height = 8.8 + (lowerPriorities.length * 2.7);
+  return `
+    <g class="atlas-military-warning-stack" aria-label="Pile de priorités des alertes militaires: ${priorityStack.summary}">
+      <rect class="atlas-military-warning-stack__panel" x="3" y="44" width="37" height="${height}" rx="2.4"></rect>
+      <text class="atlas-military-warning-stack__title" x="5" y="47.2">Pile opérations</text>
+      <g class="atlas-military-warning-stack-top atlas-military-warning-stack-top--${topPriority.tone}" data-atlas-warning-stack-top="${topPriority.stackId}" aria-label="Priorité 1 ${topPriority.frontRoute}: ${topPriority.whyFirst}; action ${topPriority.action}">
+        <rect x="5" y="48.8" width="4" height="2.8" rx="0.8"></rect>
+        <text class="atlas-military-warning-stack-top__label" x="10" y="49.8">1. ${topPriority.label} · ${topPriority.stackScore}</text>
+        <text class="atlas-military-warning-stack-top__why" x="10" y="51.4">why first: ${topPriority.whyFirst}</text>
+      </g>
+      ${lowerPriorities.map((warning, index) => `
+        <g class="atlas-military-warning-stack-item atlas-military-warning-stack-item--${warning.tone}" data-atlas-warning-stack-item="${warning.stackId}" aria-label="Priorité ${index + 2} ${warning.frontRoute}: score ${warning.stackScore}; ${warning.action}">
+          <text x="5" y="${54.4 + index * 2.7}">${index + 2}. ${warning.label}</text>
+          <text x="21" y="${54.4 + index * 2.7}">${warning.stackScore} · ${warning.action}</text>
         </g>
       `).join('')}
     </g>
@@ -1517,6 +1593,7 @@ function renderAtlasMilitaryLayer(shell) {
   const commitmentDebt = buildAtlasMilitaryCommitmentDebtSummary(commitmentCoverage, stagedCommitment, shell);
   const commitmentPriority = buildAtlasMilitaryCommitmentDebtPriorities(commitmentDebt, commitmentCoverage, stagedCommitment);
   const commitmentWarnings = buildAtlasMilitaryCommitmentNextTurnWarnings(commitmentPriority, commitmentDebt, commitmentCoverage, stagedCommitment);
+  const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -1547,6 +1624,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentDebtSummary(commitmentDebt)}
       ${renderAtlasMilitaryCommitmentDebtPriorities(commitmentPriority)}
       ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
+      ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
