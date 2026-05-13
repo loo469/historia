@@ -132,6 +132,7 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         confidenceDelta: 23,
         exposureAdded: 10,
         unknownsRemaining: 0,
+        postSweepGaps: [],
         summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
       },
       style: {
@@ -171,6 +172,7 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         confidenceDelta: 31,
         exposureAdded: 5,
         unknownsRemaining: 0,
+        postSweepGaps: [],
         summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
       },
       style: {
@@ -310,6 +312,7 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     confidenceDelta: 0,
     exposureAdded: 0,
     unknownsRemaining: 0,
+    postSweepGaps: [],
     summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
   });
   assert.equal(hot.lowExposureSweepConfidencePreview.state, 'watch-exposure');
@@ -319,7 +322,64 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
   assert.equal(hot.lowExposureSweepConfidencePreview.confidenceDelta, 26);
   assert.equal(hot.lowExposureSweepConfidencePreview.exposureAdded, 12);
   assert.equal(hot.lowExposureSweepConfidencePreview.unknownsRemaining, 1);
+  assert.deepEqual(hot.lowExposureSweepConfidencePreview.postSweepGaps, [
+    {
+      key: 'unconfirmed-presence',
+      label: 'Présence non confirmée',
+      reason: '1 signal restera à qualifier après le sweep.',
+    },
+    {
+      key: 'sleeper-uncertainty',
+      label: 'Dormance encore possible',
+      reason: 'Le sweep bas-risque peut confirmer la zone sans lever toute ambiguïté dormante.',
+    },
+    {
+      key: 'residual-sabotage-pressure',
+      label: 'Pression sabotage résiduelle',
+      reason: 'Le risque visible reste élevé; éviter toute attribution ou cible cachée après la passe.',
+    },
+  ]);
   assert.match(hot.lowExposureSweepConfidencePreview.summary, /Confiance \+26 pts pour \+12 exposition/);
+});
+
+test('buildIntrigueMapOverlay keeps post-sweep gap explanations stable and neutral when complete', () => {
+  const overlay = buildIntrigueMapOverlay([
+    {
+      id: 'cell-calm-1',
+      factionId: 'shadow-league',
+      codename: 'Calm',
+      locationId: 'calm',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 10,
+    },
+    {
+      id: 'cell-calm-2',
+      factionId: 'shadow-league',
+      codename: 'Clear',
+      locationId: 'calm',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 80,
+    },
+  ], [
+    {
+      id: 'op-calm',
+      celluleId: 'cell-calm-1',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe safe lane',
+      theaterId: 'calm',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 70,
+      progress: 20,
+      heat: 10,
+    },
+  ]);
+
+  assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.postSweepGaps, []);
+  assert.equal(overlay[0].lowExposureSweepConfidencePreview.unknownsRemaining, 0);
 });
 
 test('buildIntrigueMapOverlay rejects invalid inputs', () => {
