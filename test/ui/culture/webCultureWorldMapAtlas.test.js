@@ -43,6 +43,7 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /buildAtlasPairedMediationSupport/);
   assert.match(webAppSource, /buildAtlasSafestPairedSupport/);
   assert.match(webAppSource, /buildAtlasPairedSupportSafetyJustification/);
+  assert.match(webAppSource, /buildAtlasPairedSupportRiskRelief/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -128,7 +129,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /!fallback \|\| !pairedMediation/);
   assert.match(webAppSource, /appui sûr:/);
   assert.match(webAppSource, /atlas-cultural-border-zone__safest-support/);
-  assert.match(webAppSource, /safetyJustification: buildAtlasPairedSupportSafetyJustification/);
+  assert.match(webAppSource, /const safetyJustification = buildAtlasPairedSupportSafetyJustification/);
   assert.match(webAppSource, /state: 'mediator-available'/);
   assert.match(webAppSource, /state: 'border-pressure-low'/);
   assert.match(webAppSource, /state: 'window-open'/);
@@ -138,6 +139,15 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /safestSupport\.state === 'assign-mediator' && zone\.mediation\.confidence === 'inconnue'/);
   assert.match(webAppSource, /sûr car:/);
   assert.match(webAppSource, /atlas-cultural-border-zone__support-justification/);
+  assert.match(webAppSource, /const riskRelief = buildAtlasPairedSupportRiskRelief/);
+  assert.match(webAppSource, /riskRelief,/);
+  assert.match(webAppSource, /state: 'mediation-stabilized'/);
+  assert.match(webAppSource, /state: 'border-tension-calmed'/);
+  assert.match(webAppSource, /state: 'window-preserved'/);
+  assert.match(webAppSource, /state: 'local-trust-protected'/);
+  assert.match(webAppSource, /safetyJustification\.state === 'no-safe-justification'/);
+  assert.match(webAppSource, /risque retiré:/);
+  assert.match(webAppSource, /atlas-cultural-border-zone__risk-relief/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -171,6 +181,10 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-border-zone__support-justification--window-open/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__support-justification--local-trust-sufficient/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__support-justification--no-safe-justification/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__risk-relief--mediation-stabilized/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__risk-relief--window-preserved/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__risk-relief--border-tension-calmed/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__risk-relief--local-trust-protected/);
   assert.match(stylesSource, /\.atlas-cultural-border-zones\.is-stable rect/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__confidence/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__consequences/);
@@ -199,4 +213,5 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action__paired-mediation/);
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action__safest-support/);
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action__support-justification/);
+  assert.match(stylesSource, /\.atlas-cultural-consolidation-action__risk-relief/);
 });
