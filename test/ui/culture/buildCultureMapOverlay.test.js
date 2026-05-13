@@ -698,6 +698,10 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
       tradeoff: 'cohésion + / ouverture -',
       riskReduced: 'fragmentation culturelle',
       reason: 'cohésion 34 · oaths',
+      safetyScore: 12,
+      safetyReason: 'engagement sûr: ancre identitaire d’abord · score 12',
+      monitoredRisk: 'fragmentation culturelle',
+      rank: 1,
     },
     {
       id: 'shared-marsh:culture-marsh:bundle:guided-opening',
@@ -708,9 +712,21 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
       tradeoff: 'ouverture + / cohésion sous surveillance',
       riskReduced: 'isolement du support',
       reason: 'ouverture 38 · ferry-charter',
+      safetyScore: 5,
+      safetyReason: 'engagement sûr: recherche cadencée avant ouverture · score 5',
+      monitoredRisk: 'isolement du support',
+      rank: 2,
     },
   ]);
+  assert.deepEqual(marsh.recommendedFirstBundle, {
+    bundleId: 'shared-marsh:culture-marsh:bundle:cohesion-anchor',
+    label: 'ancrer cohésion locale',
+    safetyScore: 12,
+    reason: 'engagement sûr: ancre identitaire d’abord · score 12',
+    monitoredRisk: 'fragmentation culturelle',
+  });
   assert.deepEqual(stable.supportBundles, undefined);
+  assert.deepEqual(stable.recommendedFirstBundle, undefined);
 });
 
 test('buildCultureMapOverlay can summarize overlapping culture clusters with discovery and event pins', () => {

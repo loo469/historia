@@ -356,10 +356,77 @@ function buildCultureSupportBundles(culture, regionId, regionPresence, cultureSt
     });
   }
 
+  return rankCultureSupportBundles(bundles).slice(0, 2);
+}
+
+function scoreCultureSupportBundle(bundle) {
+  const actionScores = {
+    'protect-identity': 5,
+    'mediate-event-memory': 4,
+    'local-assembly': 3,
+    'limit-border-pressure': 3,
+    'shared-mediation': 2,
+    'share-discovery': 2,
+    'pace-research': 1,
+  };
+  const tradeoffPenalty = bundle.tradeoff.includes('recherche ralentie')
+    ? 2
+    : bundle.tradeoff.includes('sous surveillance') || bundle.tradeoff.includes('ouverture -')
+      ? 1
+      : 0;
+
+  return Math.max(0, bundle.actionKeys.reduce((total, actionKey) => total + (actionScores[actionKey] ?? 0), 0) + bundle.priority - tradeoffPenalty);
+}
+
+function buildCultureSupportBundleSafetyReason(bundle, safetyScore) {
+  if (bundle.actionKeys.includes('protect-identity')) {
+    return `engagement sûr: ancre identitaire d’abord · score ${safetyScore}`;
+  }
+
+  if (bundle.actionKeys.includes('limit-border-pressure')) {
+    return `engagement sûr: pression frontalière bornée · score ${safetyScore}`;
+  }
+
+  if (bundle.actionKeys.includes('pace-research')) {
+    return `engagement sûr: recherche cadencée avant ouverture · score ${safetyScore}`;
+  }
+
+  return `engagement sûr: actions compatibles · score ${safetyScore}`;
+}
+
+function rankCultureSupportBundles(bundles) {
   return bundles
-    .sort((left, right) => right.priority - left.priority || left.id.localeCompare(right.id))
-    .slice(0, 2)
-    .map(({ priority, ...bundle }) => bundle);
+    .map((bundle) => {
+      const safetyScore = scoreCultureSupportBundle(bundle);
+
+      return {
+        ...bundle,
+        safetyScore,
+        safetyReason: buildCultureSupportBundleSafetyReason(bundle, safetyScore),
+        monitoredRisk: bundle.riskReduced,
+      };
+    })
+    .sort((left, right) => right.safetyScore - left.safetyScore || right.priority - left.priority || left.id.localeCompare(right.id))
+    .map(({ priority, ...bundle }, index) => ({
+      ...bundle,
+      rank: index + 1,
+    }));
+}
+
+function buildRecommendedFirstCultureSupportBundle(supportBundles) {
+  const firstBundle = supportBundles[0] ?? null;
+
+  if (!firstBundle) {
+    return null;
+  }
+
+  return {
+    bundleId: firstBundle.id,
+    label: firstBundle.label,
+    safetyScore: firstBundle.safetyScore,
+    reason: firstBundle.safetyReason,
+    monitoredRisk: firstBundle.monitoredRisk,
+  };
 }
 
 function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById) {
@@ -472,6 +539,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           ? buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById)
           : null;
         const supportBundles = buildCultureSupportBundles(culture, regionId, regionPresence, cultureState);
+        const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles);
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -537,7 +605,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           zoneBand,
           dominantInRegion: dominantCulture?.cultureId === culture.id,
           competingCultureIds: regionPresence.filter((entry) => entry.cultureId !== culture.id).map((entry) => entry.cultureId),
-          ...(supportBundles.length > 0 ? { supportBundles } : {}),
+          ...(supportBundles.length > 0 ? { supportBundles, recommendedFirstBundle } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
           style,
