@@ -11300,6 +11300,49 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const firstResweepCoveragePreviewSummary = firstSafeStagedAssignment
     ? `${firstSafeStagedAssignment.locationName}: ${firstResweepCoverageGainLevel === 'high-gain' ? 'gain de couverture élevé' : 'gain de couverture faible'} avant confirmation du premier resweep sûr.`
     : 'Aucun aperçu de couverture: les affectations unsafe/no-safe ne sont pas prévisualisées.';
+  const rankedStagedResweepAssignments = stagedResweepAssignments
+    .filter((assignment) => assignment.assignmentStatus === 'safe')
+    .map((assignment) => {
+      const blindSpotValue = assignment.failureType === 'non couvert' ? 4 : assignment.failureType === 'couverture trop faible' ? 2 : 1;
+      const staleRefreshValue = assignment.freshnessScore <= 1 ? 3 : assignment.freshnessScore === 2 ? 2 : 1;
+      const unsafeGapPenalty = assignment.failureType === 'couverture trop faible' || assignment.priorityLevel === 'prudente' ? 2 : 0;
+      const previewValue = assignment.failureType === 'non couvert'
+        ? 3
+        : assignment.failureType === 'couverture trop faible'
+          ? 1
+          : 0;
+      const coverageValueScore = assignment.priorityScore + blindSpotValue + staleRefreshValue + previewValue - unsafeGapPenalty;
+      const coverageValueLevel = coverageValueScore >= 12 ? 'high-value' : coverageValueScore >= 9 ? 'medium-value' : 'low-value';
+      const lessUrgentReason = coverageValueLevel === 'high-value'
+        ? 'meilleur gain: priorité haute, récupération de couverture et rafraîchissement utiles'
+        : coverageValueLevel === 'medium-value'
+          ? 'moins urgent: gain utile mais couverture déjà partielle ou fraîcheur moins critique'
+          : 'faible gain: garder en réserve après les resweeps plus rentables';
+
+      return {
+        ...assignment,
+        blindSpotValue,
+        staleRefreshValue,
+        unsafeGapPenalty,
+        previewValue,
+        coverageValueScore,
+        coverageValueLevel,
+        lessUrgentReason,
+      };
+    })
+    .sort((left, right) => right.coverageValueScore - left.coverageValueScore
+      || right.priorityScore - left.priorityScore
+      || left.failureType.localeCompare(right.failureType)
+      || left.locationName.localeCompare(right.locationName))
+    .map((assignment, index) => ({
+      ...assignment,
+      coverageValueRank: index + 1,
+      bestCoverageValue: index === 0,
+    }));
+  const excludedUnsafeResweepAssignments = stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus !== 'safe');
+  const rankedStagedResweepAssignmentSummary = rankedStagedResweepAssignments.length > 0
+    ? `${rankedStagedResweepAssignments.length} resweep${rankedStagedResweepAssignments.length > 1 ? 's' : ''} sûr${rankedStagedResweepAssignments.length > 1 ? 's' : ''} classé${rankedStagedResweepAssignments.length > 1 ? 's' : ''} par valeur de couverture; meilleur: ${rankedStagedResweepAssignments[0].locationName}. ${rankedStagedResweepAssignments.filter((assignment) => assignment.coverageValueLevel === 'low-value').length} low-gain à garder en réserve; ${excludedUnsafeResweepAssignments.length} unsafe exclu${excludedUnsafeResweepAssignments.length > 1 ? 's' : ''}.`
+    : 'Aucun classement de valeur: toutes les affectations staged sont unsafe/no-safe ou sans gain exploitable.';
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -11314,6 +11357,9 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     firstResweepCoveragePreviewItems,
     firstResweepCoverageGainLevel,
     firstResweepCoveragePreviewSummary,
+    rankedStagedResweepAssignments,
+    rankedStagedResweepAssignmentSummary,
+    excludedUnsafeResweepAssignments,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -11444,6 +11490,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         ${plan.postOrderCoverage.firstResweepCoveragePreviewItems.length > 0
           ? `<ol>${plan.postOrderCoverage.firstResweepCoveragePreviewItems.map((item) => `<li class="atlas-counterintelligence-first-resweep-preview__item atlas-counterintelligence-first-resweep-preview__item--${item.tone}"><b>${item.type}</b><small>${item.copy}</small></li>`).join('')}</ol>`
           : '<small>Aucun preview: l’affectation proposée reste unsafe ou sans couverture récupérable sûre.</small>'}
+      </section>
+      <section class="atlas-counterintelligence-resweep-value-ranking" aria-label="Classement des resweeps staged sûrs par valeur de couverture">
+        <strong>Valeur de couverture des resweeps</strong>
+        <p>${plan.postOrderCoverage.rankedStagedResweepAssignmentSummary}</p>
+        ${plan.postOrderCoverage.rankedStagedResweepAssignments.length > 0
+          ? `<ol>${plan.postOrderCoverage.rankedStagedResweepAssignments.map((assignment) => `<li class="atlas-counterintelligence-resweep-value-ranking__item atlas-counterintelligence-resweep-value-ranking__item--${assignment.coverageValueLevel}"><b>#${assignment.coverageValueRank} ${assignment.locationName}</b> · ${assignment.coverageValueScore} valeur${assignment.bestCoverageValue ? ' · meilleur choix' : ''}<small>${assignment.lessUrgentReason} · priorité ${assignment.priorityScore}, refresh ${assignment.staleRefreshValue}, preview ${assignment.previewValue}, gap unsafe -${assignment.unsafeGapPenalty}</small></li>`).join('')}</ol>`
+          : '<small>Aucun resweep sûr à classer: les affectations rejetées par sécurité restent exclues.</small>'}
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>
