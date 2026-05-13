@@ -673,6 +673,44 @@ button { font: inherit; }
   background: rgba(15, 23, 42, 0.54);
   border: 1px solid rgba(74, 222, 128, 0.24);
 }
+.map-world-climate-action-ranking {
+  display: grid;
+  gap: 8px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.66), rgba(88, 28, 135, 0.22));
+  border: 1px solid rgba(216, 180, 254, 0.28);
+}
+.map-world-climate-action-ranking__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-action-ranking p,
+.map-world-climate-action-ranking span,
+.map-world-climate-action-ranking small {
+  color: #f3e8ff;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-action-ranking__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.map-world-climate-action-ranking__item {
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(216, 180, 254, 0.22);
+}
+.map-world-climate-action-ranking__item--critical { border-color: rgba(248, 113, 113, 0.46); }
+.map-world-climate-action-ranking__item--elevated { border-color: rgba(251, 191, 36, 0.36); }
 
 .map-climate-severity-legend {
   display: grid;

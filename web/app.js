@@ -5976,6 +5976,81 @@ function buildAtlasClimateActionPlanFromComparison(planComparison) {
   };
 }
 
+function getAtlasClimateActionPlanUrgencyScore(plan, vulnerabilityCount = 0) {
+  const deadlineRank = /Printemps|Été|Automne|Hiver/i.test(plan.criticalSeason) ? 4 : 2;
+  const severityRank = plan.intensity === 'critical' ? 8 : plan.intensity === 'elevated' ? 5 : 2;
+  const exposureRank = (plan.badges?.includes('route protégée') ? 3 : 0) + (plan.protectedRegions?.split('·').length ?? 1) + vulnerabilityCount;
+  return deadlineRank + severityRank + exposureRank + Math.round((plan.score ?? 0) / 10);
+}
+
+function buildAtlasClimateActionPlanRanking(actionPlanView) {
+  if (!actionPlanView || actionPlanView.state === 'empty' || !actionPlanView.selectedPlan) {
+    return {
+      state: 'empty',
+      priorities: [],
+      summary: 'Aucun plan climat à classer par délai et exposition régionale.',
+    };
+  }
+
+  const candidates = [actionPlanView.selectedPlan, ...actionPlanView.vulnerablePlans]
+    .filter((plan, index, all) => plan && all.findIndex((candidate) => candidate.provinceId === plan.provinceId) === index)
+    .map((plan) => {
+      const vulnerabilityCount = actionPlanView.vulnerablePlans.some((candidate) => candidate.provinceId === plan.provinceId) ? 1 : 0;
+      const urgencyScore = getAtlasClimateActionPlanUrgencyScore(plan, vulnerabilityCount);
+      const mainReason = plan.intensity === 'critical'
+        ? 'catastrophe/cascade active avant la deadline'
+        : vulnerabilityCount > 0
+          ? 'exposition régionale encore vulnérable'
+          : plan.badges?.includes('route protégée')
+            ? 'route protégée et cascade évitable'
+            : 'deadline saisonnière à surveiller';
+
+      return {
+        ...plan,
+        urgencyScore,
+        mainReason,
+        expectedImpact: `${plan.avoidedCascade}; ${plan.protectedRegions} moins exposée${plan.protectedRegions?.includes('·') ? 's' : ''}.`,
+      };
+    })
+    .sort((left, right) => right.urgencyScore - left.urgencyScore || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3)
+    .map((plan, index) => ({ ...plan, priorityRank: index + 1 }));
+
+  return {
+    state: candidates.length > 0 ? 'ready' : 'empty',
+    priorities: candidates,
+    summary: candidates.length > 0
+      ? `${candidates.length} plan${candidates.length > 1 ? 's' : ''} climat classé${candidates.length > 1 ? 's' : ''} par deadline, cascade active et exposition régionale.`
+      : 'Aucun plan climat à classer par délai et exposition régionale.',
+  };
+}
+
+function renderAtlasClimateActionPlanRanking(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-action-ranking" aria-label="Priorisation des plans d’action climat par urgence">
+      <div class="map-world-climate-action-ranking__header">
+        <strong>Priorités plans climat</strong>
+        <span>${view.priorities.length} classé${view.priorities.length > 1 ? 's' : ''}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-action-ranking__list">
+        ${view.priorities.map((plan) => `
+          <li class="map-world-climate-action-ranking__item map-world-climate-action-ranking__item--${plan.intensity}">
+            <b>${plan.priorityRank}. ${plan.provinceLabel}</b>
+            <span>${plan.action} · deadline ${plan.criticalSeason}</span>
+            <small><b>Raison</b> · ${plan.mainReason}</small>
+            <small><b>Impact attendu</b> · ${plan.expectedImpact}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateActionPlan(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -13123,6 +13198,7 @@ function render() {
   const atlasSeasonalMitigationWindows = buildAtlasSeasonalMitigationWindows(atlasClimateMitigationSynergies, worldClimateLayer);
   const atlasSeasonalPlanComparison = buildAtlasSeasonalMitigationPlanComparison(atlasSeasonalMitigationWindows);
   const atlasClimateActionPlan = buildAtlasClimateActionPlanFromComparison(atlasSeasonalPlanComparison);
+  const atlasClimateActionPlanRanking = buildAtlasClimateActionPlanRanking(atlasClimateActionPlan);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -13158,6 +13234,7 @@ function render() {
           ${renderAtlasSeasonalMitigationWindows(atlasSeasonalMitigationWindows)}
           ${renderAtlasSeasonalMitigationPlanComparison(atlasSeasonalPlanComparison)}
           ${renderAtlasClimateActionPlan(atlasClimateActionPlan)}
+          ${renderAtlasClimateActionPlanRanking(atlasClimateActionPlanRanking)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
