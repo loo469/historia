@@ -34,6 +34,7 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /atlas-mediation-outcome/);
   assert.match(webAppSource, /reboundWindow/);
   assert.match(webAppSource, /atlas-cultural-rebound-window/);
+  assert.match(webAppSource, /consolidation/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -71,6 +72,12 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /rechute probable/);
   assert.match(webAppSource, /fenêtre manquée/);
   assert.match(webAppSource, /aucune fenêtre active/);
+  assert.match(webAppSource, /rebond stable/);
+  assert.match(webAppSource, /rebond fragile/);
+  assert.match(webAppSource, /rebond expire/);
+  assert.match(webAppSource, /engagement incomplet/);
+  assert.match(webAppSource, /influence adverse/);
+  assert.match(webAppSource, /délai restant faible/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -99,4 +106,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-rebound-window--favorable/);
   assert.match(stylesSource, /\.atlas-cultural-rebound-window--risky/);
   assert.match(stylesSource, /\.atlas-cultural-rebound-window--missed/);
+  assert.match(stylesSource, /\.atlas-cultural-rebound-window--consolidation-stable/);
+  assert.match(stylesSource, /\.atlas-cultural-rebound-window--consolidation-fragile/);
+  assert.match(stylesSource, /\.atlas-cultural-rebound-window--consolidation-expiring/);
 });

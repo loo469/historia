@@ -11452,3 +11452,6 @@ button { font: inherit; }
 .atlas-cultural-rebound-window--missed rect { stroke: rgba(251, 113, 133, 0.72); fill: rgba(127, 29, 29, 0.38); }
 .atlas-cultural-rebound-window--missed text { fill: #fecdd3; }
 .atlas-cultural-rebound-window.is-empty rect { stroke: rgba(148, 163, 184, 0.28); fill: rgba(15, 23, 42, 0.52); }
+.atlas-cultural-rebound-window--consolidation-stable rect { stroke-width: 0.34; }
+.atlas-cultural-rebound-window--consolidation-fragile rect { stroke-dasharray: 1.2 0.8; }
+.atlas-cultural-rebound-window--consolidation-expiring rect { stroke-width: 0.48; filter: drop-shadow(0 0 4px rgba(251, 113, 133, 0.36)); }

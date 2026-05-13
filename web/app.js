@@ -1715,6 +1715,13 @@ function buildAtlasMediationCommitment(zone) {
           reason: `${remainingConfidence} · ${zone.drift.label}`,
           action: 'renforcer relais',
         };
+  const consolidation = reboundWindow.state === 'favorable' && remainingConfidence === 'forte'
+    ? { state: 'stable', label: 'rebond stable', reason: 'confiance forte', action: 'maintenir veille' }
+    : reboundWindow.state === 'favorable'
+      ? { state: 'fragile', label: 'rebond fragile', reason: 'engagement incomplet', action: 'consolider relais' }
+      : reboundWindow.state === 'risky'
+        ? { state: 'fragile', label: 'rebond fragile', reason: 'influence adverse', action: 'appui culturel' }
+        : { state: 'expiring', label: 'rebond expire', reason: 'délai restant faible', action: 'agir ce tour' };
 
   return {
     status,
@@ -1725,6 +1732,7 @@ function buildAtlasMediationCommitment(zone) {
     nextAction,
     residualRisk,
     reboundWindow,
+    consolidation,
     label: status === 'stable' ? 'engagement stable' : 'engagement à risque',
   };
 }
@@ -1762,10 +1770,10 @@ function renderAtlasCultureLayer(cultureView) {
         </g>
       `).join('')}
       ${features.borderZones.length > 0 ? features.borderZones.map((zone) => `
-        <g class="atlas-cultural-rebound-window atlas-cultural-rebound-window--${zone.commitment.reboundWindow.state}" data-atlas-cultural-rebound-window="${zone.regionId}" aria-label="Fenêtre culturelle ${zone.cultureName}: ${zone.commitment.reboundWindow.label}, pourquoi ${zone.commitment.reboundWindow.reason}, action ${zone.commitment.reboundWindow.action}">
-          <rect x="${Math.min(82, zone.center.x + 3)}" y="${Math.min(88, zone.center.y + 8)}" width="15.8" height="4.8" rx="1.5"></rect>
-          <text x="${Math.min(83, zone.center.x + 4)}%" y="${Math.min(90, zone.center.y + 10.1)}%">${zone.commitment.reboundWindow.label}</text>
-          <text class="atlas-cultural-rebound-window__action" x="${Math.min(83, zone.center.x + 4)}%" y="${Math.min(92, zone.center.y + 12)}%">${zone.commitment.reboundWindow.action}</text>
+        <g class="atlas-cultural-rebound-window atlas-cultural-rebound-window--${zone.commitment.reboundWindow.state} atlas-cultural-rebound-window--consolidation-${zone.commitment.consolidation.state}" data-atlas-cultural-rebound-window="${zone.regionId}" aria-label="Fenêtre culturelle ${zone.cultureName}: ${zone.commitment.reboundWindow.label}, consolidation ${zone.commitment.consolidation.label}, raison ${zone.commitment.consolidation.reason}, action ${zone.commitment.consolidation.action}">
+          <rect x="${Math.min(82, zone.center.x + 3)}" y="${Math.min(88, zone.center.y + 8)}" width="17.8" height="6.3" rx="1.5"></rect>
+          <text x="${Math.min(83, zone.center.x + 4)}%" y="${Math.min(90, zone.center.y + 10.1)}%">${zone.commitment.consolidation.label}</text>
+          <text class="atlas-cultural-rebound-window__action" x="${Math.min(83, zone.center.x + 4)}%" y="${Math.min(92, zone.center.y + 12)}%">${zone.commitment.consolidation.reason} · ${zone.commitment.consolidation.action}</text>
         </g>
       `).join('') : `
         <g class="atlas-cultural-rebound-window is-empty" aria-label="Aucune fenêtre de rebond culturel active">
@@ -1785,7 +1793,7 @@ function renderAtlasCultureLayer(cultureView) {
               <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 12.2}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
               <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 12.2}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
               <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 12.2}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">${zone.commitment.reboundWindow.label}: ${zone.commitment.reboundWindow.action}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">${zone.commitment.consolidation.label}: ${zone.commitment.consolidation.action}</text>
             </g>
           `).join('')}
         </g>
