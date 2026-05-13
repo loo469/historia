@@ -92,6 +92,88 @@ function buildCityMarker(city, cityPositionById) {
   };
 }
 
+function normalizeCapacitySpendPlan(plan, routeId) {
+  if (plan === undefined || plan === null) {
+    return {
+      routeId,
+      capacityMobilized: 0,
+      mobilizedByResource: {},
+      limitingResourceId: null,
+    };
+  }
+
+  const normalizedPlan = requireObject(plan, `EconomyMapOverlay capacity spend preview ${routeId}`);
+  const mobilizedByResource = Object.fromEntries(
+    Object.entries(requireObject(normalizedPlan.mobilizedByResource ?? {}, `EconomyMapOverlay mobilizedByResource ${routeId}`))
+      .map(([resourceId, capacity]) => {
+        const normalizedResourceId = String(resourceId).trim();
+
+        if (!normalizedResourceId) {
+          throw new RangeError('EconomyMapOverlay mobilizedByResource cannot contain an empty resource id.');
+        }
+
+        if (!Number.isInteger(capacity) || capacity < 0) {
+          throw new RangeError('EconomyMapOverlay mobilized capacity must be an integer greater than or equal to 0.');
+        }
+
+        return [normalizedResourceId, capacity];
+      })
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+  const mobilizedTotal = Object.values(mobilizedByResource).reduce((sum, capacity) => sum + capacity, 0);
+  const fallbackMobilized = normalizedPlan.capacityMobilized ?? mobilizedTotal;
+
+  if (!Number.isInteger(fallbackMobilized) || fallbackMobilized < 0) {
+    throw new RangeError('EconomyMapOverlay capacityMobilized must be an integer greater than or equal to 0.');
+  }
+
+  return {
+    routeId,
+    capacityMobilized: mobilizedTotal > 0 ? mobilizedTotal : fallbackMobilized,
+    mobilizedByResource,
+    limitingResourceId: normalizedPlan.limitingResourceId === undefined || normalizedPlan.limitingResourceId === null
+      ? null
+      : String(normalizedPlan.limitingResourceId).trim() || null,
+  };
+}
+
+function buildCapacitySpendPreview(route, spendPlan) {
+  const currentCapacity = route.totalCapacity;
+  const capacityMobilized = Math.min(spendPlan.capacityMobilized, currentCapacity);
+  const capacityRemaining = Math.max(0, currentCapacity - capacityMobilized);
+  const resourceRows = Object.entries(route.capacityByResource)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([resourceId, capacity]) => {
+      const mobilized = Math.min(spendPlan.mobilizedByResource[resourceId] ?? 0, capacity);
+
+      return {
+        resourceId,
+        currentCapacity: capacity,
+        capacityMobilized: mobilized,
+        capacityRemaining: capacity - mobilized,
+      };
+    });
+  const computedLimitingResourceId = spendPlan.limitingResourceId
+    ?? resourceRows
+      .filter((row) => row.capacityMobilized > 0)
+      .sort((left, right) => left.capacityRemaining - right.capacityRemaining || left.resourceId.localeCompare(right.resourceId))[0]?.resourceId
+    ?? null;
+
+  return {
+    routeId: route.id,
+    currentCapacity,
+    capacityMobilized,
+    capacityRemaining,
+    limitingResourceId: computedLimitingResourceId,
+    state: capacityMobilized === 0
+      ? 'no-spend'
+      : capacityRemaining === 0
+        ? 'fully-spent'
+        : 'remaining-margin',
+    resources: resourceRows,
+  };
+}
+
 function normalizeRouteStyle(route, styleByTransportMode) {
   const style = route.active
     ? (styleByTransportMode[route.transportMode] ?? styleByTransportMode.default ?? DEFAULT_ROUTE_STYLE_BY_MODE.default)
@@ -114,6 +196,10 @@ export function buildEconomyMapOverlay(cities, routes, options = {}) {
     ...DEFAULT_ROUTE_STYLE_BY_MODE,
     ...requireObject(normalizedOptions.styleByTransportMode ?? {}, 'EconomyMapOverlay styleByTransportMode'),
   };
+  const recommendedUnlockByRouteId = requireObject(
+    normalizedOptions.recommendedUnlockByRouteId ?? {},
+    'EconomyMapOverlay recommendedUnlockByRouteId',
+  );
 
   const cityOverlays = normalizedCities
     .slice()
@@ -141,24 +227,29 @@ export function buildEconomyMapOverlay(cities, routes, options = {}) {
   const routeOverlays = normalizedRoutes
     .slice()
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((route) => ({
-      overlayId: `route:${route.id}`,
-      type: 'route',
-      routeId: route.id,
-      routeName: route.name,
-      cityIds: [...route.stopCityIds],
-      originCityId: route.originCityId,
-      destinationCityId: route.destinationCityId,
-      active: route.active,
-      transportMode: route.transportMode,
-      riskLevel: route.riskLevel,
-      totalCapacity: route.totalCapacity,
-      resources: Object.entries(route.capacityByResource)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([resourceId, capacity]) => ({ resourceId, capacity })),
-      label: `${route.name} (${route.transportMode})`,
-      style: normalizeRouteStyle(route, styleByTransportMode),
-    }));
+    .map((route) => {
+      const capacitySpendPlan = normalizeCapacitySpendPlan(recommendedUnlockByRouteId[route.id], route.id);
+
+      return {
+        overlayId: `route:${route.id}`,
+        type: 'route',
+        routeId: route.id,
+        routeName: route.name,
+        cityIds: [...route.stopCityIds],
+        originCityId: route.originCityId,
+        destinationCityId: route.destinationCityId,
+        active: route.active,
+        transportMode: route.transportMode,
+        riskLevel: route.riskLevel,
+        totalCapacity: route.totalCapacity,
+        resources: Object.entries(route.capacityByResource)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([resourceId, capacity]) => ({ resourceId, capacity })),
+        capacitySpendPreview: buildCapacitySpendPreview(route, capacitySpendPlan),
+        label: `${route.name} (${route.transportMode})`,
+        style: normalizeRouteStyle(route, styleByTransportMode),
+      };
+    });
 
   return {
     title: 'Carte économie et logistique',
