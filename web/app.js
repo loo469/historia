@@ -11623,6 +11623,52 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const rankedStagedResweepAssignmentSummary = rankedStagedResweepAssignments.length > 0
     ? `${rankedStagedResweepAssignments.length} resweep${rankedStagedResweepAssignments.length > 1 ? 's' : ''} sûr${rankedStagedResweepAssignments.length > 1 ? 's' : ''} classé${rankedStagedResweepAssignments.length > 1 ? 's' : ''} par valeur de couverture; meilleur: ${rankedStagedResweepAssignments[0].locationName}. ${rankedStagedResweepAssignments.filter((assignment) => assignment.coverageValueLevel === 'low-value').length} low-gain à garder en réserve; ${excludedUnsafeResweepAssignments.length} unsafe exclu${excludedUnsafeResweepAssignments.length > 1 ? 's' : ''}.`
     : 'Aucun classement de valeur: toutes les affectations staged sont unsafe/no-safe ou sans gain exploitable.';
+  const bestRankedStagedResweepAssignment = rankedStagedResweepAssignments.find((assignment) => assignment.bestCoverageValue) ?? null;
+  const bestResweepResidualGapWarning = (() => {
+    if (!bestRankedStagedResweepAssignment) {
+      return {
+        state: 'no-safe-assignment',
+        tone: 'muted',
+        locationName: null,
+        summary: 'Aucun warning résiduel: aucun meilleur resweep sûr n’est disponible à confirmer.',
+        detail: 'Les affectations unsafe/no-safe restent exclues; attendre un créneau ou une couverture plus sûre.',
+      };
+    }
+
+    const remainingPriorities = resweepPriorities
+      .filter((spot) => spot.locationName !== bestRankedStagedResweepAssignment.locationName)
+      .sort((left, right) => right.priorityScore - left.priorityScore || left.locationName.localeCompare(right.locationName));
+    const highPriorityBlindSpot = remainingPriorities.find((spot) => spot.failureType === 'non couvert' && ['critique', 'haute'].includes(spot.priorityLevel));
+    const staleCriticalSignal = remainingPriorities.find((spot) => spot.freshnessScore <= 1 && ['critique', 'haute'].includes(spot.priorityLevel));
+
+    if (highPriorityBlindSpot) {
+      return {
+        state: 'high-priority-blind-spot',
+        tone: 'danger',
+        locationName: highPriorityBlindSpot.locationName,
+        summary: `${bestRankedStagedResweepAssignment.locationName} est le meilleur resweep sûr, mais laisse ${highPriorityBlindSpot.locationName} en angle mort prioritaire.`,
+        detail: `${highPriorityBlindSpot.priorityReason}; garder un second créneau ou remplacer une veille stable.`,
+      };
+    }
+
+    if (staleCriticalSignal) {
+      return {
+        state: 'stale-critical-signal',
+        tone: 'warning',
+        locationName: staleCriticalSignal.locationName,
+        summary: `${bestRankedStagedResweepAssignment.locationName} est le meilleur resweep sûr, mais un signal ancien critique reste non rafraîchi.`,
+        detail: `${staleCriticalSignal.locationName}: ${staleCriticalSignal.priorityReason}; prévoir un refresh court avant engagement nominatif.`,
+      };
+    }
+
+    return {
+      state: 'acceptable-residual',
+      tone: 'safe',
+      locationName: bestRankedStagedResweepAssignment.locationName,
+      summary: `${bestRankedStagedResweepAssignment.locationName} ne laisse aucun gap résiduel critique après le meilleur resweep sûr.`,
+      detail: 'Les risques restants sont couverts, partiels ou low-gain selon les signaux atlas visibles.',
+    };
+  })();
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -11640,6 +11686,8 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     rankedStagedResweepAssignments,
     rankedStagedResweepAssignmentSummary,
     excludedUnsafeResweepAssignments,
+    bestRankedStagedResweepAssignment,
+    bestResweepResidualGapWarning,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -11777,6 +11825,11 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         ${plan.postOrderCoverage.rankedStagedResweepAssignments.length > 0
           ? `<ol>${plan.postOrderCoverage.rankedStagedResweepAssignments.map((assignment) => `<li class="atlas-counterintelligence-resweep-value-ranking__item atlas-counterintelligence-resweep-value-ranking__item--${assignment.coverageValueLevel}"><b>#${assignment.coverageValueRank} ${assignment.locationName}</b> · ${assignment.coverageValueScore} valeur${assignment.bestCoverageValue ? ' · meilleur choix' : ''}<small>${assignment.lessUrgentReason} · priorité ${assignment.priorityScore}, refresh ${assignment.staleRefreshValue}, preview ${assignment.previewValue}, gap unsafe -${assignment.unsafeGapPenalty}</small></li>`).join('')}</ol>`
           : '<small>Aucun resweep sûr à classer: les affectations rejetées par sécurité restent exclues.</small>'}
+        <aside class="atlas-counterintelligence-best-resweep-gap-warning atlas-counterintelligence-best-resweep-gap-warning--${plan.postOrderCoverage.bestResweepResidualGapWarning.state}" aria-label="Warning de gap résiduel après le meilleur resweep sûr">
+          <b>Gap résiduel du meilleur resweep</b>
+          <span>${plan.postOrderCoverage.bestResweepResidualGapWarning.summary}</span>
+          <small>${plan.postOrderCoverage.bestResweepResidualGapWarning.detail}</small>
+        </aside>
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>

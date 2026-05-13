@@ -398,6 +398,43 @@ test('atlas counterintelligence ranks safe staged resweeps by coverage value', (
   assert.match(stylesSource, /atlas-counterintelligence-resweep-value-ranking__item--low-value/);
 });
 
+test('atlas counterintelligence warns only the best safe resweep about residual gaps', () => {
+  const buildBestWarning = (bestAssignment, priorities) => {
+    if (!bestAssignment) return 'no-safe-assignment';
+    const remainingPriorities = priorities
+      .filter((spot) => spot.locationName !== bestAssignment.locationName)
+      .sort((left, right) => right.priorityScore - left.priorityScore || left.locationName.localeCompare(right.locationName));
+    const highPriorityBlindSpot = remainingPriorities.find((spot) => spot.failureType === 'non couvert' && ['critique', 'haute'].includes(spot.priorityLevel));
+    const staleCriticalSignal = remainingPriorities.find((spot) => spot.freshnessScore <= 1 && ['critique', 'haute'].includes(spot.priorityLevel));
+
+    if (highPriorityBlindSpot) return 'high-priority-blind-spot';
+    if (staleCriticalSignal) return 'stale-critical-signal';
+    return 'acceptable-residual';
+  };
+
+  const bestAssignment = { locationName: 'Best safe' };
+  assert.equal(buildBestWarning(bestAssignment, [
+    { locationName: 'Best safe', failureType: 'non couvert', priorityLevel: 'critique', freshnessScore: 1, priorityScore: 9 },
+    { locationName: 'Danger gap', failureType: 'non couvert', priorityLevel: 'haute', freshnessScore: 2, priorityScore: 8 },
+  ]), 'high-priority-blind-spot');
+  assert.equal(buildBestWarning(bestAssignment, [
+    { locationName: 'Old signal', failureType: 'couverture trop faible', priorityLevel: 'haute', freshnessScore: 1, priorityScore: 7 },
+  ]), 'stale-critical-signal');
+  assert.equal(buildBestWarning(bestAssignment, [
+    { locationName: 'Low residue', failureType: 'couverture trop faible', priorityLevel: 'prudente', freshnessScore: 3, priorityScore: 3 },
+  ]), 'acceptable-residual');
+  assert.equal(buildBestWarning(null, []), 'no-safe-assignment');
+  assert.match(webAppSource, /bestResweepResidualGapWarning/);
+  assert.match(webAppSource, /Warning de gap résiduel après le meilleur resweep sûr/);
+  assert.match(webAppSource, /high-priority-blind-spot/);
+  assert.match(webAppSource, /stale-critical-signal/);
+  assert.match(webAppSource, /acceptable-residual/);
+  assert.match(webAppSource, /no-safe-assignment/);
+  assert.match(webAppSource, /Gap résiduel du meilleur resweep/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning--high-priority-blind-spot/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
