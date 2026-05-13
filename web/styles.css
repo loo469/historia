@@ -3365,6 +3365,19 @@ button { font: inherit; }
   display: block;
   margin-top: 2px;
 }
+.atlas-counterintelligence-best-resweep-gap-warning {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(120, 53, 15, 0.2);
+}
+.atlas-counterintelligence-best-resweep-gap-warning span { color: #fef3c7; }
+.atlas-counterintelligence-best-resweep-gap-warning--high-priority-blind-spot { border-color: rgba(248, 113, 113, 0.5); background: rgba(127, 29, 29, 0.26); }
+.atlas-counterintelligence-best-resweep-gap-warning--stale-critical-signal { border-color: rgba(251, 191, 36, 0.46); }
+.atlas-counterintelligence-best-resweep-gap-warning--acceptable-residual { border-color: rgba(74, 222, 128, 0.38); background: rgba(20, 83, 45, 0.2); }
+.atlas-counterintelligence-best-resweep-gap-warning--no-safe-assignment { border-color: rgba(148, 163, 184, 0.35); background: rgba(51, 65, 85, 0.18); }
 .atlas-counterintelligence-schedule-conflicts {
   display: grid;
   gap: 6px;
