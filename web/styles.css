@@ -11454,6 +11454,13 @@ button { font: inherit; }
 .atlas-secondary-bottleneck-item--saturated .atlas-secondary-bottleneck-item__detail { fill: #fecdd3; }
 .atlas-secondary-bottleneck-item--secondary .atlas-secondary-bottleneck-item__detail { fill: #fde68a; }
 .atlas-secondary-bottleneck-item--resolved .atlas-secondary-bottleneck-item__detail { fill: #bbf7d0; }
+.atlas-secondary-bottleneck-item__reroute {
+  fill: #c4b5fd;
+  font-size: 0.86px;
+  font-weight: 820;
+}
+.atlas-secondary-bottleneck-item.has-reroute .atlas-secondary-bottleneck-item__reroute { fill: #bfdbfe; }
+.atlas-secondary-bottleneck-item.has-no-reroute .atlas-secondary-bottleneck-item__reroute { fill: #94a3b8; }
 .atlas-cultural-rebound-window rect {
   fill: rgba(15, 23, 42, 0.78);
   stroke: rgba(224, 242, 254, 0.32);
