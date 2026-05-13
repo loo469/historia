@@ -8139,6 +8139,72 @@ function renderAtlasClimateMinimumBoostDeadlineMissWarning(view) {
   `;
 }
 
+function buildAtlasClimateDeadlineRecoveryAction(deadlineWarningView) {
+  if (!deadlineWarningView || !deadlineWarningView.warning || !/^misses-by-/.test(deadlineWarningView.state)) {
+    return {
+      state: 'no-recovery-action',
+      action: null,
+      summary: 'Aucune action recovery climat: la deadline est récupérée, insuffisante par design, ou aucun boost n’est éligible.',
+    };
+  }
+
+  const warning = deadlineWarningView.warning;
+  const actionType = deadlineWarningView.state === 'misses-by-one-turn'
+    ? 'shift-execution-earlier'
+    : /capacité ciblée|capacité courte|readiness sous le seuil/i.test(`${warning.nextStep} ${warning.reason}`)
+      ? 'add-secondary-boost'
+      : /réduire le périmètre|exposition/i.test(`${warning.nextStep} ${warning.reason}`)
+        ? 'reduce-exposure-first'
+        : 'accept-missed-deadline-risk';
+  const actionLabel = actionType === 'shift-execution-earlier'
+    ? 'Avancer exécution'
+    : actionType === 'add-secondary-boost'
+      ? 'Ajouter boost secondaire'
+      : actionType === 'reduce-exposure-first'
+        ? 'Réduire exposition d’abord'
+        : 'Accepter risque deadline';
+  const instruction = actionType === 'shift-execution-earlier'
+    ? 'Jouer le paquet minimum au tour courant et déplacer le jalon climat avant la fenêtre critique.'
+    : actionType === 'add-secondary-boost'
+      ? 'Ajouter une capacité readiness ciblée au paquet minimum avant de confirmer l’exécution.'
+      : actionType === 'reduce-exposure-first'
+        ? 'Réduire le périmètre exposé avant d’appliquer le boost pour rendre la deadline atteignable.'
+        : 'Marquer le risque comme accepté et éviter d’investir des ressources impossibles avant la deadline.';
+
+  return {
+    state: 'recoverable',
+    action: {
+      provinceId: warning.provinceId,
+      provinceLabel: warning.provinceLabel,
+      deadline: warning.deadline,
+      type: actionType,
+      label: actionLabel,
+      instruction,
+      tiedWarning: warning.reason,
+    },
+    summary: `${warning.provinceLabel}: action recovery proposée pour transformer l’alerte deadline en choix jouable.`,
+  };
+}
+
+function renderAtlasClimateDeadlineRecoveryAction(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'recoverable' || !view.action) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-deadline-recovery map-world-climate-deadline-recovery--${view.action.type}" aria-label="Action recovery pour deadline climat encore risquée">
+      <div class="map-world-climate-deadline-recovery__header">
+        <strong>Recovery deadline</strong>
+        <span>${view.action.label}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${view.action.provinceLabel}</b> · ${view.action.deadline} · ${view.action.type}</small>
+      <small><b>Action compacte</b> · ${view.action.instruction}</small>
+      <small><b>Liée au warning</b> · ${view.action.tiedWarning}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -15758,6 +15824,7 @@ function render() {
   const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
   const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
   const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
+  const atlasClimateDeadlineRecoveryAction = buildAtlasClimateDeadlineRecoveryAction(atlasClimateMinimumBoostDeadlineMissWarning);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -15802,6 +15869,7 @@ function render() {
           ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
           ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
           ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
+          ${renderAtlasClimateDeadlineRecoveryAction(atlasClimateDeadlineRecoveryAction)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

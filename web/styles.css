@@ -12031,3 +12031,30 @@ button { font: inherit; }
   line-height: 1.35;
   margin: 0;
 }
+.map-world-climate-deadline-recovery {
+  display: grid;
+  gap: 6px;
+  max-width: 54ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.78), rgba(22, 78, 99, 0.26));
+  border: 1px solid rgba(45, 212, 191, 0.42);
+}
+.map-world-climate-deadline-recovery--add-secondary-boost { border-color: rgba(129, 140, 248, 0.46); }
+.map-world-climate-deadline-recovery--reduce-exposure-first { border-color: rgba(251, 191, 36, 0.48); }
+.map-world-climate-deadline-recovery--accept-missed-deadline-risk { border-color: rgba(248, 113, 113, 0.52); }
+.map-world-climate-deadline-recovery__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-deadline-recovery p,
+.map-world-climate-deadline-recovery span,
+.map-world-climate-deadline-recovery small {
+  color: #ccfbf1;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
