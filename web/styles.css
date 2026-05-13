@@ -10897,3 +10897,10 @@ button { font: inherit; }
 }
 .atlas-funded-logistics-plan-item--partiel .atlas-funded-logistics-plan-item__benefit { fill: #fde68a; }
 .atlas-funded-logistics-plan-item--finançable .atlas-funded-logistics-plan-item__benefit { fill: #bfdbfe; }
+.atlas-cultural-border-zone__commitment {
+  fill: #e0f2fe;
+  font-size: 0.92px;
+  font-weight: 840;
+}
+.atlas-cultural-border-zone--commitment-stable .atlas-cultural-border-zone__commitment { fill: #bbf7d0; }
+.atlas-cultural-border-zone--commitment-risk .atlas-cultural-border-zone__commitment { fill: #fed7aa; }
