@@ -11568,3 +11568,44 @@ button { font: inherit; }
 .atlas-cultural-rebound-window--consolidation-stable rect { stroke-width: 0.34; }
 .atlas-cultural-rebound-window--consolidation-fragile rect { stroke-dasharray: 1.2 0.8; }
 .atlas-cultural-rebound-window--consolidation-expiring rect { stroke-width: 0.48; filter: drop-shadow(0 0 4px rgba(251, 113, 133, 0.36)); }
+.map-world-climate-readiness-boosts {
+  display: grid;
+  gap: 8px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(67, 56, 202, 0.22));
+  border: 1px solid rgba(129, 140, 248, 0.36);
+}
+.map-world-climate-readiness-boosts__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-readiness-boosts p,
+.map-world-climate-readiness-boosts span,
+.map-world-climate-readiness-boosts small {
+  color: #e0e7ff;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-readiness-boosts__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.map-world-climate-readiness-boosts__item {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(129, 140, 248, 0.28);
+}
+.map-world-climate-readiness-boosts__item--just-in-time { border-color: rgba(251, 191, 36, 0.42); }
+.map-world-climate-readiness-boosts__item--insufficient,
+.map-world-climate-readiness-boosts__item--too-late { border-color: rgba(248, 113, 113, 0.5); }
