@@ -1356,6 +1356,89 @@ function renderAtlasMilitaryCommitmentDebtPriorities(prioritySummary) {
   `;
 }
 
+
+function getAtlasCommitmentDebtDegradation(debt) {
+  if (debt.tone === 'absent') return 'initiative du front peut chuter au prochain tour';
+  if (debt.tone === 'threat') return 'pression ennemie peut fermer la route voisine';
+  return 'engagement dispersé peut consommer la fenêtre utile';
+}
+
+function getAtlasCommitmentDebtImmediateAction(debt, commitment) {
+  const target = commitment?.selectedOption?.target ?? debt.label;
+  if (debt.tone === 'absent') return `détacher l’engagement préparé vers ${debt.label}`;
+  if (debt.tone === 'threat') return `renforcer ${debt.label} avant de confirmer ${target}`;
+  return `reconfirmer l’ordre ou couvrir ${debt.label} avant validation`;
+}
+
+function buildAtlasMilitaryCommitmentNextTurnWarnings(prioritySummary, debtSummary, coverage, commitment) {
+  if (!prioritySummary || prioritySummary.empty || !debtSummary || debtSummary.empty) {
+    return {
+      warnings: [],
+      summary: 'Aucune alerte prochain tour: dette couverte ou faible risque.',
+      empty: true,
+    };
+  }
+
+  const highRiskPriorities = new Map(prioritySummary.priorities
+    .filter((priority) => priority.urgencyScore >= 58 && priority.tone !== 'watch')
+    .map((priority) => [priority.label, priority]));
+  const uncoveredIds = new Set((coverage?.uncoveredFronts ?? []).map((front) => front.provinceId));
+  const contradictoryLabels = new Set((coverage?.contradictoryFronts ?? []).map((front) => front.label));
+  const warnings = debtSummary.debts
+    .map((debt) => {
+      const priority = highRiskPriorities.get(debt.label);
+      const unresolved = debt.tone === 'absent' || uncoveredIds.has(debt.provinceId) || contradictoryLabels.has(debt.label) || debt.tone === 'threat';
+      if (!priority || !unresolved) return null;
+      const frontRoute = debt.provinceId ? `front ${debt.label}` : `route ${commitment?.selectedOption?.target ?? debt.label}`;
+      return {
+        warningId: `next-turn:${debt.debtId}`,
+        label: debt.label,
+        frontRoute,
+        tone: priority.tone,
+        urgencyScore: priority.urgencyScore,
+        reason: debt.reason,
+        degradation: getAtlasCommitmentDebtDegradation(debt),
+        action: getAtlasCommitmentDebtImmediateAction(debt, commitment),
+        center: debt.center,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.urgencyScore - left.urgencyScore || left.label.localeCompare(right.label))
+    .slice(0, 2);
+
+  return {
+    warnings,
+    summary: warnings.length > 0
+      ? `Alerte prochain tour: ${warnings.map((warning) => `${warning.label} — ${warning.degradation}`).join(' · ')}.`
+      : 'Aucune alerte prochain tour: dette couverte ou faible risque.',
+    empty: warnings.length === 0,
+  };
+}
+
+function renderAtlasMilitaryCommitmentNextTurnWarnings(warningSummary) {
+  const height = warningSummary.empty ? 8 : 7 + (warningSummary.warnings.length * 5.1);
+  return `
+    <g class="atlas-military-commitment-warning" aria-label="Alertes militaires prochain tour: ${warningSummary.summary}">
+      <rect class="atlas-military-commitment-warning__panel" x="42" y="61" width="55" height="${height}" rx="2.5"></rect>
+      <text class="atlas-military-commitment-warning__title" x="44" y="64.3">Alerte prochain tour</text>
+      ${warningSummary.empty ? `<text class="atlas-military-commitment-warning__empty" x="44" y="67.5">${warningSummary.summary}</text>` : warningSummary.warnings.map((warning, index) => `
+        <g class="atlas-military-warning-row atlas-military-warning-row--${warning.tone}" data-atlas-commitment-warning="${warning.warningId}" aria-label="${warning.frontRoute}: ${warning.reason}; risque prochain tour: ${warning.degradation}; action recommandée: ${warning.action}">
+          <rect x="44" y="${66 + index * 5.1}" width="4.2" height="3" rx="0.9"></rect>
+          <text class="atlas-military-warning-row__label" x="49.4" y="${67.1 + index * 5.1}">${warning.frontRoute} · ${warning.urgencyScore}</text>
+          <text class="atlas-military-warning-row__degradation" x="49.4" y="${68.8 + index * 5.1}">${warning.degradation}</text>
+          <text class="atlas-military-warning-row__action" x="49.4" y="${70.5 + index * 5.1}">${warning.action}</text>
+        </g>
+      `).join('')}
+      ${warningSummary.warnings.filter((warning) => warning.center).map((warning, index) => `
+        <g class="atlas-military-warning-marker atlas-military-warning-marker--${warning.tone}" data-atlas-commitment-warning-marker="${warning.warningId}" aria-label="Alerte ${warning.label}: ${warning.degradation}">
+          <circle cx="${warning.center.x}%" cy="${warning.center.y}%" r="2.35"></circle>
+          <text x="${warning.center.x}%" y="${warning.center.y + 0.55}%" text-anchor="middle">A${index + 1}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
 
 
@@ -1433,6 +1516,7 @@ function renderAtlasMilitaryLayer(shell) {
   const commitmentCoverage = buildAtlasMilitaryCommitmentCoverageSummary(stagedCommitment, commitmentConflicts, shell, features);
   const commitmentDebt = buildAtlasMilitaryCommitmentDebtSummary(commitmentCoverage, stagedCommitment, shell);
   const commitmentPriority = buildAtlasMilitaryCommitmentDebtPriorities(commitmentDebt, commitmentCoverage, stagedCommitment);
+  const commitmentWarnings = buildAtlasMilitaryCommitmentNextTurnWarnings(commitmentPriority, commitmentDebt, commitmentCoverage, stagedCommitment);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -1462,6 +1546,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentCoverageSummary(commitmentCoverage)}
       ${renderAtlasMilitaryCommitmentDebtSummary(commitmentDebt)}
       ${renderAtlasMilitaryCommitmentDebtPriorities(commitmentPriority)}
+      ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
