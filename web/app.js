@@ -8732,6 +8732,66 @@ function renderAtlasClimateFirstRecoveryPressureReliefExplanation(view) {
   `;
 }
 
+function buildAtlasClimateRecoveryPlanProjection(firstReliefView, recoveryRankingView) {
+  if (!firstReliefView || firstReliefView.state === 'empty' || !firstReliefView.explanation) {
+    return {
+      state: 'neutral',
+      projection: null,
+      remainingRisks: [],
+      summary: 'Aucune projection recovery climat: aucune anomalie, catastrophe ou action recovery active à projeter.',
+    };
+  }
+
+  const relief = firstReliefView.explanation;
+  const topAction = recoveryRankingView?.rankedActions?.[0] ?? { label: relief.actionLabel, type: relief.actionType, rationale: 'Action recovery issue du relief principal.' };
+  const remainingRiskCandidates = [
+    { key: 'deadline-monitoring', label: 'deadline à surveiller', priority: relief.indicator === 'deadline moins serrée' ? 3 : 1 },
+    { key: 'cascade-watch', label: 'cascade évitée à confirmer', priority: relief.indicator === 'capacité régionale libérée' ? 1 : 2 },
+    { key: 'exposure-tail', label: 'exposition résiduelle', priority: relief.indicator === 'exposition réduite' ? 3 : 2 },
+    { key: 'accepted-risk', label: 'risque accepté sans relief sûr', priority: relief.indicator === 'aucun relief sûr' ? 0 : 4 },
+  ]
+    .filter((risk) => risk.priority < 4)
+    .sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label));
+
+  return {
+    state: firstReliefView.state === 'no-safe-relief' ? 'projected-with-risk' : 'projected',
+    projection: {
+      provinceId: relief.provinceId,
+      provinceLabel: relief.provinceLabel,
+      deadline: relief.deadline,
+      currentState: `Avant: ${relief.deadline}, pression recovery encore active.`,
+      proposedActions: [`${topAction.label} (${topAction.type})`],
+      projectedState: `Après: ${relief.indicator}; ${relief.firstVisibleRelief}`,
+      firstPressureRelieved: relief.indicator,
+      sourceScore: relief.reliefScore,
+      tiebreaker: relief.tiebreaker,
+    },
+    remainingRisks: remainingRiskCandidates,
+    summary: `${relief.provinceLabel}: projection avant/après courte avec ${relief.indicator} en premier relief et ${remainingRiskCandidates.length} risque${remainingRiskCandidates.length > 1 ? 's' : ''} restant${remainingRiskCandidates.length > 1 ? 's' : ''} trié${remainingRiskCandidates.length > 1 ? 's' : ''}.`,
+  };
+}
+
+function renderAtlasClimateRecoveryPlanProjection(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'neutral' || !view.projection) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-recovery-projection map-world-climate-recovery-projection--${view.state}" aria-label="Projection avant après du plan recovery climat">
+      <div class="map-world-climate-recovery-projection__header">
+        <strong>Projection recovery</strong>
+        <span>${view.projection.firstPressureRelieved}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Avant</b> · ${view.projection.currentState}</small>
+      <small><b>Action proposée</b> · ${view.projection.proposedActions.join(' · ')}</small>
+      <small><b>Après</b> · ${view.projection.projectedState}</small>
+      <small><b>Risques restants</b> · ${view.remainingRisks.map((risk) => risk.label).join(' → ')}</small>
+      <small><b>Score source</b> · ${view.projection.sourceScore}, tie-break ${view.projection.tiebreaker}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -16502,6 +16562,7 @@ function render() {
   const atlasClimateDeadlineRecoveryAction = buildAtlasClimateDeadlineRecoveryAction(atlasClimateMinimumBoostDeadlineMissWarning);
   const atlasClimateRecoveryCollateralReliefRanking = buildAtlasClimateRecoveryCollateralReliefRanking(atlasClimateDeadlineRecoveryAction);
   const atlasClimateFirstRecoveryPressureReliefExplanation = buildAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateRecoveryCollateralReliefRanking);
+  const atlasClimateRecoveryPlanProjection = buildAtlasClimateRecoveryPlanProjection(atlasClimateFirstRecoveryPressureReliefExplanation, atlasClimateRecoveryCollateralReliefRanking);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -16549,6 +16610,7 @@ function render() {
           ${renderAtlasClimateDeadlineRecoveryAction(atlasClimateDeadlineRecoveryAction)}
           ${renderAtlasClimateRecoveryCollateralReliefRanking(atlasClimateRecoveryCollateralReliefRanking)}
           ${renderAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateFirstRecoveryPressureReliefExplanation)}
+          ${renderAtlasClimateRecoveryPlanProjection(atlasClimateRecoveryPlanProjection)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
