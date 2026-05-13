@@ -12203,3 +12203,28 @@ button { font: inherit; }
   line-height: 1.35;
   margin: 0;
 }
+.map-world-climate-cheapest-commitment {
+  display: grid;
+  gap: 6px;
+  max-width: 56ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(6, 95, 70, 0.24));
+  border: 1px solid rgba(110, 231, 183, 0.46);
+}
+.map-world-climate-cheapest-commitment--safe-but-risky { border-color: rgba(251, 146, 60, 0.52); }
+.map-world-climate-cheapest-commitment__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-cheapest-commitment p,
+.map-world-climate-cheapest-commitment span,
+.map-world-climate-cheapest-commitment small {
+  color: #d1fae5;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
