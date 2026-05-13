@@ -6051,6 +6051,80 @@ function renderAtlasClimateActionPlanRanking(view) {
   `;
 }
 
+function buildAtlasClimateActionUrgencyTimeline(rankingView) {
+  if (!rankingView || rankingView.state === 'empty' || rankingView.priorities.length === 0) {
+    return {
+      state: 'empty',
+      steps: [],
+      summary: 'Aucune timeline climat à afficher: priorité insuffisante.',
+    };
+  }
+
+  const ordered = rankingView.priorities
+    .slice()
+    .sort((left, right) => left.priorityRank - right.priorityRank || right.urgencyScore - left.urgencyScore || left.provinceLabel.localeCompare(right.provinceLabel));
+  const steps = ordered.map((plan, index) => {
+    const nextPlan = ordered[index + 1];
+    const dependency = nextPlan && plan.protectedRegions?.split('·').some((region) => nextPlan.protectedRegions?.includes(region.trim()))
+      ? `Synergie: prépare ${nextPlan.provinceLabel} via ${plan.protectedRegions}.`
+      : plan.badges?.includes('route protégée')
+        ? `Dépendance atlas: sécurise les routes avant ${plan.criticalSeason}.`
+        : 'Dépendance atlas: autonome mais à relire après le prochain plan.';
+    const exposureCount = plan.protectedRegions?.split('·').filter(Boolean).length ?? 1;
+    const noCloseWindowAlert = exposureCount >= 2 && plan.intensity !== 'critical'
+      ? `Alerte: ${plan.provinceLabel} reste très exposée sans fenêtre d’action proche.`
+      : '';
+
+    return {
+      provinceId: plan.provinceId,
+      provinceLabel: plan.provinceLabel,
+      priorityRank: plan.priorityRank,
+      intensity: plan.intensity,
+      deadline: plan.criticalSeason,
+      exposure: plan.protectedRegions,
+      action: plan.action,
+      reason: plan.mainReason,
+      expectedImpact: plan.expectedImpact,
+      dependency,
+      noCloseWindowAlert,
+    };
+  });
+
+  return {
+    state: steps.some((step) => step.noCloseWindowAlert) ? 'alert' : 'ready',
+    steps,
+    summary: `Timeline climat: jouer ${steps[0].provinceLabel} ensuite, puis suivre les dépendances atlas sans dupliquer le ranking.`,
+  };
+}
+
+function renderAtlasClimateActionUrgencyTimeline(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-action-timeline map-world-climate-action-timeline--${view.state}" aria-label="Timeline d’urgence des plans d’action climat">
+      <div class="map-world-climate-action-timeline__header">
+        <strong>Timeline d’urgence climat</strong>
+        <span>${view.steps[0]?.provinceLabel ?? 'à confirmer'} ensuite</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-action-timeline__list">
+        ${view.steps.map((step) => `
+          <li class="map-world-climate-action-timeline__step map-world-climate-action-timeline__step--${step.intensity}">
+            <b>${step.priorityRank}. ${step.deadline} · ${step.provinceLabel}</b>
+            <span>${step.action}</span>
+            <small><b>Pourquoi ensuite</b> · ${step.reason}</small>
+            <small><b>Exposition</b> · ${step.exposure}</small>
+            <small><b>Dépendance/synergie</b> · ${step.dependency}</small>
+            ${step.noCloseWindowAlert ? `<small class="map-world-climate-action-timeline__alert"><b>Sans fenêtre proche</b> · ${step.noCloseWindowAlert}</small>` : ''}
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateActionPlan(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -13199,6 +13273,7 @@ function render() {
   const atlasSeasonalPlanComparison = buildAtlasSeasonalMitigationPlanComparison(atlasSeasonalMitigationWindows);
   const atlasClimateActionPlan = buildAtlasClimateActionPlanFromComparison(atlasSeasonalPlanComparison);
   const atlasClimateActionPlanRanking = buildAtlasClimateActionPlanRanking(atlasClimateActionPlan);
+  const atlasClimateActionUrgencyTimeline = buildAtlasClimateActionUrgencyTimeline(atlasClimateActionPlanRanking);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -13235,6 +13310,7 @@ function render() {
           ${renderAtlasSeasonalMitigationPlanComparison(atlasSeasonalPlanComparison)}
           ${renderAtlasClimateActionPlan(atlasClimateActionPlan)}
           ${renderAtlasClimateActionPlanRanking(atlasClimateActionPlanRanking)}
+          ${renderAtlasClimateActionUrgencyTimeline(atlasClimateActionUrgencyTimeline)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

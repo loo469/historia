@@ -711,6 +711,49 @@ button { font: inherit; }
 }
 .map-world-climate-action-ranking__item--critical { border-color: rgba(248, 113, 113, 0.46); }
 .map-world-climate-action-ranking__item--elevated { border-color: rgba(251, 191, 36, 0.36); }
+.map-world-climate-action-timeline {
+  display: grid;
+  gap: 8px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.68), rgba(120, 53, 15, 0.2));
+  border: 1px solid rgba(253, 186, 116, 0.28);
+}
+.map-world-climate-action-timeline--alert { border-color: rgba(248, 113, 113, 0.42); }
+.map-world-climate-action-timeline__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-action-timeline p,
+.map-world-climate-action-timeline span,
+.map-world-climate-action-timeline small {
+  color: #ffedd5;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-action-timeline__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.map-world-climate-action-timeline__step {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(253, 186, 116, 0.22);
+}
+.map-world-climate-action-timeline__step--critical { border-color: rgba(248, 113, 113, 0.46); }
+.map-world-climate-action-timeline__step--elevated { border-color: rgba(251, 191, 36, 0.36); }
+.map-world-climate-action-timeline__alert { color: #fecaca; }
 
 .map-climate-severity-legend {
   display: grid;
