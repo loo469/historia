@@ -11680,6 +11680,15 @@ button { font: inherit; }
   font-size: 0.86px;
   font-weight: 780;
 }
+
+.atlas-cultural-border-zone__followup {
+  fill: #c4b5fd;
+  font-size: 0.8px;
+  font-weight: 800;
+}
+.atlas-cultural-border-zone__followup--pending { fill: #fde68a; }
+.atlas-cultural-border-zone__followup--covered { fill: #bbf7d0; }
+.atlas-cultural-border-zone__followup--stale-risk { fill: #fecdd3; }
 .atlas-cultural-consolidation-actions rect {
   fill: rgba(49, 46, 129, 0.54);
   stroke: rgba(196, 181, 253, 0.38);
@@ -11701,5 +11710,13 @@ button { font: inherit; }
   font-size: 0.86px;
   font-weight: 760;
 }
+.atlas-cultural-consolidation-action__followup {
+  fill: #c4b5fd;
+  font-size: 0.82px;
+  font-weight: 820;
+}
+.atlas-cultural-consolidation-action--followup-pending .atlas-cultural-consolidation-action__followup { fill: #fde68a; }
+.atlas-cultural-consolidation-action--followup-covered .atlas-cultural-consolidation-action__followup { fill: #bbf7d0; }
+.atlas-cultural-consolidation-action--followup-stale-risk .atlas-cultural-consolidation-action__followup { fill: #fecdd3; }
 .atlas-cultural-consolidation-action--fragile .atlas-cultural-consolidation-action__reason { fill: #fde68a; }
 .atlas-cultural-consolidation-action--expiring .atlas-cultural-consolidation-action__reason { fill: #fecdd3; }
