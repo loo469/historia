@@ -11843,6 +11843,16 @@ button { font: inherit; }
 .atlas-cultural-border-zone__safest-support--delay-until-safe-window { fill: #fde68a; }
 .atlas-cultural-border-zone__safest-support--reinforce-local-trust { fill: #bbf7d0; }
 .atlas-cultural-border-zone__safest-support--no-safe-pairing { fill: #fca5a5; }
+.atlas-cultural-border-zone__support-justification {
+  fill: #ccfbf1;
+  font-size: 0.73px;
+  font-weight: 880;
+}
+.atlas-cultural-border-zone__support-justification--mediator-available { fill: #c4b5fd; }
+.atlas-cultural-border-zone__support-justification--border-pressure-low { fill: #fed7aa; }
+.atlas-cultural-border-zone__support-justification--window-open { fill: #bfdbfe; }
+.atlas-cultural-border-zone__support-justification--local-trust-sufficient { fill: #bbf7d0; }
+.atlas-cultural-border-zone__support-justification--no-safe-justification { fill: #fca5a5; }
 .atlas-cultural-consolidation-actions rect {
   fill: rgba(49, 46, 129, 0.54);
   stroke: rgba(196, 181, 253, 0.38);
@@ -11903,6 +11913,16 @@ button { font: inherit; }
 .atlas-cultural-consolidation-action__safest-support--delay-until-safe-window { fill: #fde68a; }
 .atlas-cultural-consolidation-action__safest-support--reinforce-local-trust { fill: #bbf7d0; }
 .atlas-cultural-consolidation-action__safest-support--no-safe-pairing { fill: #fca5a5; }
+.atlas-cultural-consolidation-action__support-justification {
+  fill: #ccfbf1;
+  font-size: 0.74px;
+  font-weight: 880;
+}
+.atlas-cultural-consolidation-action__support-justification--mediator-available { fill: #c4b5fd; }
+.atlas-cultural-consolidation-action__support-justification--border-pressure-low { fill: #fed7aa; }
+.atlas-cultural-consolidation-action__support-justification--window-open { fill: #bfdbfe; }
+.atlas-cultural-consolidation-action__support-justification--local-trust-sufficient { fill: #bbf7d0; }
+.atlas-cultural-consolidation-action__support-justification--no-safe-justification { fill: #fca5a5; }
 .atlas-cultural-consolidation-action--fragile .atlas-cultural-consolidation-action__reason { fill: #fde68a; }
 .atlas-cultural-consolidation-action--expiring .atlas-cultural-consolidation-action__reason { fill: #fecdd3; }
 .map-world-climate-post-boost-risk {

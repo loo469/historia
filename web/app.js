@@ -2229,6 +2229,74 @@ function buildAtlasSafestPairedSupport(zone, commitment, fallback, latestSafeTur
   };
 }
 
+function buildAtlasPairedSupportSafetyJustification(zone, commitment, fallback, latestSafeTurn, pairedMediation, safestSupport) {
+  if (!fallback || !pairedMediation || !safestSupport) {
+    return null;
+  }
+
+  if (safestSupport.state === 'no-safe-pairing' || latestSafeTurn?.state === 'no-safe-window') {
+    return {
+      state: 'no-safe-justification',
+      label: 'aucune sûreté lisible',
+      reason: `no-safe-justification · ${commitment.reboundWindow.label}`,
+      detail: 'ne pas justifier ce couplage tant que la fenêtre reste échue',
+      priority: 4,
+    };
+  }
+
+  if (safestSupport.state === 'ease-border-pressure' && latestSafeTurn?.state !== 'immediate') {
+    return {
+      state: 'border-pressure-low',
+      label: 'pression lisible',
+      reason: `border-pressure-low · ${latestSafeTurn?.value ?? 'fenêtre active'}`,
+      detail: 'le support réduit une pression de frontière visible sans exposer de cause cachée',
+      priority: 3,
+    };
+  }
+
+  if (safestSupport.state === 'assign-mediator' && zone.mediation.confidence === 'inconnue') {
+    return null;
+  }
+
+  if (safestSupport.state === 'assign-mediator') {
+    return {
+      state: 'mediator-available',
+      label: 'médiateur disponible',
+      reason: `mediator-available · ${zone.mediation.confidence}`,
+      detail: `${zone.mediation.option} dispose déjà d’un signal public suffisant`,
+      priority: 3,
+    };
+  }
+
+  if (latestSafeTurn?.state === 'one-turn-left' || latestSafeTurn?.state === 'multi-turn') {
+    return {
+      state: 'window-open',
+      label: 'fenêtre ouverte',
+      reason: `window-open · ${latestSafeTurn.value}`,
+      detail: 'le tour sûr reste visible avant engagement du support pairé',
+      priority: 2,
+    };
+  }
+
+  if (safestSupport.state === 'reinforce-local-trust' && commitment.remainingConfidence !== 'faible') {
+    return {
+      state: 'local-trust-sufficient',
+      label: 'confiance locale',
+      reason: `local-trust-sufficient · ${commitment.remainingConfidence}`,
+      detail: 'la confiance restante suffit pour justifier un appui local minimal',
+      priority: 1,
+    };
+  }
+
+  return {
+    state: 'no-safe-justification',
+    label: 'aucune sûreté lisible',
+    reason: 'no-safe-justification · signaux contradictoires',
+    detail: 'ne pas afficher de justification optimiste avec des signaux incertains',
+    priority: 4,
+  };
+}
+
 function buildAtlasConsolidationFollowUpStatus(zone, commitment, recommendation) {
   if (!recommendation) {
     return null;
@@ -2426,6 +2494,7 @@ function buildAtlasMediationCommitment(zone) {
   const fallback = buildAtlasStaleRiskFallbackMove(zone, commitment, followUp);
   const latestSafeTurn = buildAtlasLatestSafeFallbackTurn(zone, commitment, followUp, fallback);
   const pairedMediation = buildAtlasPairedMediationSupport(zone, commitment, followUp, fallback, latestSafeTurn);
+  const safestSupport = buildAtlasSafestPairedSupport(zone, commitment, fallback, latestSafeTurn, pairedMediation);
 
   return {
     ...commitment,
@@ -2442,7 +2511,12 @@ function buildAtlasMediationCommitment(zone) {
                       pairedMediation: pairedMediation
                         ? {
                             ...pairedMediation,
-                            safestSupport: buildAtlasSafestPairedSupport(zone, commitment, fallback, latestSafeTurn, pairedMediation),
+                            safestSupport: safestSupport
+                              ? {
+                                  ...safestSupport,
+                                  safetyJustification: buildAtlasPairedSupportSafetyJustification(zone, commitment, fallback, latestSafeTurn, pairedMediation, safestSupport),
+                                }
+                              : null,
                           }
                         : null,
                     }
@@ -2500,23 +2574,24 @@ function renderAtlasCultureLayer(cultureView) {
       `}
       ${features.borderZones.length > 0 ? `
         <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
-          <rect x="3" y="55" width="30" height="${18 + (features.borderZones.length * 21.4)}" rx="1.8"></rect>
+          <rect x="3" y="55" width="30" height="${19 + (features.borderZones.length * 22.8)}" rx="1.8"></rect>
           <text class="atlas-cultural-border-zones__title" x="5" y="58.4">Médiations culturelles</text>
           ${features.borderZones.map((zone, index) => `
             <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state} atlas-cultural-border-zone--confidence-${zone.mediation.confidence} atlas-cultural-border-zone--commitment-${zone.commitment.status === 'stable' ? 'stable' : 'risk'}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, confiance ${zone.mediation.confidence}, engagement ${zone.commitment.status}, confiance restante ${zone.commitment.remainingConfidence}, prochaine conséquence ${zone.commitment.nextConsequence}, échéance ${zone.commitment.phase}">
-              <text x="5" y="${62 + index * 21.4}">${zone.cultureName}</text>
-              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 21.4}">${zone.chips.join(' · ')}</text>
-              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 21.4}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
-              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 21.4}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
-              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 21.4}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
-              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 21.4}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 21.4}">${zone.commitment.consolidation.label}: ${zone.commitment.consolidation.action}</text>
-              ${zone.commitment.consolidationRecommendation ? `<text class="atlas-cultural-border-zone__recommendation" x="5" y="${74.6 + index * 21.4}">reco: ${zone.commitment.consolidationRecommendation.label} · ${zone.commitment.consolidationRecommendation.reason}</text>` : ''}
-              ${zone.commitment.consolidationRecommendation?.followUp ? `<text class="atlas-cultural-border-zone__followup atlas-cultural-border-zone__followup--${zone.commitment.consolidationRecommendation.followUp.state}" x="5" y="${76.1 + index * 21.4}">suivi: ${zone.commitment.consolidationRecommendation.followUp.label} · ${zone.commitment.consolidationRecommendation.followUp.reason}</text>` : ''}
-              ${zone.commitment.consolidationRecommendation?.followUp?.fallback ? `<text class="atlas-cultural-border-zone__fallback atlas-cultural-border-zone__fallback--${zone.commitment.consolidationRecommendation.followUp.fallback.state}" x="5" y="${77.5 + index * 21.4}">fallback: ${zone.commitment.consolidationRecommendation.followUp.fallback.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.reason}</text>` : ''}
-              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.latestSafeTurn ? `<text class="atlas-cultural-border-zone__latest-safe atlas-cultural-border-zone__latest-safe--${zone.commitment.consolidationRecommendation.followUp.fallback.latestSafeTurn.state}" x="5" y="${78.9 + index * 21.4}">dernier sûr: ${zone.commitment.consolidationRecommendation.followUp.fallback.latestSafeTurn.value} · ${zone.commitment.consolidationRecommendation.followUp.fallback.latestSafeTurn.reason}</text>` : ''}
-              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.pairedMediation ? `<text class="atlas-cultural-border-zone__paired-mediation atlas-cultural-border-zone__paired-mediation--${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.state}" x="5" y="${80.3 + index * 21.4}">support: ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.reason}</text>` : ''}
-              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.pairedMediation?.safestSupport ? `<text class="atlas-cultural-border-zone__safest-support atlas-cultural-border-zone__safest-support--${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.state}" x="5" y="${81.7 + index * 21.4}">appui sûr: ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.reason}</text>` : ''}
+              <text x="5" y="${62 + index * 22.8}">${zone.cultureName}</text>
+              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 22.8}">${zone.chips.join(' · ')}</text>
+              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 22.8}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
+              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 22.8}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
+              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 22.8}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
+              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 22.8}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 22.8}">${zone.commitment.consolidation.label}: ${zone.commitment.consolidation.action}</text>
+              ${zone.commitment.consolidationRecommendation ? `<text class="atlas-cultural-border-zone__recommendation" x="5" y="${74.6 + index * 22.8}">reco: ${zone.commitment.consolidationRecommendation.label} · ${zone.commitment.consolidationRecommendation.reason}</text>` : ''}
+              ${zone.commitment.consolidationRecommendation?.followUp ? `<text class="atlas-cultural-border-zone__followup atlas-cultural-border-zone__followup--${zone.commitment.consolidationRecommendation.followUp.state}" x="5" y="${76.1 + index * 22.8}">suivi: ${zone.commitment.consolidationRecommendation.followUp.label} · ${zone.commitment.consolidationRecommendation.followUp.reason}</text>` : ''}
+              ${zone.commitment.consolidationRecommendation?.followUp?.fallback ? `<text class="atlas-cultural-border-zone__fallback atlas-cultural-border-zone__fallback--${zone.commitment.consolidationRecommendation.followUp.fallback.state}" x="5" y="${77.5 + index * 22.8}">fallback: ${zone.commitment.consolidationRecommendation.followUp.fallback.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.reason}</text>` : ''}
+              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.latestSafeTurn ? `<text class="atlas-cultural-border-zone__latest-safe atlas-cultural-border-zone__latest-safe--${zone.commitment.consolidationRecommendation.followUp.fallback.latestSafeTurn.state}" x="5" y="${78.9 + index * 22.8}">dernier sûr: ${zone.commitment.consolidationRecommendation.followUp.fallback.latestSafeTurn.value} · ${zone.commitment.consolidationRecommendation.followUp.fallback.latestSafeTurn.reason}</text>` : ''}
+              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.pairedMediation ? `<text class="atlas-cultural-border-zone__paired-mediation atlas-cultural-border-zone__paired-mediation--${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.state}" x="5" y="${80.3 + index * 22.8}">support: ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.reason}</text>` : ''}
+              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.pairedMediation?.safestSupport ? `<text class="atlas-cultural-border-zone__safest-support atlas-cultural-border-zone__safest-support--${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.state}" x="5" y="${81.7 + index * 22.8}">appui sûr: ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.reason}</text>` : ''}
+              ${zone.commitment.consolidationRecommendation?.followUp?.fallback?.pairedMediation?.safestSupport?.safetyJustification ? `<text class="atlas-cultural-border-zone__support-justification atlas-cultural-border-zone__support-justification--${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.safetyJustification.state}" x="5" y="${83.1 + index * 22.8}">sûr car: ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.safetyJustification.label} · ${zone.commitment.consolidationRecommendation.followUp.fallback.pairedMediation.safestSupport.safetyJustification.reason}</text>` : ''}
             </g>
           `).join('')}
         </g>
@@ -2529,17 +2604,18 @@ function renderAtlasCultureLayer(cultureView) {
       `}
       ${features.consolidationRecommendations.length > 0 ? `
         <g class="atlas-cultural-consolidation-actions" aria-label="Actions de consolidation des rebonds culturels fragiles">
-          <rect x="65" y="56" width="31" height="${10.6 + (features.consolidationRecommendations.length * 11.5)}" rx="1.8"></rect>
+          <rect x="65" y="56" width="31" height="${11.2 + (features.consolidationRecommendations.length * 12.9)}" rx="1.8"></rect>
           <text class="atlas-cultural-consolidation-actions__title" x="67" y="59.2">Actions consolidation</text>
           ${features.consolidationRecommendations.map((item, index) => `
             <g class="atlas-cultural-consolidation-action atlas-cultural-consolidation-action--${item.consolidation.state} atlas-cultural-consolidation-action--followup-${item.recommendation.followUp.state}" data-atlas-consolidation-action="${item.regionId}" aria-label="Action consolidation ${item.cultureName}: ${item.recommendation.label}, suivi ${item.recommendation.followUp.label}, raison ${item.recommendation.followUp.reason}, détail ${item.recommendation.followUp.detail}">
-              <text x="67" y="${62.3 + index * 11.5}">${item.cultureName} · ${item.recommendation.label}</text>
-              <text class="atlas-cultural-consolidation-action__reason" x="67" y="${64.1 + index * 11.5}">${item.recommendation.reason}</text>
-              <text class="atlas-cultural-consolidation-action__followup" x="67" y="${65.8 + index * 11.5}">${item.recommendation.followUp.label} · ${item.recommendation.followUp.reason}</text>
-              ${item.recommendation.followUp.fallback ? `<text class="atlas-cultural-consolidation-action__fallback" x="67" y="${67.5 + index * 11.5}">fallback: ${item.recommendation.followUp.fallback.label} · ${item.recommendation.followUp.fallback.reason}</text>` : ''}
-              ${item.recommendation.followUp.fallback?.latestSafeTurn ? `<text class="atlas-cultural-consolidation-action__latest-safe atlas-cultural-consolidation-action__latest-safe--${item.recommendation.followUp.fallback.latestSafeTurn.state}" x="67" y="${69.1 + index * 11.5}">dernier sûr: ${item.recommendation.followUp.fallback.latestSafeTurn.value}</text>` : ''}
-              ${item.recommendation.followUp.fallback?.pairedMediation ? `<text class="atlas-cultural-consolidation-action__paired-mediation atlas-cultural-consolidation-action__paired-mediation--${item.recommendation.followUp.fallback.pairedMediation.state}" x="67" y="${70.7 + index * 11.5}">support: ${item.recommendation.followUp.fallback.pairedMediation.label}</text>` : ''}
-              ${item.recommendation.followUp.fallback?.pairedMediation?.safestSupport ? `<text class="atlas-cultural-consolidation-action__safest-support atlas-cultural-consolidation-action__safest-support--${item.recommendation.followUp.fallback.pairedMediation.safestSupport.state}" x="67" y="${72.3 + index * 11.5}">appui sûr: ${item.recommendation.followUp.fallback.pairedMediation.safestSupport.label}</text>` : ''}
+              <text x="67" y="${62.3 + index * 12.9}">${item.cultureName} · ${item.recommendation.label}</text>
+              <text class="atlas-cultural-consolidation-action__reason" x="67" y="${64.1 + index * 12.9}">${item.recommendation.reason}</text>
+              <text class="atlas-cultural-consolidation-action__followup" x="67" y="${65.8 + index * 12.9}">${item.recommendation.followUp.label} · ${item.recommendation.followUp.reason}</text>
+              ${item.recommendation.followUp.fallback ? `<text class="atlas-cultural-consolidation-action__fallback" x="67" y="${67.5 + index * 12.9}">fallback: ${item.recommendation.followUp.fallback.label} · ${item.recommendation.followUp.fallback.reason}</text>` : ''}
+              ${item.recommendation.followUp.fallback?.latestSafeTurn ? `<text class="atlas-cultural-consolidation-action__latest-safe atlas-cultural-consolidation-action__latest-safe--${item.recommendation.followUp.fallback.latestSafeTurn.state}" x="67" y="${69.1 + index * 12.9}">dernier sûr: ${item.recommendation.followUp.fallback.latestSafeTurn.value}</text>` : ''}
+              ${item.recommendation.followUp.fallback?.pairedMediation ? `<text class="atlas-cultural-consolidation-action__paired-mediation atlas-cultural-consolidation-action__paired-mediation--${item.recommendation.followUp.fallback.pairedMediation.state}" x="67" y="${70.7 + index * 12.9}">support: ${item.recommendation.followUp.fallback.pairedMediation.label}</text>` : ''}
+              ${item.recommendation.followUp.fallback?.pairedMediation?.safestSupport ? `<text class="atlas-cultural-consolidation-action__safest-support atlas-cultural-consolidation-action__safest-support--${item.recommendation.followUp.fallback.pairedMediation.safestSupport.state}" x="67" y="${72.3 + index * 12.9}">appui sûr: ${item.recommendation.followUp.fallback.pairedMediation.safestSupport.label}</text>` : ''}
+              ${item.recommendation.followUp.fallback?.pairedMediation?.safestSupport?.safetyJustification ? `<text class="atlas-cultural-consolidation-action__support-justification atlas-cultural-consolidation-action__support-justification--${item.recommendation.followUp.fallback.pairedMediation.safestSupport.safetyJustification.state}" x="67" y="${73.9 + index * 12.9}">sûr car: ${item.recommendation.followUp.fallback.pairedMediation.safestSupport.safetyJustification.label}</text>` : ''}
             </g>
           `).join('')}
         </g>
