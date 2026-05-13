@@ -10597,6 +10597,7 @@ button { font: inherit; }
 .atlas-military-commitment-debt,
 .atlas-military-commitment-priority,
 .atlas-military-commitment-warning,
+.atlas-military-warning-stack,
 .atlas-military-commitment-conflicts {
   pointer-events: auto;
 }
@@ -10945,6 +10946,38 @@ button { font: inherit; }
   paint-order: stroke;
   stroke: rgba(2, 6, 23, 0.92);
   stroke-width: 0.34;
+}
+
+.atlas-military-warning-stack__panel {
+  fill: rgba(30, 41, 59, 0.82);
+  stroke: rgba(251, 146, 60, 0.4);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.44));
+}
+.atlas-military-warning-stack__title,
+.atlas-military-warning-stack-top text,
+.atlas-military-warning-stack-item text {
+  fill: #ffedd5;
+  font-size: 1.06px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.88);
+  stroke-width: 0.3;
+}
+.atlas-military-warning-stack-top rect {
+  fill: rgba(251, 146, 60, 0.68);
+  stroke: rgba(255, 237, 213, 0.76);
+  stroke-width: 0.22;
+}
+.atlas-military-warning-stack-top--critical rect { fill: rgba(248, 113, 113, 0.88); }
+.atlas-military-warning-stack-top--high rect { fill: rgba(251, 146, 60, 0.84); }
+.atlas-military-warning-stack-top__why {
+  fill: #fed7aa;
+  font-size: 0.82px;
+}
+.atlas-military-warning-stack-item text:last-child {
+  fill: #fde68a;
+  font-size: 0.8px;
 }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
