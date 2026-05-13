@@ -3325,6 +3325,59 @@ function buildAtlasSecondaryBottleneckFastestUnlock(item, index) {
   };
 }
 
+function buildAtlasSecondaryBottleneckUnlockPayoff(item, index) {
+  if (index > 0 || !item.fastestUnlock) {
+    return null;
+  }
+
+  const selectedAction = item.readiness.tradeoffComparison?.selected ?? item.readiness.unblockAction ?? '';
+  const rejectedAlternative = item.readiness.tradeoffComparison?.rejected ?? '';
+  const selectedThreshold = extractAtlasSecondaryBottleneckThreshold(selectedAction);
+  const rejectedThreshold = extractAtlasSecondaryBottleneckThreshold(rejectedAlternative);
+  const routeStress = item.status === 'encore saturé' || item.impact.includes('pénurie');
+  const hubPressure = item.readiness.status === 'blocked-capacity' || /hub|capacité/.test(`${selectedAction} ${item.fastestUnlock.action}`);
+  const budgetPressure = item.readiness.status === 'blocked-funding' || /budget/.test(`${selectedAction} ${item.fastestUnlock.action}`);
+  const instabilityRisk = item.readiness.status === 'blocked-risk' || item.fastestUnlock.status === 'wait-for-risk-cooldown';
+
+  if (instabilityRisk) {
+    return {
+      status: 'risk-stabilized',
+      label: 'payoff: risque stabilisé',
+      detail: 'exécution possible sans exposer le corridor',
+    };
+  }
+
+  if (hubPressure && selectedThreshold?.type === 'capacity') {
+    return {
+      status: 'capacity-recovered',
+      label: `payoff: +${selectedThreshold.amount} capacité`,
+      detail: 'marge récupérée pour relancer la dérivation',
+    };
+  }
+
+  if (budgetPressure && selectedThreshold?.type === 'budget') {
+    return {
+      status: 'budget-saved',
+      label: `payoff: ${selectedThreshold.amount} budget cadré`,
+      detail: rejectedThreshold?.type === 'capacity' ? 'évite un délestage de capacité plus lourd' : 'budget minimal avant exécution',
+    };
+  }
+
+  if (hubPressure || routeStress) {
+    return {
+      status: 'hub-desaturated',
+      label: 'payoff: hub désaturé',
+      detail: 'réduit la pression aval après unlock rapide',
+    };
+  }
+
+  return {
+    status: 'no-clear-payoff',
+    label: 'payoff: gain à confirmer',
+    detail: 'aucun gain aval clair dans les données visibles',
+  };
+}
+
 function buildAtlasSecondaryBottleneckWaitCondition(item, index) {
   if (index > 0 || !item.executeVerdict || !['wait-for-budget', 'wait-for-capacity'].includes(item.executeVerdict.status)) {
     return null;
@@ -3429,9 +3482,13 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
         ...itemWithVerdict,
         waitCondition: buildAtlasSecondaryBottleneckWaitCondition(itemWithVerdict, index),
       };
-      return {
+      const itemWithFastestUnlock = {
         ...itemWithWaitCondition,
         fastestUnlock: buildAtlasSecondaryBottleneckFastestUnlock(itemWithWaitCondition, index),
+      };
+      return {
+        ...itemWithFastestUnlock,
+        unlockPayoff: buildAtlasSecondaryBottleneckUnlockPayoff(itemWithFastestUnlock, index),
       };
     });
 
@@ -3685,11 +3742,11 @@ function renderAtlasEconomyStressLegend(economyView) {
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
           const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''} ${item.waitCondition ? `atlas-secondary-bottleneck-item--${item.waitCondition.status}` : ''} ${item.fastestUnlock ? `atlas-secondary-bottleneck-item--${item.fastestUnlock.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}${item.waitCondition ? `, condition ${item.waitCondition.label}, ${item.waitCondition.reason}` : ''}${item.fastestUnlock ? `, déblocage rapide ${item.fastestUnlock.label}, ${item.fastestUnlock.action}` : ''}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''} ${item.waitCondition ? `atlas-secondary-bottleneck-item--${item.waitCondition.status}` : ''} ${item.fastestUnlock ? `atlas-secondary-bottleneck-item--${item.fastestUnlock.status}` : ''} ${item.unlockPayoff ? `atlas-secondary-bottleneck-item--${item.unlockPayoff.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}${item.waitCondition ? `, condition ${item.waitCondition.label}, ${item.waitCondition.reason}` : ''}${item.fastestUnlock ? `, déblocage rapide ${item.fastestUnlock.label}, ${item.fastestUnlock.action}` : ''}${item.unlockPayoff ? `, gain ${item.unlockPayoff.label}, ${item.unlockPayoff.detail}` : ''}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
-              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}${item.waitCondition ? ` · Attendre: ${item.waitCondition.label}` : ''}${item.fastestUnlock ? ` · Débloquer: ${item.fastestUnlock.label}` : ''}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}${item.waitCondition ? ` · Attendre: ${item.waitCondition.label}` : ''}${item.fastestUnlock ? ` · Débloquer: ${item.fastestUnlock.label}` : ''}${item.unlockPayoff ? ` · Gain: ${item.unlockPayoff.label}` : ''}</text>
             </g>
           `;
         }).join('')}
