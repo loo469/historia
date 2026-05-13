@@ -8857,6 +8857,65 @@ function renderAtlasClimateRecoveryPlanProjection(view) {
   `;
 }
 
+function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView) {
+  if (!recoveryProjectionView || recoveryProjectionView.state === 'neutral' || !recoveryProjectionView.projection) {
+    return {
+      state: 'neutral',
+      cheapestSafeCommitment: null,
+      summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
+    };
+  }
+
+  const projection = recoveryProjectionView.projection;
+  const effortByRelief = {
+    'deadline moins serrée': { cost: 'faible', effortScore: 1, safeBecause: 'déplace seulement le jalon déjà recommandé sans engager de capacité secondaire.' },
+    'capacité régionale libérée': { cost: 'modéré', effortScore: 2, safeBecause: 'engage une capacité ciblée déjà signalée par la projection recovery.' },
+    'exposition réduite': { cost: 'modéré', effortScore: 2, safeBecause: 'réduit d’abord le périmètre exposé sans inventer de nouvelle ressource.' },
+    'aucun relief sûr': { cost: 'minimal', effortScore: 0, safeBecause: 'ne promet aucun relief non confirmé et limite l’engagement à l’acceptation explicite du risque.' },
+  };
+  const selected = effortByRelief[projection.firstPressureRelieved] ?? effortByRelief['aucun relief sûr'];
+  const unresolvedRisk = recoveryProjectionView.remainingRisks?.[0]?.label ?? 'risque résiduel à surveiller';
+
+  return {
+    state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
+    cheapestSafeCommitment: {
+      provinceId: projection.provinceId,
+      provinceLabel: projection.provinceLabel,
+      action: projection.proposedActions[0] ?? 'Démarrer le plan recovery minimal.',
+      cost: selected.cost,
+      effortScore: selected.effortScore,
+      deadlineCovered: projection.deadline,
+      pressureReduced: projection.firstPressureRelieved,
+      stillActiveRisk: unresolvedRisk,
+      safeBecause: selected.safeBecause,
+      doesNotSolve: `Ne résout pas encore: ${unresolvedRisk}.`,
+    },
+    summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
+  };
+}
+
+function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'neutral' || !view.cheapestSafeCommitment) {
+    return '';
+  }
+
+  const commitment = view.cheapestSafeCommitment;
+  return `
+    <aside class="map-world-climate-cheapest-commitment map-world-climate-cheapest-commitment--${view.state}" aria-label="Engagement recovery climat minimal sûr">
+      <div class="map-world-climate-cheapest-commitment__header">
+        <strong>Engagement sûr minimal</strong>
+        <span>${commitment.cost} · effort ${commitment.effortScore}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Action</b> · ${commitment.action}</small>
+      <small><b>Deadline couverte</b> · ${commitment.deadlineCovered}</small>
+      <small><b>Pression réduite</b> · ${commitment.pressureReduced}</small>
+      <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
+      <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -16628,6 +16687,7 @@ function render() {
   const atlasClimateRecoveryCollateralReliefRanking = buildAtlasClimateRecoveryCollateralReliefRanking(atlasClimateDeadlineRecoveryAction);
   const atlasClimateFirstRecoveryPressureReliefExplanation = buildAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateRecoveryCollateralReliefRanking);
   const atlasClimateRecoveryPlanProjection = buildAtlasClimateRecoveryPlanProjection(atlasClimateFirstRecoveryPressureReliefExplanation, atlasClimateRecoveryCollateralReliefRanking);
+  const atlasClimateCheapestSafeRecoveryCommitment = buildAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateRecoveryPlanProjection);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -16676,6 +16736,7 @@ function render() {
           ${renderAtlasClimateRecoveryCollateralReliefRanking(atlasClimateRecoveryCollateralReliefRanking)}
           ${renderAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateFirstRecoveryPressureReliefExplanation)}
           ${renderAtlasClimateRecoveryPlanProjection(atlasClimateRecoveryPlanProjection)}
+          ${renderAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateCheapestSafeRecoveryCommitment)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
