@@ -32,6 +32,7 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /function buildAtlasCommittedFundingGaps/);
   assert.match(webAppSource, /function buildAtlasFundedCapacityProjections/);
   assert.match(webAppSource, /function buildAtlasSecondaryBottleneckReroute/);
+  assert.match(webAppSource, /function buildAtlasSecondaryBottleneckRerouteReadiness/);
   assert.match(webAppSource, /function buildAtlasSecondaryBottlenecks/);
   assert.match(webAppSource, /function renderAtlasEconomyStressLegend/);
   assert.match(webAppSource, /atlas-world-economy-layer/);
@@ -91,6 +92,14 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /dérivation non disponible/);
   assert.match(webAppSource, /voisins déjà saturés/);
   assert.match(webAppSource, /consomme marge financée/);
+  assert.match(webAppSource, /prêt maintenant/);
+  assert.match(webAppSource, /bloqué financement/);
+  assert.match(webAppSource, /bloqué capacité/);
+  assert.match(webAppSource, /bloqué risque/);
+  assert.match(webAppSource, /financement, capacité et risque OK/);
+  assert.match(webAppSource, /marge voisine encore à financer/);
+  assert.match(webAppSource, /aucun voisin avec marge exécutable/);
+  assert.match(webAppSource, /instabilité régionale à qualifier/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);
   assert.match(stylesSource, /\.atlas-world-canvas/);
@@ -122,7 +131,12 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--secondary/);
   assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--resolved/);
   assert.match(stylesSource, /\.atlas-secondary-bottleneck-item__reroute/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item__readiness/);
   assert.match(stylesSource, /\.atlas-secondary-bottleneck-item\.has-reroute/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--ready/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--blocked-funding/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--blocked-capacity/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--blocked-risk/);
   assert.match(stylesSource, /\.atlas-logistics-route--major/);
   assert.match(stylesSource, /\.atlas-economy-city--high/);
   assert.match(stylesSource, /\.atlas-economy-city__resources/);

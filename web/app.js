@@ -2446,6 +2446,77 @@ function buildAtlasSecondaryBottleneckReroute(forecast, fundedCapacityProjection
     tradeoff: candidate.source === 'capacité financée'
       ? 'consomme marge financée'
       : 'surveillance hub voisin requise',
+    targetCorridor: candidate.corridor,
+    targetRouteName: candidate.routeName,
+    spareCapacity: candidate.spareCapacity,
+    source: candidate.source,
+  };
+}
+
+function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, fundedCapacityProjections, supplyForecasts) {
+  const neighborCorridors = getAtlasNeighborCorridors(forecast.corridor);
+  const neighborProjections = fundedCapacityProjections.items
+    .filter((projection) => neighborCorridors.includes(projection.corridor));
+  const neighborForecasts = supplyForecasts.routes
+    .filter((candidate) => candidate.routeName !== forecast.routeName && neighborCorridors.includes(candidate.corridor));
+  const matchingProjection = neighborProjections.find((projection) => projection.routeName === reroute.targetRouteName);
+  const matchingForecast = neighborForecasts.find((candidate) => candidate.routeName === reroute.targetRouteName);
+  const requiredRelief = Math.max(1, Math.abs(forecast.delta ?? 0));
+  const sourceHasRisk = forecast.uncertain || forecast.highHubs > 0;
+  const targetHasRisk = (matchingForecast?.highHubs ?? 0) > 0 || matchingForecast?.uncertain;
+
+  if (!reroute.available) {
+    if (forecast.uncertain || sourceHasRisk) {
+      return {
+        status: 'blocked-risk',
+        label: 'bloqué risque',
+        reason: 'instabilité régionale à qualifier',
+      };
+    }
+
+    if (neighborProjections.some((projection) => projection.fundingGap > 0)) {
+      return {
+        status: 'blocked-funding',
+        label: 'bloqué financement',
+        reason: 'marge voisine encore à financer',
+      };
+    }
+
+    return {
+      status: 'blocked-capacity',
+      label: 'bloqué capacité',
+      reason: 'aucun voisin avec marge exécutable',
+    };
+  }
+
+  if (matchingProjection?.fundingGap > 0 || (reroute.source === 'capacité financée' && !matchingProjection?.sufficient)) {
+    return {
+      status: 'blocked-funding',
+      label: 'bloqué financement',
+      reason: 'budget de délestage incomplet',
+    };
+  }
+
+  if ((reroute.spareCapacity ?? 0) < requiredRelief || matchingProjection?.stillSaturated || matchingForecast?.tone === 'overload') {
+    return {
+      status: 'blocked-capacity',
+      label: 'bloqué capacité',
+      reason: `marge ${reroute.spareCapacity ?? 0}/${requiredRelief} insuffisante`,
+    };
+  }
+
+  if (sourceHasRisk || targetHasRisk) {
+    return {
+      status: 'blocked-risk',
+      label: 'bloqué risque',
+      reason: 'hub instable avant exécution',
+    };
+  }
+
+  return {
+    status: 'ready',
+    label: 'prêt maintenant',
+    reason: 'financement, capacité et risque OK',
   };
 }
 
@@ -2488,6 +2559,7 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
           ? 24 + forecast.resourceLoad
           : 4;
       const reroute = buildAtlasSecondaryBottleneckReroute(forecast, fundedCapacityProjections, supplyForecasts);
+      const readiness = buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, fundedCapacityProjections, supplyForecasts);
 
       return {
         routeName: forecast.routeName,
@@ -2496,7 +2568,8 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
         cause,
         impact,
         reroute,
-        score: score + (reroute.available ? 3 : 0),
+        readiness,
+        score: score + (reroute.available ? 3 : 0) + (readiness.status === 'ready' ? 2 : 0),
       };
     })
     .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
@@ -2639,7 +2712,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${80 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (rollup.secondaryBottlenecks.items.length * 6.8)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${80 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (rollup.secondaryBottlenecks.items.length * 8.1)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -2746,16 +2819,17 @@ function renderAtlasEconomyStressLegend(economyView) {
         }).join('')}
       </g>
       <g class="atlas-secondary-bottleneck ${rollup.secondaryBottlenecks.empty ? 'is-empty' : ''}" aria-label="Prochains goulets après projection: ${rollup.secondaryBottlenecks.summary}">
-        <rect x="5" y="${73.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" width="30.5" height="${rollup.secondaryBottlenecks.empty ? 5.2 : 6.3 + (rollup.secondaryBottlenecks.items.length * 6.8)}" rx="1.4"></rect>
+        <rect x="5" y="${73.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" width="30.5" height="${rollup.secondaryBottlenecks.empty ? 5.2 : 6.3 + (rollup.secondaryBottlenecks.items.length * 8.1)}" rx="1.4"></rect>
         <text class="atlas-secondary-bottleneck__title" x="6.2" y="${75.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}">Prochains goulets · ${rollup.secondaryBottlenecks.summary}</text>
         ${rollup.secondaryBottlenecks.empty ? `<text class="atlas-secondary-bottleneck__empty" x="6.2" y="${78.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}">Aucun goulet secondaire pertinent</text>` : ''}
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
-          const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 6.8);
+          const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}</text>
             </g>
           `;
         }).join('')}
