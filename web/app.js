@@ -10568,12 +10568,53 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const residualBlindSpotSummary = residualBlindSpots.length > 0
     ? `${residualBlindSpots.length} angle${residualBlindSpots.length > 1 ? 's' : ''} mort${residualBlindSpots.length > 1 ? 's' : ''} résiduel${residualBlindSpots.length > 1 ? 's' : ''}: ${residualBlindSpots.filter((spot) => spot.failureType === 'non couvert').length} non couvert${residualBlindSpots.filter((spot) => spot.failureType === 'non couvert').length > 1 ? 's' : ''}, ${residualBlindSpots.filter((spot) => spot.failureType === 'couverture trop faible').length} couverture${residualBlindSpots.filter((spot) => spot.failureType === 'couverture trop faible').length > 1 ? 's' : ''} trop faible${residualBlindSpots.filter((spot) => spot.failureType === 'couverture trop faible').length > 1 ? 's' : ''}, ${residualBlindSpots.filter((spot) => spot.failureType === 'couverture expirante/contestée').length} contesté${residualBlindSpots.filter((spot) => spot.failureType === 'couverture expirante/contestée').length > 1 ? 's' : ''}.`
     : 'Aucun angle mort résiduel visible: la couverture actuelle suffit selon les signaux atlas.';
+  const resweepPriorities = residualBlindSpots.map((spot) => {
+    const operationalRiskScore = spot.severity === 'haute' ? 3 : 2;
+    const freshnessScore = spot.detail.includes('récent')
+      ? 3
+      : spot.detail.includes('incertain') || spot.failureType === 'couverture expirante/contestée'
+        ? 2
+        : 1;
+    const sensitiveObjectiveScore = spot.failureType === 'non couvert'
+      ? 3
+      : spot.failureType === 'couverture expirante/contestée'
+        ? 2
+        : 1;
+    const priorityScore = operationalRiskScore + freshnessScore + sensitiveObjectiveScore;
+    const priorityLevel = priorityScore >= 8 ? 'critique' : priorityScore >= 6 ? 'haute' : 'prudente';
+    const objectiveProximity = sensitiveObjectiveScore >= 3
+      ? 'proche d’un objectif sensible visible'
+      : sensitiveObjectiveScore === 2
+        ? 'objectif sensible possible à reconfirmer'
+        : 'proximité non confirmée';
+
+    return {
+      ...spot,
+      operationalRiskScore,
+      freshnessScore,
+      sensitiveObjectiveScore,
+      priorityScore,
+      priorityLevel,
+      objectiveProximity,
+      priorityReason: `risque ${spot.severity}; fraîcheur ${freshnessScore >= 3 ? 'récente' : freshnessScore === 2 ? 'incertaine' : 'ancienne'}; ${objectiveProximity}`,
+      resweepAction: priorityLevel === 'critique'
+        ? 'Resweep sûr immédiat avant nouvel engagement.'
+        : priorityLevel === 'haute'
+          ? 'Planifier le resweep au prochain créneau libre.'
+          : 'Garder une vérification prudente si les données restent faibles.',
+    };
+  }).sort((left, right) => right.priorityScore - left.priorityScore || left.locationName.localeCompare(right.locationName));
+  const resweepPrioritySummary = resweepPriorities.length > 0
+    ? `${resweepPriorities.length} priorité${resweepPriorities.length > 1 ? 's' : ''} de resweep: ${resweepPriorities.filter((spot) => spot.priorityLevel === 'critique').length} critique${resweepPriorities.filter((spot) => spot.priorityLevel === 'critique').length > 1 ? 's' : ''}, ${resweepPriorities.filter((spot) => spot.priorityLevel === 'haute').length} haute${resweepPriorities.filter((spot) => spot.priorityLevel === 'haute').length > 1 ? 's' : ''}, ${resweepPriorities.filter((spot) => spot.priorityLevel === 'prudente').length} prudente${resweepPriorities.filter((spot) => spot.priorityLevel === 'prudente').length > 1 ? 's' : ''}.`
+    : 'Aucune priorité de resweep: données suffisantes ou trop faibles pour hiérarchiser sans spéculer.';
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
     uncoveredRiskZones,
     residualBlindSpots,
     residualBlindSpotSummary,
+    resweepPriorities,
+    resweepPrioritySummary,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -10683,6 +10724,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         ${plan.postOrderCoverage.residualBlindSpots.length > 0
           ? `<ul>${plan.postOrderCoverage.residualBlindSpots.map((spot) => `<li class="atlas-counterintelligence-blind-spots__item atlas-counterintelligence-blind-spots__item--${spot.severity}"><b>${spot.locationName}</b> · ${spot.failureType} · sévérité ${spot.severity}<small>${spot.detail} · ${spot.nextAction}</small></li>`).join('')}</ul>`
           : '<small>État vide: aucune province ne reste aveugle ou fragile après ces ordres.</small>'}
+      </section>
+      <section class="atlas-counterintelligence-resweep-priorities" aria-label="Priorités de resweep fog-safe pour angles morts">
+        <strong>Priorités de resweep</strong>
+        <p>${plan.postOrderCoverage.resweepPrioritySummary}</p>
+        ${plan.postOrderCoverage.resweepPriorities.length > 0
+          ? `<ol>${plan.postOrderCoverage.resweepPriorities.map((spot) => `<li class="atlas-counterintelligence-resweep-priorities__item atlas-counterintelligence-resweep-priorities__item--${spot.priorityLevel}"><b>${spot.locationName}</b> · priorité ${spot.priorityLevel}<small>${spot.priorityReason} · ${spot.resweepAction}</small></li>`).join('')}</ol>`
+          : '<small>Zones sans données suffisantes: priorité prudente plutôt qu’une précision inventée.</small>'}
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>

@@ -3262,6 +3262,30 @@ button { font: inherit; }
   display: block;
   margin-top: 2px;
 }
+.atlas-counterintelligence-resweep-priorities {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  background: rgba(20, 83, 45, 0.18);
+}
+.atlas-counterintelligence-resweep-priorities p,
+.atlas-counterintelligence-resweep-priorities small { margin: 0; color: #ccfbf1; }
+.atlas-counterintelligence-resweep-priorities ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 20px;
+  color: #f8fafc;
+}
+.atlas-counterintelligence-resweep-priorities__item--critique { color: #fecaca; }
+.atlas-counterintelligence-resweep-priorities__item--haute { color: #fde68a; }
+.atlas-counterintelligence-resweep-priorities__item--prudente { color: #bfdbfe; }
+.atlas-counterintelligence-resweep-priorities li small {
+  display: block;
+  margin-top: 2px;
+}
 .atlas-counterintelligence-schedule-conflicts {
   display: grid;
   gap: 6px;
