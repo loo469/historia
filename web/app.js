@@ -10099,10 +10099,45 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const postOrderCoverageSummary = assignmentOrders.length > 0
     ? `${coveredOrderZones.length} zone${coveredOrderZones.length > 1 ? 's' : ''} couverte${coveredOrderZones.length > 1 ? 's' : ''} après ordre; ${uncoveredRiskZones.length} zone${uncoveredRiskZones.length > 1 ? 's' : ''} à risque non couverte${uncoveredRiskZones.length > 1 ? 's' : ''}; ${fragileAssignments.length} affectation${fragileAssignments.length > 1 ? 's' : ''} fragile${fragileAssignments.length > 1 ? 's' : ''} à résoudre.`
     : 'Aucun résumé post-ordre disponible tant qu’aucun ordre de balayage n’est préparé.';
+  const residualBlindSpots = [
+    ...uncoveredRiskZones.map((zone) => ({
+      locationName: zone.locationName,
+      failureType: 'non couvert',
+      severity: 'haute',
+      severityRank: 1,
+      detail: zone.detail,
+      nextAction: 'Ajouter un balayage court ou déplacer une veille stable.',
+    })),
+    ...assignmentOrders
+      .filter((order) => order.coveredZone.includes('partielle'))
+      .map((order) => ({
+        locationName: order.locationName,
+        failureType: 'couverture trop faible',
+        severity: order.safetyStatus === 'unsafe' ? 'haute' : 'moyenne',
+        severityRank: order.safetyStatus === 'unsafe' ? 1 : 2,
+        detail: `${order.coveredZone} · ${order.residualRisk}`,
+        nextAction: 'Renforcer par une équipe légère avant confirmation définitive.',
+      })),
+    ...fragileAssignments.map((zone) => ({
+      locationName: zone.locationName,
+      failureType: 'couverture expirante/contestée',
+      severity: 'moyenne',
+      severityRank: 2,
+      detail: zone.detail,
+      nextAction: 'Résoudre le conflit d’affectation ou replanifier le créneau.',
+    })),
+  ]
+    .sort((left, right) => left.severityRank - right.severityRank || left.locationName.localeCompare(right.locationName))
+    .slice(0, 4);
+  const residualBlindSpotSummary = residualBlindSpots.length > 0
+    ? `${residualBlindSpots.length} angle${residualBlindSpots.length > 1 ? 's' : ''} mort${residualBlindSpots.length > 1 ? 's' : ''} résiduel${residualBlindSpots.length > 1 ? 's' : ''}: ${residualBlindSpots.filter((spot) => spot.failureType === 'non couvert').length} non couvert${residualBlindSpots.filter((spot) => spot.failureType === 'non couvert').length > 1 ? 's' : ''}, ${residualBlindSpots.filter((spot) => spot.failureType === 'couverture trop faible').length} couverture${residualBlindSpots.filter((spot) => spot.failureType === 'couverture trop faible').length > 1 ? 's' : ''} trop faible${residualBlindSpots.filter((spot) => spot.failureType === 'couverture trop faible').length > 1 ? 's' : ''}, ${residualBlindSpots.filter((spot) => spot.failureType === 'couverture expirante/contestée').length} contesté${residualBlindSpots.filter((spot) => spot.failureType === 'couverture expirante/contestée').length > 1 ? 's' : ''}.`
+    : 'Aucun angle mort résiduel visible: la couverture actuelle suffit selon les signaux atlas.';
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
     uncoveredRiskZones,
+    residualBlindSpots,
+    residualBlindSpotSummary,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -10205,6 +10240,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
               : '<small>Aucun conflit d’affectation restant à résoudre.</small>'}
           </div>
         </div>
+      </section>
+      <section class="atlas-counterintelligence-blind-spots" aria-label="Angles morts résiduels de renseignement fog-safe">
+        <strong>Angles morts résiduels</strong>
+        <p>${plan.postOrderCoverage.residualBlindSpotSummary}</p>
+        ${plan.postOrderCoverage.residualBlindSpots.length > 0
+          ? `<ul>${plan.postOrderCoverage.residualBlindSpots.map((spot) => `<li class="atlas-counterintelligence-blind-spots__item atlas-counterintelligence-blind-spots__item--${spot.severity}"><b>${spot.locationName}</b> · ${spot.failureType} · sévérité ${spot.severity}<small>${spot.detail} · ${spot.nextAction}</small></li>`).join('')}</ul>`
+          : '<small>État vide: aucune province ne reste aveugle ou fragile après ces ordres.</small>'}
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>
