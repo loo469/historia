@@ -1619,6 +1619,26 @@ function buildAtlasMediationCommitment(zone) {
   const residualRisk = outcomeStatus === 'améliore'
     ? zone.mediation.consequences.cost
     : zone.mediation.risk;
+  const reboundWindow = outcomeStatus === 'améliore'
+    ? {
+        state: 'favorable',
+        label: 'stabilisation possible',
+        reason: `${remainingConfidence} · ${nextConsequence}`,
+        action: 'négocier maintenant',
+      }
+    : outcomeStatus === 'contredit'
+      ? {
+          state: 'missed',
+          label: 'fenêtre manquée',
+          reason: `${zone.drift.label} · ${residualRisk}`,
+          action: 'réviser médiation',
+        }
+      : {
+          state: 'risky',
+          label: 'rechute probable',
+          reason: `${remainingConfidence} · ${zone.drift.label}`,
+          action: 'renforcer relais',
+        };
 
   return {
     status,
@@ -1628,6 +1648,7 @@ function buildAtlasMediationCommitment(zone) {
     outcomeStatus,
     nextAction,
     residualRisk,
+    reboundWindow,
     label: status === 'stable' ? 'engagement stable' : 'engagement à risque',
   };
 }
@@ -1664,6 +1685,18 @@ function renderAtlasCultureLayer(cultureView) {
           <text x="${zone.center.x + 2}%" y="${zone.center.y + 6.4}%">${zone.commitment.outcomeStatus} · ${zone.commitment.nextAction}</text>
         </g>
       `).join('')}
+      ${features.borderZones.length > 0 ? features.borderZones.map((zone) => `
+        <g class="atlas-cultural-rebound-window atlas-cultural-rebound-window--${zone.commitment.reboundWindow.state}" data-atlas-cultural-rebound-window="${zone.regionId}" aria-label="Fenêtre culturelle ${zone.cultureName}: ${zone.commitment.reboundWindow.label}, pourquoi ${zone.commitment.reboundWindow.reason}, action ${zone.commitment.reboundWindow.action}">
+          <rect x="${Math.min(82, zone.center.x + 3)}" y="${Math.min(88, zone.center.y + 8)}" width="15.8" height="4.8" rx="1.5"></rect>
+          <text x="${Math.min(83, zone.center.x + 4)}%" y="${Math.min(90, zone.center.y + 10.1)}%">${zone.commitment.reboundWindow.label}</text>
+          <text class="atlas-cultural-rebound-window__action" x="${Math.min(83, zone.center.x + 4)}%" y="${Math.min(92, zone.center.y + 12)}%">${zone.commitment.reboundWindow.action}</text>
+        </g>
+      `).join('') : `
+        <g class="atlas-cultural-rebound-window is-empty" aria-label="Aucune fenêtre de rebond culturel active">
+          <rect x="66" y="86" width="28" height="6" rx="1.6"></rect>
+          <text x="68%" y="89.8%">aucune fenêtre active</text>
+        </g>
+      `}
       ${features.borderZones.length > 0 ? `
         <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
           <rect x="3" y="55" width="30" height="${12 + (features.borderZones.length * 12.2)}" rx="1.8"></rect>
@@ -1676,7 +1709,7 @@ function renderAtlasCultureLayer(cultureView) {
               <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 12.2}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
               <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 12.2}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
               <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 12.2}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">risque restant: ${zone.commitment.residualRisk}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">${zone.commitment.reboundWindow.label}: ${zone.commitment.reboundWindow.action}</text>
             </g>
           `).join('')}
         </g>
