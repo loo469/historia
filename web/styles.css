@@ -11609,3 +11609,32 @@ button { font: inherit; }
 .map-world-climate-readiness-boosts__item--just-in-time { border-color: rgba(251, 191, 36, 0.42); }
 .map-world-climate-readiness-boosts__item--insufficient,
 .map-world-climate-readiness-boosts__item--too-late { border-color: rgba(248, 113, 113, 0.5); }
+
+.atlas-cultural-border-zone__recommendation {
+  fill: #ddd6fe;
+  font-size: 0.86px;
+  font-weight: 780;
+}
+.atlas-cultural-consolidation-actions rect {
+  fill: rgba(49, 46, 129, 0.54);
+  stroke: rgba(196, 181, 253, 0.38);
+  stroke-width: 0.28;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.42));
+}
+.atlas-cultural-consolidation-actions__title {
+  fill: #ddd6fe;
+  font-size: 1.16px;
+  font-weight: 950;
+}
+.atlas-cultural-consolidation-action text {
+  fill: #f8fafc;
+  font-size: 1px;
+  font-weight: 880;
+}
+.atlas-cultural-consolidation-action__reason {
+  fill: #cbd5e1;
+  font-size: 0.86px;
+  font-weight: 760;
+}
+.atlas-cultural-consolidation-action--fragile .atlas-cultural-consolidation-action__reason { fill: #fde68a; }
+.atlas-cultural-consolidation-action--expiring .atlas-cultural-consolidation-action__reason { fill: #fecdd3; }
