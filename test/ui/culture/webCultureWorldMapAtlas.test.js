@@ -32,6 +32,8 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /renderCultureMediationSignalWarnings/);
   assert.match(webAppSource, /outcomeStatus/);
   assert.match(webAppSource, /atlas-mediation-outcome/);
+  assert.match(webAppSource, /reboundWindow/);
+  assert.match(webAppSource, /atlas-cultural-rebound-window/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -49,7 +51,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /protéger découverte/);
   assert.match(webAppSource, /arbitrer influence/);
   assert.match(webAppSource, /pacte de frontière/);
-  assert.match(webAppSource, /risque restant:/);
+  assert.match(webAppSource, /reboundWindow\.label/);
   assert.match(webAppSource, /aucun engagement · frontières stables/);
   assert.match(webAppSource, /confiance \$\{zone\.mediation\.confidence\}/);
   assert.match(webAppSource, /engagement stable/);
@@ -65,7 +67,10 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /réviser engagement/);
   assert.match(webAppSource, /renforcer suivi/);
   assert.match(webAppSource, /conserver médiation/);
-  assert.match(webAppSource, /risque restant:/);
+  assert.match(webAppSource, /stabilisation possible/);
+  assert.match(webAppSource, /rechute probable/);
+  assert.match(webAppSource, /fenêtre manquée/);
+  assert.match(webAppSource, /aucune fenêtre active/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -91,4 +96,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-mediation-outcome--améliore/);
   assert.match(stylesSource, /\.atlas-mediation-outcome--instable/);
   assert.match(stylesSource, /\.atlas-mediation-outcome--contredit/);
+  assert.match(stylesSource, /\.atlas-cultural-rebound-window--favorable/);
+  assert.match(stylesSource, /\.atlas-cultural-rebound-window--risky/);
+  assert.match(stylesSource, /\.atlas-cultural-rebound-window--missed/);
 });
