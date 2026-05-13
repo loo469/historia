@@ -8400,6 +8400,97 @@ function renderAtlasClimateDeadlineRecoveryAction(view) {
   `;
 }
 
+function buildAtlasClimateRecoveryCollateralReliefRanking(recoveryActionView) {
+  if (!recoveryActionView || recoveryActionView.state !== 'recoverable' || !recoveryActionView.action) {
+    return {
+      state: 'empty',
+      rankedActions: [],
+      rejectedAlternative: null,
+      summary: 'Aucun ranking relief collatéral: aucune action recovery réelle proposée.',
+    };
+  }
+
+  const action = recoveryActionView.action;
+  const reliefProfiles = {
+    'shift-execution-earlier': {
+      collateralRelief: 'améliore deadline',
+      reliefScore: 78,
+      tiebreaker: 3,
+      rationale: 'Récupère le tour manquant sans consommer une capacité secondaire incertaine.',
+      rejectedType: 'add-secondary-boost',
+      rejectedReason: 'Rejeté: libère moins vite la deadline que le déplacement immédiat du jalon.',
+    },
+    'add-secondary-boost': {
+      collateralRelief: 'libère capacité',
+      reliefScore: 74,
+      tiebreaker: 2,
+      rationale: 'Ajoute seulement la capacité ciblée déjà signalée et réduit le risque de cascade readiness.',
+      rejectedType: 'reduce-exposure-first',
+      rejectedReason: 'Rejeté: réduit l’exposition mais laisse la capacité courte avant exécution.',
+    },
+    'reduce-exposure-first': {
+      collateralRelief: 'réduit exposition régionale',
+      reliefScore: 70,
+      tiebreaker: 1,
+      rationale: 'Soulage l’exposition régionale avant de réengager le paquet de boost minimal.',
+      rejectedType: 'accept-missed-deadline-risk',
+      rejectedReason: 'Rejeté: accepter le risque ne retire aucune pression régionale sûre.',
+    },
+    'accept-missed-deadline-risk': {
+      collateralRelief: 'aucun relief sûr',
+      reliefScore: 24,
+      tiebreaker: 0,
+      rationale: 'À garder seulement quand les signaux existants ne justifient pas de ressource supplémentaire.',
+      rejectedType: 'add-secondary-boost',
+      rejectedReason: 'Rejeté: impossible de recommander une ressource non confirmée par les signaux readiness.',
+    },
+  };
+  const selected = reliefProfiles[action.type] ?? reliefProfiles['accept-missed-deadline-risk'];
+  const rankedActions = [{
+    rank: 1,
+    provinceId: action.provinceId,
+    provinceLabel: action.provinceLabel,
+    deadline: action.deadline,
+    type: action.type,
+    label: action.label,
+    collateralRelief: selected.collateralRelief,
+    reliefScore: selected.reliefScore,
+    tiebreaker: selected.tiebreaker,
+    rationale: selected.rationale,
+  }];
+  const rejectedAlternative = {
+    type: selected.rejectedType,
+    reason: selected.rejectedReason,
+  };
+
+  return {
+    state: selected.collateralRelief === 'aucun relief sûr' ? 'no-safe-relief' : 'ranked',
+    rankedActions,
+    rejectedAlternative,
+    summary: `${action.provinceLabel}: ${action.label} classée en tête par relief collatéral (${selected.collateralRelief}, score ${selected.reliefScore}, tie-break ${selected.tiebreaker}).`,
+  };
+}
+
+function renderAtlasClimateRecoveryCollateralReliefRanking(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || view.rankedActions.length === 0) {
+    return '';
+  }
+
+  const topAction = view.rankedActions[0];
+  return `
+    <aside class="map-world-climate-recovery-relief-ranking map-world-climate-recovery-relief-ranking--${view.state}" aria-label="Ranking des actions recovery climat par relief collatéral">
+      <div class="map-world-climate-recovery-relief-ranking__header">
+        <strong>Relief collatéral recovery</strong>
+        <span>${topAction.collateralRelief}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Top action</b> · ${topAction.label} (${topAction.type}) · score ${topAction.reliefScore}</small>
+      <small><b>Pourquoi</b> · ${topAction.rationale}</small>
+      ${view.rejectedAlternative ? `<small><b>Alternative rejetée</b> · ${view.rejectedAlternative.type}: ${view.rejectedAlternative.reason}</small>` : ''}
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -16119,6 +16210,7 @@ function render() {
   const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
   const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
   const atlasClimateDeadlineRecoveryAction = buildAtlasClimateDeadlineRecoveryAction(atlasClimateMinimumBoostDeadlineMissWarning);
+  const atlasClimateRecoveryCollateralReliefRanking = buildAtlasClimateRecoveryCollateralReliefRanking(atlasClimateDeadlineRecoveryAction);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -16164,6 +16256,7 @@ function render() {
           ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
           ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
           ${renderAtlasClimateDeadlineRecoveryAction(atlasClimateDeadlineRecoveryAction)}
+          ${renderAtlasClimateRecoveryCollateralReliefRanking(atlasClimateRecoveryCollateralReliefRanking)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
