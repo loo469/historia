@@ -19,6 +19,7 @@ test('atlas military fallback order hint handles resource route and overcommitme
   assert.match(webAppSource, /order: 'Fixer réserve'/);
   assert.match(webAppSource, /order: 'Sécuriser détour'/);
   assert.match(webAppSource, /order: 'Geler engagement'/);
+  assert.match(webAppSource, /detail: `réduire la charge sur \$\{commitment\?\.selectedOption\?\.target \?\? topWarning\?\.label\}`/);
 });
 
 test('atlas military fallback order hint stays secondary and hides no-safe fallback state', () => {
