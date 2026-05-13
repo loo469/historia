@@ -10671,6 +10671,52 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const resweepPrioritySummary = resweepPriorities.length > 0
     ? `${resweepPriorities.length} priorité${resweepPriorities.length > 1 ? 's' : ''} de resweep: ${resweepPriorities.filter((spot) => spot.priorityLevel === 'critique').length} critique${resweepPriorities.filter((spot) => spot.priorityLevel === 'critique').length > 1 ? 's' : ''}, ${resweepPriorities.filter((spot) => spot.priorityLevel === 'haute').length} haute${resweepPriorities.filter((spot) => spot.priorityLevel === 'haute').length > 1 ? 's' : ''}, ${resweepPriorities.filter((spot) => spot.priorityLevel === 'prudente').length} prudente${resweepPriorities.filter((spot) => spot.priorityLevel === 'prudente').length > 1 ? 's' : ''}.`
     : 'Aucune priorité de resweep: données suffisantes ou trop faibles pour hiérarchiser sans spéculer.';
+  const stagedResweepAssignments = resweepPriorities.map((spot) => {
+    const noSafeAssignment = spot.failureType === 'couverture expirante/contestée'
+      || spot.detail.includes('risque résiduel élevé')
+      || spot.detail.includes('conflit')
+      || spot.detail.includes('danger');
+    const assignmentStage = noSafeAssignment
+      ? 'attente sûre'
+      : spot.priorityLevel === 'critique'
+        ? 'premier resweep'
+        : spot.priorityLevel === 'haute'
+          ? 'second créneau'
+          : 'file prudente';
+    const assignmentReason = noSafeAssignment
+      ? 'aucune affectation sûre tant que le conflit, la chaleur ou la couverture contestée n’est pas levé'
+      : spot.failureType === 'non couvert'
+        ? 'zone non couverte à traiter avant les renforcements partiels'
+        : spot.failureType === 'couverture trop faible'
+          ? 'renfort léger après sécurisation des angles totalement découverts'
+          : 'vérification de confort seulement si les signaux restent faibles';
+    const safetyGuardrail = noSafeAssignment
+      ? 'ne pas assigner: les avertissements précédents rejetteraient ce sweep'
+      : spot.priorityLevel === 'critique'
+        ? 'assigner une équipe mobile, puis vérifier l’absence de conflit actif avant départ'
+        : 'assigner une équipe légère uniquement sur créneau libre et couverture locale stable';
+
+    return {
+      ...spot,
+      assignmentStage,
+      assignmentStatus: noSafeAssignment ? 'no-safe' : 'safe',
+      assignmentReason,
+      safetyGuardrail,
+    };
+  }).sort((left, right) => {
+    const statusRank = { safe: 0, 'no-safe': 1 };
+    return statusRank[left.assignmentStatus] - statusRank[right.assignmentStatus]
+      || right.priorityScore - left.priorityScore
+      || left.failureType.localeCompare(right.failureType)
+      || left.locationName.localeCompare(right.locationName);
+  }).map((assignment, index) => ({
+    ...assignment,
+    assignmentRank: index + 1,
+    firstAssignment: index === 0 && assignment.assignmentStatus === 'safe',
+  }));
+  const stagedResweepAssignmentSummary = stagedResweepAssignments.length > 0
+    ? `${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'safe').length} affectation${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'safe').length > 1 ? 's' : ''} de resweep sûre${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'safe').length > 1 ? 's' : ''}; ${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'no-safe').length} sans affectation sûre. ${stagedResweepAssignments.some((assignment) => assignment.firstAssignment) ? `Premier: ${stagedResweepAssignments.find((assignment) => assignment.firstAssignment).locationName}, ${stagedResweepAssignments.find((assignment) => assignment.firstAssignment).assignmentReason}.` : 'Aucun premier resweep sûr: attendre une couverture ou un créneau moins risqué.'}`
+    : 'Aucune affectation staged: pas de priorité de resweep exploitable sans inventer de signal.';
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -10679,6 +10725,8 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     residualBlindSpotSummary,
     resweepPriorities,
     resweepPrioritySummary,
+    stagedResweepAssignments,
+    stagedResweepAssignmentSummary,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -10795,6 +10843,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         ${plan.postOrderCoverage.resweepPriorities.length > 0
           ? `<ol>${plan.postOrderCoverage.resweepPriorities.map((spot) => `<li class="atlas-counterintelligence-resweep-priorities__item atlas-counterintelligence-resweep-priorities__item--${spot.priorityLevel}"><b>${spot.locationName}</b> · priorité ${spot.priorityLevel}<small>${spot.priorityReason} · ${spot.resweepAction}</small></li>`).join('')}</ol>`
           : '<small>Zones sans données suffisantes: priorité prudente plutôt qu’une précision inventée.</small>'}
+      </section>
+      <section class="atlas-counterintelligence-staged-resweep-assignments" aria-label="Affectations staged de resweep fog-safe pour angles morts">
+        <strong>Affectations staged de resweep</strong>
+        <p>${plan.postOrderCoverage.stagedResweepAssignmentSummary}</p>
+        ${plan.postOrderCoverage.stagedResweepAssignments.length > 0
+          ? `<ol>${plan.postOrderCoverage.stagedResweepAssignments.map((assignment) => `<li class="atlas-counterintelligence-staged-resweep-assignments__item atlas-counterintelligence-staged-resweep-assignments__item--${assignment.assignmentStatus}"><b>#${assignment.assignmentRank} ${assignment.locationName}</b> · ${assignment.assignmentStage}${assignment.firstAssignment ? ' · première affectation' : ''}<small>${assignment.assignmentReason} · ${assignment.safetyGuardrail}</small></li>`).join('')}</ol>`
+          : '<small>Aucune affectation sûre: attendre une couverture supplémentaire ou un créneau non contesté.</small>'}
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>
