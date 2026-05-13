@@ -38,6 +38,7 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /buildAtlasFragileReboundRecommendation/);
   assert.match(webAppSource, /consolidationRecommendations/);
   assert.match(webAppSource, /buildAtlasConsolidationFollowUpStatus/);
+  assert.match(webAppSource, /buildAtlasStaleRiskFallbackMove/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -94,6 +95,11 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /unresolved border pressure/);
   assert.match(webAppSource, /mediation drift/);
   assert.match(webAppSource, /atlas-cultural-border-zone__followup/);
+  assert.match(webAppSource, /closing-window/);
+  assert.match(webAppSource, /border-pressure/);
+  assert.match(webAppSource, /fallback: buildAtlasStaleRiskFallbackMove/);
+  assert.match(webAppSource, /followUp\?\.state !== 'stale-risk'/);
+  assert.match(webAppSource, /atlas-cultural-border-zone__fallback/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -109,6 +115,8 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-border-zone__risk/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__recommendation/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__followup--stale-risk/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__fallback--closing-window/);
+  assert.match(stylesSource, /\.atlas-cultural-border-zone__fallback--border-pressure/);
   assert.match(stylesSource, /\.atlas-cultural-border-zones\.is-stable rect/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__confidence/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__consequences/);
@@ -132,4 +140,5 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action--followup-pending/);
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action--followup-covered/);
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action--followup-stale-risk/);
+  assert.match(stylesSource, /\.atlas-cultural-consolidation-action__fallback/);
 });
