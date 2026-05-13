@@ -100,6 +100,12 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /marge voisine encore à financer/);
   assert.match(webAppSource, /aucun voisin avec marge exécutable/);
   assert.match(webAppSource, /instabilité régionale à qualifier/);
+  assert.match(webAppSource, /unblockAction/);
+  assert.match(webAppSource, /Action: \$\{item\.readiness\.unblockAction\}/);
+  assert.match(webAppSource, /ajouter \$\{Math\.max\(1, fundingGap\)\} budget corridor/);
+  assert.match(webAppSource, /libérer \+\$\{capacityGap\} capacité hub voisin/);
+  assert.match(webAppSource, /stabiliser \$\{unstableHubs\} hub/);
+  assert.match(webAppSource, /buildReadiness\(\n    'ready',[\s\S]*?financement, capacité et risque OK[\s\S]*?\);/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);
   assert.match(stylesSource, /\.atlas-world-canvas/);
