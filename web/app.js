@@ -1734,6 +1734,50 @@ function buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint,
   };
 }
 
+function buildAtlasMilitaryFallbackSelectionPreview(fallback, topWarning, reliefPreview) {
+  if (!fallback || !topWarning || !reliefPreview?.preview) {
+    return null;
+  }
+
+  if (fallback.type === 'route-blocked' && topWarning.routeExposure > 0) {
+    return {
+      type: 'exposure-reduced',
+      label: 'après choix: exposition réduite',
+      detail: `route visible -${Math.min(12, topWarning.routeExposure)}`,
+    };
+  }
+
+  if (fallback.type === 'overcommitment-blocked') {
+    return {
+      type: 'capacity-freed',
+      label: 'après choix: capacité libérée',
+      detail: 'charge active allégée avant ordre lourd',
+    };
+  }
+
+  if (fallback.type === 'resource-blocked' && topWarning.frontRisk >= 120) {
+    return {
+      type: 'reinforcement-window-opened',
+      label: 'après choix: fenêtre renfort ouverte',
+      detail: 'réserve tenue jusqu’au ravitaillement visible',
+    };
+  }
+
+  if (fallback.type === 'resource-blocked') {
+    return {
+      type: 'front-stabilized',
+      label: 'après choix: front stabilisé',
+      detail: `couverture maintenue sur ${topWarning.label}`,
+    };
+  }
+
+  return {
+    type: 'no-safe-visible-change',
+    label: 'après choix: aucun changement sûr',
+    detail: 'aucun gain visible garanti',
+  };
+}
+
 function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPreview, commitment, shell) {
   const topWarning = priorityStack?.stack?.[0] ?? null;
   const blocker = getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, commitment);
@@ -1765,6 +1809,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       fallback: null,
       safetyReason: buildAtlasMilitaryFallbackSafetyReason(null, topWarning, orderHint, reliefPreview, commitment),
       crossDomainBlocker: null,
+      selectionPreview: null,
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -1772,6 +1817,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
 
   const safetyReason = buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint, reliefPreview, commitment);
   const crossDomainBlocker = buildAtlasMilitaryFallbackCrossDomainBlocker(fallback, topWarning, shell);
+  const selectionPreview = buildAtlasMilitaryFallbackSelectionPreview(fallback, topWarning, reliefPreview);
 
   return {
     fallback: {
@@ -1780,10 +1826,12 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       label: topWarning.label,
       safetyReason,
       crossDomainBlocker,
+      selectionPreview,
     },
     safetyReason,
     crossDomainBlocker,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}).`,
+    selectionPreview,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}).`,
     empty: false,
   };
 }
@@ -1793,11 +1841,12 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const fallback = fallbackHint.fallback;
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="7.1" rx="1.2"></rect>
-      <text class="atlas-military-fallback-order__label" x="23.2" y="59.3">repli: ${fallback.order}</text>
-      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.7">${fallback.detail}</text>
-      <text class="atlas-military-fallback-order__safety" x="23.2" y="62.1">${fallback.safetyReason.label}</text>
-      ${fallback.crossDomainBlocker ? `<text class="atlas-military-fallback-order__blocker" x="23.2" y="63.5">${fallback.crossDomainBlocker.label}</text>` : ''}
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="8.5" rx="1.2"></rect>
+      <text class="atlas-military-fallback-order__label" x="23.2" y="59.2">repli: ${fallback.order}</text>
+      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.5">${fallback.detail}</text>
+      <text class="atlas-military-fallback-order__safety" x="23.2" y="61.8">${fallback.safetyReason.label}</text>
+      ${fallback.crossDomainBlocker ? `<text class="atlas-military-fallback-order__blocker" x="23.2" y="63.1">${fallback.crossDomainBlocker.label}</text>` : ''}
+      ${fallback.selectionPreview ? `<text class="atlas-military-fallback-order__preview atlas-military-fallback-order__preview--${fallback.selectionPreview.type}" x="23.2" y="64.4">${fallback.selectionPreview.label}</text>` : ''}
     </g>
   `;
 }

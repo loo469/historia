@@ -30,6 +30,12 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /type: 'cultural-tension'/);
   assert.match(webAppSource, /type: 'climate-pressure'/);
   assert.match(webAppSource, /type: 'no-clear-cross-domain-blocker'/);
+  assert.match(webAppSource, /function buildAtlasMilitaryFallbackSelectionPreview\(fallback, topWarning, reliefPreview\)/);
+  assert.match(webAppSource, /type: 'front-stabilized'/);
+  assert.match(webAppSource, /type: 'exposure-reduced'/);
+  assert.match(webAppSource, /type: 'capacity-freed'/);
+  assert.match(webAppSource, /type: 'reinforcement-window-opened'/);
+  assert.match(webAppSource, /type: 'no-safe-visible-change'/);
 });
 
 test('atlas military fallback order hint stays secondary and hides no-safe fallback state', () => {
@@ -41,10 +47,14 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__blocker/);
   assert.match(webAppSource, /fallback\.crossDomainBlocker \? `<text class="atlas-military-fallback-order__blocker"/);
   assert.match(webAppSource, /crossDomainBlocker: null/);
+  assert.match(webAppSource, /selectionPreview: null/);
+  assert.match(webAppSource, /fallback\.selectionPreview \? `<text class="atlas-military-fallback-order__preview/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
+  assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
   assert.match(stylesSource, /\.atlas-military-fallback-order--route-blocked/);
   assert.match(stylesSource, /\.atlas-military-fallback-order--overcommitment-blocked/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__safety/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__blocker/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__preview/);
 });
