@@ -311,6 +311,21 @@ test('atlas counterintelligence marks residual blind spots after sweep summaries
   assert.match(stylesSource, /atlas-counterintelligence-blind-spots__item--haute/);
 });
 
+test('atlas counterintelligence prioritizes residual blind spots for safe resweeps', () => {
+  assert.match(webAppSource, /resweepPriorities/);
+  assert.match(webAppSource, /Priorités de resweep/);
+  assert.match(webAppSource, /Priorités de resweep fog-safe pour angles morts/);
+  assert.match(webAppSource, /operationalRiskScore/);
+  assert.match(webAppSource, /freshnessScore/);
+  assert.match(webAppSource, /sensitiveObjectiveScore/);
+  assert.match(webAppSource, /proche d’un objectif sensible visible/);
+  assert.match(webAppSource, /proximité non confirmée/);
+  assert.match(webAppSource, /Resweep sûr immédiat avant nouvel engagement/);
+  assert.match(webAppSource, /Zones sans données suffisantes: priorité prudente plutôt qu’une précision inventée/);
+  assert.match(stylesSource, /atlas-counterintelligence-resweep-priorities/);
+  assert.match(stylesSource, /atlas-counterintelligence-resweep-priorities__item--critique/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
