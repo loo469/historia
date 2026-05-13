@@ -12964,6 +12964,53 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
       label: 'Tradeoff: choisir l’exposition minimale plutôt qu’un gain de couverture plus spéculatif.',
     };
   })();
+  const nextSafeSweepFollowUpPreview = (() => {
+    if (!nextSafeFollowUpPriorityMarker.shouldRender || !nextSafeSweepExposureTradeoff.shouldRender) {
+      return {
+        state: 'silent-guard',
+        shouldRender: false,
+        label: 'aucun follow-up preview affiché',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'wait-for-safe-window') {
+      return {
+        state: 'wait-safe-window',
+        shouldRender: true,
+        label: 'Après sweep bas-risque: attendre la prochaine fenêtre sûre avant tout relais.',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'no-safe-follow-up') {
+      return {
+        state: 'no-safe-follow-up',
+        shouldRender: true,
+        label: 'Après sweep bas-risque: aucun follow-up sûr sans nouveau signal visible.',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'refreshes-stale-critical-signal') {
+      return {
+        state: 'refresh-critical-signal',
+        shouldRender: true,
+        label: 'Après sweep bas-risque: rafraîchir le signal critique restant, sans nommer source ni cible.',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'closes-critical-blind-spot') {
+      return {
+        state: 'reduce-residual-gap',
+        shouldRender: true,
+        label: 'Après sweep bas-risque: réduire le gap résiduel prioritaire avec une passe courte.',
+      };
+    }
+
+    return {
+      state: 'switch-domain',
+      shouldRender: true,
+      label: 'Après sweep bas-risque: basculer vers un autre domaine si le gain visible reste marginal.',
+    };
+  })();
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -12986,6 +13033,7 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     bestResweepFollowUpSuggestion,
     nextSafeFollowUpPriorityMarker,
     nextSafeSweepExposureTradeoff,
+    nextSafeSweepFollowUpPreview,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -13130,6 +13178,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
           <small class="atlas-counterintelligence-best-resweep-gap-warning__follow-up atlas-counterintelligence-best-resweep-gap-warning__follow-up--${plan.postOrderCoverage.bestResweepFollowUpSuggestion.state}"><b>Follow-up:</b> ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.label} · ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.copy}</small>
           ${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.shouldRender ? `<small class="atlas-counterintelligence-best-resweep-gap-warning__next-safe atlas-counterintelligence-best-resweep-gap-warning__next-safe--${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.state}"><b>Next safe sweep:</b> ${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.label}</small>` : ''}
           ${plan.postOrderCoverage.nextSafeSweepExposureTradeoff.shouldRender ? `<small class="atlas-counterintelligence-best-resweep-gap-warning__tradeoff atlas-counterintelligence-best-resweep-gap-warning__tradeoff--${plan.postOrderCoverage.nextSafeSweepExposureTradeoff.state}"><b>Tradeoff exposition:</b> ${plan.postOrderCoverage.nextSafeSweepExposureTradeoff.label}</small>` : ''}
+          ${plan.postOrderCoverage.nextSafeSweepFollowUpPreview.shouldRender ? `<small class="atlas-counterintelligence-best-resweep-gap-warning__low-exposure-follow-up atlas-counterintelligence-best-resweep-gap-warning__low-exposure-follow-up--${plan.postOrderCoverage.nextSafeSweepFollowUpPreview.state}"><b>Après sweep bas-risque:</b> ${plan.postOrderCoverage.nextSafeSweepFollowUpPreview.label}</small>` : ''}
         </aside>
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">

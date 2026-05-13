@@ -548,6 +548,36 @@ test('atlas counterintelligence explains exposure tradeoffs for next safe sweeps
   assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__tradeoff--minimal-exposure-tradeoff/);
 });
 
+test('atlas counterintelligence previews safest follow-up after low-exposure sweeps', () => {
+  const previewFor = (marker, tradeoff) => {
+    if (!marker.shouldRender || !tradeoff.shouldRender) return { state: 'silent-guard', shouldRender: false };
+    if (marker.state === 'wait-for-safe-window') return { state: 'wait-safe-window', shouldRender: true };
+    if (marker.state === 'no-safe-follow-up') return { state: 'no-safe-follow-up', shouldRender: true };
+    if (marker.state === 'refreshes-stale-critical-signal') return { state: 'refresh-critical-signal', shouldRender: true };
+    if (marker.state === 'closes-critical-blind-spot') return { state: 'reduce-residual-gap', shouldRender: true };
+    return { state: 'switch-domain', shouldRender: true };
+  };
+
+  assert.deepEqual(previewFor({ state: 'refreshes-stale-critical-signal', shouldRender: true }, { shouldRender: true }), { state: 'refresh-critical-signal', shouldRender: true });
+  assert.deepEqual(previewFor({ state: 'closes-critical-blind-spot', shouldRender: true }, { shouldRender: true }), { state: 'reduce-residual-gap', shouldRender: true });
+  assert.deepEqual(previewFor({ state: 'wait-for-safe-window', shouldRender: true }, { shouldRender: true }), { state: 'wait-safe-window', shouldRender: true });
+  assert.deepEqual(previewFor({ state: 'lowest-exposure-sweep', shouldRender: true }, { shouldRender: true }), { state: 'switch-domain', shouldRender: true });
+  assert.deepEqual(previewFor({ state: 'no-safe-follow-up', shouldRender: true }, { shouldRender: true }), { state: 'no-safe-follow-up', shouldRender: true });
+  assert.deepEqual(previewFor({ state: 'lowest-exposure-sweep', shouldRender: false }, { shouldRender: true }), { state: 'silent-guard', shouldRender: false });
+  assert.deepEqual(previewFor({ state: 'lowest-exposure-sweep', shouldRender: true }, { shouldRender: false }), { state: 'silent-guard', shouldRender: false });
+  assert.match(webAppSource, /nextSafeSweepFollowUpPreview/);
+  assert.match(webAppSource, /Après sweep bas-risque:/);
+  assert.match(webAppSource, /refresh-critical-signal/);
+  assert.match(webAppSource, /reduce-residual-gap/);
+  assert.match(webAppSource, /wait-safe-window/);
+  assert.match(webAppSource, /switch-domain/);
+  assert.match(webAppSource, /aucun follow-up sûr sans nouveau signal visible/);
+  assert.match(webAppSource, /sans nommer source ni cible/);
+  assert.match(webAppSource, /basculer vers un autre domaine si le gain visible reste marginal/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__low-exposure-follow-up/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__low-exposure-follow-up--switch-domain/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
