@@ -888,6 +888,7 @@ function buildAtlasMilitaryOperationOutcomeForecasts(sequence) {
       optionId: `forecast:${focusedStep.stepId}:${template.key}`,
       label: template.label,
       target: focusedStep.target,
+      targetProvinceLabel: focusedStep.target.split('→').pop().trim(),
       frontChange,
       overextension: template.overextension,
       delay: template.delay,
@@ -942,6 +943,7 @@ function buildAtlasMilitaryStagedCommitment(forecasts, selectedOptionId = state.
       label: 'Repérer',
       costRisk: 'coût faible / risque lecture incomplète',
       territory: selectedOption.target,
+      targetProvinceLabel: selectedOption.targetProvinceLabel,
       effect: `confirmer ${selectedOption.frontChange}`,
     },
     {
@@ -950,6 +952,7 @@ function buildAtlasMilitaryStagedCommitment(forecasts, selectedOptionId = state.
       label: 'Engager',
       costRisk: `${selectedOption.overextension} / ${selectedOption.risk}`,
       territory: selectedOption.target,
+      targetProvinceLabel: selectedOption.targetProvinceLabel,
       effect: selectedOption.label,
     },
     selectedOption.delay === 'long'
@@ -959,6 +962,7 @@ function buildAtlasMilitaryStagedCommitment(forecasts, selectedOptionId = state.
         label: 'Réserve',
         costRisk: 'coût moyen / délai long',
         territory: selectedOption.target,
+        targetProvinceLabel: selectedOption.targetProvinceLabel,
         effect: 'tenir la fenêtre ouverte',
       }
       : {
@@ -967,6 +971,7 @@ function buildAtlasMilitaryStagedCommitment(forecasts, selectedOptionId = state.
         label: 'Suivi',
         costRisk: `risque ${selectedOption.risk}`,
         territory: selectedOption.target,
+        targetProvinceLabel: selectedOption.targetProvinceLabel,
         effect: `vérifier ${selectedOption.frontChange}`,
       },
   ].slice(0, 3);
@@ -997,7 +1002,102 @@ function renderAtlasMilitaryStagedCommitment(commitment) {
   `;
 }
 
+function getAtlasCommitmentTargetProvince(commitment, shell) {
+  const label = commitment?.selectedOption?.targetProvinceLabel
+    ?? commitment?.stages?.find((stage) => stage.targetProvinceLabel)?.targetProvinceLabel
+    ?? '';
+  return shell.provinces.find((province) => province.label === label) ?? null;
+}
+
+function buildAtlasMilitaryCommitmentFrontConflicts(commitment, shell, features) {
+  if (!commitment || commitment.empty || !commitment.stages.length) {
+    return {
+      conflicts: [],
+      summary: 'Aucun engagement militaire préparé à comparer aux fronts actifs.',
+      empty: true,
+    };
+  }
+
+  const targetProvince = getAtlasCommitmentTargetProvince(commitment, shell);
+  if (!targetProvince) {
+    return {
+      conflicts: [],
+      summary: 'Conflits non calculés: cible de province introuvable dans la démo atlas.',
+      empty: true,
+    };
+  }
+
+  const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
+  const targetPressure = pressureByProvinceId.get(targetProvince.provinceId) ?? 0;
+  const conflicts = [];
+
+  if (!targetProvince.contested && !targetProvince.occupied && targetPressure < 50) {
+    conflicts.push({
+      conflictId: `stable-target:${targetProvince.provinceId}`,
+      severity: 'moyenne',
+      priority: 42,
+      label: 'Cible déjà stabilisée',
+      provinceLabel: targetProvince.label,
+      explanation: `${commitment.selectedOption.label} vise ${targetProvince.label}, mais le front local paraît déjà stabilisé.`,
+      decision: 'Reconfirmer avant de consommer l’engagement.',
+    });
+  }
+
+  const criticalNeighbor = shell.provinces
+    .filter((province) => targetProvince.neighborIds.includes(province.provinceId) && province.contested)
+    .map((province) => ({
+      province,
+      pressure: pressureByProvinceId.get(province.provinceId) ?? 0,
+      linkedRoute: features.routes.find((route) => route.sourceId === province.provinceId || route.targetId === province.provinceId) ?? null,
+    }))
+    .filter((entry) => entry.pressure >= targetPressure || entry.linkedRoute?.contested)
+    .sort((left, right) => right.pressure - left.pressure || left.province.label.localeCompare(right.province.label))[0] ?? null;
+
+  if (criticalNeighbor) {
+    conflicts.push({
+      conflictId: `ignored-front:${criticalNeighbor.province.provinceId}`,
+      severity: 'haute',
+      priority: 70 + criticalNeighbor.pressure,
+      label: 'Front voisin plus critique ignoré',
+      provinceLabel: criticalNeighbor.province.label,
+      explanation: `${criticalNeighbor.province.label} reste contesté près de ${targetProvince.label}.`,
+      decision: 'Prioriser ou couvrir ce front avant validation.',
+    });
+  }
+
+  const sortedConflicts = conflicts
+    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label))
+    .slice(0, 3);
+
+  return {
+    conflicts: sortedConflicts,
+    summary: sortedConflicts.length > 0
+      ? `${sortedConflicts.length} conflit${sortedConflicts.length > 1 ? 's' : ''} engagement/front détecté${sortedConflicts.length > 1 ? 's' : ''}.`
+      : `Aucun conflit détecté: ${targetProvince.label} reste cohérent avec les fronts visibles.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryCommitmentFrontConflicts(conflicts) {
+  const height = conflicts.empty || !conflicts.conflicts.length ? 8 : 7 + (conflicts.conflicts.length * 4.8);
+  return `
+    <g class="atlas-military-commitment-conflicts" aria-label="Conflits engagement militaire et fronts actifs: ${conflicts.summary}">
+      <rect class="atlas-military-commitment-conflicts__panel" x="3" y="80" width="38" height="${height}" rx="2.5"></rect>
+      <text class="atlas-military-commitment-conflicts__title" x="5" y="83.3">Conflits fronts</text>
+      ${conflicts.empty || !conflicts.conflicts.length ? `<text class="atlas-military-commitment-conflicts__empty" x="5" y="86.6">${conflicts.summary}</text>` : conflicts.conflicts.map((conflict, index) => `
+        <g class="atlas-military-commitment-conflict atlas-military-commitment-conflict--${conflict.severity === 'haute' ? 'high' : 'medium'}" data-atlas-commitment-conflict="${conflict.conflictId}" aria-label="${conflict.label}: priorité ${conflict.priority}, ${conflict.explanation} ${conflict.decision}">
+          <circle cx="5.8" cy="${86.3 + index * 4.8}" r="1.05"></circle>
+          <text class="atlas-military-commitment-conflict__label" x="7.8" y="${85.6 + index * 4.8}">${conflict.label} · ${conflict.severity}</text>
+          <text class="atlas-military-commitment-conflict__explanation" x="7.8" y="${87.3 + index * 4.8}">${conflict.explanation}</text>
+          <text class="atlas-military-commitment-conflict__decision" x="7.8" y="${89 + index * 4.8}">${conflict.decision}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
+
 
 
 
@@ -1066,6 +1166,7 @@ function renderAtlasMilitaryLayer(shell) {
   const operationSequence = buildAtlasMilitaryOperationSequence(playback, comparison);
   const outcomeForecasts = buildAtlasMilitaryOperationOutcomeForecasts(operationSequence);
   const stagedCommitment = buildAtlasMilitaryStagedCommitment(outcomeForecasts);
+  const commitmentConflicts = buildAtlasMilitaryCommitmentFrontConflicts(stagedCommitment, shell, features);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -1092,6 +1193,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryOperationSequence(operationSequence)}
       ${renderAtlasMilitaryOperationOutcomeForecasts(outcomeForecasts)}
       ${renderAtlasMilitaryStagedCommitment(stagedCommitment)}
+      ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
           <polygon points="${zone.polygon}"></polygon>
