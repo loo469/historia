@@ -2992,6 +2992,20 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
   );
 }
 
+function extractAtlasSecondaryBottleneckThreshold(action) {
+  const budgetMatch = action?.match(/ajouter (\d+) budget/);
+  if (budgetMatch) {
+    return { type: 'budget', amount: Number(budgetMatch[1]) };
+  }
+
+  const capacityMatch = action?.match(/libérer \+(\d+) capacité/);
+  if (capacityMatch) {
+    return { type: 'capacity', amount: Number(capacityMatch[1]) };
+  }
+
+  return null;
+}
+
 function buildAtlasSecondaryBottleneckExecuteVerdict(item, index) {
   if (index > 0 || item.readiness.status === 'ready' || !item.readiness.unblockAction || !item.readiness.tradeoffComparison) {
     return null;
@@ -3037,6 +3051,47 @@ function buildAtlasSecondaryBottleneckExecuteVerdict(item, index) {
   }
 
   return null;
+}
+
+function buildAtlasSecondaryBottleneckWaitCondition(item, index) {
+  if (index > 0 || !item.executeVerdict || !['wait-for-budget', 'wait-for-capacity'].includes(item.executeVerdict.status)) {
+    return null;
+  }
+
+  const selectedAction = item.readiness.tradeoffComparison?.selected ?? item.readiness.unblockAction;
+  const rejectedAlternative = item.readiness.tradeoffComparison?.rejected ?? '';
+  const threshold = extractAtlasSecondaryBottleneckThreshold(selectedAction);
+  const riskCooldown = /stabiliser|qualifier|risque|instable/.test(`${selectedAction} ${rejectedAlternative} ${item.readiness.reason}`);
+
+  if (riskCooldown) {
+    return {
+      status: 'risk-cooldown',
+      label: 'seuil sûr: risque stabilisé',
+      reason: 'exécuter après refroidissement du hub critique',
+    };
+  }
+
+  if (threshold?.type === 'budget') {
+    return {
+      status: 'budget-threshold',
+      label: `seuil sûr: +${threshold.amount} budget`,
+      reason: 'débloque sans consommer de capacité fragile',
+    };
+  }
+
+  if (threshold?.type === 'capacity') {
+    return {
+      status: 'capacity-threshold',
+      label: `seuil sûr: +${threshold.amount} capacité`,
+      reason: 'marge voisine suffisante pour exécuter',
+    };
+  }
+
+  return {
+    status: 'no-clear-threshold',
+    label: 'seuil sûr: à confirmer',
+    reason: 'données insuffisantes pour seuil minimal',
+  };
 }
 
 function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecasts) {
@@ -3093,10 +3148,16 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
     })
     .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
     .slice(0, 3)
-    .map((item, index) => ({
-      ...item,
-      executeVerdict: buildAtlasSecondaryBottleneckExecuteVerdict(item, index),
-    }));
+    .map((item, index) => {
+      const itemWithVerdict = {
+        ...item,
+        executeVerdict: buildAtlasSecondaryBottleneckExecuteVerdict(item, index),
+      };
+      return {
+        ...itemWithVerdict,
+        waitCondition: buildAtlasSecondaryBottleneckWaitCondition(itemWithVerdict, index),
+      };
+    });
 
   return {
     empty: secondary.length === 0 || secondary.every((item) => item.status === 'résolu'),
@@ -3348,11 +3409,11 @@ function renderAtlasEconomyStressLegend(economyView) {
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
           const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''} ${item.waitCondition ? `atlas-secondary-bottleneck-item--${item.waitCondition.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}${item.waitCondition ? `, condition ${item.waitCondition.label}, ${item.waitCondition.reason}` : ''}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
-              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}${item.waitCondition ? ` · Attendre: ${item.waitCondition.label}` : ''}</text>
             </g>
           `;
         }).join('')}
