@@ -1197,7 +1197,94 @@ function renderAtlasMilitaryCommitmentCoverageSummary(coverage) {
   `;
 }
 
+function buildAtlasMilitaryCommitmentDebtSummary(coverage, commitment, shell) {
+  const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
+  const targetProvince = getAtlasCommitmentTargetProvince(commitment, shell);
+  const coveredProvinceIds = new Set(targetProvince ? [targetProvince.provinceId] : []);
+  const debtByProvinceId = new Map();
+
+  (coverage?.uncoveredFronts ?? []).forEach((front) => {
+    debtByProvinceId.set(front.provinceId, {
+      debtId: `uncovered:${front.provinceId}`,
+      provinceId: front.provinceId,
+      label: front.label,
+      tone: 'absent',
+      severity: 'haute',
+      priority: 70 + front.pressure,
+      reason: front.pressure >= 70 ? 'pression élevée non couverte' : 'front actif sans engagement',
+    });
+  });
+
+  shell.provinces
+    .filter((province) => province.contested && !coveredProvinceIds.has(province.provinceId))
+    .forEach((province) => {
+      const pressure = pressureByProvinceId.get(province.provinceId) ?? 0;
+      if (pressure < 55 || debtByProvinceId.has(province.provinceId)) return;
+      debtByProvinceId.set(province.provinceId, {
+        debtId: `threat:${province.provinceId}`,
+        provinceId: province.provinceId,
+        label: province.label,
+        tone: 'threat',
+        severity: 'moyenne',
+        priority: 52 + pressure,
+        reason: 'menace active encore non couverte',
+      });
+    });
+
+  (coverage?.contradictoryFronts ?? []).forEach((front) => {
+    debtByProvinceId.set(front.conflictId, {
+      debtId: `contradictory:${front.conflictId}`,
+      provinceId: null,
+      label: front.label,
+      tone: 'partial',
+      severity: 'moyenne',
+      priority: front.priority,
+      reason: front.reason.includes('stabilisée') ? 'soutien engagé sur front stabilisé' : 'soutien engagé ailleurs',
+    });
+  });
+
+  const debts = [...debtByProvinceId.values()]
+    .sort((left, right) => right.priority - left.priority || left.label.localeCompare(right.label))
+    .slice(0, 3)
+    .map((debt) => ({
+      ...debt,
+      center: debt.provinceId ? getProvinceCenter(debt.provinceId) : null,
+    }));
+
+  return {
+    debts,
+    summary: debts.length > 0
+      ? `${debts.length} dette${debts.length > 1 ? 's' : ''} d’engagement: ${debts.map((debt) => debt.label).join(', ')}.`
+      : 'Dette d’engagement nulle: tous les fronts actifs visibles sont couverts.',
+    empty: debts.length === 0,
+  };
+}
+
+function renderAtlasMilitaryCommitmentDebtSummary(debtSummary) {
+  const height = debtSummary.empty ? 8 : 8 + (debtSummary.debts.length * 3.9);
+  return `
+    <g class="atlas-military-commitment-debt" aria-label="Dette d’engagement militaire restante: ${debtSummary.summary}">
+      <rect class="atlas-military-commitment-debt__panel" x="61" y="25" width="36" height="${height}" rx="2.4"></rect>
+      <text class="atlas-military-commitment-debt__title" x="63" y="28.4">Dette engagement</text>
+      ${debtSummary.empty ? `<text class="atlas-military-commitment-debt__empty" x="63" y="32">${debtSummary.summary}</text>` : debtSummary.debts.map((debt, index) => `
+        <g class="atlas-military-debt-row atlas-military-debt-row--${debt.tone}" data-atlas-commitment-debt="${debt.debtId}" aria-label="${debt.label}: ${debt.reason}, priorité ${debt.priority}">
+          <circle cx="63.9" cy="${32 + index * 3.9}" r="0.9"></circle>
+          <text class="atlas-military-debt-row__label" x="65.5" y="${31.4 + index * 3.9}">${debt.label} · ${debt.severity}</text>
+          <text class="atlas-military-debt-row__reason" x="65.5" y="${33.1 + index * 3.9}">${debt.reason}</text>
+        </g>
+      `).join('')}
+      ${debtSummary.debts.filter((debt) => debt.center).map((debt) => `
+        <g class="atlas-military-debt-marker atlas-military-debt-marker--${debt.tone}" data-atlas-commitment-debt-marker="${debt.debtId}" aria-label="Dette ${debt.label}: ${debt.reason}">
+          <circle cx="${debt.center.x}%" cy="${debt.center.y}%" r="1.45"></circle>
+          <text x="${debt.center.x}%" y="${debt.center.y - 2.1}%" text-anchor="middle">DETTE</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
+
 
 
 
@@ -1270,6 +1357,7 @@ function renderAtlasMilitaryLayer(shell) {
   const stagedCommitment = buildAtlasMilitaryStagedCommitment(outcomeForecasts);
   const commitmentConflicts = buildAtlasMilitaryCommitmentFrontConflicts(stagedCommitment, shell, features);
   const commitmentCoverage = buildAtlasMilitaryCommitmentCoverageSummary(stagedCommitment, commitmentConflicts, shell, features);
+  const commitmentDebt = buildAtlasMilitaryCommitmentDebtSummary(commitmentCoverage, stagedCommitment, shell);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -1297,6 +1385,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryOperationOutcomeForecasts(outcomeForecasts)}
       ${renderAtlasMilitaryStagedCommitment(stagedCommitment)}
       ${renderAtlasMilitaryCommitmentCoverageSummary(commitmentCoverage)}
+      ${renderAtlasMilitaryCommitmentDebtSummary(commitmentDebt)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
