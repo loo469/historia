@@ -1835,6 +1835,78 @@ function buildAtlasMilitaryFallbackResidualRisks(fallback, topWarning, shell, pr
     .map(({ priority, ...risk }) => risk);
 }
 
+function buildAtlasMilitaryFallbackCleanupOrders(residualRisks, fallback) {
+  if (!fallback || !Array.isArray(residualRisks) || residualRisks.length === 0) return [];
+
+  const cleanupByRisk = {
+    'neighbor-front': {
+      label: 'Caler couverture voisine',
+      reason: 'menace élevée sans ordre lourd',
+      prerequisite: 'réserve légère disponible',
+      threat: 86,
+      cost: 22,
+      sideEffect: 12,
+    },
+    'contested-occupation': {
+      label: 'Stabiliser occupation',
+      reason: 'zone disputée avant poussée',
+      prerequisite: 'patrouille locale non engagée',
+      threat: 78,
+      cost: 28,
+      sideEffect: 18,
+    },
+    'low-loyalty': {
+      label: 'Envoyer liaison locale',
+      reason: 'faible coût et peu d’effet secondaire',
+      prerequisite: 'émissaire disponible',
+      threat: 62,
+      cost: 12,
+      sideEffect: 8,
+    },
+    'supply-pressure': {
+      label: 'Prioriser convoi court',
+      reason: 'ravitaillement visible à faible détour',
+      prerequisite: 'corridor court ouvert',
+      threat: 74,
+      cost: 18,
+      sideEffect: 10,
+    },
+    'route-exposure': {
+      label: 'Scanner axe détour',
+      reason: 'réduit l’exposition sans combat',
+      prerequisite: 'éclaireurs disponibles',
+      threat: 70,
+      cost: 16,
+      sideEffect: 9,
+    },
+  };
+
+  return residualRisks
+    .map((risk) => {
+      const riskType = risk.key.split(':')[0];
+      const cleanup = cleanupByRisk[riskType] ?? {
+        label: 'Surveiller risque restant',
+        reason: 'risque visible sans action sûre dédiée',
+        prerequisite: 'attendre signal clair',
+        threat: 40,
+        cost: 12,
+        sideEffect: 8,
+      };
+      const safetyScore = cleanup.threat - cleanup.cost - cleanup.sideEffect;
+      return {
+        id: `cleanup:${fallback.type}:${risk.key}`,
+        label: cleanup.label,
+        reason: cleanup.reason,
+        residualRiskKey: risk.key,
+        riskReduced: risk.label,
+        prerequisite: cleanup.prerequisite,
+        safetyScore,
+      };
+    })
+    .sort((left, right) => right.safetyScore - left.safetyScore || left.id.localeCompare(right.id))
+    .slice(0, 3);
+}
+
 function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPreview, commitment, shell) {
   const topWarning = priorityStack?.stack?.[0] ?? null;
   const blocker = getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, commitment);
@@ -1868,6 +1940,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       crossDomainBlocker: null,
       selectionPreview: null,
       residualRisks: [],
+      cleanupOrders: [],
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -1877,6 +1950,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
   const crossDomainBlocker = buildAtlasMilitaryFallbackCrossDomainBlocker(fallback, topWarning, shell);
   const selectionPreview = buildAtlasMilitaryFallbackSelectionPreview(fallback, topWarning, reliefPreview);
   const residualRisks = buildAtlasMilitaryFallbackResidualRisks(fallback, topWarning, shell, priorityStack);
+  const cleanupOrders = buildAtlasMilitaryFallbackCleanupOrders(residualRisks, fallback);
 
   return {
     fallback: {
@@ -1887,12 +1961,14 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       crossDomainBlocker,
       selectionPreview,
       residualRisks,
+      cleanupOrders,
     },
     safetyReason,
     crossDomainBlocker,
     selectionPreview,
     residualRisks,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}).`,
+    cleanupOrders,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}).`,
     empty: false,
   };
 }
@@ -1903,15 +1979,19 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const residualRiskLabel = fallback.residualRisks?.length
     ? `reste: ${fallback.residualRisks.map((risk) => risk.label).join(' · ')}`
     : 'reste: aucun risque visible';
+  const cleanupOrderLabel = fallback.cleanupOrders?.length
+    ? `nettoyer: ${fallback.cleanupOrders.map((order) => order.label).join(' · ')}`
+    : 'nettoyer: aucun ordre requis';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="9.8" rx="1.2"></rect>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="11" rx="1.2"></rect>
       <text class="atlas-military-fallback-order__label" x="23.2" y="59.1">repli: ${fallback.order}</text>
-      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.3">${fallback.detail}</text>
-      <text class="atlas-military-fallback-order__safety" x="23.2" y="61.5">${fallback.safetyReason.label}</text>
-      ${fallback.crossDomainBlocker ? `<text class="atlas-military-fallback-order__blocker" x="23.2" y="62.7">${fallback.crossDomainBlocker.label}</text>` : ''}
-      ${fallback.selectionPreview ? `<text class="atlas-military-fallback-order__preview atlas-military-fallback-order__preview--${fallback.selectionPreview.type}" x="23.2" y="63.9">${fallback.selectionPreview.label}</text>` : ''}
-      <text class="atlas-military-fallback-order__residual-risks" x="23.2" y="65.1">${residualRiskLabel}</text>
+      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.2">${fallback.detail}</text>
+      <text class="atlas-military-fallback-order__safety" x="23.2" y="61.3">${fallback.safetyReason.label}</text>
+      ${fallback.crossDomainBlocker ? `<text class="atlas-military-fallback-order__blocker" x="23.2" y="62.4">${fallback.crossDomainBlocker.label}</text>` : ''}
+      ${fallback.selectionPreview ? `<text class="atlas-military-fallback-order__preview atlas-military-fallback-order__preview--${fallback.selectionPreview.type}" x="23.2" y="63.5">${fallback.selectionPreview.label}</text>` : ''}
+      <text class="atlas-military-fallback-order__residual-risks" x="23.2" y="64.6">${residualRiskLabel}</text>
+      <text class="atlas-military-fallback-order__cleanup-orders" x="23.2" y="65.7">${cleanupOrderLabel}</text>
     </g>
   `;
 }
