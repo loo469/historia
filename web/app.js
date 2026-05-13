@@ -1629,6 +1629,54 @@ function getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, 
   return 'no-safe-fallback';
 }
 
+function buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint, reliefPreview, commitment) {
+  if (!fallback || !topWarning || !orderHint?.hint || !reliefPreview?.preview) {
+    return {
+      type: 'no-clear-safety-reason',
+      label: 'sécurité non confirmée',
+      detail: 'aucun motif sûr visible',
+    };
+  }
+
+  if (fallback.type === 'overcommitment-blocked') {
+    return {
+      type: 'avoids-overcommitment',
+      label: 'plus sûr: évite surengagement',
+      detail: `charge gelée sur ${commitment?.selectedOption?.target ?? topWarning.label}`,
+    };
+  }
+
+  if (fallback.type === 'route-blocked') {
+    return {
+      type: 'bypasses-route-exposure',
+      label: 'plus sûr: contourne route exposée',
+      detail: `exposition route ${topWarning.routeExposure} évitée`,
+    };
+  }
+
+  if (fallback.type === 'resource-blocked' && topWarning.frontRisk >= 120) {
+    return {
+      type: 'waits-for-resupply',
+      label: 'plus sûr: attend ravitaillement',
+      detail: 'réserve légère sans dépense lourde',
+    };
+  }
+
+  if (fallback.type === 'resource-blocked') {
+    return {
+      type: 'preserves-front-coverage',
+      label: 'plus sûr: garde couverture',
+      detail: `front ${topWarning.label} tenu sans percée`,
+    };
+  }
+
+  return {
+    type: 'no-clear-safety-reason',
+    label: 'sécurité non confirmée',
+    detail: 'aucun motif sûr visible',
+  };
+}
+
 function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPreview, commitment) {
   const topWarning = priorityStack?.stack?.[0] ?? null;
   const blocker = getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, commitment);
@@ -1658,18 +1706,23 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
   if (!fallback) {
     return {
       fallback: null,
+      safetyReason: buildAtlasMilitaryFallbackSafetyReason(null, topWarning, orderHint, reliefPreview, commitment),
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
   }
+
+  const safetyReason = buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint, reliefPreview, commitment);
 
   return {
     fallback: {
       fallbackId: `fallback:${topWarning.warningId}:${fallback.type}`,
       ...fallback,
       label: topWarning.label,
+      safetyReason,
     },
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}).`,
+    safetyReason,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}).`,
     empty: false,
   };
 }
@@ -1679,9 +1732,10 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const fallback = fallbackHint.fallback;
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="4.2" rx="1.2"></rect>
-      <text class="atlas-military-fallback-order__label" x="23.2" y="59.5">repli: ${fallback.order}</text>
-      <text class="atlas-military-fallback-order__detail" x="23.2" y="61.1">${fallback.detail}</text>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="5.6" rx="1.2"></rect>
+      <text class="atlas-military-fallback-order__label" x="23.2" y="59.4">repli: ${fallback.order}</text>
+      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.9">${fallback.detail}</text>
+      <text class="atlas-military-fallback-order__safety" x="23.2" y="62.4">${fallback.safetyReason.label}</text>
     </g>
   `;
 }
