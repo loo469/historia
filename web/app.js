@@ -12523,6 +12523,53 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
       label: `Priorité suivante: ${nextCandidate.locationName} · ${stateLabel}.`,
     };
   })();
+  const nextSafeSweepExposureTradeoff = (() => {
+    if (!nextSafeFollowUpPriorityMarker.shouldRender) {
+      return {
+        state: 'silent-guard',
+        shouldRender: false,
+        label: 'aucun tradeoff affiché',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'wait-for-safe-window') {
+      return {
+        state: 'wait-required',
+        shouldRender: true,
+        label: 'Tradeoff: attendre réduit l’exposition; partir maintenant risquerait de briser le fog-of-war.',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'no-safe-follow-up') {
+      return {
+        state: 'no-safe-tradeoff',
+        shouldRender: true,
+        label: 'Tradeoff: aucun sweep sûr ne bat le risque d’exposition pour l’instant.',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'closes-critical-blind-spot') {
+      return {
+        state: 'critical-coverage-tradeoff',
+        shouldRender: true,
+        label: 'Tradeoff: meilleure couverture critique malgré une exposition contrôlée et non nominative.',
+      };
+    }
+
+    if (nextSafeFollowUpPriorityMarker.state === 'refreshes-stale-critical-signal') {
+      return {
+        state: 'stale-refresh-tradeoff',
+        shouldRender: true,
+        label: 'Tradeoff: refresh du signal ancien avant action directe, avec exposition courte et limitée.',
+      };
+    }
+
+    return {
+      state: 'minimal-exposure-tradeoff',
+      shouldRender: true,
+      label: 'Tradeoff: choisir l’exposition minimale plutôt qu’un gain de couverture plus spéculatif.',
+    };
+  })();
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -12544,6 +12591,7 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     bestResweepResidualGapWarning,
     bestResweepFollowUpSuggestion,
     nextSafeFollowUpPriorityMarker,
+    nextSafeSweepExposureTradeoff,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -12687,6 +12735,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
           <small>${plan.postOrderCoverage.bestResweepResidualGapWarning.detail}</small>
           <small class="atlas-counterintelligence-best-resweep-gap-warning__follow-up atlas-counterintelligence-best-resweep-gap-warning__follow-up--${plan.postOrderCoverage.bestResweepFollowUpSuggestion.state}"><b>Follow-up:</b> ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.label} · ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.copy}</small>
           ${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.shouldRender ? `<small class="atlas-counterintelligence-best-resweep-gap-warning__next-safe atlas-counterintelligence-best-resweep-gap-warning__next-safe--${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.state}"><b>Next safe sweep:</b> ${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.label}</small>` : ''}
+          ${plan.postOrderCoverage.nextSafeSweepExposureTradeoff.shouldRender ? `<small class="atlas-counterintelligence-best-resweep-gap-warning__tradeoff atlas-counterintelligence-best-resweep-gap-warning__tradeoff--${plan.postOrderCoverage.nextSafeSweepExposureTradeoff.state}"><b>Tradeoff exposition:</b> ${plan.postOrderCoverage.nextSafeSweepExposureTradeoff.label}</small>` : ''}
         </aside>
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
