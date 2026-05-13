@@ -296,6 +296,21 @@ test('atlas counterintelligence summarizes coverage after assignment orders', ()
   assert.match(stylesSource, /atlas-counterintelligence-post-order-coverage__grid/);
 });
 
+test('atlas counterintelligence marks residual blind spots after sweep summaries', () => {
+  assert.match(webAppSource, /residualBlindSpots/);
+  assert.match(webAppSource, /Angles morts résiduels/);
+  assert.match(webAppSource, /Angles morts résiduels de renseignement fog-safe/);
+  assert.match(webAppSource, /non couvert/);
+  assert.match(webAppSource, /couverture trop faible/);
+  assert.match(webAppSource, /couverture expirante\/contestée/);
+  assert.match(webAppSource, /sévérité/);
+  assert.match(webAppSource, /Ajouter un balayage court ou déplacer une veille stable/);
+  assert.match(webAppSource, /Aucun angle mort résiduel visible/);
+  assert.match(webAppSource, /État vide: aucune province ne reste aveugle ou fragile après ces ordres/);
+  assert.match(stylesSource, /atlas-counterintelligence-blind-spots/);
+  assert.match(stylesSource, /atlas-counterintelligence-blind-spots__item--haute/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
