@@ -3155,6 +3155,55 @@ function buildAtlasSecondaryBottleneckExecuteVerdict(item, index) {
   return null;
 }
 
+function buildAtlasSecondaryBottleneckFastestUnlock(item, index) {
+  if (index > 0 || !item.waitCondition || !['wait-for-budget', 'wait-for-capacity'].includes(item.executeVerdict?.status)) {
+    return null;
+  }
+
+  const routeStress = item.status === 'encore saturé' || item.impact.includes('pénurie');
+  const budgetPressure = item.executeVerdict.status === 'wait-for-budget';
+  const hubCapacityPressure = item.executeVerdict.status === 'wait-for-capacity';
+  const instabilityRisk = item.waitCondition.status === 'risk-cooldown' || item.readiness.status === 'blocked-risk';
+
+  if (instabilityRisk) {
+    return {
+      status: 'wait-for-risk-cooldown',
+      label: 'plus vite: risque refroidi',
+      action: 'laisser le hub critique sortir du rouge',
+    };
+  }
+
+  if (budgetPressure && item.waitCondition.status === 'budget-threshold') {
+    return {
+      status: 'save-budget-one-turn',
+      label: 'plus vite: épargner 1 tour',
+      action: item.waitCondition.label.replace('seuil sûr: ', ''),
+    };
+  }
+
+  if (hubCapacityPressure && item.waitCondition.status === 'capacity-threshold') {
+    return {
+      status: 'free-hub-capacity',
+      label: 'plus vite: libérer hub',
+      action: item.waitCondition.label.replace('seuil sûr: ', ''),
+    };
+  }
+
+  if (routeStress) {
+    return {
+      status: 'reduce-route-stress',
+      label: 'plus vite: réduire stress',
+      action: 'diminuer la pénurie avant relance',
+    };
+  }
+
+  return {
+    status: 'no-fast-unlock',
+    label: 'plus vite: aucun raccourci',
+    action: 'attendre le seuil sûr confirmé',
+  };
+}
+
 function buildAtlasSecondaryBottleneckWaitCondition(item, index) {
   if (index > 0 || !item.executeVerdict || !['wait-for-budget', 'wait-for-capacity'].includes(item.executeVerdict.status)) {
     return null;
@@ -3255,9 +3304,13 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
         ...item,
         executeVerdict: buildAtlasSecondaryBottleneckExecuteVerdict(item, index),
       };
-      return {
+      const itemWithWaitCondition = {
         ...itemWithVerdict,
         waitCondition: buildAtlasSecondaryBottleneckWaitCondition(itemWithVerdict, index),
+      };
+      return {
+        ...itemWithWaitCondition,
+        fastestUnlock: buildAtlasSecondaryBottleneckFastestUnlock(itemWithWaitCondition, index),
       };
     });
 
@@ -3511,11 +3564,11 @@ function renderAtlasEconomyStressLegend(economyView) {
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
           const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''} ${item.waitCondition ? `atlas-secondary-bottleneck-item--${item.waitCondition.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}${item.waitCondition ? `, condition ${item.waitCondition.label}, ${item.waitCondition.reason}` : ''}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status} ${item.executeVerdict ? `atlas-secondary-bottleneck-item--${item.executeVerdict.status}` : ''} ${item.waitCondition ? `atlas-secondary-bottleneck-item--${item.waitCondition.status}` : ''} ${item.fastestUnlock ? `atlas-secondary-bottleneck-item--${item.fastestUnlock.status}` : ''}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}${item.executeVerdict ? `, verdict ${item.executeVerdict.label}, ${item.executeVerdict.reason}` : ''}${item.waitCondition ? `, condition ${item.waitCondition.label}, ${item.waitCondition.reason}` : ''}${item.fastestUnlock ? `, déblocage rapide ${item.fastestUnlock.label}, ${item.fastestUnlock.action}` : ''}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
-              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}${item.waitCondition ? ` · Attendre: ${item.waitCondition.label}` : ''}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}${item.executeVerdict ? ` · Verdict: ${item.executeVerdict.label}` : ''}${item.waitCondition ? ` · Attendre: ${item.waitCondition.label}` : ''}${item.fastestUnlock ? ` · Débloquer: ${item.fastestUnlock.label}` : ''}</text>
             </g>
           `;
         }).join('')}
