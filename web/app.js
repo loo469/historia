@@ -1725,6 +1725,7 @@ function buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls) {
     routeName: option.routeName,
     corridor: option.corridor,
     committed: option.actionCost ?? 0,
+    expectedCost: option.actionCost ?? 0,
     remainingToFund: 0,
     status: 'financé',
     impactLabel: `${option.corridor} · ${option.routeName}`,
@@ -1743,6 +1744,7 @@ function buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls) {
         routeName: item.routeName,
         corridor: item.corridor,
         committed,
+        expectedCost: item.actionCost ?? 1,
         remainingToFund,
         status: remainingToFund > 0 ? 'partiel' : 'finançable',
         impactLabel: `${item.corridor} · ${item.routeName}`,
@@ -1766,6 +1768,55 @@ function buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls) {
   };
 }
 
+function buildAtlasCommittedFundingGaps(fundedPlans) {
+  if (fundedPlans.empty) {
+    return {
+      empty: true,
+      items: [],
+      summary: 'Aucun plan engagé',
+    };
+  }
+
+  const items = fundedPlans.plans.map((plan) => {
+    const fullyCovered = plan.remainingToFund <= 0;
+    const residualRisk = fullyCovered
+      ? 'risque résiduel bas'
+      : plan.status === 'partiel'
+        ? 'risque résiduel moyen'
+        : 'risque résiduel à confirmer';
+    const fragileResource = plan.cityEffect.includes('hub')
+      ? plan.cityEffect
+      : plan.status === 'partiel'
+        ? 'capacité corridor fragile'
+        : 'ressource stabilisée';
+    const nextAction = fullyCovered
+      ? 'Surveiller exécution.'
+      : plan.committed > 0
+        ? 'Compléter financement.'
+        : 'Chercher budget ou réduire objectif.';
+
+    return {
+      planId: `${plan.planId}:gap`,
+      routeName: plan.routeName,
+      corridor: plan.corridor,
+      committed: plan.committed,
+      expectedCost: plan.expectedCost,
+      fundingGap: Math.max(0, plan.expectedCost - plan.committed),
+      fullyCovered,
+      status: fullyCovered ? 'covered' : 'gap',
+      residualRisk,
+      fragileResource,
+      nextAction,
+    };
+  });
+
+  return {
+    empty: false,
+    items,
+    summary: `${items.filter((item) => item.fundingGap > 0).length} écart${items.filter((item) => item.fundingGap > 0).length > 1 ? 's' : ''} restant${items.filter((item) => item.fundingGap > 0).length > 1 ? 's' : ''}`,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -1779,6 +1830,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const actionBudget = buildAtlasCorridorActionBudget(interventionOptions);
   const budgetShortfalls = buildAtlasCorridorBudgetShortfalls(actionBudget);
   const fundedPlans = buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls);
+  const committedFundingGaps = buildAtlasCommittedFundingGaps(fundedPlans);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -1876,6 +1928,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     actionBudget,
     budgetShortfalls,
     fundedPlans,
+    committedFundingGaps,
   };
 }
 
@@ -1888,7 +1941,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${53 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${62 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -1962,6 +2015,20 @@ function renderAtlasEconomyStressLegend(economyView) {
             <g class="atlas-funded-logistics-plan-item atlas-funded-logistics-plan-item--${plan.status}" aria-label="Plan ${plan.routeName}: budget engagé ${plan.committed}, reste à financer ${plan.remainingToFund}, bénéfice ${plan.benefit}">
               <text class="atlas-funded-logistics-plan-item__route" x="6.2" y="${y}">${plan.status} · ${plan.impactLabel}</text>
               <text class="atlas-funded-logistics-plan-item__benefit" x="6.2" y="${y + 2.0}">${plan.benefit} · ${plan.cityEffect}</text>
+            </g>
+          `;
+        }).join('')}
+      </g>
+      <g class="atlas-committed-funding-gap ${rollup.committedFundingGaps.empty ? 'is-empty' : ''}" aria-label="Suivi post-financement: ${rollup.committedFundingGaps.summary}">
+        <rect x="5" y="${57.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4)}" width="30.5" height="${rollup.committedFundingGaps.empty ? 5.2 : 6.2 + (rollup.committedFundingGaps.items.length * 5.4)}" rx="1.4"></rect>
+        <text class="atlas-committed-funding-gap__title" x="6.2" y="${59.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4)}">Après engagement · ${rollup.committedFundingGaps.summary}</text>
+        ${rollup.committedFundingGaps.empty ? `<text class="atlas-committed-funding-gap__empty" x="6.2" y="${62.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4)}">Aucun plan engagé</text>` : ''}
+        ${rollup.committedFundingGaps.items.map((gap, index) => {
+          const y = 63.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (index * 5.4);
+          return `
+            <g class="atlas-committed-funding-gap-item atlas-committed-funding-gap-item--${gap.status}" aria-label="Écart financement ${gap.routeName}: engagé ${gap.committed}, coût attendu ${gap.expectedCost}, écart restant ${gap.fundingGap}, ${gap.residualRisk}, ressource ${gap.fragileResource}">
+              <text class="atlas-committed-funding-gap-item__route" x="6.2" y="${y}">${gap.fullyCovered ? 'entièrement couvert' : 'reste à couvrir'} · ${gap.corridor} · ${gap.routeName}</text>
+              <text class="atlas-committed-funding-gap-item__detail" x="6.2" y="${y + 2.0}">engagé ${gap.committed}/${gap.expectedCost} · écart ${gap.fundingGap} · ${gap.residualRisk} · ${gap.fragileResource} · ${gap.nextAction}</text>
             </g>
           `;
         }).join('')}

@@ -10940,3 +10940,34 @@ button { font: inherit; }
 .culture-mediation-warning--conflict b { color: #fecdd3; }
 .culture-mediation-warning--coherent { border-color: rgba(74, 222, 128, 0.26); background: rgba(20, 83, 45, 0.12); }
 .culture-mediation-warning--coherent b { color: #bbf7d0; }
+.atlas-committed-funding-gap rect {
+  fill: rgba(30, 41, 59, 0.6);
+  stroke: rgba(125, 211, 252, 0.34);
+  stroke-width: 0.28;
+}
+.atlas-committed-funding-gap.is-empty rect {
+  fill: rgba(15, 23, 42, 0.42);
+  stroke: rgba(148, 163, 184, 0.24);
+}
+.atlas-committed-funding-gap__title {
+  fill: #bae6fd;
+  font-size: 1.16px;
+  font-weight: 950;
+}
+.atlas-committed-funding-gap__empty {
+  fill: #cbd5e1;
+  font-size: 1px;
+  font-weight: 780;
+}
+.atlas-committed-funding-gap-item__route {
+  fill: #f8fafc;
+  font-size: 1.06px;
+  font-weight: 920;
+}
+.atlas-committed-funding-gap-item__detail {
+  fill: #cbd5e1;
+  font-size: 0.92px;
+  font-weight: 760;
+}
+.atlas-committed-funding-gap-item--gap .atlas-committed-funding-gap-item__detail { fill: #fed7aa; }
+.atlas-committed-funding-gap-item--covered .atlas-committed-funding-gap-item__detail { fill: #bbf7d0; }
