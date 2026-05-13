@@ -9533,26 +9533,42 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
         ? 'équipe légère + couverture locale'
         : 'veille atlas + messager sûr';
 
+    const unsafeReason = blocked
+      ? 'conflit de planning visible avant engagement'
+      : candidate.tone === 'danger'
+        ? 'exposition et chaleur opérationnelle élevées'
+        : candidate.shadowZone || candidate.missedWindowRiskLevel === 'uncertain'
+          ? 'statut réseau incertain sous brouillard'
+          : null;
+    const safetyStatus = unsafeReason ? 'unsafe' : 'safe';
+    const residualRisk = blocked
+      ? 'risque résiduel élevé tant que le conflit reste actif'
+      : candidate.missedWindowRiskLevel === 'urgent'
+        ? 'risque résiduel modéré si confirmation immédiate'
+        : 'risque résiduel faible à modéré selon les signaux visibles';
+
     return {
       locationId: candidate.locationId,
       locationName: candidate.locationName,
       orderRank: index + 1,
       orderStatus: blocked ? 'blocked' : 'ready',
       orderStatusLabel: blocked ? 'bloqué par conflit' : 'prêt à confirmer',
+      safetyStatus,
+      safetyLabel: safetyStatus === 'unsafe' ? 'unsafe' : 'safe',
+      unsafeReason: unsafeReason ?? 'aucune cause dangereuse visible',
       requiredAgents,
       requiredResources,
       coveredZone: `${candidate.coverageLabel} · ${candidate.freshnessLabel}`,
       remainingConflict: conflicts.length > 0 ? conflicts.map((conflict) => conflict.label).join(', ') : 'aucun conflit visible restant',
-      residualRisk: blocked
-        ? 'risque résiduel élevé tant que le conflit reste actif'
-        : candidate.missedWindowRiskLevel === 'urgent'
-          ? 'risque résiduel modéré si confirmation immédiate'
-          : 'risque résiduel faible à modéré selon les signaux visibles',
-      actionLabel: blocked ? 'Réviser le créneau' : 'Préparer ordre',
+      residualRisk,
+      actionLabel: blocked ? 'Réviser le créneau' : safetyStatus === 'unsafe' ? 'Valider le risque' : 'Préparer ordre',
     };
   });
+  const assignmentSafetySummary = assignmentOrders.length > 0
+    ? `${assignmentOrders.filter((order) => order.safetyStatus === 'safe').length} ordre${assignmentOrders.filter((order) => order.safetyStatus === 'safe').length > 1 ? 's' : ''} safe; ${assignmentOrders.filter((order) => order.safetyStatus === 'unsafe').length} unsafe avant engagement.`
+    : 'Aucun ordre à valider avant engagement.';
   const assignmentOrderSummary = assignmentOrders.length > 0
-    ? `${assignmentOrders.filter((order) => order.orderStatus === 'ready').length} ordre${assignmentOrders.filter((order) => order.orderStatus === 'ready').length > 1 ? 's' : ''} prêt${assignmentOrders.filter((order) => order.orderStatus === 'ready').length > 1 ? 's' : ''}; ${assignmentOrders.filter((order) => order.orderStatus === 'blocked').length} bloqué${assignmentOrders.filter((order) => order.orderStatus === 'blocked').length > 1 ? 's' : ''} par conflit visible.`
+    ? `${assignmentOrders.filter((order) => order.orderStatus === 'ready').length} ordre${assignmentOrders.filter((order) => order.orderStatus === 'ready').length > 1 ? 's' : ''} prêt${assignmentOrders.filter((order) => order.orderStatus === 'ready').length > 1 ? 's' : ''}; ${assignmentOrders.filter((order) => order.orderStatus === 'blocked').length} bloqué${assignmentOrders.filter((order) => order.orderStatus === 'blocked').length > 1 ? 's' : ''} par conflit visible. ${assignmentSafetySummary}`
     : 'Aucun balayage utile disponible pour préparer un ordre.';
   const exposureCooldownSummary = sweepCandidates.length > 0
     ? `${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length} risque${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''} d’exposition haut${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''}; cooldown visible estimé sans cause cachée.`
@@ -9569,6 +9585,7 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     scheduleConflictSummary,
     assignmentOrders,
     assignmentOrderSummary,
+    assignmentSafetySummary,
     exposureCooldownSummary,
     summary: sweepCandidates.length > 0
       ? `${sweepCandidates.length} zone${sweepCandidates.length > 1 ? 's' : ''} de balayage contre-espionnage proposée${sweepCandidates.length > 1 ? 's' : ''} depuis les filtres atlas actifs.`
@@ -9590,6 +9607,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <small>${plan.missedWindowSummary}</small>
         <small>${plan.scheduleConflictSummary}</small>
         <small>${plan.assignmentOrderSummary}</small>
+        <small>${plan.assignmentSafetySummary}</small>
       </section>
     `;
   }
@@ -9610,15 +9628,17 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
       <section class="atlas-counterintelligence-assignment-orders" aria-label="Ordres de balayage contre-espionnage fog-safe">
         <strong>Ordres d’assignation</strong>
         <p>${plan.assignmentOrderSummary}</p>
+        <small>${plan.assignmentSafetySummary}</small>
         ${plan.assignmentOrders.length > 0
           ? `<div class="atlas-counterintelligence-assignment-orders__list">${plan.assignmentOrders.map((order) => `
-            <button type="button" class="atlas-counterintelligence-assignment-order atlas-counterintelligence-assignment-order--${order.orderStatus}" data-province-id="${order.locationId}" data-counterintelligence-order="${order.orderStatus}" aria-label="${order.actionLabel} pour ${order.locationName}: ${order.orderStatusLabel}">
-              <span><b>#${order.orderRank} ${order.locationName}</b><em>${order.orderStatusLabel}</em></span>
+            <button type="button" class="atlas-counterintelligence-assignment-order atlas-counterintelligence-assignment-order--${order.orderStatus} atlas-counterintelligence-assignment-order--${order.safetyStatus}" data-province-id="${order.locationId}" data-counterintelligence-order="${order.orderStatus}" data-counterintelligence-safety="${order.safetyStatus}" aria-label="${order.actionLabel} pour ${order.locationName}: ${order.orderStatusLabel}; ${order.safetyLabel}">
+              <span><b>#${order.orderRank} ${order.locationName}</b><em>${order.orderStatusLabel} · ${order.safetyLabel}</em></span>
               <dl>
                 <div><dt>Agents / ressources</dt><dd>${order.requiredAgents} agent${order.requiredAgents > 1 ? 's' : ''} · ${order.requiredResources}</dd></div>
                 <div><dt>Zone couverte</dt><dd>${order.coveredZone}</dd></div>
                 <div><dt>Conflit restant</dt><dd>${order.remainingConflict}</dd></div>
                 <div><dt>Risque résiduel</dt><dd>${order.residualRisk}</dd></div>
+                <div><dt>Validation Delta</dt><dd>${order.safetyLabel}: ${order.unsafeReason}</dd></div>
               </dl>
               <small>${order.actionLabel} · aucun acteur, relais ou cause cachée révélé.</small>
             </button>
