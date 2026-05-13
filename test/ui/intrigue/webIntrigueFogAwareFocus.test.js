@@ -468,6 +468,56 @@ test('atlas counterintelligence suggests follow-up sweeps from residual gap warn
   assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__follow-up--wait-for-safe-window/);
 });
 
+test('atlas counterintelligence marks the next safe follow-up sweep priority', () => {
+  const buildNextSafeMarker = (followUpState, bestName, assignments) => {
+    if (followUpState === 'wait-for-safe-window') return { state: 'wait-for-safe-window', shouldRender: true };
+    const candidates = assignments
+      .filter((assignment) => assignment.assignmentStatus === 'safe' && assignment.locationName !== bestName)
+      .map((assignment) => {
+        const priorityState = assignment.failureType === 'non couvert' && ['critique', 'haute'].includes(assignment.priorityLevel)
+          ? 'closes-critical-blind-spot'
+          : assignment.freshnessScore <= 1 && ['critique', 'haute'].includes(assignment.priorityLevel)
+            ? 'refreshes-stale-critical-signal'
+            : 'lowest-exposure-sweep';
+        const priorityWeight = priorityState === 'closes-critical-blind-spot' ? 3 : priorityState === 'refreshes-stale-critical-signal' ? 2 : 1;
+        const exposureRank = assignment.failureType === 'couverture trop faible' || assignment.priorityLevel === 'prudente' ? 1 : 2;
+        return { ...assignment, priorityState, priorityWeight, exposureRank };
+      })
+      .sort((left, right) => right.priorityWeight - left.priorityWeight
+        || right.priorityScore - left.priorityScore
+        || left.exposureRank - right.exposureRank
+        || left.locationName.localeCompare(right.locationName));
+    if (candidates.length === 0) return { state: 'no-safe-follow-up', shouldRender: followUpState !== 'no-follow-up' };
+    return {
+      state: candidates[0].priorityState,
+      shouldRender: candidates.length > 1 || !['close-blind-spot', 'refresh-stale-signal'].includes(followUpState),
+    };
+  };
+
+  assert.deepEqual(buildNextSafeMarker('close-blind-spot', 'Best', [
+    { locationName: 'Best', assignmentStatus: 'safe', failureType: 'non couvert', priorityLevel: 'critique', freshnessScore: 1, priorityScore: 9 },
+    { locationName: 'Critical gap', assignmentStatus: 'safe', failureType: 'non couvert', priorityLevel: 'haute', freshnessScore: 2, priorityScore: 7 },
+    { locationName: 'Old gap', assignmentStatus: 'safe', failureType: 'couverture trop faible', priorityLevel: 'haute', freshnessScore: 1, priorityScore: 8 },
+  ]), { state: 'closes-critical-blind-spot', shouldRender: true });
+  assert.equal(buildNextSafeMarker('refresh-stale-signal', 'Best', [
+    { locationName: 'Old gap', assignmentStatus: 'safe', failureType: 'couverture trop faible', priorityLevel: 'haute', freshnessScore: 1, priorityScore: 8 },
+  ]).shouldRender, false);
+  assert.equal(buildNextSafeMarker('no-follow-up', 'Best', [
+    { locationName: 'Low exposure', assignmentStatus: 'safe', failureType: 'couverture trop faible', priorityLevel: 'prudente', freshnessScore: 3, priorityScore: 3 },
+  ]).state, 'lowest-exposure-sweep');
+  assert.equal(buildNextSafeMarker('wait-for-safe-window', 'Best', []).state, 'wait-for-safe-window');
+  assert.equal(buildNextSafeMarker('close-blind-spot', 'Best', []).state, 'no-safe-follow-up');
+  assert.match(webAppSource, /nextSafeFollowUpPriorityMarker/);
+  assert.match(webAppSource, /Next safe sweep:/);
+  assert.match(webAppSource, /closes-critical-blind-spot/);
+  assert.match(webAppSource, /refreshes-stale-critical-signal/);
+  assert.match(webAppSource, /lowest-exposure-sweep/);
+  assert.match(webAppSource, /no-safe-follow-up/);
+  assert.match(webAppSource, /Priorité suivante/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__next-safe/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__next-safe--lowest-exposure-sweep/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);

@@ -3386,6 +3386,15 @@ button { font: inherit; }
 .atlas-counterintelligence-best-resweep-gap-warning__follow-up--refresh-stale-signal { color: #bfdbfe; }
 .atlas-counterintelligence-best-resweep-gap-warning__follow-up--wait-for-safe-window { color: #fde68a; }
 .atlas-counterintelligence-best-resweep-gap-warning__follow-up--no-follow-up { color: #cbd5e1; }
+.atlas-counterintelligence-best-resweep-gap-warning__next-safe {
+  padding-top: 2px;
+  color: #dbeafe;
+}
+.atlas-counterintelligence-best-resweep-gap-warning__next-safe--closes-critical-blind-spot { color: #fecaca; }
+.atlas-counterintelligence-best-resweep-gap-warning__next-safe--refreshes-stale-critical-signal { color: #fde68a; }
+.atlas-counterintelligence-best-resweep-gap-warning__next-safe--lowest-exposure-sweep { color: #bbf7d0; }
+.atlas-counterintelligence-best-resweep-gap-warning__next-safe--wait-for-safe-window,
+.atlas-counterintelligence-best-resweep-gap-warning__next-safe--no-safe-follow-up { color: #cbd5e1; }
 .atlas-counterintelligence-schedule-conflicts {
   display: grid;
   gap: 6px;
