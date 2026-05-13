@@ -292,6 +292,76 @@ function buildZoneContour(influenceTier, overlapCount, zoneRank) {
   };
 }
 
+function buildCultureSupportBundles(culture, regionId, regionPresence, cultureState) {
+  const underBorderPressure = regionPresence.some((entry) => entry.cultureId !== culture.id && entry.influenceScore >= cultureState.influenceScore);
+  const needsSupport = culture.cohesion < 50
+    || (culture.openness < 45 && cultureState.signals.activeResearchCount > 0)
+    || (underBorderPressure && culture.cohesion < 50);
+
+  if (!needsSupport) {
+    return [];
+  }
+
+  const bundles = [];
+  const hasDiscovery = cultureState.signals.highlightedDiscoveries.length > 0;
+  const hasActiveResearch = cultureState.signals.activeResearchCount > 0;
+  const hasEvents = cultureState.signals.eventCount > 0;
+  const identityTag = cultureState.signals.identityTags[0] ?? 'identity-anchor';
+  const discoveryId = cultureState.signals.highlightedDiscoveries[0] ?? 'known-discovery';
+  const researchId = cultureState.signals.unlockedResearchIds[0] ?? 'research-track';
+  const rivalCultureIds = regionPresence
+    .filter((entry) => entry.cultureId !== culture.id)
+    .map((entry) => entry.cultureId)
+    .sort();
+
+  if (culture.cohesion < 50) {
+    bundles.push({
+      id: `${regionId}:${culture.id}:bundle:cohesion-anchor`,
+      label: 'ancrer cohésion locale',
+      actionIds: [`identity:${identityTag}`, hasEvents ? 'event:mediate-public-memory' : 'ritual:local-assembly'],
+      actionKeys: ['protect-identity', hasEvents ? 'mediate-event-memory' : 'local-assembly'],
+      expectedBenefit: 'réduit la fragmentation visible avant soutien externe',
+      tradeoff: 'cohésion + / ouverture -',
+      riskReduced: 'fragmentation culturelle',
+      reason: `cohésion ${culture.cohesion} · ${identityTag}`,
+      priority: 4,
+    });
+  }
+
+  if (culture.openness < 45 && (hasDiscovery || hasActiveResearch)) {
+    bundles.push({
+      id: `${regionId}:${culture.id}:bundle:guided-opening`,
+      label: 'ouvrir par relais savant',
+      actionIds: [`discovery:${discoveryId}`, `research:${researchId}`],
+      actionKeys: ['share-discovery', 'pace-research'],
+      expectedBenefit: 'garde l’ouverture lisible sans casser les repères locaux',
+      tradeoff: 'ouverture + / cohésion sous surveillance',
+      riskReduced: 'isolement du support',
+      reason: `ouverture ${culture.openness} · ${discoveryId}`,
+      priority: 3,
+    });
+  }
+
+  if (rivalCultureIds.length > 0) {
+    bundles.push({
+      id: `${regionId}:${culture.id}:bundle:border-compromise`,
+      label: 'composer avec influence voisine',
+      actionIds: ['border:shared-mediation', `culture:${rivalCultureIds[0]}`],
+      actionKeys: ['shared-mediation', 'limit-border-pressure'],
+      expectedBenefit: 'absorbe la pression voisine sans promettre une dominance immédiate',
+      tradeoff: 'ouverture + / recherche ralentie',
+      riskReduced: 'pression frontalière',
+      reason: `voisin ${rivalCultureIds[0]}`,
+      priority: 2,
+    });
+  }
+
+  return bundles
+    .sort((left, right) => right.priority - left.priority || left.id.localeCompare(right.id))
+    .slice(0, 2)
+    .map(({ priority, ...bundle }) => bundle);
+}
+
 function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById) {
   const cultureIds = regionPresence.map((entry) => entry.cultureId).sort();
   const cultureNames = regionPresence.map((entry) => entry.cultureName).sort();
@@ -401,6 +471,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
         const clusterSummary = includeClusterSummaries && overlapCount > 1
           ? buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById)
           : null;
+        const supportBundles = buildCultureSupportBundles(culture, regionId, regionPresence, cultureState);
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -466,6 +537,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           zoneBand,
           dominantInRegion: dominantCulture?.cultureId === culture.id,
           competingCultureIds: regionPresence.filter((entry) => entry.cultureId !== culture.id).map((entry) => entry.cultureId),
+          ...(supportBundles.length > 0 ? { supportBundles } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
           style,

@@ -614,6 +614,105 @@ test('buildCultureMapOverlay supports plain payloads and style overrides', () =>
   assert.equal(overlay[0].zoneStyle.glow, 'sparking');
 });
 
+test('buildCultureMapOverlay bundles compatible supports for fragile cultural regions', () => {
+  const overlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-marsh',
+          name: 'Marsh Houses',
+          archetype: 'riverine',
+          primaryLanguage: 'marsh-cant',
+          valueIds: ['oaths'],
+          traditionIds: ['reed-courts'],
+          openness: 38,
+          cohesion: 34,
+          researchDrive: 64,
+        },
+        {
+          id: 'culture-hill',
+          name: 'Hill Compact',
+          archetype: 'highland',
+          primaryLanguage: 'hill-speech',
+          valueIds: ['trade'],
+          traditionIds: ['beacons'],
+          openness: 61,
+          cohesion: 66,
+          researchDrive: 58,
+        },
+        {
+          id: 'culture-stable',
+          name: 'Stable Guilds',
+          archetype: 'urban',
+          primaryLanguage: 'guild-tongue',
+          valueIds: ['craft'],
+          traditionIds: ['charters'],
+          openness: 58,
+          cohesion: 72,
+          researchDrive: 62,
+        },
+      ],
+      researchStates: [
+        {
+          id: 'research-marsh-couriers',
+          cultureId: 'culture-marsh',
+          topicId: 'reed-couriers',
+          status: 'active',
+          progress: 44,
+          discoveredConceptIds: ['reed-routes'],
+        },
+      ],
+      historicalEvents: [
+        {
+          id: 'event-marsh-accord',
+          title: 'Marsh Accord',
+          category: 'diplomacy',
+          summary: 'Border delegates reopen a contested ferry.',
+          era: 'map-play',
+          importance: 3,
+          triggeredAt: '2026-05-13T00:00:00.000Z',
+          affectedCultureIds: ['culture-marsh'],
+          discoveryIds: ['ferry-charter'],
+        },
+      ],
+    },
+    {
+      regionIdsByCulture: {
+        'culture-marsh': ['shared-marsh'],
+        'culture-hill': ['shared-marsh'],
+        'culture-stable': ['stable-market'],
+      },
+    },
+  );
+
+  const marsh = overlay.find((entry) => entry.cultureId === 'culture-marsh');
+  const stable = overlay.find((entry) => entry.cultureId === 'culture-stable');
+
+  assert.deepEqual(marsh.supportBundles, [
+    {
+      id: 'shared-marsh:culture-marsh:bundle:cohesion-anchor',
+      label: 'ancrer cohésion locale',
+      actionIds: ['identity:oaths', 'event:mediate-public-memory'],
+      actionKeys: ['protect-identity', 'mediate-event-memory'],
+      expectedBenefit: 'réduit la fragmentation visible avant soutien externe',
+      tradeoff: 'cohésion + / ouverture -',
+      riskReduced: 'fragmentation culturelle',
+      reason: 'cohésion 34 · oaths',
+    },
+    {
+      id: 'shared-marsh:culture-marsh:bundle:guided-opening',
+      label: 'ouvrir par relais savant',
+      actionIds: ['discovery:ferry-charter', 'research:reed-couriers'],
+      actionKeys: ['share-discovery', 'pace-research'],
+      expectedBenefit: 'garde l’ouverture lisible sans casser les repères locaux',
+      tradeoff: 'ouverture + / cohésion sous surveillance',
+      riskReduced: 'isolement du support',
+      reason: 'ouverture 38 · ferry-charter',
+    },
+  ]);
+  assert.deepEqual(stable.supportBundles, undefined);
+});
+
 test('buildCultureMapOverlay can summarize overlapping culture clusters with discovery and event pins', () => {
   const overlay = buildCultureMapOverlay(
     {
