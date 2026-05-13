@@ -3129,6 +3129,33 @@ button { font: inherit; }
   letter-spacing: 0.08em;
 }
 .atlas-counterintelligence-assignment-order dd { margin: 0; color: #f8fafc; }
+.atlas-counterintelligence-post-order-coverage {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: rgba(12, 74, 110, 0.2);
+}
+.atlas-counterintelligence-post-order-coverage p,
+.atlas-counterintelligence-post-order-coverage small { margin: 0; color: #bae6fd; }
+.atlas-counterintelligence-post-order-coverage__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.atlas-counterintelligence-post-order-coverage__grid div {
+  display: grid;
+  gap: 5px;
+  padding: 7px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.24);
+}
+.atlas-counterintelligence-post-order-coverage__grid ul {
+  margin: 0;
+  padding-left: 17px;
+  color: #f8fafc;
+}
 .atlas-counterintelligence-schedule-conflicts {
   display: grid;
   gap: 6px;
