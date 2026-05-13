@@ -7667,6 +7667,74 @@ function renderAtlasClimateReadinessBoostReliefRanking(view) {
   `;
 }
 
+function buildAtlasClimateMinimumViableBoostHint(reliefRankingView) {
+  if (!reliefRankingView || reliefRankingView.state !== 'ranked' || reliefRankingView.rankedBoosts.length === 0) {
+    return {
+      state: 'empty',
+      hint: null,
+      summary: 'Aucun boost climat prioritaire éligible à réduire au minimum viable.',
+    };
+  }
+
+  const topBoost = reliefRankingView.rankedBoosts[0];
+  const packageByOutcome = {
+    executable: {
+      state: 'minimal-sufficient',
+      level: 'minimum suffisant',
+      resourcePackage: '1 équipe + réserve ciblée',
+      action: 'Appliquer le boost tel quel; ne pas sur-allouer au-delà du paquet minimal.',
+    },
+    'still-tight': {
+      state: 'partial-worthwhile',
+      level: 'minimum utile',
+      resourcePackage: '1 équipe + jalon avancé',
+      action: 'Lancer le paquet minimal maintenant, puis garder une option de renfort si la deadline reste serrée.',
+    },
+    insufficient: {
+      state: 'insufficient-minimum',
+      level: 'minimum insuffisant',
+      resourcePackage: 'paquet minimal + arbitrage requis',
+      action: 'Ne pas compter sur le minimum seul; escalader ressource ou réduire le périmètre avant exécution.',
+    },
+  };
+  const selectedPackage = packageByOutcome[topBoost.outcome] ?? packageByOutcome.insufficient;
+
+  return {
+    state: selectedPackage.state,
+    hint: {
+      provinceId: topBoost.provinceId,
+      provinceLabel: topBoost.provinceLabel,
+      deadline: topBoost.deadline,
+      outcome: topBoost.outcome,
+      level: selectedPackage.level,
+      resourcePackage: selectedPackage.resourcePackage,
+      action: selectedPackage.action,
+      reliefBand: topBoost.reliefBand,
+      reliefScore: topBoost.reliefScore,
+    },
+    summary: `${topBoost.provinceLabel}: paquet ${selectedPackage.level} pour maximiser le relief deadline sans dupliquer le ranking.`,
+  };
+}
+
+function renderAtlasClimateMinimumViableBoostHint(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || !view.hint) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-minimum-boost map-world-climate-minimum-boost--${view.state}" aria-label="Indice de boost readiness climat minimum viable">
+      <div class="map-world-climate-minimum-boost__header">
+        <strong>Minimum viable boost</strong>
+        <span>${view.hint.level}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${view.hint.provinceLabel}</b> · ${view.hint.deadline} · ${view.hint.resourcePackage}</small>
+      <small><b>Action</b> · ${view.hint.action}</small>
+      <small><b>Relief attendu</b> · ${view.hint.reliefBand} (${view.hint.reliefScore})</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -15250,6 +15318,7 @@ function render() {
   const atlasClimateReadinessBoostRecommendations = buildAtlasClimateReadinessBoostRecommendations(atlasClimateUnderReadyExecutionGaps);
   const atlasClimatePostBoostDeadlineRiskPreview = buildAtlasClimatePostBoostDeadlineRiskPreview(atlasClimateReadinessBoostRecommendations);
   const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
+  const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -15292,6 +15361,7 @@ function render() {
           ${renderAtlasClimateReadinessBoostRecommendations(atlasClimateReadinessBoostRecommendations)}
           ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
           ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
+          ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
