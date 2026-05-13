@@ -11968,6 +11968,38 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
       detail: 'Les risques restants sont couverts, partiels ou low-gain selon les signaux atlas visibles.',
     };
   })();
+  const bestResweepFollowUpSuggestion = (() => {
+    if (!['high-priority-blind-spot', 'stale-critical-signal'].includes(bestResweepResidualGapWarning.state)) {
+      return {
+        state: 'no-follow-up',
+        label: 'aucun follow-up immédiat',
+        copy: 'Pas de suggestion supplémentaire: le résiduel est acceptable ou aucun meilleur resweep sûr n’existe.',
+      };
+    }
+
+    const followUpAssignment = stagedResweepAssignments.find((assignment) => assignment.locationName === bestResweepResidualGapWarning.locationName);
+    if (!followUpAssignment || followUpAssignment.assignmentStatus !== 'safe') {
+      return {
+        state: 'wait-for-safe-window',
+        label: 'attendre fenêtre sûre',
+        copy: `${bestResweepResidualGapWarning.locationName}: pas de follow-up sûr maintenant; attendre un créneau non contesté ou une couverture locale stable.`,
+      };
+    }
+
+    if (bestResweepResidualGapWarning.state === 'high-priority-blind-spot') {
+      return {
+        state: 'close-blind-spot',
+        label: 'fermer angle mort',
+        copy: `${followUpAssignment.locationName}: lancer le prochain sweep court pour fermer l’angle mort prioritaire après le meilleur resweep.`,
+      };
+    }
+
+    return {
+      state: 'refresh-stale-signal',
+      label: 'rafraîchir signal ancien',
+      copy: `${followUpAssignment.locationName}: planifier un refresh discret du signal ancien avant tout engagement nominatif.`,
+    };
+  })();
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -11987,6 +12019,7 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     excludedUnsafeResweepAssignments,
     bestRankedStagedResweepAssignment,
     bestResweepResidualGapWarning,
+    bestResweepFollowUpSuggestion,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -12128,6 +12161,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
           <b>Gap résiduel du meilleur resweep</b>
           <span>${plan.postOrderCoverage.bestResweepResidualGapWarning.summary}</span>
           <small>${plan.postOrderCoverage.bestResweepResidualGapWarning.detail}</small>
+          <small class="atlas-counterintelligence-best-resweep-gap-warning__follow-up atlas-counterintelligence-best-resweep-gap-warning__follow-up--${plan.postOrderCoverage.bestResweepFollowUpSuggestion.state}"><b>Follow-up:</b> ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.label} · ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.copy}</small>
         </aside>
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">

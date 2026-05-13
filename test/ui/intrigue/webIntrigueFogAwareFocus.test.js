@@ -435,6 +435,39 @@ test('atlas counterintelligence warns only the best safe resweep about residual 
   assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning--high-priority-blind-spot/);
 });
 
+test('atlas counterintelligence suggests follow-up sweeps from residual gap warnings', () => {
+  const buildFollowUp = (warning, assignments) => {
+    if (!['high-priority-blind-spot', 'stale-critical-signal'].includes(warning.state)) return 'no-follow-up';
+    const followUpAssignment = assignments.find((assignment) => assignment.locationName === warning.locationName);
+    if (!followUpAssignment || followUpAssignment.assignmentStatus !== 'safe') return 'wait-for-safe-window';
+    return warning.state === 'high-priority-blind-spot' ? 'close-blind-spot' : 'refresh-stale-signal';
+  };
+
+  assert.equal(buildFollowUp(
+    { state: 'high-priority-blind-spot', locationName: 'Gap' },
+    [{ locationName: 'Gap', assignmentStatus: 'safe' }],
+  ), 'close-blind-spot');
+  assert.equal(buildFollowUp(
+    { state: 'stale-critical-signal', locationName: 'Old' },
+    [{ locationName: 'Old', assignmentStatus: 'safe' }],
+  ), 'refresh-stale-signal');
+  assert.equal(buildFollowUp(
+    { state: 'high-priority-blind-spot', locationName: 'Unsafe' },
+    [{ locationName: 'Unsafe', assignmentStatus: 'no-safe' }],
+  ), 'wait-for-safe-window');
+  assert.equal(buildFollowUp({ state: 'acceptable-residual', locationName: 'Best safe' }, []), 'no-follow-up');
+  assert.match(webAppSource, /bestResweepFollowUpSuggestion/);
+  assert.match(webAppSource, /close-blind-spot/);
+  assert.match(webAppSource, /refresh-stale-signal/);
+  assert.match(webAppSource, /wait-for-safe-window/);
+  assert.match(webAppSource, /no-follow-up/);
+  assert.match(webAppSource, /Follow-up:/);
+  assert.match(webAppSource, /lancer le prochain sweep court pour fermer l’angle mort prioritaire/);
+  assert.match(webAppSource, /planifier un refresh discret du signal ancien/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__follow-up/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__follow-up--wait-for-safe-window/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
