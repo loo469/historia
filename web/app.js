@@ -7411,6 +7411,90 @@ function renderAtlasClimatePostBoostDeadlineRiskPreview(view) {
   `;
 }
 
+function buildAtlasClimateReadinessBoostReliefRanking(postBoostView) {
+  if (!postBoostView || postBoostView.state === 'empty' || postBoostView.previews.length === 0) {
+    return {
+      state: 'empty',
+      rankedBoosts: [],
+      summary: 'Aucun boost readiness urgent à classer par soulagement de deadline.',
+    };
+  }
+
+  const reliefByOutcome = {
+    executable: 90,
+    'still-tight': 55,
+    insufficient: 20,
+  };
+  const residualPenaltyByOutcome = {
+    executable: 0,
+    'still-tight': 12,
+    insufficient: 28,
+  };
+
+  const rankedBoosts = postBoostView.previews
+    .map((preview) => {
+      const reliefScore = reliefByOutcome[preview.outcome] ?? 0;
+      const residualPenalty = residualPenaltyByOutcome[preview.outcome] ?? 0;
+      const reliefBand = preview.outcome === 'executable'
+        ? 'temps exécutable gagné'
+        : preview.outcome === 'still-tight'
+          ? 'soulagement partiel, deadline serrée'
+          : 'soulagement faible, deadline bloque encore';
+      return {
+        provinceId: preview.provinceId,
+        provinceLabel: preview.provinceLabel,
+        deadline: preview.deadline,
+        outcome: preview.outcome,
+        reliefScore,
+        residualPenalty,
+        reliefBand,
+        appliedBoost: preview.appliedBoost,
+        explanation: preview.outcome === 'executable'
+          ? `${preview.appliedBoost} achète la fenêtre la plus jouable: ${preview.postBoostSignal}`
+          : preview.outcome === 'still-tight'
+            ? `${preview.appliedBoost} réduit la pression mais laisse peu de marge: ${preview.postBoostSignal}`
+            : `${preview.appliedBoost} soulage trop peu avant la deadline: ${preview.postBoostSignal}`,
+      };
+    })
+    .sort((left, right) => right.reliefScore - left.reliefScore || left.residualPenalty - right.residualPenalty || left.deadline.localeCompare(right.deadline) || left.provinceLabel.localeCompare(right.provinceLabel))
+    .map((boost, index) => ({ ...boost, rank: index + 1 }));
+
+  const best = rankedBoosts[0];
+  return {
+    state: rankedBoosts.length > 0 ? 'ranked' : 'empty',
+    rankedBoosts,
+    summary: best
+      ? `Meilleur boost: ${best.provinceLabel}, car il offre le plus de temps exécutable (${best.reliefBand}).`
+      : 'Aucun boost readiness urgent à classer par soulagement de deadline.',
+  };
+}
+
+function renderAtlasClimateReadinessBoostReliefRanking(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'ranked') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-boost-relief-ranking" aria-label="Classement des boosts readiness climat par soulagement de deadline">
+      <div class="map-world-climate-boost-relief-ranking__header">
+        <strong>Priorité boosts readiness</strong>
+        <span>${view.rankedBoosts.length} classé${view.rankedBoosts.length > 1 ? 's' : ''}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-boost-relief-ranking__list">
+        ${view.rankedBoosts.map((boost) => `
+          <li class="map-world-climate-boost-relief-ranking__item map-world-climate-boost-relief-ranking__item--${boost.outcome}">
+            <b>${boost.rank}. ${boost.provinceLabel}</b>
+            <span>${boost.deadline} · ${boost.reliefBand}</span>
+            <small><b>Score relief</b> · ${boost.reliefScore} (pénalité résiduelle ${boost.residualPenalty})</small>
+            <small><b>Pourquoi maintenant</b> · ${boost.explanation}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -14940,6 +15024,7 @@ function render() {
   const atlasClimateUnderReadyExecutionGaps = buildAtlasClimateUnderReadyExecutionGaps(atlasClimateMitigationReadiness);
   const atlasClimateReadinessBoostRecommendations = buildAtlasClimateReadinessBoostRecommendations(atlasClimateUnderReadyExecutionGaps);
   const atlasClimatePostBoostDeadlineRiskPreview = buildAtlasClimatePostBoostDeadlineRiskPreview(atlasClimateReadinessBoostRecommendations);
+  const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -14981,6 +15066,7 @@ function render() {
           ${renderAtlasClimateUnderReadyExecutionGaps(atlasClimateUnderReadyExecutionGaps)}
           ${renderAtlasClimateReadinessBoostRecommendations(atlasClimateReadinessBoostRecommendations)}
           ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
+          ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
