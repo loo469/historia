@@ -10669,6 +10669,7 @@ button { font: inherit; }
 .atlas-military-warning-stack,
 .atlas-military-warning-relief,
 .atlas-military-best-order,
+.atlas-military-fallback-order,
 .atlas-military-commitment-conflicts {
   pointer-events: auto;
 }
@@ -11091,6 +11092,27 @@ button { font: inherit; }
   stroke-width: 0.24;
 }
 .atlas-military-best-order__detail { fill: #bfdbfe; font-size: 0.7px; }
+
+.atlas-military-fallback-order__panel {
+  fill: rgba(71, 85, 105, 0.76);
+  stroke: rgba(203, 213, 225, 0.48);
+  stroke-width: 0.28;
+}
+.atlas-military-fallback-order--route-blocked .atlas-military-fallback-order__panel {
+  fill: rgba(14, 116, 144, 0.72);
+}
+.atlas-military-fallback-order--overcommitment-blocked .atlas-military-fallback-order__panel {
+  fill: rgba(107, 33, 168, 0.72);
+}
+.atlas-military-fallback-order text {
+  fill: #e2e8f0;
+  font-size: 0.76px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.88);
+  stroke-width: 0.24;
+}
+.atlas-military-fallback-order__detail { fill: #cbd5e1; font-size: 0.68px; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

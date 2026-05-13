@@ -1618,11 +1618,80 @@ function renderAtlasMilitaryBestNextOrderHint(orderHint) {
   `;
 }
 
+
+function getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, commitment) {
+  const hint = orderHint?.hint ?? null;
+  const preview = reliefPreview?.preview ?? null;
+  if (!topWarning || !hint || !preview) return 'no-safe-fallback';
+  if (hint.type === 'reinforce-front' && topWarning.frontRisk >= 112) return 'resource-blocked';
+  if (hint.type === 'clear-route-exposure' && topWarning.routeExposure >= 14) return 'route-blocked';
+  if (hint.type === 'reduce-overcommitment' && (commitment?.selectedOption?.delay === 'long' || preview.reliefScore < 30)) return 'overcommitment-blocked';
+  return 'no-safe-fallback';
+}
+
+function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPreview, commitment) {
+  const topWarning = priorityStack?.stack?.[0] ?? null;
+  const blocker = getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, commitment);
+  const fallback = blocker === 'resource-blocked'
+    ? {
+      type: 'resource-blocked',
+      order: 'Fixer réserve',
+      detail: `tenir ${topWarning.label} avec réserve légère`,
+      why: 'ressources insuffisantes pour l’ordre principal',
+    }
+    : blocker === 'route-blocked'
+      ? {
+        type: 'route-blocked',
+        order: 'Sécuriser détour',
+        detail: `ouvrir un détour avant ${topWarning.label}`,
+        why: 'axe principal trop exposé ce tour',
+      }
+      : blocker === 'overcommitment-blocked'
+        ? {
+          type: 'overcommitment-blocked',
+          order: 'Geler engagement',
+          detail: `réduire la charge sur ${commitment?.selectedOption?.target ?? topWarning?.label}`,
+          why: 'surengagement encore dangereux',
+        }
+        : null;
+
+  if (!fallback) {
+    return {
+      fallback: null,
+      summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
+      empty: true,
+    };
+  }
+
+  return {
+    fallback: {
+      fallbackId: `fallback:${topWarning.warningId}:${fallback.type}`,
+      ...fallback,
+      label: topWarning.label,
+    },
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}).`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
+  if (!fallbackHint || fallbackHint.empty || !fallbackHint.fallback) return '';
+  const fallback = fallbackHint.fallback;
+  return `
+    <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="4.2" rx="1.2"></rect>
+      <text class="atlas-military-fallback-order__label" x="23.2" y="59.5">repli: ${fallback.order}</text>
+      <text class="atlas-military-fallback-order__detail" x="23.2" y="61.1">${fallback.detail}</text>
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryWarningPriorityStack(priorityStack, commitment) {
   if (!priorityStack || priorityStack.empty) return '';
   const [topPriority, ...lowerPriorities] = priorityStack.stack;
   const topReliefPreview = buildAtlasMilitaryTopWarningReliefPreview(priorityStack);
   const bestOrderHint = buildAtlasMilitaryBestNextOrderHint(priorityStack, topReliefPreview, commitment);
+  const fallbackOrderHint = buildAtlasMilitaryFallbackOrderHint(priorityStack, bestOrderHint, topReliefPreview, commitment);
   const height = 8.8 + (lowerPriorities.length * 2.7);
   return `
     <g class="atlas-military-warning-stack" aria-label="Pile de priorités des alertes militaires: ${priorityStack.summary}">
@@ -1635,6 +1704,7 @@ function renderAtlasMilitaryWarningPriorityStack(priorityStack, commitment) {
       </g>
       ${renderAtlasMilitaryTopWarningReliefPreview(topReliefPreview)}
       ${renderAtlasMilitaryBestNextOrderHint(bestOrderHint)}
+      ${renderAtlasMilitaryFallbackOrderHint(fallbackOrderHint)}
       ${lowerPriorities.map((warning, index) => `
         <g class="atlas-military-warning-stack-item atlas-military-warning-stack-item--${warning.tone}" data-atlas-warning-stack-item="${warning.stackId}" aria-label="Priorité ${index + 2} ${warning.frontRoute}: score ${warning.stackScore}; ${warning.action}">
           <text x="5" y="${54.4 + index * 2.7}">${index + 2}. ${warning.label}</text>
