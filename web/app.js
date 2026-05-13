@@ -2303,6 +2303,67 @@ function buildAtlasFundedCapacityProjections(committedFundingGaps, supplyForecas
   };
 }
 
+function getAtlasNeighborCorridors(corridor) {
+  const neighbors = {
+    'Arc nord': ['Carrefour central', 'Bassin ouest', 'Marches est'],
+    'Corridor sud': ['Carrefour central', 'Bassin ouest', 'Marches est'],
+    'Bassin ouest': ['Carrefour central', 'Arc nord', 'Corridor sud'],
+    'Marches est': ['Carrefour central', 'Arc nord', 'Corridor sud'],
+    'Carrefour central': ['Arc nord', 'Corridor sud', 'Bassin ouest', 'Marches est'],
+  };
+
+  return neighbors[corridor] ?? [];
+}
+
+function buildAtlasSecondaryBottleneckReroute(forecast, fundedCapacityProjections, supplyForecasts) {
+  if (forecast.uncertain || forecast.tone === 'recovery') {
+    return {
+      available: false,
+      label: 'dérivation non disponible',
+      effect: 'données ou besoin insuffisants',
+      tradeoff: 'confirmer avant contournement',
+    };
+  }
+
+  const neighborCorridors = getAtlasNeighborCorridors(forecast.corridor);
+  const fundedCandidates = fundedCapacityProjections.items
+    .filter((projection) => neighborCorridors.includes(projection.corridor) && projection.sufficient && !projection.stillSaturated)
+    .map((projection) => ({
+      corridor: projection.corridor,
+      routeName: projection.routeName,
+      spareCapacity: Math.max(0, projection.projectedCapacity - projection.currentCapacity),
+      source: 'capacité financée',
+    }));
+  const forecastCandidates = supplyForecasts.routes
+    .filter((candidate) => candidate.routeName !== forecast.routeName && neighborCorridors.includes(candidate.corridor) && candidate.tone === 'recovery')
+    .map((candidate) => ({
+      corridor: candidate.corridor,
+      routeName: candidate.routeName,
+      spareCapacity: Math.max(1, candidate.projectedCapacity - candidate.currentCapacity + 1),
+      source: 'corridor voisin',
+    }));
+  const candidate = [...fundedCandidates, ...forecastCandidates]
+    .sort((left, right) => right.spareCapacity - left.spareCapacity || left.routeName.localeCompare(right.routeName))[0];
+
+  if (!candidate || candidate.spareCapacity <= 0) {
+    return {
+      available: false,
+      label: 'dérivation non disponible',
+      effect: 'voisins déjà saturés',
+      tradeoff: 'éviter de déplacer la pénurie',
+    };
+  }
+
+  return {
+    available: true,
+    label: `dériver via ${candidate.corridor}`,
+    effect: `absorbe ~${candidate.spareCapacity} capacité sur ${candidate.routeName}`,
+    tradeoff: candidate.source === 'capacité financée'
+      ? 'consomme marge financée'
+      : 'surveillance hub voisin requise',
+  };
+}
+
 function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecasts) {
   if (fundedCapacityProjections.empty) {
     return {
@@ -2341,6 +2402,7 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
         : isNewSecondary
           ? 24 + forecast.resourceLoad
           : 4;
+      const reroute = buildAtlasSecondaryBottleneckReroute(forecast, fundedCapacityProjections, supplyForecasts);
 
       return {
         routeName: forecast.routeName,
@@ -2348,7 +2410,8 @@ function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecas
         status,
         cause,
         impact,
-        score,
+        reroute,
+        score: score + (reroute.available ? 3 : 0),
       };
     })
     .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
@@ -2491,7 +2554,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${80 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (rollup.secondaryBottlenecks.items.length * 5.2)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${80 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (rollup.secondaryBottlenecks.items.length * 6.8)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -2598,15 +2661,16 @@ function renderAtlasEconomyStressLegend(economyView) {
         }).join('')}
       </g>
       <g class="atlas-secondary-bottleneck ${rollup.secondaryBottlenecks.empty ? 'is-empty' : ''}" aria-label="Prochains goulets après projection: ${rollup.secondaryBottlenecks.summary}">
-        <rect x="5" y="${73.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" width="30.5" height="${rollup.secondaryBottlenecks.empty ? 5.2 : 6.0 + (rollup.secondaryBottlenecks.items.length * 5.2)}" rx="1.4"></rect>
+        <rect x="5" y="${73.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" width="30.5" height="${rollup.secondaryBottlenecks.empty ? 5.2 : 6.3 + (rollup.secondaryBottlenecks.items.length * 6.8)}" rx="1.4"></rect>
         <text class="atlas-secondary-bottleneck__title" x="6.2" y="${75.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}">Prochains goulets · ${rollup.secondaryBottlenecks.summary}</text>
         ${rollup.secondaryBottlenecks.empty ? `<text class="atlas-secondary-bottleneck__empty" x="6.2" y="${78.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}">Aucun goulet secondaire pertinent</text>` : ''}
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
-          const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 5.2);
+          const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 6.8);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
+              <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
             </g>
           `;
         }).join('')}
