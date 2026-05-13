@@ -144,6 +144,17 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
       resources: [
         { resourceId: 'wood', capacity: 3 },
       ],
+      capacitySpendPreview: {
+        routeId: 'route-coast',
+        currentCapacity: 3,
+        capacityMobilized: 0,
+        capacityRemaining: 3,
+        limitingResourceId: null,
+        state: 'no-spend',
+        resources: [
+          { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
+        ],
+      },
       label: 'Coast Caravan (land)',
       style: {
         stroke: 'slate',
@@ -168,6 +179,18 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         { resourceId: 'fish', capacity: 4 },
         { resourceId: 'grain', capacity: 7 },
       ],
+      capacitySpendPreview: {
+        routeId: 'route-river',
+        currentCapacity: 11,
+        capacityMobilized: 0,
+        capacityRemaining: 11,
+        limitingResourceId: null,
+        state: 'no-spend',
+        resources: [
+          { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
+          { resourceId: 'grain', currentCapacity: 7, capacityMobilized: 0, capacityRemaining: 7 },
+        ],
+      },
       label: 'River Run (river)',
       style: {
         stroke: 'blue',
@@ -220,6 +243,62 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     opacity: 0.7,
   });
   assert.equal(overlay.cities[0].resources.primaryResourceId, 'salt');
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview, {
+    routeId: 'route-sea',
+    currentCapacity: 9,
+    capacityMobilized: 0,
+    capacityRemaining: 9,
+    limitingResourceId: null,
+    state: 'no-spend',
+    resources: [
+      { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
+    ],
+  });
+});
+
+test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', () => {
+  const overlay = buildEconomyMapOverlay([], [
+    {
+      id: 'route-bread',
+      name: 'Bread Road',
+      stopCityIds: ['city-a', 'city-b'],
+      distance: 3,
+      capacityByResource: { grain: 5, tools: 2 },
+      transportMode: 'land',
+      riskLevel: 20,
+    },
+    {
+      id: 'route-clear',
+      name: 'Clear Road',
+      stopCityIds: ['city-b', 'city-c'],
+      distance: 4,
+      capacityByResource: { wood: 4 },
+      transportMode: 'land',
+      riskLevel: 10,
+    },
+  ], {
+    recommendedUnlockByRouteId: {
+      'route-bread': {
+        mobilizedByResource: { grain: 4, tools: 1 },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.routes.map((route) => route.routeId), ['route-bread', 'route-clear']);
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview, {
+    routeId: 'route-bread',
+    currentCapacity: 7,
+    capacityMobilized: 5,
+    capacityRemaining: 2,
+    limitingResourceId: 'grain',
+    state: 'remaining-margin',
+    resources: [
+      { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
+      { resourceId: 'tools', currentCapacity: 2, capacityMobilized: 1, capacityRemaining: 1 },
+    ],
+  });
+  assert.equal(overlay.routes[1].capacitySpendPreview.limitingResourceId, null);
+  assert.equal(overlay.routes[1].capacitySpendPreview.state, 'no-spend');
 });
 
 test('buildEconomyMapOverlay rejects invalid inputs', () => {
