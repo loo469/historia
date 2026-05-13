@@ -11777,6 +11777,15 @@ button { font: inherit; }
 .atlas-cultural-border-zone__fallback--closing-window { fill: #fecdd3; }
 .atlas-cultural-border-zone__fallback--border-pressure { fill: #fed7aa; }
 .atlas-cultural-border-zone__fallback--mediation-drift { fill: #ddd6fe; }
+.atlas-cultural-border-zone__latest-safe {
+  fill: #bfdbfe;
+  font-size: 0.76px;
+  font-weight: 840;
+}
+.atlas-cultural-border-zone__latest-safe--immediate { fill: #fecdd3; }
+.atlas-cultural-border-zone__latest-safe--one-turn-left { fill: #fde68a; }
+.atlas-cultural-border-zone__latest-safe--multi-turn { fill: #bfdbfe; }
+.atlas-cultural-border-zone__latest-safe--no-safe-window { fill: #fca5a5; }
 .atlas-cultural-consolidation-actions rect {
   fill: rgba(49, 46, 129, 0.54);
   stroke: rgba(196, 181, 253, 0.38);
@@ -11811,6 +11820,15 @@ button { font: inherit; }
   font-size: 0.8px;
   font-weight: 840;
 }
+.atlas-cultural-consolidation-action__latest-safe {
+  fill: #bfdbfe;
+  font-size: 0.78px;
+  font-weight: 860;
+}
+.atlas-cultural-consolidation-action__latest-safe--immediate,
+.atlas-cultural-consolidation-action__latest-safe--no-safe-window { fill: #fecdd3; }
+.atlas-cultural-consolidation-action__latest-safe--one-turn-left { fill: #fde68a; }
+.atlas-cultural-consolidation-action__latest-safe--multi-turn { fill: #bfdbfe; }
 .atlas-cultural-consolidation-action--fragile .atlas-cultural-consolidation-action__reason { fill: #fde68a; }
 .atlas-cultural-consolidation-action--expiring .atlas-cultural-consolidation-action__reason { fill: #fecdd3; }
 .map-world-climate-post-boost-risk {
