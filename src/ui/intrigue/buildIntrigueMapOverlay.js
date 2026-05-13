@@ -91,6 +91,30 @@ function buildSabotageThreatScore(operation) {
   return clampPercent((operation.progress + operation.heat + (100 - operation.detectionRisk)) / 3);
 }
 
+function buildPostSweepGaps({ sleeperCellCount, sabotageRiskScore, unknownsRemaining }) {
+  if (unknownsRemaining <= 0 && sabotageRiskScore < 70) {
+    return [];
+  }
+
+  return [
+    unknownsRemaining > 0 ? {
+      key: 'unconfirmed-presence',
+      label: 'Présence non confirmée',
+      reason: `${unknownsRemaining} signal${unknownsRemaining > 1 ? 'aux' : ''} rester${unknownsRemaining > 1 ? 'ont' : 'a'} à qualifier après le sweep.`,
+    } : null,
+    sleeperCellCount > 0 && unknownsRemaining > 0 ? {
+      key: 'sleeper-uncertainty',
+      label: 'Dormance encore possible',
+      reason: 'Le sweep bas-risque peut confirmer la zone sans lever toute ambiguïté dormante.',
+    } : null,
+    sabotageRiskScore >= 70 ? {
+      key: 'residual-sabotage-pressure',
+      label: 'Pression sabotage résiduelle',
+      reason: 'Le risque visible reste élevé; éviter toute attribution ou cible cachée après la passe.',
+    } : null,
+  ].filter(Boolean);
+}
+
 function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount, sleeperCellCount, sabotageRiskScore }) {
   if (celluleCount <= 0 || sabotageRiskScore <= 0 || exposedCellCount >= celluleCount) {
     return {
@@ -101,6 +125,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
       confidenceDelta: 0,
       exposureAdded: 0,
       unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
+      postSweepGaps: [],
       summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
     };
   }
@@ -112,6 +137,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
   const confidenceDelta = Math.max(0, coverageAfter - coverageBefore);
   const exposureAdded = clampPercent(4 + sleeperCellCount * 3 + (sabotageRiskScore >= 70 ? 5 : sabotageRiskScore >= 35 ? 3 : 1));
   const unknownsRemaining = Math.max(0, celluleCount - exposedCellCount - (confidenceDelta >= 30 ? 2 : 1));
+  const postSweepGaps = buildPostSweepGaps({ sleeperCellCount, sabotageRiskScore, unknownsRemaining });
   const state = exposureAdded <= 8
     ? 'low-exposure-positive'
     : exposureAdded < 12
@@ -126,6 +152,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     confidenceDelta,
     exposureAdded,
     unknownsRemaining,
+    postSweepGaps,
     summary: `Confiance +${confidenceDelta} pts pour +${exposureAdded} exposition; ${unknownsRemaining} inconnue${unknownsRemaining > 1 ? 's' : ''} restante${unknownsRemaining > 1 ? 's' : ''}.`,
   };
 }
