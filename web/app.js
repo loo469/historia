@@ -2186,6 +2186,66 @@ function buildAtlasFundedCapacityProjections(committedFundingGaps, supplyForecas
   };
 }
 
+function buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecasts) {
+  if (fundedCapacityProjections.empty) {
+    return {
+      empty: true,
+      items: [],
+      summary: 'Aucun goulet secondaire pertinent',
+    };
+  }
+
+  const projectedRoutes = new Set(fundedCapacityProjections.items.map((item) => item.routeName));
+  const secondary = supplyForecasts.routes
+    .filter((forecast) => !projectedRoutes.has(forecast.routeName))
+    .map((forecast) => {
+      const isNewSecondary = forecast.tone === 'watch' || forecast.tone === 'uncertain';
+      const status = forecast.tone === 'overload'
+        ? 'encore saturé'
+        : isNewSecondary
+          ? 'nouveau goulet secondaire'
+          : 'résolu';
+      const cause = forecast.uncertain
+        ? 'données corridor incomplètes'
+        : forecast.highHubs > 0
+          ? `${forecast.highHubs} hub${forecast.highHubs > 1 ? 's' : ''} encore critique${forecast.highHubs > 1 ? 's' : ''}`
+          : forecast.resourceLoad >= 8
+            ? 'ressource encore fragile'
+            : forecast.tone === 'watch'
+              ? 'capacité limite après report'
+              : 'flux apaisé';
+      const impact = forecast.tone === 'overload'
+        ? 'pénurie aval probable'
+        : isNewSecondary
+          ? 'ralentit le bénéfice financé'
+          : 'aucun impact majeur';
+      const score = forecast.tone === 'overload'
+        ? 40 + forecast.resourceLoad
+        : isNewSecondary
+          ? 24 + forecast.resourceLoad
+          : 4;
+
+      return {
+        routeName: forecast.routeName,
+        corridor: forecast.corridor,
+        status,
+        cause,
+        impact,
+        score,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.routeName.localeCompare(right.routeName))
+    .slice(0, 3);
+
+  return {
+    empty: secondary.length === 0 || secondary.every((item) => item.status === 'résolu'),
+    items: secondary,
+    summary: secondary.length === 0 || secondary.every((item) => item.status === 'résolu')
+      ? 'Aucun goulet secondaire pertinent'
+      : `${secondary.filter((item) => item.status !== 'résolu').length} prochain${secondary.filter((item) => item.status !== 'résolu').length > 1 ? 's' : ''} goulet${secondary.filter((item) => item.status !== 'résolu').length > 1 ? 's' : ''}`,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -2201,6 +2261,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const fundedPlans = buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls);
   const committedFundingGaps = buildAtlasCommittedFundingGaps(fundedPlans);
   const fundedCapacityProjections = buildAtlasFundedCapacityProjections(committedFundingGaps, supplyForecasts);
+  const secondaryBottlenecks = buildAtlasSecondaryBottlenecks(fundedCapacityProjections, supplyForecasts);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -2300,6 +2361,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     fundedPlans,
     committedFundingGaps,
     fundedCapacityProjections,
+    secondaryBottlenecks,
   };
 }
 
@@ -2312,7 +2374,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${71 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${80 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (rollup.secondaryBottlenecks.items.length * 5.2)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -2414,6 +2476,20 @@ function renderAtlasEconomyStressLegend(economyView) {
             <g class="atlas-funded-capacity-projection-item atlas-funded-capacity-projection-item--${projection.sufficient ? 'sufficient' : 'saturated'}" aria-label="Projection ${projection.routeName}: capacité ${projection.currentCapacity} vers ${projection.projectedCapacity}, ${projection.message}, ${projection.reviewTurn}">
               <text class="atlas-funded-capacity-projection-item__route" x="6.2" y="${y}">${projection.message} · ${projection.corridor} · ${projection.routeName}</text>
               <text class="atlas-funded-capacity-projection-item__detail" x="6.2" y="${y + 2.0}">capacité ${projection.currentCapacity}→${projection.projectedCapacity} · reste ${projection.fundingGap} · ${projection.priority} · ${projection.reviewTurn}</text>
+            </g>
+          `;
+        }).join('')}
+      </g>
+      <g class="atlas-secondary-bottleneck ${rollup.secondaryBottlenecks.empty ? 'is-empty' : ''}" aria-label="Prochains goulets après projection: ${rollup.secondaryBottlenecks.summary}">
+        <rect x="5" y="${73.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" width="30.5" height="${rollup.secondaryBottlenecks.empty ? 5.2 : 6.0 + (rollup.secondaryBottlenecks.items.length * 5.2)}" rx="1.4"></rect>
+        <text class="atlas-secondary-bottleneck__title" x="6.2" y="${75.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}">Prochains goulets · ${rollup.secondaryBottlenecks.summary}</text>
+        ${rollup.secondaryBottlenecks.empty ? `<text class="atlas-secondary-bottleneck__empty" x="6.2" y="${78.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}">Aucun goulet secondaire pertinent</text>` : ''}
+        ${rollup.secondaryBottlenecks.items.map((item, index) => {
+          const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 5.2);
+          return `
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}">
+              <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
+              <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
             </g>
           `;
         }).join('')}

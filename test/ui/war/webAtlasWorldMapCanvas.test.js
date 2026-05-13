@@ -31,6 +31,7 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /function buildAtlasFundedLogisticsPlans/);
   assert.match(webAppSource, /function buildAtlasCommittedFundingGaps/);
   assert.match(webAppSource, /function buildAtlasFundedCapacityProjections/);
+  assert.match(webAppSource, /function buildAtlasSecondaryBottlenecks/);
   assert.match(webAppSource, /function renderAtlasEconomyStressLegend/);
   assert.match(webAppSource, /atlas-world-economy-layer/);
   assert.match(webAppSource, /atlas-economy-stress-rollup/);
@@ -79,6 +80,12 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /Revoir tour \+1/);
   assert.match(webAppSource, /priorité: compléter budget/);
   assert.match(webAppSource, /Aucune projection financée/);
+  assert.match(webAppSource, /Prochains goulets/);
+  assert.match(webAppSource, /Aucun goulet secondaire pertinent/);
+  assert.match(webAppSource, /nouveau goulet secondaire/);
+  assert.match(webAppSource, /encore saturé/);
+  assert.match(webAppSource, /résolu/);
+  assert.match(webAppSource, /ralentit le bénéfice financé/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);
   assert.match(stylesSource, /\.atlas-world-canvas/);
@@ -106,6 +113,9 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(stylesSource, /\.atlas-funded-capacity-projection/);
   assert.match(stylesSource, /\.atlas-funded-capacity-projection-item--saturated/);
   assert.match(stylesSource, /\.atlas-funded-capacity-projection-item--sufficient/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--secondary/);
+  assert.match(stylesSource, /\.atlas-secondary-bottleneck-item--resolved/);
   assert.match(stylesSource, /\.atlas-logistics-route--major/);
   assert.match(stylesSource, /\.atlas-economy-city--high/);
   assert.match(stylesSource, /\.atlas-economy-city__resources/);
