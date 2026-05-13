@@ -105,6 +105,14 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /ajouter \$\{Math\.max\(1, fundingGap\)\} budget corridor/);
   assert.match(webAppSource, /libérer \+\$\{capacityGap\} capacité hub voisin/);
   assert.match(webAppSource, /stabiliser \$\{unstableHubs\} hub/);
+  assert.match(webAppSource, /tradeoffComparison/);
+  assert.match(webAppSource, /compareFundingVsCapacity/);
+  assert.match(webAppSource, /compareRiskVsBudget/);
+  assert.match(webAppSource, /choisir \$\{selected\}; écarter \$\{rejected\}/);
+  assert.match(webAppSource, /moins cher que délestage voisin/);
+  assert.match(webAppSource, /corrige la contrainte de marge/);
+  assert.match(webAppSource, /réduit le risque avant dépense/);
+  assert.match(webAppSource, /Vs: \$\{item\.readiness\.tradeoffComparison\.rejected\}/);
   assert.match(webAppSource, /buildReadiness\(\n    'ready',[\s\S]*?financement, capacité et risque OK[\s\S]*?\);/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);

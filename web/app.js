@@ -2672,11 +2672,24 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
     ?? neighborProjections.find((projection) => projection.fundingGap > 0)?.fundingGap
     ?? 0;
   const capacityGap = Math.max(1, requiredRelief - Math.max(0, reroute.spareCapacity ?? 0));
-  const buildReadiness = (status, label, reason, unblockAction = null) => ({
+  const compareFundingVsCapacity = (selected, rejected, rationale) => ({
+    selected,
+    rejected,
+    rationale,
+    label: `choisir ${selected}; écarter ${rejected}`,
+  });
+  const compareRiskVsBudget = (selected, rejected, rationale) => ({
+    selected,
+    rejected,
+    rationale,
+    label: `choisir ${selected}; écarter ${rejected}`,
+  });
+  const buildReadiness = (status, label, reason, unblockAction = null, tradeoffComparison = null) => ({
     status,
     label,
     reason,
     unblockAction,
+    tradeoffComparison,
   });
 
   if (!reroute.available) {
@@ -2689,6 +2702,7 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
         'bloqué risque',
         'instabilité régionale à qualifier',
         riskAction,
+        compareRiskVsBudget(riskAction, `ajouter ${Math.max(1, fundingGap || capacityGap)} budget`, 'budget inutile avant stabilité'),
       );
     }
 
@@ -2698,6 +2712,7 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
         'bloqué financement',
         'marge voisine encore à financer',
         `ajouter ${fundingGap} budget corridor`,
+        compareFundingVsCapacity(`ajouter ${fundingGap} budget`, `libérer +${capacityGap} capacité`, 'moins cher que délestage voisin'),
       );
     }
 
@@ -2706,6 +2721,7 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
       'bloqué capacité',
       'aucun voisin avec marge exécutable',
       `libérer +${capacityGap} capacité voisine`,
+      compareFundingVsCapacity(`libérer +${capacityGap} capacité`, `ajouter ${Math.max(1, fundingGap)} budget`, 'budget seul ne crée pas de marge'),
     );
   }
 
@@ -2715,6 +2731,7 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
       'bloqué financement',
       'budget de délestage incomplet',
       `ajouter ${Math.max(1, fundingGap)} budget corridor`,
+      compareFundingVsCapacity(`ajouter ${Math.max(1, fundingGap)} budget`, `libérer +${capacityGap} capacité`, 'répare le verrou direct'),
     );
   }
 
@@ -2724,16 +2741,19 @@ function buildAtlasSecondaryBottleneckRerouteReadiness(forecast, reroute, funded
       'bloqué capacité',
       `marge ${reroute.spareCapacity ?? 0}/${requiredRelief} insuffisante`,
       `libérer +${capacityGap} capacité hub voisin`,
+      compareFundingVsCapacity(`libérer +${capacityGap} capacité`, `ajouter ${Math.max(1, fundingGap)} budget`, 'corrige la contrainte de marge'),
     );
   }
 
   if (sourceHasRisk || targetHasRisk) {
     const unstableHubs = Math.max(1, forecast.highHubs, matchingForecast?.highHubs ?? 0);
+    const riskAction = `stabiliser ${unstableHubs} hub${unstableHubs > 1 ? 's' : ''} critique${unstableHubs > 1 ? 's' : ''}`;
     return buildReadiness(
       'blocked-risk',
       'bloqué risque',
       'hub instable avant exécution',
-      `stabiliser ${unstableHubs} hub${unstableHubs > 1 ? 's' : ''} critique${unstableHubs > 1 ? 's' : ''}`,
+      riskAction,
+      compareRiskVsBudget(riskAction, `ajouter ${Math.max(1, fundingGap || capacityGap)} budget`, 'réduit le risque avant dépense'),
     );
   }
 
@@ -3049,11 +3069,11 @@ function renderAtlasEconomyStressLegend(economyView) {
         ${rollup.secondaryBottlenecks.items.map((item, index) => {
           const y = 79.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4) + (index * 8.1);
           return `
-            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}">
+            <g class="atlas-secondary-bottleneck-item atlas-secondary-bottleneck-item--${item.status === 'résolu' ? 'resolved' : item.status === 'encore saturé' ? 'saturated' : 'secondary'} ${item.reroute.available ? 'has-reroute' : 'has-no-reroute'} atlas-secondary-bottleneck-item--${item.readiness.status}" aria-label="Goulet ${index + 1} ${item.routeName}: ${item.status}, cause ${item.cause}, impact ${item.impact}, suggestion ${item.reroute.label}, exécution ${item.readiness.label}, blocage ${item.readiness.reason}${item.readiness.unblockAction ? `, action minimale ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? `, compromis ${item.readiness.tradeoffComparison.label}, raison ${item.readiness.tradeoffComparison.rationale}` : ''}">
               <text class="atlas-secondary-bottleneck-item__route" x="6.2" y="${y}">${index + 1}. ${item.status} · ${item.corridor} · ${item.routeName}</text>
               <text class="atlas-secondary-bottleneck-item__detail" x="6.2" y="${y + 2.0}">${item.cause} · ${item.impact}</text>
               <text class="atlas-secondary-bottleneck-item__reroute" x="6.2" y="${y + 4.0}">${item.reroute.label} · ${item.reroute.effect} · ${item.reroute.tradeoff}</text>
-              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}</text>
+              <text class="atlas-secondary-bottleneck-item__readiness" x="6.2" y="${y + 5.8}">${item.readiness.label} · ${item.readiness.reason}${item.readiness.unblockAction ? ` · Action: ${item.readiness.unblockAction}` : ''}${item.readiness.tradeoffComparison ? ` · Vs: ${item.readiness.tradeoffComparison.rejected} (${item.readiness.tradeoffComparison.rationale})` : ''}</text>
             </g>
           `;
         }).join('')}
