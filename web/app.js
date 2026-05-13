@@ -6538,6 +6538,84 @@ function buildAtlasClimateMitigationReadinessComparison(timelineView) {
   };
 }
 
+function buildAtlasClimateUnderReadyExecutionGaps(readinessView) {
+  if (!readinessView || readinessView.state === 'empty' || readinessView.regions.length === 0) {
+    return {
+      state: 'empty',
+      gaps: [],
+      summary: 'Aucun déficit d’exécution climat urgent à signaler.',
+    };
+  }
+
+  const gaps = readinessView.regions
+    .filter((region) => region.status === 'insufficient' || region.status === 'too-late' || (region.status === 'just-in-time' && /cascade active|serré/i.test(region.cascadeRisk + region.timingProblem)))
+    .map((region) => {
+      const gapType = region.status === 'too-late'
+        ? 'délai'
+        : region.mitigationAvailable.includes('insuffisante')
+          ? 'capacité'
+          : region.exposure?.includes('·')
+            ? 'dépendance régionale'
+            : 'ressource';
+      const severityScore = (region.status === 'too-late' ? 40 : region.status === 'insufficient' ? 30 : 20)
+        + (region.exposure?.split('·').length ?? 1)
+        + (/cascade active|catastrophe/i.test(region.cascadeRisk) ? 5 : 0);
+
+      return {
+        provinceId: region.provinceId,
+        provinceLabel: region.provinceLabel,
+        status: region.status,
+        gapType,
+        severityScore,
+        deadline: region.deadline,
+        shortfall: gapType === 'délai'
+          ? `${region.deadline}: fenêtre d’action probablement manquée.`
+          : gapType === 'capacité'
+            ? `${region.mitigationAvailable}: besoins régionaux non couverts.`
+            : gapType === 'dépendance régionale'
+              ? `${region.exposure}: dépendances régionales à sécuriser avant l’action.`
+              : `${region.mitigationAvailable}: ressource d’exécution à confirmer.`,
+        consequence: region.timingProblem,
+      };
+    })
+    .sort((left, right) => right.severityScore - left.severityScore || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+
+  return {
+    state: gaps.length > 0 ? 'warning' : 'clear',
+    gaps,
+    summary: gaps.length > 0
+      ? `${gaps.length} déficit${gaps.length > 1 ? 's' : ''} d’exécution climat urgent${gaps.length > 1 ? 's' : ''} à résoudre avant validation.`
+      : 'Les plans urgents affichés sont suffisamment prêts; aucun avertissement ajouté.',
+  };
+}
+
+function renderAtlasClimateUnderReadyExecutionGaps(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-under-ready" aria-label="Déficits d’exécution des plans climat urgents">
+      <div class="map-world-climate-under-ready__header">
+        <strong>Plans climat sous-prêts</strong>
+        <span>${view.gaps.length} déficit${view.gaps.length > 1 ? 's' : ''}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-under-ready__list">
+        ${view.gaps.map((gap) => `
+          <li class="map-world-climate-under-ready__item map-world-climate-under-ready__item--${gap.status}">
+            <b>${gap.provinceLabel}</b>
+            <span>${gap.deadline} · écart ${gap.gapType}</span>
+            <small><b>Manque concret</b> · ${gap.shortfall}</small>
+            <small><b>Risque exécution</b> · ${gap.consequence}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateMitigationReadinessComparison(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -13834,6 +13912,7 @@ function render() {
   const atlasClimateActionPlanRanking = buildAtlasClimateActionPlanRanking(atlasClimateActionPlan);
   const atlasClimateActionUrgencyTimeline = buildAtlasClimateActionUrgencyTimeline(atlasClimateActionPlanRanking);
   const atlasClimateMitigationReadiness = buildAtlasClimateMitigationReadinessComparison(atlasClimateActionUrgencyTimeline);
+  const atlasClimateUnderReadyExecutionGaps = buildAtlasClimateUnderReadyExecutionGaps(atlasClimateMitigationReadiness);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -13872,6 +13951,7 @@ function render() {
           ${renderAtlasClimateActionPlanRanking(atlasClimateActionPlanRanking)}
           ${renderAtlasClimateActionUrgencyTimeline(atlasClimateActionUrgencyTimeline)}
           ${renderAtlasClimateMitigationReadinessComparison(atlasClimateMitigationReadiness)}
+          ${renderAtlasClimateUnderReadyExecutionGaps(atlasClimateUnderReadyExecutionGaps)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
