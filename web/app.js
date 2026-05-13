@@ -1096,7 +1096,109 @@ function renderAtlasMilitaryCommitmentFrontConflicts(conflicts) {
   `;
 }
 
+function buildAtlasMilitaryCommitmentCoverageSummary(commitment, conflicts, shell, features) {
+  const pressureByProvinceId = new Map(shell.provinces.map((province) => [province.provinceId, getAtlasMilitaryPressureScore(province)]));
+  const targetProvince = getAtlasCommitmentTargetProvince(commitment, shell);
+  const committedStages = commitment?.stages?.filter((stage) => stage.status === 'à engager').length ?? 0;
+  const activeStages = commitment?.stages?.length ?? 0;
+  const coveredProvinceIds = new Set(targetProvince ? [targetProvince.provinceId] : []);
+  const uncoveredFronts = shell.provinces
+    .filter((province) => province.contested && !coveredProvinceIds.has(province.provinceId))
+    .map((province) => ({
+      provinceId: province.provinceId,
+      label: province.label,
+      pressure: pressureByProvinceId.get(province.provinceId) ?? 0,
+      reason: 'front actif sans engagement direct',
+    }))
+    .sort((left, right) => right.pressure - left.pressure || left.label.localeCompare(right.label));
+
+  const contradictoryFronts = (conflicts?.conflicts ?? [])
+    .filter((conflict) => conflict.severity === 'haute' || conflict.label.includes('stabilisée'))
+    .map((conflict) => ({
+      conflictId: conflict.conflictId,
+      label: conflict.provinceLabel,
+      reason: conflict.label,
+      priority: conflict.priority,
+    }));
+
+  const frontPriority = uncoveredFronts[0]
+    ?? (targetProvince ? {
+      provinceId: targetProvince.provinceId,
+      label: targetProvince.label,
+      pressure: pressureByProvinceId.get(targetProvince.provinceId) ?? 0,
+      reason: 'front couvert par engagement préparé',
+    } : null);
+
+  const nextDeadline = commitment?.selectedOption?.delay
+    ? `échéance ${commitment.selectedOption.delay}`
+    : 'échéance non planifiée';
+  const rows = [
+    {
+      key: 'active',
+      label: 'Actifs',
+      value: `${activeStages} étape${activeStages > 1 ? 's' : ''} · ${committedStages} à engager`,
+      tone: activeStages > 0 ? 'covered' : 'uncovered',
+    },
+    {
+      key: 'conflicts',
+      label: 'Conflits',
+      value: `${conflicts?.conflicts?.length ?? 0} détecté${(conflicts?.conflicts?.length ?? 0) > 1 ? 's' : ''}`,
+      tone: conflicts?.conflicts?.length ? 'conflict' : 'covered',
+    },
+    {
+      key: 'priority',
+      label: 'Priorité',
+      value: frontPriority ? `${frontPriority.label} · ${frontPriority.reason}` : 'aucun front visible',
+      tone: uncoveredFronts.length ? 'uncovered' : 'covered',
+    },
+    {
+      key: 'deadline',
+      label: 'Échéance',
+      value: nextDeadline,
+      tone: nextDeadline.includes('long') ? 'uncovered' : 'covered',
+    },
+  ];
+
+  return {
+    rows,
+    uncoveredFronts: uncoveredFronts.slice(0, 2),
+    contradictoryFronts: contradictoryFronts.slice(0, 2),
+    summary: activeStages > 0
+      ? `${activeStages} étape${activeStages > 1 ? 's' : ''}; ${uncoveredFronts.length} front${uncoveredFronts.length > 1 ? 's' : ''} non couvert${uncoveredFronts.length > 1 ? 's' : ''}; ${conflicts?.conflicts?.length ?? 0} conflit${(conflicts?.conflicts?.length ?? 0) > 1 ? 's' : ''}.`
+      : 'Aucun engagement militaire staged actif à agréger par front.',
+    empty: activeStages === 0,
+  };
+}
+
+function renderAtlasMilitaryCommitmentCoverageSummary(coverage) {
+  const extraCount = Math.min(2, (coverage.uncoveredFronts?.length ?? 0) + (coverage.contradictoryFronts?.length ?? 0));
+  const height = coverage.empty ? 8 : 8 + (coverage.rows.length * 3.1) + (extraCount * 2.7);
+  const extraRows = [
+    ...(coverage.uncoveredFronts ?? []).map((front) => ({ tone: 'uncovered', label: `Non couvert: ${front.label}` })),
+    ...(coverage.contradictoryFronts ?? []).map((front) => ({ tone: 'conflict', label: `Contradictoire: ${front.label}` })),
+  ].slice(0, 2);
+
+  return `
+    <g class="atlas-military-commitment-coverage" aria-label="Synthèse couverture engagements militaires par front: ${coverage.summary}">
+      <rect class="atlas-military-commitment-coverage__panel" x="3" y="61" width="38" height="${height}" rx="2.5"></rect>
+      <text class="atlas-military-commitment-coverage__title" x="5" y="64.4">Couverture engagements</text>
+      ${coverage.empty ? `<text class="atlas-military-commitment-coverage__empty" x="5" y="68">${coverage.summary}</text>` : `
+        ${coverage.rows.map((row, index) => `
+          <g class="atlas-military-coverage-row atlas-military-coverage-row--${row.tone}" data-atlas-coverage-row="${row.key}">
+            <text class="atlas-military-coverage-row__label" x="5" y="${68 + index * 3.1}">${row.label}</text>
+            <text class="atlas-military-coverage-row__value" x="14" y="${68 + index * 3.1}">${row.value}</text>
+          </g>
+        `).join('')}
+        ${extraRows.map((row, index) => `
+          <text class="atlas-military-coverage-extra atlas-military-coverage-extra--${row.tone}" x="5" y="${81.2 + index * 2.7}">${row.label}</text>
+        `).join('')}
+      `}
+    </g>
+  `;
+}
+
 function buildAtlasMilitaryFeatures(shell) {
+
 
 
 
@@ -1167,6 +1269,7 @@ function renderAtlasMilitaryLayer(shell) {
   const outcomeForecasts = buildAtlasMilitaryOperationOutcomeForecasts(operationSequence);
   const stagedCommitment = buildAtlasMilitaryStagedCommitment(outcomeForecasts);
   const commitmentConflicts = buildAtlasMilitaryCommitmentFrontConflicts(stagedCommitment, shell, features);
+  const commitmentCoverage = buildAtlasMilitaryCommitmentCoverageSummary(stagedCommitment, commitmentConflicts, shell, features);
 
   if (!features.routes.length && !features.riskZones.length) {
     return `
@@ -1193,6 +1296,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryOperationSequence(operationSequence)}
       ${renderAtlasMilitaryOperationOutcomeForecasts(outcomeForecasts)}
       ${renderAtlasMilitaryStagedCommitment(stagedCommitment)}
+      ${renderAtlasMilitaryCommitmentCoverageSummary(commitmentCoverage)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
