@@ -1629,6 +1629,63 @@ function getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, 
   return 'no-safe-fallback';
 }
 
+function buildAtlasMilitaryFallbackCrossDomainBlocker(fallback, topWarning, shell) {
+  if (!fallback || !topWarning || !shell) return null;
+  const province = (shell.provinces ?? []).find((candidate) => candidate.provinceId === topWarning.sourceId) ?? null;
+  if (!province) {
+    return {
+      type: 'no-clear-cross-domain-blocker',
+      label: 'blocage transversal: aucun clair',
+      detail: 'aucun signal carte relié',
+    };
+  }
+
+  const exposedCellule = intrigueCellules
+    .filter((cellule) => cellule.locationId === province.provinceId && cellule.exposure >= 60)
+    .sort((left, right) => right.exposure - left.exposure || left.codename.localeCompare(right.codename))[0] ?? null;
+  const strainedCulture = province.loyalty <= 42;
+  const climatePressure = province.supplyLevel === 'strained' && topWarning.frontRisk >= 118;
+  const budgetOrLogistics = province.supplyLevel === 'collapsed' || fallback.type === 'resource-blocked' || topWarning.routeExposure >= 16;
+
+  if (budgetOrLogistics) {
+    return {
+      type: 'budget-logistics',
+      label: 'blocker: budget/logistique',
+      detail: province.supplyLevel === 'collapsed' ? 'approvisionnement effondré' : 'corridor trop coûteux',
+    };
+  }
+
+  if (exposedCellule) {
+    return {
+      type: 'intrigue-exposure',
+      label: 'blocker: exposition intrigue',
+      detail: `cellule ${exposedCellule.codename} exposée`,
+    };
+  }
+
+  if (strainedCulture) {
+    return {
+      type: 'cultural-tension',
+      label: 'blocker: tension culturelle',
+      detail: `loyauté ${province.loyalty}`,
+    };
+  }
+
+  if (climatePressure) {
+    return {
+      type: 'climate-pressure',
+      label: 'blocker: pression climat',
+      detail: 'réserves saisonnières contraintes',
+    };
+  }
+
+  return {
+    type: 'no-clear-cross-domain-blocker',
+    label: 'blocage transversal: aucun clair',
+    detail: 'aucun signal carte prioritaire',
+  };
+}
+
 function buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint, reliefPreview, commitment) {
   if (!fallback || !topWarning || !orderHint?.hint || !reliefPreview?.preview) {
     return {
@@ -1677,7 +1734,7 @@ function buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint,
   };
 }
 
-function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPreview, commitment) {
+function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPreview, commitment, shell) {
   const topWarning = priorityStack?.stack?.[0] ?? null;
   const blocker = getAtlasMilitaryBestOrderBlocker(topWarning, orderHint, reliefPreview, commitment);
   const fallback = blocker === 'resource-blocked'
@@ -1707,12 +1764,14 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     return {
       fallback: null,
       safetyReason: buildAtlasMilitaryFallbackSafetyReason(null, topWarning, orderHint, reliefPreview, commitment),
+      crossDomainBlocker: null,
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
   }
 
   const safetyReason = buildAtlasMilitaryFallbackSafetyReason(fallback, topWarning, orderHint, reliefPreview, commitment);
+  const crossDomainBlocker = buildAtlasMilitaryFallbackCrossDomainBlocker(fallback, topWarning, shell);
 
   return {
     fallback: {
@@ -1720,9 +1779,11 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       ...fallback,
       label: topWarning.label,
       safetyReason,
+      crossDomainBlocker,
     },
     safetyReason,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}).`,
+    crossDomainBlocker,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}).`,
     empty: false,
   };
 }
@@ -1732,20 +1793,21 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const fallback = fallbackHint.fallback;
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="5.6" rx="1.2"></rect>
-      <text class="atlas-military-fallback-order__label" x="23.2" y="59.4">repli: ${fallback.order}</text>
-      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.9">${fallback.detail}</text>
-      <text class="atlas-military-fallback-order__safety" x="23.2" y="62.4">${fallback.safetyReason.label}</text>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="7.1" rx="1.2"></rect>
+      <text class="atlas-military-fallback-order__label" x="23.2" y="59.3">repli: ${fallback.order}</text>
+      <text class="atlas-military-fallback-order__detail" x="23.2" y="60.7">${fallback.detail}</text>
+      <text class="atlas-military-fallback-order__safety" x="23.2" y="62.1">${fallback.safetyReason.label}</text>
+      ${fallback.crossDomainBlocker ? `<text class="atlas-military-fallback-order__blocker" x="23.2" y="63.5">${fallback.crossDomainBlocker.label}</text>` : ''}
     </g>
   `;
 }
 
-function renderAtlasMilitaryWarningPriorityStack(priorityStack, commitment) {
+function renderAtlasMilitaryWarningPriorityStack(priorityStack, commitment, shell) {
   if (!priorityStack || priorityStack.empty) return '';
   const [topPriority, ...lowerPriorities] = priorityStack.stack;
   const topReliefPreview = buildAtlasMilitaryTopWarningReliefPreview(priorityStack);
   const bestOrderHint = buildAtlasMilitaryBestNextOrderHint(priorityStack, topReliefPreview, commitment);
-  const fallbackOrderHint = buildAtlasMilitaryFallbackOrderHint(priorityStack, bestOrderHint, topReliefPreview, commitment);
+  const fallbackOrderHint = buildAtlasMilitaryFallbackOrderHint(priorityStack, bestOrderHint, topReliefPreview, commitment, shell);
   const height = 8.8 + (lowerPriorities.length * 2.7);
   return `
     <g class="atlas-military-warning-stack" aria-label="Pile de priorités des alertes militaires: ${priorityStack.summary}">
@@ -1878,7 +1940,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentDebtSummary(commitmentDebt)}
       ${renderAtlasMilitaryCommitmentDebtPriorities(commitmentPriority)}
       ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
-      ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment)}
+      ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
