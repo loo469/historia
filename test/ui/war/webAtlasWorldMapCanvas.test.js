@@ -30,6 +30,7 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /function buildAtlasCorridorBudgetShortfalls/);
   assert.match(webAppSource, /function buildAtlasFundedLogisticsPlans/);
   assert.match(webAppSource, /function buildAtlasCommittedFundingGaps/);
+  assert.match(webAppSource, /function buildAtlasFundedCapacityProjections/);
   assert.match(webAppSource, /function renderAtlasEconomyStressLegend/);
   assert.match(webAppSource, /atlas-world-economy-layer/);
   assert.match(webAppSource, /atlas-economy-stress-rollup/);
@@ -71,6 +72,13 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(webAppSource, /ressource stabilisée/);
   assert.match(webAppSource, /entièrement couvert/);
   assert.match(webAppSource, /reste à couvrir/);
+  assert.match(webAppSource, /Capacité après plan/);
+  assert.match(webAppSource, /financé et suffisant/);
+  assert.match(webAppSource, /financé mais saturation possible/);
+  assert.match(webAppSource, /financé partiellement, capacité à risque/);
+  assert.match(webAppSource, /Revoir tour \+1/);
+  assert.match(webAppSource, /priorité: compléter budget/);
+  assert.match(webAppSource, /Aucune projection financée/);
   assert.match(webAppSource, /atlas-logistics-route--forecast-\$\{forecast\?\.tone \?\? 'unknown'\}/);
   assert.match(webAppSource, /getRouteStressSummary\(route, tensionByCityId, cityNameById\)/);
   assert.match(stylesSource, /\.atlas-world-canvas/);
@@ -95,6 +103,9 @@ test('atlas world map canvas renders ocean terrain and relief as a dedicated map
   assert.match(stylesSource, /\.atlas-committed-funding-gap/);
   assert.match(stylesSource, /\.atlas-committed-funding-gap-item--gap/);
   assert.match(stylesSource, /\.atlas-committed-funding-gap-item--covered/);
+  assert.match(stylesSource, /\.atlas-funded-capacity-projection/);
+  assert.match(stylesSource, /\.atlas-funded-capacity-projection-item--saturated/);
+  assert.match(stylesSource, /\.atlas-funded-capacity-projection-item--sufficient/);
   assert.match(stylesSource, /\.atlas-logistics-route--major/);
   assert.match(stylesSource, /\.atlas-economy-city--high/);
   assert.match(stylesSource, /\.atlas-economy-city__resources/);
