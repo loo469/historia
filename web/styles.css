@@ -11121,6 +11121,7 @@ button { font: inherit; }
   stroke-width: 0.24;
 }
 .atlas-military-fallback-order__detail { fill: #cbd5e1; font-size: 0.68px; }
+.atlas-military-fallback-order__safety { fill: #bae6fd; font-size: 0.6px; font-weight: 800; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

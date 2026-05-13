@@ -20,6 +20,11 @@ test('atlas military fallback order hint handles resource route and overcommitme
   assert.match(webAppSource, /order: 'Sécuriser détour'/);
   assert.match(webAppSource, /order: 'Geler engagement'/);
   assert.match(webAppSource, /detail: `réduire la charge sur \$\{commitment\?\.selectedOption\?\.target \?\? topWarning\?\.label\}`/);
+  assert.match(webAppSource, /type: 'avoids-overcommitment'/);
+  assert.match(webAppSource, /type: 'bypasses-route-exposure'/);
+  assert.match(webAppSource, /type: 'preserves-front-coverage'/);
+  assert.match(webAppSource, /type: 'waits-for-resupply'/);
+  assert.match(webAppSource, /type: 'no-clear-safety-reason'/);
 });
 
 test('atlas military fallback order hint stays secondary and hides no-safe fallback state', () => {
@@ -27,7 +32,10 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /return 'no-safe-fallback'/);
   assert.match(webAppSource, /if \(!fallbackHint \|\| fallbackHint\.empty \|\| !fallbackHint\.fallback\) return ''/);
   assert.match(webAppSource, /data-atlas-fallback-order/);
+  assert.match(webAppSource, /atlas-military-fallback-order__safety/);
+  assert.match(webAppSource, /summary: `\$\{fallback\.order\}: \$\{fallback\.detail\} \(\$\{fallback\.why\}; \$\{safetyReason\.label\}\)\.`/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
   assert.match(stylesSource, /\.atlas-military-fallback-order--route-blocked/);
   assert.match(stylesSource, /\.atlas-military-fallback-order--overcommitment-blocked/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__safety/);
 });
