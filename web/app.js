@@ -11385,6 +11385,86 @@ function renderCultureMapOverlay(cultureView) {
   `;
 }
 
+
+function buildAtlasMediationSignalWarnings(cultureView, selectedProvinceId = state.selectedProvinceId) {
+  const features = buildAtlasCultureFeatures({
+    ...cultureView,
+    selectedRegionId: selectedProvinceId,
+  });
+  const selectedEntries = cultureView.overlay.filter((entry) => entry.regionId === selectedProvinceId);
+  const selectedCultures = new Set(selectedEntries.map((entry) => entry.cultureName));
+  const selectedCohesion = Math.max(0, ...selectedEntries.map((entry) => entry.influenceScore ?? 0));
+  const selectedFocusWarning = features.borderZones
+    .filter((zone) => zone.regionId === selectedProvinceId)
+    .flatMap((zone) => {
+      const warnings = [];
+      if (zone.commitment.status === 'stable' && selectedCohesion < 50) {
+        warnings.push({
+          warningId: `${zone.borderId}:low-cohesion`,
+          state: 'conflict',
+          cultureName: zone.cultureName,
+          title: 'engagement trop optimiste',
+          detail: `cohésion locale ${selectedCohesion || 'faible'} · ${zone.commitment.label}`,
+          followUp: 'revérifier confiance',
+        });
+      }
+      if (!selectedCultures.has(zone.cultureName)) {
+        warnings.push({
+          warningId: `${zone.borderId}:missing-culture`,
+          state: 'conflict',
+          cultureName: zone.cultureName,
+          title: 'culture absente de la région',
+          detail: `${zone.mediation.option} cible ${zone.cultureName}`,
+          followUp: 'choisir frontière liée',
+        });
+      }
+      return warnings;
+    });
+  const crossRegionWarnings = features.borderZones
+    .filter((zone) => zone.regionId !== selectedProvinceId && !selectedCultures.has(zone.cultureName))
+    .slice(0, Math.max(0, 2 - selectedFocusWarning.length))
+    .map((zone) => ({
+      warningId: `${zone.borderId}:off-region`,
+      state: 'conflict',
+      cultureName: zone.cultureName,
+      title: 'médiation hors culture locale',
+      detail: `${zone.regionId} · ${zone.mediation.option}`,
+      followUp: 'lier à une culture visible',
+    }));
+  const warnings = [...selectedFocusWarning, ...crossRegionWarnings].slice(0, 2);
+
+  if (warnings.length === 0) {
+    return [{
+      warningId: `atlas-mediation:${selectedProvinceId}:coherent`,
+      state: 'coherent',
+      cultureName: selectedEntries[0]?.cultureName ?? 'culture locale',
+      title: 'engagement cohérent',
+      detail: selectedEntries.length > 0 ? 'signaux régionaux alignés' : 'aucun engagement actif',
+      followUp: selectedEntries.length > 0 ? 'maintenir suivi' : 'attendre médiation',
+    }];
+  }
+
+  return warnings;
+}
+
+function renderCultureMediationSignalWarnings(warnings) {
+  return `
+    <div class="culture-mediation-warnings" aria-label="Avertissements des engagements de médiation culturelle">
+      <div class="culture-mediation-warnings__header">
+        <strong>Engagements de médiation</strong>
+        <span>${warnings.length} signal${warnings.length > 1 ? 'aux' : ''}</span>
+      </div>
+      ${warnings.map((warning) => `
+        <article class="culture-mediation-warning culture-mediation-warning--${warning.state}">
+          <b>${warning.title}</b>
+          <span>${warning.cultureName} · ${warning.detail}</span>
+          <small>suivi: ${warning.followUp}</small>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderCultureSidePanel(cultureView) {
   if (state.activeOverlaySlot !== 'culture-overlay') {
     return null;
@@ -11415,6 +11495,7 @@ function renderCultureSidePanel(cultureView) {
     selectedMarker: focus,
     selectedCluster,
   });
+  const mediationWarnings = buildAtlasMediationSignalWarnings(cultureView, state.selectedProvinceId);
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -11438,6 +11519,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureDiscoveryUrgencyGroups(discoveryUrgencyGroups)}
       ${renderCultureInterventionPriorities(interventionPriorities)}
       ${renderCultureBlockerResolutionHistory(blockerHistory)}
+      ${renderCultureMediationSignalWarnings(mediationWarnings)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
