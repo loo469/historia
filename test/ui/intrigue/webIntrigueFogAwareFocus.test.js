@@ -518,6 +518,36 @@ test('atlas counterintelligence marks the next safe follow-up sweep priority', (
   assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__next-safe--lowest-exposure-sweep/);
 });
 
+test('atlas counterintelligence explains exposure tradeoffs for next safe sweeps', () => {
+  const tradeoffFor = (marker) => {
+    if (!marker.shouldRender) return { state: 'silent-guard', shouldRender: false };
+    if (marker.state === 'wait-for-safe-window') return { state: 'wait-required', shouldRender: true };
+    if (marker.state === 'no-safe-follow-up') return { state: 'no-safe-tradeoff', shouldRender: true };
+    if (marker.state === 'closes-critical-blind-spot') return { state: 'critical-coverage-tradeoff', shouldRender: true };
+    if (marker.state === 'refreshes-stale-critical-signal') return { state: 'stale-refresh-tradeoff', shouldRender: true };
+    return { state: 'minimal-exposure-tradeoff', shouldRender: true };
+  };
+
+  assert.deepEqual(tradeoffFor({ state: 'closes-critical-blind-spot', shouldRender: true }), { state: 'critical-coverage-tradeoff', shouldRender: true });
+  assert.deepEqual(tradeoffFor({ state: 'refreshes-stale-critical-signal', shouldRender: true }), { state: 'stale-refresh-tradeoff', shouldRender: true });
+  assert.deepEqual(tradeoffFor({ state: 'lowest-exposure-sweep', shouldRender: true }), { state: 'minimal-exposure-tradeoff', shouldRender: true });
+  assert.deepEqual(tradeoffFor({ state: 'wait-for-safe-window', shouldRender: true }), { state: 'wait-required', shouldRender: true });
+  assert.deepEqual(tradeoffFor({ state: 'no-safe-follow-up', shouldRender: true }), { state: 'no-safe-tradeoff', shouldRender: true });
+  assert.deepEqual(tradeoffFor({ state: 'closes-critical-blind-spot', shouldRender: false }), { state: 'silent-guard', shouldRender: false });
+  assert.match(webAppSource, /nextSafeSweepExposureTradeoff/);
+  assert.match(webAppSource, /Tradeoff exposition:/);
+  assert.match(webAppSource, /critical-coverage-tradeoff/);
+  assert.match(webAppSource, /stale-refresh-tradeoff/);
+  assert.match(webAppSource, /minimal-exposure-tradeoff/);
+  assert.match(webAppSource, /wait-required/);
+  assert.match(webAppSource, /no-safe-tradeoff/);
+  assert.match(webAppSource, /silent-guard/);
+  assert.match(webAppSource, /meilleure couverture critique malgré une exposition contrôlée/);
+  assert.match(webAppSource, /choisir l’exposition minimale plutôt qu’un gain de couverture plus spéculatif/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__tradeoff/);
+  assert.match(stylesSource, /atlas-counterintelligence-best-resweep-gap-warning__tradeoff--minimal-exposure-tradeoff/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
