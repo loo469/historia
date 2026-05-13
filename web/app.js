@@ -8491,6 +8491,80 @@ function renderAtlasClimateRecoveryCollateralReliefRanking(view) {
   `;
 }
 
+function buildAtlasClimateFirstRecoveryPressureReliefExplanation(recoveryReliefRankingView) {
+  if (!recoveryReliefRankingView || recoveryReliefRankingView.state === 'empty' || !recoveryReliefRankingView.rankedActions?.length) {
+    return {
+      state: 'empty',
+      explanation: null,
+      summary: 'Aucune micro-explication pressure relief: aucune top recovery action réelle.',
+    };
+  }
+
+  const topAction = recoveryReliefRankingView.rankedActions[0];
+  const reliefSignals = {
+    'améliore deadline': {
+      state: 'deadline-less-tight',
+      indicator: 'deadline moins serrée',
+      firstVisibleRelief: 'La fenêtre critique devrait perdre un tour de pression avant les autres jauges.',
+      tiebreaker: 3,
+    },
+    'libère capacité': {
+      state: 'capacity-freed',
+      indicator: 'capacité régionale libérée',
+      firstVisibleRelief: 'La jauge readiness devrait repasser au-dessus du seuil d’exécution ciblé.',
+      tiebreaker: 2,
+    },
+    'réduit exposition régionale': {
+      state: 'exposure-reduced',
+      indicator: 'exposition réduite',
+      firstVisibleRelief: 'Le premier signal visible devrait être une exposition régionale moins prioritaire.',
+      tiebreaker: 1,
+    },
+    'aucun relief sûr': {
+      state: 'no-safe-relief',
+      indicator: 'aucun relief sûr',
+      firstVisibleRelief: 'Aucun indicateur ne devrait être promis; le risque reste explicitement accepté.',
+      tiebreaker: 0,
+    },
+  };
+  const selected = reliefSignals[topAction.collateralRelief] ?? reliefSignals['aucun relief sûr'];
+
+  return {
+    state: selected.state,
+    explanation: {
+      provinceId: topAction.provinceId,
+      provinceLabel: topAction.provinceLabel,
+      deadline: topAction.deadline,
+      actionType: topAction.type,
+      actionLabel: topAction.label,
+      indicator: selected.indicator,
+      firstVisibleRelief: selected.firstVisibleRelief,
+      reliefScore: topAction.reliefScore,
+      tiebreaker: selected.tiebreaker,
+    },
+    summary: `${topAction.provinceLabel}: premier relief attendu après ${topAction.label} — ${selected.indicator}.`,
+  };
+}
+
+function renderAtlasClimateFirstRecoveryPressureReliefExplanation(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || !view.explanation) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-first-recovery-relief map-world-climate-first-recovery-relief--${view.state}" aria-label="Première pression soulagée après recovery climat">
+      <div class="map-world-climate-first-recovery-relief__header">
+        <strong>Premier relief visible</strong>
+        <span>${view.explanation.indicator}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${view.explanation.provinceLabel}</b> · ${view.explanation.deadline} · ${view.explanation.actionType}</small>
+      <small><b>Signal attendu</b> · ${view.explanation.firstVisibleRelief}</small>
+      <small><b>Score source</b> · ${view.explanation.reliefScore}, tie-break ${view.explanation.tiebreaker}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -16211,6 +16285,7 @@ function render() {
   const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
   const atlasClimateDeadlineRecoveryAction = buildAtlasClimateDeadlineRecoveryAction(atlasClimateMinimumBoostDeadlineMissWarning);
   const atlasClimateRecoveryCollateralReliefRanking = buildAtlasClimateRecoveryCollateralReliefRanking(atlasClimateDeadlineRecoveryAction);
+  const atlasClimateFirstRecoveryPressureReliefExplanation = buildAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateRecoveryCollateralReliefRanking);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -16257,6 +16332,7 @@ function render() {
           ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
           ${renderAtlasClimateDeadlineRecoveryAction(atlasClimateDeadlineRecoveryAction)}
           ${renderAtlasClimateRecoveryCollateralReliefRanking(atlasClimateRecoveryCollateralReliefRanking)}
+          ${renderAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateFirstRecoveryPressureReliefExplanation)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

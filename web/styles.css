@@ -12122,3 +12122,30 @@ button { font: inherit; }
   line-height: 1.35;
   margin: 0;
 }
+.map-world-climate-first-recovery-relief {
+  display: grid;
+  gap: 6px;
+  max-width: 54ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(12, 74, 110, 0.72), rgba(5, 46, 22, 0.24));
+  border: 1px solid rgba(125, 211, 252, 0.44);
+}
+.map-world-climate-first-recovery-relief--capacity-freed { border-color: rgba(167, 139, 250, 0.46); }
+.map-world-climate-first-recovery-relief--exposure-reduced { border-color: rgba(74, 222, 128, 0.46); }
+.map-world-climate-first-recovery-relief--no-safe-relief { border-color: rgba(251, 146, 60, 0.52); }
+.map-world-climate-first-recovery-relief__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-first-recovery-relief p,
+.map-world-climate-first-recovery-relief span,
+.map-world-climate-first-recovery-relief small {
+  color: #e0f2fe;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
