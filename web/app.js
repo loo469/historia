@@ -1704,6 +1704,17 @@ function buildAtlasCultureFeatures(cultureView) {
       };
     })
     .slice(0, 4);
+  const consolidationRecommendations = borderZones
+    .filter((zone) => zone.commitment.consolidationRecommendation)
+    .map((zone) => ({
+      regionId: zone.regionId,
+      cultureName: zone.cultureName,
+      recommendation: zone.commitment.consolidationRecommendation,
+      reboundWindow: zone.commitment.reboundWindow,
+      consolidation: zone.commitment.consolidation,
+    }))
+    .sort((a, b) => b.recommendation.priority - a.recommendation.priority || a.cultureName.localeCompare(b.cultureName))
+    .slice(0, 3);
 
   return {
     influenceZones,
@@ -1713,6 +1724,51 @@ function buildAtlasCultureFeatures(cultureView) {
     regionSummaries,
     driftPreviews,
     borderZones,
+    consolidationRecommendations,
+  };
+}
+
+function buildAtlasFragileReboundRecommendation(zone, commitment) {
+  if (commitment.consolidation.state === 'stable') {
+    return null;
+  }
+
+  if (commitment.reboundWindow.state === 'missed') {
+    return {
+      action: 'delay expansion',
+      label: 'retarder expansion',
+      reason: `fenêtre ${commitment.reboundWindow.label} · ${commitment.residualRisk}`,
+      detail: 'la médiation doit être révisée avant d’étendre l’influence',
+      priority: 4,
+    };
+  }
+
+  if (zone.mainDriver === 'influence voisine' || zone.mainDriver === 'migration') {
+    return {
+      action: 'protect border zone',
+      label: 'protéger frontière',
+      reason: `${zone.mainDriver} · ${commitment.remainingConfidence}`,
+      detail: `${zone.stabilization} avant que la pression locale ne déplace le rebond`,
+      priority: 3,
+    };
+  }
+
+  if (zone.drift.linkedToFocus || zone.mainDriver === 'événement') {
+    return {
+      action: 'monitor drift',
+      label: 'surveiller dérive',
+      reason: `${zone.drift.label} · ${zone.mediation.confidenceReason}`,
+      detail: 'suivre le repère culturel avant d’ajouter un nouvel engagement',
+      priority: 2,
+    };
+  }
+
+  return {
+    action: 'reinforce mediation',
+    label: 'renforcer médiation',
+    reason: `${commitment.consolidation.reason} · ${zone.mediation.confidence}`,
+    detail: `${zone.mediation.option} reste le plus petit appui de consolidation`,
+    priority: 1,
   };
 }
 
@@ -1807,8 +1863,7 @@ function buildAtlasMediationCommitment(zone) {
       : reboundWindow.state === 'risky'
         ? { state: 'fragile', label: 'rebond fragile', reason: 'influence adverse', action: 'appui culturel' }
         : { state: 'expiring', label: 'rebond expire', reason: 'délai restant faible', action: 'agir ce tour' };
-
-  return {
+  const commitment = {
     status,
     remainingConfidence,
     nextConsequence,
@@ -1819,6 +1874,11 @@ function buildAtlasMediationCommitment(zone) {
     reboundWindow,
     consolidation,
     label: status === 'stable' ? 'engagement stable' : 'engagement à risque',
+  };
+
+  return {
+    ...commitment,
+    consolidationRecommendation: buildAtlasFragileReboundRecommendation(zone, commitment),
   };
 }
 
@@ -1868,17 +1928,18 @@ function renderAtlasCultureLayer(cultureView) {
       `}
       ${features.borderZones.length > 0 ? `
         <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
-          <rect x="3" y="55" width="30" height="${12 + (features.borderZones.length * 12.2)}" rx="1.8"></rect>
+          <rect x="3" y="55" width="30" height="${13 + (features.borderZones.length * 14.2)}" rx="1.8"></rect>
           <text class="atlas-cultural-border-zones__title" x="5" y="58.4">Médiations culturelles</text>
           ${features.borderZones.map((zone, index) => `
             <g class="atlas-cultural-border-zone atlas-cultural-border-zone--${zone.drift.state} atlas-cultural-border-zone--confidence-${zone.mediation.confidence} atlas-cultural-border-zone--commitment-${zone.commitment.status === 'stable' ? 'stable' : 'risk'}" data-atlas-cultural-border="${zone.regionId}" aria-label="Frontière culturelle ${zone.cultureName}: moteur ${zone.mainDriver}, médiation ${zone.mediation.option}, confiance ${zone.mediation.confidence}, engagement ${zone.commitment.status}, confiance restante ${zone.commitment.remainingConfidence}, prochaine conséquence ${zone.commitment.nextConsequence}, échéance ${zone.commitment.phase}">
-              <text x="5" y="${62 + index * 12.2}">${zone.cultureName}</text>
-              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 12.2}">${zone.chips.join(' · ')}</text>
-              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 12.2}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
-              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 12.2}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
-              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 12.2}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
-              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 12.2}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">${zone.commitment.consolidation.label}: ${zone.commitment.consolidation.action}</text>
+              <text x="5" y="${62 + index * 14.2}">${zone.cultureName}</text>
+              <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 14.2}">${zone.chips.join(' · ')}</text>
+              <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 14.2}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
+              <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 14.2}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
+              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 14.2}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
+              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 14.2}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 14.2}">${zone.commitment.consolidation.label}: ${zone.commitment.consolidation.action}</text>
+              ${zone.commitment.consolidationRecommendation ? `<text class="atlas-cultural-border-zone__recommendation" x="5" y="${74.6 + index * 14.2}">reco: ${zone.commitment.consolidationRecommendation.label} · ${zone.commitment.consolidationRecommendation.reason}</text>` : ''}
             </g>
           `).join('')}
         </g>
@@ -1889,6 +1950,18 @@ function renderAtlasCultureLayer(cultureView) {
           <text class="atlas-cultural-border-zone__empty" x="5" y="64">aucun engagement · frontières stables</text>
         </g>
       `}
+      ${features.consolidationRecommendations.length > 0 ? `
+        <g class="atlas-cultural-consolidation-actions" aria-label="Actions de consolidation des rebonds culturels fragiles">
+          <rect x="65" y="56" width="31" height="${7 + (features.consolidationRecommendations.length * 5.2)}" rx="1.8"></rect>
+          <text class="atlas-cultural-consolidation-actions__title" x="67" y="59.2">Actions consolidation</text>
+          ${features.consolidationRecommendations.map((item, index) => `
+            <g class="atlas-cultural-consolidation-action atlas-cultural-consolidation-action--${item.consolidation.state}" data-atlas-consolidation-action="${item.regionId}" aria-label="Action consolidation ${item.cultureName}: ${item.recommendation.label}, raison ${item.recommendation.reason}, détail ${item.recommendation.detail}">
+              <text x="67" y="${62.3 + index * 5.2}">${item.cultureName} · ${item.recommendation.label}</text>
+              <text class="atlas-cultural-consolidation-action__reason" x="67" y="${64.1 + index * 5.2}">${item.recommendation.reason}</text>
+            </g>
+          `).join('')}
+        </g>
+      ` : ''}
       ${features.cultureMarkers.map((marker) => `
         <g class="atlas-culture-marker atlas-culture-marker--${marker.tone}" data-atlas-culture-region="${marker.regionId}">
           <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="${marker.influenceTier === 'dominant' ? 2.35 : 1.85}"></circle>
