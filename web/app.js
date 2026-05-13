@@ -1492,9 +1492,69 @@ function buildAtlasMilitaryWarningPriorityStack(warningSummary, features) {
   };
 }
 
+
+function getAtlasMilitaryTopWarningReliefTone(reliefScore) {
+  if (reliefScore >= 38) return 'relief-high';
+  if (reliefScore >= 22) return 'relief-partial';
+  return 'no-meaningful-relief';
+}
+
+function buildAtlasMilitaryTopWarningReliefPreview(priorityStack) {
+  const topWarning = priorityStack?.stack?.[0] ?? null;
+  if (!topWarning) {
+    return {
+      preview: null,
+      summary: 'Aucun gain prévisible: aucune alerte militaire prioritaire actionnable.',
+      empty: true,
+    };
+  }
+
+  const frontRiskReduction = Math.min(36, Math.max(0, Math.round(topWarning.frontRisk * 0.28)));
+  const commitmentDebtCleared = topWarning.debtTone === 'absent' ? 18 : topWarning.debtTone === 'partial' ? 10 : 7;
+  const routeExposureReduced = Math.min(12, Math.max(0, topWarning.routeExposure));
+  const reliefScore = frontRiskReduction + commitmentDebtCleared + routeExposureReduced;
+  const tone = getAtlasMilitaryTopWarningReliefTone(reliefScore);
+
+  if (tone === 'no-meaningful-relief') {
+    return {
+      preview: null,
+      summary: `Aucun gain significatif prévu pour ${topWarning.label}: surveiller avant d’engager.`,
+      empty: true,
+    };
+  }
+
+  return {
+    preview: {
+      reliefId: `relief:${topWarning.warningId}`,
+      label: topWarning.label,
+      tone,
+      reliefScore,
+      frontRiskReduction,
+      commitmentDebtCleared: topWarning.debtTone === 'absent' ? 'dette directe levée' : topWarning.debtTone === 'partial' ? 'dette partielle clarifiée' : 'menace contenue',
+      routeExposureReduced,
+      action: topWarning.action,
+    },
+    summary: `${topWarning.label}: risque -${frontRiskReduction}, dette ${topWarning.debtTone}, route -${routeExposureReduced}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryTopWarningReliefPreview(reliefPreview) {
+  if (!reliefPreview || reliefPreview.empty || !reliefPreview.preview) return '';
+  const preview = reliefPreview.preview;
+  return `
+    <g class="atlas-military-warning-relief atlas-military-warning-relief--${preview.tone}" data-atlas-warning-relief="${preview.reliefId}" aria-label="Gain attendu si priorité traitée: ${reliefPreview.summary} Action: ${preview.action}">
+      <rect class="atlas-military-warning-relief__panel" x="22" y="48.2" width="16" height="4.6" rx="1.2"></rect>
+      <text class="atlas-military-warning-relief__label" x="23.2" y="49.8">gain ${preview.tone === 'relief-high' ? 'fort' : 'partiel'} · ${preview.reliefScore}</text>
+      <text class="atlas-military-warning-relief__detail" x="23.2" y="51.5">risque -${preview.frontRiskReduction} · route -${preview.routeExposureReduced}</text>
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryWarningPriorityStack(priorityStack) {
   if (!priorityStack || priorityStack.empty) return '';
   const [topPriority, ...lowerPriorities] = priorityStack.stack;
+  const topReliefPreview = buildAtlasMilitaryTopWarningReliefPreview(priorityStack);
   const height = 8.8 + (lowerPriorities.length * 2.7);
   return `
     <g class="atlas-military-warning-stack" aria-label="Pile de priorités des alertes militaires: ${priorityStack.summary}">
@@ -1505,6 +1565,7 @@ function renderAtlasMilitaryWarningPriorityStack(priorityStack) {
         <text class="atlas-military-warning-stack-top__label" x="10" y="49.8">1. ${topPriority.label} · ${topPriority.stackScore}</text>
         <text class="atlas-military-warning-stack-top__why" x="10" y="51.4">why first: ${topPriority.whyFirst}</text>
       </g>
+      ${renderAtlasMilitaryTopWarningReliefPreview(topReliefPreview)}
       ${lowerPriorities.map((warning, index) => `
         <g class="atlas-military-warning-stack-item atlas-military-warning-stack-item--${warning.tone}" data-atlas-warning-stack-item="${warning.stackId}" aria-label="Priorité ${index + 2} ${warning.frontRoute}: score ${warning.stackScore}; ${warning.action}">
           <text x="5" y="${54.4 + index * 2.7}">${index + 2}. ${warning.label}</text>
