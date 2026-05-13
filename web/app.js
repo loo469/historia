@@ -10060,6 +10060,29 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const assignmentOrderSummary = assignmentOrders.length > 0
     ? `${assignmentOrders.filter((order) => order.orderStatus === 'ready').length} ordre${assignmentOrders.filter((order) => order.orderStatus === 'ready').length > 1 ? 's' : ''} prêt${assignmentOrders.filter((order) => order.orderStatus === 'ready').length > 1 ? 's' : ''}; ${assignmentOrders.filter((order) => order.orderStatus === 'blocked').length} bloqué${assignmentOrders.filter((order) => order.orderStatus === 'blocked').length > 1 ? 's' : ''} par conflit visible. ${assignmentSafetySummary}`
     : 'Aucun balayage utile disponible pour préparer un ordre.';
+  const coveredOrderZones = assignmentOrders
+    .filter((order) => order.orderStatus === 'ready' && order.safetyStatus === 'safe')
+    .map((order) => ({ locationName: order.locationName, detail: order.coveredZone, tone: 'safe' }));
+  const fragileAssignments = assignmentOrders
+    .filter((order) => order.safetyStatus === 'unsafe' || order.orderStatus === 'blocked')
+    .map((order) => ({ locationName: order.locationName, detail: `${order.remainingConflict} · ${order.residualRisk}`, tone: 'fragile' }));
+  const uncoveredRiskZones = coveragePreview.uncovered
+    .filter((signal) => ['danger', 'warning'].includes(signal.tone) || signal.certainty === 'probable')
+    .sort((left, right) => {
+      const rank = { danger: 1, warning: 2, shadow: 3, watch: 4 };
+      return rank[left.tone] - rank[right.tone] || left.locationName.localeCompare(right.locationName);
+    })
+    .slice(0, 3)
+    .map((signal) => ({ locationName: signal.locationName, detail: `${signal.freshnessLabel} · ${signal.riskLabel}`, tone: 'uncovered' }));
+  const postOrderCoverageSummary = assignmentOrders.length > 0
+    ? `${coveredOrderZones.length} zone${coveredOrderZones.length > 1 ? 's' : ''} couverte${coveredOrderZones.length > 1 ? 's' : ''} après ordre; ${uncoveredRiskZones.length} zone${uncoveredRiskZones.length > 1 ? 's' : ''} à risque non couverte${uncoveredRiskZones.length > 1 ? 's' : ''}; ${fragileAssignments.length} affectation${fragileAssignments.length > 1 ? 's' : ''} fragile${fragileAssignments.length > 1 ? 's' : ''} à résoudre.`
+    : 'Aucun résumé post-ordre disponible tant qu’aucun ordre de balayage n’est préparé.';
+  const postOrderCoverage = {
+    coveredOrderZones,
+    fragileAssignments,
+    uncoveredRiskZones,
+    summary: postOrderCoverageSummary,
+  };
   const exposureCooldownSummary = sweepCandidates.length > 0
     ? `${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length} risque${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''} d’exposition haut${sweepCandidates.filter((candidate) => candidate.tone === 'danger').length > 1 ? 's' : ''}; cooldown visible estimé sans cause cachée.`
     : 'Aucun risque d’exposition ou cooldown supplémentaire proposé.';
@@ -10076,6 +10099,7 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     assignmentOrders,
     assignmentOrderSummary,
     assignmentSafetySummary,
+    postOrderCoverage,
     exposureCooldownSummary,
     summary: sweepCandidates.length > 0
       ? `${sweepCandidates.length} zone${sweepCandidates.length > 1 ? 's' : ''} de balayage contre-espionnage proposée${sweepCandidates.length > 1 ? 's' : ''} depuis les filtres atlas actifs.`
@@ -10098,6 +10122,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         <small>${plan.scheduleConflictSummary}</small>
         <small>${plan.assignmentOrderSummary}</small>
         <small>${plan.assignmentSafetySummary}</small>
+        <small>${plan.postOrderCoverage.summary}</small>
       </section>
     `;
   }
@@ -10134,6 +10159,30 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
             </button>
           `).join('')}</div>`
           : '<small>Aucun balayage utile n’est disponible pour transformer la prévisualisation en ordre.</small>'}
+      </section>
+      <section class="atlas-counterintelligence-post-order-coverage" aria-label="Résumé post-ordre des balayages contre-espionnage fog-safe">
+        <strong>Couverture après ordres</strong>
+        <p>${plan.postOrderCoverage.summary}</p>
+        <div class="atlas-counterintelligence-post-order-coverage__grid">
+          <div>
+            <b>Couvert réellement</b>
+            ${plan.postOrderCoverage.coveredOrderZones.length > 0
+              ? `<ul>${plan.postOrderCoverage.coveredOrderZones.map((zone) => `<li>${zone.locationName} · ${zone.detail}</li>`).join('')}</ul>`
+              : '<small>Aucune zone sûre confirmable pour l’instant.</small>'}
+          </div>
+          <div>
+            <b>À risque non couvert</b>
+            ${plan.postOrderCoverage.uncoveredRiskZones.length > 0
+              ? `<ul>${plan.postOrderCoverage.uncoveredRiskZones.map((zone) => `<li>${zone.locationName} · ${zone.detail}</li>`).join('')}</ul>`
+              : '<small>Aucune zone à haut risque non couverte avec les filtres actifs.</small>'}
+          </div>
+          <div>
+            <b>Affectations fragiles</b>
+            ${plan.postOrderCoverage.fragileAssignments.length > 0
+              ? `<ul>${plan.postOrderCoverage.fragileAssignments.map((zone) => `<li>${zone.locationName} · ${zone.detail}</li>`).join('')}</ul>`
+              : '<small>Aucun conflit d’affectation restant à résoudre.</small>'}
+          </div>
+        </div>
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>

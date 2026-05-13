@@ -282,6 +282,20 @@ test('atlas counterintelligence flags unsafe assignment orders before commitment
   assert.match(stylesSource, /atlas-counterintelligence-assignment-order--unsafe/);
 });
 
+test('atlas counterintelligence summarizes coverage after assignment orders', () => {
+  assert.match(webAppSource, /postOrderCoverage/);
+  assert.match(webAppSource, /Couverture après ordres/);
+  assert.match(webAppSource, /Résumé post-ordre des balayages contre-espionnage fog-safe/);
+  assert.match(webAppSource, /Couvert réellement/);
+  assert.match(webAppSource, /À risque non couvert/);
+  assert.match(webAppSource, /Affectations fragiles/);
+  assert.match(webAppSource, /à risque non couverte/);
+  assert.match(webAppSource, /Aucun résumé post-ordre disponible tant qu’aucun ordre de balayage n’est préparé/);
+  assert.match(webAppSource, /Aucun conflit d’affectation restant à résoudre/);
+  assert.match(stylesSource, /atlas-counterintelligence-post-order-coverage/);
+  assert.match(stylesSource, /atlas-counterintelligence-post-order-coverage__grid/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
