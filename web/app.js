@@ -7735,6 +7735,73 @@ function renderAtlasClimateMinimumViableBoostHint(view) {
   `;
 }
 
+function buildAtlasClimateMinimumBoostDeadlineMissWarning(minimumBoostView) {
+  if (!minimumBoostView || minimumBoostView.state === 'empty' || !minimumBoostView.hint) {
+    return {
+      state: 'empty',
+      warning: null,
+      summary: 'Aucun warning deadline: aucun minimum viable boost éligible.',
+    };
+  }
+
+  if (minimumBoostView.state === 'minimal-sufficient') {
+    return {
+      state: 'recovered-in-time',
+      warning: null,
+      summary: 'Le minimum viable boost récupère la fenêtre deadline à temps.',
+    };
+  }
+
+  if (minimumBoostView.state === 'insufficient-minimum') {
+    return {
+      state: 'insufficient-even-at-minimum',
+      warning: null,
+      summary: 'Le minimum est déjà insuffisant: l’alerte dédiée reste portée par le hint minimum viable.',
+    };
+  }
+
+  const missType = /jalon avancé|serrée|still-tight|minimum utile/i.test(`${minimumBoostView.hint.resourcePackage} ${minimumBoostView.hint.action} ${minimumBoostView.hint.outcome} ${minimumBoostView.hint.level}`)
+    ? 'misses-by-one-turn'
+    : 'misses-by-capacity-gap';
+  const reason = missType === 'misses-by-one-turn'
+    ? 'Le boost améliore le timing mais laisse un tour de marge manquant avant la fenêtre critique.'
+    : 'Le boost améliore la pression mais laisse une capacité de readiness sous le seuil exécutable.';
+
+  return {
+    state: missType,
+    warning: {
+      provinceId: minimumBoostView.hint.provinceId,
+      provinceLabel: minimumBoostView.hint.provinceLabel,
+      deadline: minimumBoostView.hint.deadline,
+      resourcePackage: minimumBoostView.hint.resourcePackage,
+      reason,
+      nextStep: missType === 'misses-by-one-turn'
+        ? 'Avancer l’ordre au tour courant ou ajouter un tampon de calendrier.'
+        : 'Ajouter une capacité ciblée ou réduire le périmètre avant validation.',
+    },
+    summary: `${minimumBoostView.hint.provinceLabel}: minimum viable utile, mais deadline encore à risque après boost.`,
+  };
+}
+
+function renderAtlasClimateMinimumBoostDeadlineMissWarning(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view.warning || !/^misses-by-/.test(view.state)) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-minimum-boost-miss map-world-climate-minimum-boost-miss--${view.state}" aria-label="Alerte deadline encore manquée après minimum viable boost climat">
+      <div class="map-world-climate-minimum-boost-miss__header">
+        <strong>Deadline encore risquée</strong>
+        <span>${view.state === 'misses-by-one-turn' ? 'manque 1 tour' : 'capacité courte'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${view.warning.provinceLabel}</b> · ${view.warning.deadline} · ${view.warning.resourcePackage}</small>
+      <small><b>Pourquoi</b> · ${view.warning.reason}</small>
+      <small><b>À sécuriser</b> · ${view.warning.nextStep}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateUnderReadyExecutionGaps(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
     return '';
@@ -15319,6 +15386,7 @@ function render() {
   const atlasClimatePostBoostDeadlineRiskPreview = buildAtlasClimatePostBoostDeadlineRiskPreview(atlasClimateReadinessBoostRecommendations);
   const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
   const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
+  const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -15362,6 +15430,7 @@ function render() {
           ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
           ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
           ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
+          ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
