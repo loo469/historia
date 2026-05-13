@@ -11154,3 +11154,22 @@ button { font: inherit; }
 }
 .atlas-funded-capacity-projection-item--saturated .atlas-funded-capacity-projection-item__detail { fill: #fed7aa; }
 .atlas-funded-capacity-projection-item--sufficient .atlas-funded-capacity-projection-item__detail { fill: #bbf7d0; }
+.atlas-mediation-outcome circle {
+  fill: rgba(15, 23, 42, 0.78);
+  stroke: rgba(224, 242, 254, 0.62);
+  stroke-width: 0.32;
+}
+.atlas-mediation-outcome text {
+  fill: #e0f2fe;
+  font-size: 1.05px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.84);
+  stroke-width: 0.3;
+}
+.atlas-mediation-outcome--améliore circle { stroke: rgba(74, 222, 128, 0.82); }
+.atlas-mediation-outcome--améliore text { fill: #bbf7d0; }
+.atlas-mediation-outcome--instable circle { stroke: rgba(251, 191, 36, 0.82); }
+.atlas-mediation-outcome--instable text { fill: #fde68a; }
+.atlas-mediation-outcome--contredit circle { stroke: rgba(251, 113, 133, 0.82); }
+.atlas-mediation-outcome--contredit text { fill: #fecdd3; }

@@ -1517,12 +1517,28 @@ function buildAtlasMediationCommitment(zone) {
       : zone.mainDriver === 'événement'
         ? 'phase repère'
         : 'phase suivi';
+  const outcomeStatus = status === 'stable'
+    ? 'améliore'
+    : remainingConfidence === 'faible'
+      ? 'contredit'
+      : 'instable';
+  const nextAction = outcomeStatus === 'améliore'
+    ? 'conserver médiation'
+    : outcomeStatus === 'contredit'
+      ? 'réviser engagement'
+      : 'renforcer suivi';
+  const residualRisk = outcomeStatus === 'améliore'
+    ? zone.mediation.consequences.cost
+    : zone.mediation.risk;
 
   return {
     status,
     remainingConfidence,
     nextConsequence,
     phase,
+    outcomeStatus,
+    nextAction,
+    residualRisk,
     label: status === 'stable' ? 'engagement stable' : 'engagement à risque',
   };
 }
@@ -1553,6 +1569,12 @@ function renderAtlasCultureLayer(cultureView) {
           <text x="${summary.center.x + 4.2}%" y="${summary.center.y + 4.3}%">${summary.drift.causes.join(' · ')}</text>
         </g>
       `).join('')}
+      ${features.borderZones.map((zone) => `
+        <g class="atlas-mediation-outcome atlas-mediation-outcome--${zone.commitment.outcomeStatus}" data-atlas-mediation-outcome="${zone.regionId}" aria-label="Suivi médiation ${zone.cultureName}: signal ${zone.commitment.outcomeStatus}, impact ${zone.commitment.nextConsequence}, risque ${zone.commitment.residualRisk}, prochaine action ${zone.commitment.nextAction}">
+          <circle cx="${zone.center.x}%" cy="${zone.center.y + 6}%" r="1.55"></circle>
+          <text x="${zone.center.x + 2}%" y="${zone.center.y + 6.4}%">${zone.commitment.outcomeStatus} · ${zone.commitment.nextAction}</text>
+        </g>
+      `).join('')}
       ${features.borderZones.length > 0 ? `
         <g class="atlas-cultural-border-zones" aria-label="Synthèse des frontières culturelles instables et médiations">
           <rect x="3" y="55" width="30" height="${12 + (features.borderZones.length * 12.2)}" rx="1.8"></rect>
@@ -1563,9 +1585,9 @@ function renderAtlasCultureLayer(cultureView) {
               <text class="atlas-cultural-border-zone__chips" x="5" y="${64 + index * 12.2}">${zone.chips.join(' · ')}</text>
               <text class="atlas-cultural-border-zone__mediation" x="5" y="${66 + index * 12.2}">${zone.mediation.option} → ${zone.mediation.benefit}</text>
               <text class="atlas-cultural-border-zone__confidence" x="5" y="${67.8 + index * 12.2}">confiance ${zone.mediation.confidence} · ${zone.mediation.confidenceReason}</text>
-              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 12.2}">${zone.commitment.label} · reste ${zone.commitment.remainingConfidence} · ${zone.commitment.phase}</text>
-              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 12.2}">prochain: ${zone.commitment.nextConsequence} · coût: ${zone.mediation.consequences.cost}</text>
-              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">si ignorée: ${zone.mediation.risk}</text>
+              <text class="atlas-cultural-border-zone__commitment" x="5" y="${69.5 + index * 12.2}">${zone.commitment.label} · ${zone.commitment.outcomeStatus} · reste ${zone.commitment.remainingConfidence}</text>
+              <text class="atlas-cultural-border-zone__consequences" x="5" y="${71.2 + index * 12.2}">prochain: ${zone.commitment.nextConsequence} · action: ${zone.commitment.nextAction}</text>
+              <text class="atlas-cultural-border-zone__risk" x="5" y="${72.9 + index * 12.2}">risque restant: ${zone.commitment.residualRisk}</text>
             </g>
           `).join('')}
         </g>
@@ -11914,8 +11936,8 @@ function buildAtlasMediationSignalWarnings(cultureView, selectedProvinceId = sta
           state: 'conflict',
           cultureName: zone.cultureName,
           title: 'engagement trop optimiste',
-          detail: `cohésion locale ${selectedCohesion || 'faible'} · ${zone.commitment.label}`,
-          followUp: 'revérifier confiance',
+          detail: `cohésion locale ${selectedCohesion || 'faible'} · ${zone.commitment.outcomeStatus}`,
+          followUp: zone.commitment.nextAction,
         });
       }
       if (!selectedCultures.has(zone.cultureName)) {
@@ -11938,8 +11960,8 @@ function buildAtlasMediationSignalWarnings(cultureView, selectedProvinceId = sta
       state: 'conflict',
       cultureName: zone.cultureName,
       title: 'médiation hors culture locale',
-      detail: `${zone.regionId} · ${zone.mediation.option}`,
-      followUp: 'lier à une culture visible',
+      detail: `${zone.regionId} · ${zone.commitment.outcomeStatus}`,
+      followUp: zone.commitment.nextAction,
     }));
   const warnings = [...selectedFocusWarning, ...crossRegionWarnings].slice(0, 2);
 

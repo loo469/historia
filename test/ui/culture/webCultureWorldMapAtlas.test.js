@@ -30,6 +30,8 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /zone\.commitment\.nextConsequence/);
   assert.match(webAppSource, /function buildAtlasMediationSignalWarnings/);
   assert.match(webAppSource, /renderCultureMediationSignalWarnings/);
+  assert.match(webAppSource, /outcomeStatus/);
+  assert.match(webAppSource, /atlas-mediation-outcome/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -47,7 +49,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /protéger découverte/);
   assert.match(webAppSource, /arbitrer influence/);
   assert.match(webAppSource, /pacte de frontière/);
-  assert.match(webAppSource, /si ignorée:/);
+  assert.match(webAppSource, /risque restant:/);
   assert.match(webAppSource, /aucun engagement · frontières stables/);
   assert.match(webAppSource, /confiance \$\{zone\.mediation\.confidence\}/);
   assert.match(webAppSource, /engagement stable/);
@@ -60,7 +62,10 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /engagement trop optimiste/);
   assert.match(webAppSource, /médiation hors culture locale/);
   assert.match(webAppSource, /engagement cohérent/);
-  assert.match(webAppSource, /revérifier confiance/);
+  assert.match(webAppSource, /réviser engagement/);
+  assert.match(webAppSource, /renforcer suivi/);
+  assert.match(webAppSource, /conserver médiation/);
+  assert.match(webAppSource, /risque restant:/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -83,4 +88,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.culture-mediation-warnings/);
   assert.match(stylesSource, /\.culture-mediation-warning--conflict/);
   assert.match(stylesSource, /\.culture-mediation-warning--coherent/);
+  assert.match(stylesSource, /\.atlas-mediation-outcome--améliore/);
+  assert.match(stylesSource, /\.atlas-mediation-outcome--instable/);
+  assert.match(stylesSource, /\.atlas-mediation-outcome--contredit/);
 });
