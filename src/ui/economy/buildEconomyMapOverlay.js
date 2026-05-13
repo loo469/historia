@@ -137,6 +137,28 @@ function normalizeCapacitySpendPlan(plan, routeId) {
   };
 }
 
+function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId) {
+  if (capacityMobilized === 0) {
+    return null;
+  }
+
+  const spentResources = resourceRows
+    .filter((row) => row.capacityMobilized > 0)
+    .sort((left, right) => left.capacityRemaining - right.capacityRemaining || left.resourceId.localeCompare(right.resourceId));
+  const nextResource = spentResources[0] ?? null;
+
+  if (nextResource === null || nextResource.capacityRemaining > 1) {
+    return null;
+  }
+
+  return {
+    type: nextResource.capacityRemaining === 0 ? 'capacity-exhausted' : 'low-margin',
+    resourceId: limitingResourceId ?? nextResource.resourceId,
+    marginRemaining: nextResource.capacityRemaining,
+    preparationAction: nextResource.capacityRemaining === 0 ? 'free-route-capacity' : 'reserve-capacity-buffer',
+  };
+}
+
 function buildCapacitySpendPreview(route, spendPlan) {
   const currentCapacity = route.totalCapacity;
   const capacityMobilized = Math.min(spendPlan.capacityMobilized, currentCapacity);
@@ -165,6 +187,7 @@ function buildCapacitySpendPreview(route, spendPlan) {
     capacityMobilized,
     capacityRemaining,
     limitingResourceId: computedLimitingResourceId,
+    nextBottleneck: buildNextBottleneck(resourceRows, capacityMobilized, computedLimitingResourceId),
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0

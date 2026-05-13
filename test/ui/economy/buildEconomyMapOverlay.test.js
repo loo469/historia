@@ -150,6 +150,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         capacityMobilized: 0,
         capacityRemaining: 3,
         limitingResourceId: null,
+        nextBottleneck: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -185,6 +186,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         capacityMobilized: 0,
         capacityRemaining: 11,
         limitingResourceId: null,
+        nextBottleneck: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -249,6 +251,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     capacityMobilized: 0,
     capacityRemaining: 9,
     limitingResourceId: null,
+    nextBottleneck: null,
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -291,6 +294,12 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
     capacityMobilized: 5,
     capacityRemaining: 2,
     limitingResourceId: 'grain',
+    nextBottleneck: {
+      type: 'low-margin',
+      resourceId: 'grain',
+      marginRemaining: 1,
+      preparationAction: 'reserve-capacity-buffer',
+    },
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -298,6 +307,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
     ],
   });
   assert.equal(overlay.routes[1].capacitySpendPreview.limitingResourceId, null);
+  assert.equal(overlay.routes[1].capacitySpendPreview.nextBottleneck, null);
   assert.equal(overlay.routes[1].capacitySpendPreview.state, 'no-spend');
 });
 
