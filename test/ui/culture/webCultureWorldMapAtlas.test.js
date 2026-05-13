@@ -28,6 +28,8 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /zone\.mediation\.consequences\.appeasement/);
   assert.match(webAppSource, /function buildAtlasMediationCommitment/);
   assert.match(webAppSource, /zone\.commitment\.nextConsequence/);
+  assert.match(webAppSource, /function buildAtlasMediationSignalWarnings/);
+  assert.match(webAppSource, /renderCultureMediationSignalWarnings/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
@@ -55,6 +57,10 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /incertaine/);
   assert.match(webAppSource, /inconnue/);
   assert.match(webAppSource, /coût politique/);
+  assert.match(webAppSource, /engagement trop optimiste/);
+  assert.match(webAppSource, /médiation hors culture locale/);
+  assert.match(webAppSource, /engagement cohérent/);
+  assert.match(webAppSource, /revérifier confiance/);
   assert.match(stylesSource, /\.atlas-culture-layer/);
   assert.match(stylesSource, /\.atlas-culture-zone--dominant/);
   assert.match(stylesSource, /\.atlas-discovery-site path/);
@@ -74,4 +80,7 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-border-zone--confidence-incertaine/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone__commitment/);
   assert.match(stylesSource, /\.atlas-cultural-border-zone--commitment-risk/);
+  assert.match(stylesSource, /\.culture-mediation-warnings/);
+  assert.match(stylesSource, /\.culture-mediation-warning--conflict/);
+  assert.match(stylesSource, /\.culture-mediation-warning--coherent/);
 });
