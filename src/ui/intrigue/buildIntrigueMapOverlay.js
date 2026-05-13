@@ -91,6 +91,45 @@ function buildSabotageThreatScore(operation) {
   return clampPercent((operation.progress + operation.heat + (100 - operation.detectionRisk)) / 3);
 }
 
+function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount, sleeperCellCount, sabotageRiskScore }) {
+  if (celluleCount <= 0 || sabotageRiskScore <= 0 || exposedCellCount >= celluleCount) {
+    return {
+      state: 'neutral',
+      recommended: false,
+      coverageBefore: 0,
+      coverageAfter: 0,
+      confidenceDelta: 0,
+      exposureAdded: 0,
+      unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
+      summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
+    };
+  }
+
+  const coverageBefore = clampPercent((exposedCellCount / celluleCount) * 100);
+  const safeGain = sleeperCellCount > 0 ? 18 : 28;
+  const riskAdjustment = sabotageRiskScore >= 70 ? 8 : sabotageRiskScore >= 35 ? 5 : 3;
+  const coverageAfter = clampPercent(Math.min(95, coverageBefore + safeGain + riskAdjustment));
+  const confidenceDelta = Math.max(0, coverageAfter - coverageBefore);
+  const exposureAdded = clampPercent(4 + sleeperCellCount * 3 + (sabotageRiskScore >= 70 ? 5 : sabotageRiskScore >= 35 ? 3 : 1));
+  const unknownsRemaining = Math.max(0, celluleCount - exposedCellCount - (confidenceDelta >= 30 ? 2 : 1));
+  const state = exposureAdded <= 8
+    ? 'low-exposure-positive'
+    : exposureAdded < 12
+      ? 'guarded-positive'
+      : 'watch-exposure';
+
+  return {
+    state,
+    recommended: true,
+    coverageBefore,
+    coverageAfter,
+    confidenceDelta,
+    exposureAdded,
+    unknownsRemaining,
+    summary: `Confiance +${confidenceDelta} pts pour +${exposureAdded} exposition; ${unknownsRemaining} inconnue${unknownsRemaining > 1 ? 's' : ''} restante${unknownsRemaining > 1 ? 's' : ''}.`,
+  };
+}
+
 function normalizeStyle(styleMap, key, defaults) {
   const style = styleMap[key] ?? styleMap.default ?? defaults[key] ?? defaults.none;
   const fallback = defaults[key] ?? defaults.none;
@@ -155,6 +194,13 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
       const sleeperCellCount = locationCellules.filter((cellule) => cellule.sleeper).length;
       const locationName = String(locationNames[locationId] ?? locationId).trim() || locationId;
 
+      const lowExposureSweepConfidencePreview = buildLowExposureSweepConfidencePreview({
+        celluleCount: locationCellules.length,
+        exposedCellCount,
+        sleeperCellCount,
+        sabotageRiskScore,
+      });
+
       return {
         overlayId: `intrigue:${locationId}`,
         locationId,
@@ -171,6 +217,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           sleeperCellCount,
           sabotageOperationCount: locationOperations.length,
         },
+        lowExposureSweepConfidencePreview,
         style: {
           presence: normalizeStyle(styleByPresence, presenceLevel, DEFAULT_STYLE_BY_PRESENCE),
           risk: normalizeStyle(styleByRisk, riskLevel, DEFAULT_STYLE_BY_RISK),

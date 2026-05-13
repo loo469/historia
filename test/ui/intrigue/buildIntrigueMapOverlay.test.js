@@ -124,6 +124,16 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         sleeperCellCount: 1,
         sabotageOperationCount: 1,
       },
+      lowExposureSweepConfidencePreview: {
+        state: 'guarded-positive',
+        recommended: true,
+        coverageBefore: 50,
+        coverageAfter: 73,
+        confidenceDelta: 23,
+        exposureAdded: 10,
+        unknownsRemaining: 0,
+        summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
+      },
       style: {
         presence: {
           marker: '◑',
@@ -152,6 +162,16 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         exposedCellCount: 0,
         sleeperCellCount: 0,
         sabotageOperationCount: 1,
+      },
+      lowExposureSweepConfidencePreview: {
+        state: 'low-exposure-positive',
+        recommended: true,
+        coverageBefore: 0,
+        coverageAfter: 31,
+        confidenceDelta: 31,
+        exposureAdded: 5,
+        unknownsRemaining: 0,
+        summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
       },
       style: {
         presence: {
@@ -218,6 +238,88 @@ test('buildIntrigueMapOverlay supports plain payloads and style overrides', () =
       emphasis: 'critical',
     },
   });
+});
+
+test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and neutral states', () => {
+  const overlay = buildIntrigueMapOverlay([
+    {
+      id: 'cell-covered',
+      factionId: 'shadow-league',
+      codename: 'Covered',
+      locationId: 'covered',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 80,
+    },
+    {
+      id: 'cell-hot-1',
+      factionId: 'shadow-league',
+      codename: 'Hot one',
+      locationId: 'hot',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      sleeper: true,
+      exposure: 20,
+    },
+    {
+      id: 'cell-hot-2',
+      factionId: 'shadow-league',
+      codename: 'Hot two',
+      locationId: 'hot',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 20,
+    },
+  ], [
+    {
+      id: 'op-covered',
+      celluleId: 'cell-covered',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe visible route',
+      theaterId: 'covered',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 80,
+      progress: 0,
+      heat: 0,
+    },
+    {
+      id: 'op-hot',
+      celluleId: 'cell-hot-1',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Mask hot cache',
+      theaterId: 'hot',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 5,
+      progress: 100,
+      heat: 100,
+    },
+  ]);
+
+  const covered = overlay.find((entry) => entry.locationId === 'covered');
+  const hot = overlay.find((entry) => entry.locationId === 'hot');
+
+  assert.deepEqual(covered.lowExposureSweepConfidencePreview, {
+    state: 'neutral',
+    recommended: false,
+    coverageBefore: 0,
+    coverageAfter: 0,
+    confidenceDelta: 0,
+    exposureAdded: 0,
+    unknownsRemaining: 0,
+    summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
+  });
+  assert.equal(hot.lowExposureSweepConfidencePreview.state, 'watch-exposure');
+  assert.equal(hot.lowExposureSweepConfidencePreview.recommended, true);
+  assert.equal(hot.lowExposureSweepConfidencePreview.coverageBefore, 0);
+  assert.equal(hot.lowExposureSweepConfidencePreview.coverageAfter, 26);
+  assert.equal(hot.lowExposureSweepConfidencePreview.confidenceDelta, 26);
+  assert.equal(hot.lowExposureSweepConfidencePreview.exposureAdded, 12);
+  assert.equal(hot.lowExposureSweepConfidencePreview.unknownsRemaining, 1);
+  assert.match(hot.lowExposureSweepConfidencePreview.summary, /Confiance \+26 pts pour \+12 exposition/);
 });
 
 test('buildIntrigueMapOverlay rejects invalid inputs', () => {
