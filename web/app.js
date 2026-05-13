@@ -1919,6 +1919,58 @@ function buildAtlasCommittedFundingGaps(fundedPlans) {
   };
 }
 
+function buildAtlasFundedCapacityProjections(committedFundingGaps, supplyForecasts) {
+  if (committedFundingGaps.empty) {
+    return {
+      empty: true,
+      items: [],
+      summary: 'Aucune projection financée',
+    };
+  }
+
+  const forecastByRouteName = new Map(supplyForecasts.routes.map((forecast) => [forecast.routeName, forecast]));
+  const items = committedFundingGaps.items.map((gap) => {
+    const forecast = forecastByRouteName.get(gap.routeName);
+    const currentCapacity = forecast?.currentCapacity ?? gap.expectedCost;
+    const plannedGain = Math.max(0, (forecast?.projectedCapacity ?? currentCapacity) - currentCapacity) + Math.max(0, gap.committed - gap.fundingGap);
+    const projectedCapacity = currentCapacity + plannedGain;
+    const sufficient = gap.fullyCovered && gap.fundingGap === 0 && (forecast?.tone !== 'overload');
+    const stillSaturated = !sufficient || forecast?.tone === 'overload';
+    const reviewTurn = stillSaturated ? 'Revoir tour +1' : 'Revoir tour +2';
+    const priority = gap.fundingGap > 0
+      ? 'priorité: compléter budget'
+      : stillSaturated
+        ? 'priorité: contrôler saturation'
+        : 'priorité: maintien';
+    const message = sufficient
+      ? 'financé et suffisant'
+      : gap.fullyCovered
+        ? 'financé mais saturation possible'
+        : 'financé partiellement, capacité à risque';
+
+    return {
+      projectionId: `${gap.planId}:projection`,
+      routeName: gap.routeName,
+      corridor: gap.corridor,
+      currentCapacity,
+      projectedCapacity,
+      plannedGain,
+      fundingGap: gap.fundingGap,
+      sufficient,
+      stillSaturated,
+      reviewTurn,
+      priority,
+      message,
+    };
+  });
+
+  return {
+    empty: items.length === 0,
+    items,
+    summary: `${items.filter((item) => item.stillSaturated).length} corridor${items.filter((item) => item.stillSaturated).length > 1 ? 's' : ''} à revoir`,
+  };
+}
+
 function buildAtlasEconomyStressRollups(economyView) {
   if (!economyView) {
     return { legend: [], regions: [] };
@@ -1933,6 +1985,7 @@ function buildAtlasEconomyStressRollups(economyView) {
   const budgetShortfalls = buildAtlasCorridorBudgetShortfalls(actionBudget);
   const fundedPlans = buildAtlasFundedLogisticsPlans(actionBudget, budgetShortfalls);
   const committedFundingGaps = buildAtlasCommittedFundingGaps(fundedPlans);
+  const fundedCapacityProjections = buildAtlasFundedCapacityProjections(committedFundingGaps, supplyForecasts);
   const toneRank = { critical: 3, strained: 2, healthy: 1 };
 
   for (const route of economyView.overlay.routes) {
@@ -2031,6 +2084,7 @@ function buildAtlasEconomyStressRollups(economyView) {
     budgetShortfalls,
     fundedPlans,
     committedFundingGaps,
+    fundedCapacityProjections,
   };
 }
 
@@ -2043,7 +2097,7 @@ function renderAtlasEconomyStressLegend(economyView) {
 
   return `
     <g class="atlas-economy-stress-rollup" aria-label="Légende économie atlas: stress logistique et régions économiques">
-      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${62 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4)}" rx="2.4"></rect>
+      <rect class="atlas-economy-stress-rollup__panel" x="3" y="4" width="35" height="${71 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (rollup.fundedCapacityProjections.items.length * 5.4)}" rx="2.4"></rect>
       <text class="atlas-economy-stress-rollup__title" x="5" y="8.3">Stress économie</text>
       ${rollup.legend.map((entry, index) => `
         <g class="atlas-economy-stress-legend atlas-economy-stress-legend--${entry.tone}">
@@ -2131,6 +2185,20 @@ function renderAtlasEconomyStressLegend(economyView) {
             <g class="atlas-committed-funding-gap-item atlas-committed-funding-gap-item--${gap.status}" aria-label="Écart financement ${gap.routeName}: engagé ${gap.committed}, coût attendu ${gap.expectedCost}, écart restant ${gap.fundingGap}, ${gap.residualRisk}, ressource ${gap.fragileResource}">
               <text class="atlas-committed-funding-gap-item__route" x="6.2" y="${y}">${gap.fullyCovered ? 'entièrement couvert' : 'reste à couvrir'} · ${gap.corridor} · ${gap.routeName}</text>
               <text class="atlas-committed-funding-gap-item__detail" x="6.2" y="${y + 2.0}">engagé ${gap.committed}/${gap.expectedCost} · écart ${gap.fundingGap} · ${gap.residualRisk} · ${gap.fragileResource} · ${gap.nextAction}</text>
+            </g>
+          `;
+        }).join('')}
+      </g>
+      <g class="atlas-funded-capacity-projection ${rollup.fundedCapacityProjections.empty ? 'is-empty' : ''}" aria-label="Projection capacité après plans financés: ${rollup.fundedCapacityProjections.summary}">
+        <rect x="5" y="${65.2 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4)}" width="30.5" height="${rollup.fundedCapacityProjections.empty ? 5.2 : 6.2 + (rollup.fundedCapacityProjections.items.length * 5.4)}" rx="1.4"></rect>
+        <text class="atlas-funded-capacity-projection__title" x="6.2" y="${67.7 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4)}">Capacité après plan · ${rollup.fundedCapacityProjections.summary}</text>
+        ${rollup.fundedCapacityProjections.empty ? `<text class="atlas-funded-capacity-projection__empty" x="6.2" y="${70.0 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4)}">Aucune projection financée</text>` : ''}
+        ${rollup.fundedCapacityProjections.items.map((projection, index) => {
+          const y = 71.3 + (rollup.regions.length * 8.1) + (rollup.forecasts.length * 5.4) + (rollup.interventions.length * 6.2) + (rollup.budgetShortfalls.items.length * 5.2) + (rollup.fundedPlans.plans.length * 5.4) + (rollup.committedFundingGaps.items.length * 5.4) + (index * 5.4);
+          return `
+            <g class="atlas-funded-capacity-projection-item atlas-funded-capacity-projection-item--${projection.sufficient ? 'sufficient' : 'saturated'}" aria-label="Projection ${projection.routeName}: capacité ${projection.currentCapacity} vers ${projection.projectedCapacity}, ${projection.message}, ${projection.reviewTurn}">
+              <text class="atlas-funded-capacity-projection-item__route" x="6.2" y="${y}">${projection.message} · ${projection.corridor} · ${projection.routeName}</text>
+              <text class="atlas-funded-capacity-projection-item__detail" x="6.2" y="${y + 2.0}">capacité ${projection.currentCapacity}→${projection.projectedCapacity} · reste ${projection.fundingGap} · ${projection.priority} · ${projection.reviewTurn}</text>
             </g>
           `;
         }).join('')}
