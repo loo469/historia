@@ -10507,6 +10507,7 @@ button { font: inherit; }
 .atlas-military-staged-commitment,
 .atlas-military-commitment-coverage,
 .atlas-military-commitment-debt,
+.atlas-military-commitment-priority,
 .atlas-military-commitment-conflicts {
   pointer-events: auto;
 }
@@ -10761,6 +10762,51 @@ button { font: inherit; }
   font-weight: 900;
   paint-order: stroke;
   stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.34;
+}
+.atlas-military-commitment-priority__panel {
+  fill: rgba(30, 41, 59, 0.8);
+  stroke: rgba(244, 114, 182, 0.38);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-commitment-priority__title,
+.atlas-military-priority-row text,
+.atlas-military-commitment-priority__empty {
+  fill: #fce7f3;
+  font-size: 1.2px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.86);
+  stroke-width: 0.32;
+}
+.atlas-military-priority-row rect {
+  fill: rgba(251, 191, 36, 0.52);
+  stroke: rgba(254, 243, 199, 0.72);
+  stroke-width: 0.22;
+}
+.atlas-military-priority-row--critical rect,
+.atlas-military-priority-marker--critical circle { fill: rgba(248, 113, 113, 0.86); }
+.atlas-military-priority-row--high rect,
+.atlas-military-priority-marker--high circle { fill: rgba(244, 114, 182, 0.78); }
+.atlas-military-priority-row--watch rect,
+.atlas-military-priority-marker--watch circle { fill: rgba(251, 191, 36, 0.78); }
+.atlas-military-priority-row__reason,
+.atlas-military-commitment-priority__empty {
+  fill: #fbcfe8;
+  font-size: 0.9px;
+}
+.atlas-military-priority-marker circle {
+  stroke: rgba(252, 231, 243, 0.86);
+  stroke-width: 0.4;
+  filter: drop-shadow(0 0 4px rgba(244, 114, 182, 0.62));
+}
+.atlas-military-priority-marker text {
+  fill: #fff7ed;
+  font-size: 1.08px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.92);
   stroke-width: 0.34;
 }
 .atlas-military-commitment-conflicts__panel {
