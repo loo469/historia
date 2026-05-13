@@ -12177,3 +12177,28 @@ button { font: inherit; }
   line-height: 1.35;
   margin: 0;
 }
+.map-world-climate-recovery-projection {
+  display: grid;
+  gap: 6px;
+  max-width: 56ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.78), rgba(21, 94, 117, 0.26));
+  border: 1px solid rgba(56, 189, 248, 0.44);
+}
+.map-world-climate-recovery-projection--projected-with-risk { border-color: rgba(251, 146, 60, 0.52); }
+.map-world-climate-recovery-projection__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-recovery-projection p,
+.map-world-climate-recovery-projection span,
+.map-world-climate-recovery-projection small {
+  color: #e0f2fe;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
