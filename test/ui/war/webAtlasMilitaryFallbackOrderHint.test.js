@@ -6,13 +6,13 @@ const webAppSource = readFileSync(new URL('../../../web/app.js', import.meta.url
 const stylesSource = readFileSync(new URL('../../../web/styles.css', import.meta.url), 'utf8');
 
 test('atlas military fallback order hint builds on top warning best order and relief data', () => {
-  assert.match(webAppSource, /function buildAtlasMilitaryFallbackOrderHint\(priorityStack, orderHint, reliefPreview, commitment\)/);
+  assert.match(webAppSource, /function buildAtlasMilitaryFallbackOrderHint\(priorityStack, orderHint, reliefPreview, commitment, shell\)/);
   assert.match(webAppSource, /getAtlasMilitaryBestOrderBlocker\(topWarning, orderHint, reliefPreview, commitment\)/);
-  assert.match(webAppSource, /buildAtlasMilitaryFallbackOrderHint\(priorityStack, bestOrderHint, topReliefPreview, commitment\)/);
+  assert.match(webAppSource, /buildAtlasMilitaryFallbackOrderHint\(priorityStack, bestOrderHint, topReliefPreview, commitment, shell\)/);
   assert.match(webAppSource, /renderAtlasMilitaryFallbackOrderHint\(fallbackOrderHint\)/);
 });
 
-test('atlas military fallback order hint handles resource route and overcommitment blocks', () => {
+test('atlas military fallback order hint handles resource route overcommitment and cross-domain blocks', () => {
   assert.match(webAppSource, /return 'resource-blocked'/);
   assert.match(webAppSource, /return 'route-blocked'/);
   assert.match(webAppSource, /return 'overcommitment-blocked'/);
@@ -25,6 +25,11 @@ test('atlas military fallback order hint handles resource route and overcommitme
   assert.match(webAppSource, /type: 'preserves-front-coverage'/);
   assert.match(webAppSource, /type: 'waits-for-resupply'/);
   assert.match(webAppSource, /type: 'no-clear-safety-reason'/);
+  assert.match(webAppSource, /type: 'budget-logistics'/);
+  assert.match(webAppSource, /type: 'intrigue-exposure'/);
+  assert.match(webAppSource, /type: 'cultural-tension'/);
+  assert.match(webAppSource, /type: 'climate-pressure'/);
+  assert.match(webAppSource, /type: 'no-clear-cross-domain-blocker'/);
 });
 
 test('atlas military fallback order hint stays secondary and hides no-safe fallback state', () => {
@@ -33,9 +38,13 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /if \(!fallbackHint \|\| fallbackHint\.empty \|\| !fallbackHint\.fallback\) return ''/);
   assert.match(webAppSource, /data-atlas-fallback-order/);
   assert.match(webAppSource, /atlas-military-fallback-order__safety/);
-  assert.match(webAppSource, /summary: `\$\{fallback\.order\}: \$\{fallback\.detail\} \(\$\{fallback\.why\}; \$\{safetyReason\.label\}\)\.`/);
+  assert.match(webAppSource, /atlas-military-fallback-order__blocker/);
+  assert.match(webAppSource, /fallback\.crossDomainBlocker \? `<text class="atlas-military-fallback-order__blocker"/);
+  assert.match(webAppSource, /crossDomainBlocker: null/);
+  assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
   assert.match(stylesSource, /\.atlas-military-fallback-order--route-blocked/);
   assert.match(stylesSource, /\.atlas-military-fallback-order--overcommitment-blocked/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__safety/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__blocker/);
 });

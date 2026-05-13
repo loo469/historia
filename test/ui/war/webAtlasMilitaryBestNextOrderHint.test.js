@@ -10,7 +10,7 @@ test('atlas military best next order hint builds on stack relief and staged comm
   assert.match(webAppSource, /priorityStack\?\.stack\?\.\[0\]/);
   assert.match(webAppSource, /reliefPreview\?\.preview/);
   assert.match(webAppSource, /commitment\?\.selectedOption\?\.target/);
-  assert.match(webAppSource, /renderAtlasMilitaryWarningPriorityStack\(commitmentWarningStack, stagedCommitment\)/);
+  assert.match(webAppSource, /renderAtlasMilitaryWarningPriorityStack\(commitmentWarningStack, stagedCommitment, shell\)/);
 });
 
 test('atlas military best next order hint handles reinforce route and overcommitment candidates', () => {
