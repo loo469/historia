@@ -11034,6 +11034,43 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
   const stagedResweepAssignmentSummary = stagedResweepAssignments.length > 0
     ? `${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'safe').length} affectation${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'safe').length > 1 ? 's' : ''} de resweep sûre${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'safe').length > 1 ? 's' : ''}; ${stagedResweepAssignments.filter((assignment) => assignment.assignmentStatus === 'no-safe').length} sans affectation sûre. ${stagedResweepAssignments.some((assignment) => assignment.firstAssignment) ? `Premier: ${stagedResweepAssignments.find((assignment) => assignment.firstAssignment).locationName}, ${stagedResweepAssignments.find((assignment) => assignment.firstAssignment).assignmentReason}.` : 'Aucun premier resweep sûr: attendre une couverture ou un créneau moins risqué.'}`
     : 'Aucune affectation staged: pas de priorité de resweep exploitable sans inventer de signal.';
+  const firstSafeStagedAssignment = stagedResweepAssignments.find((assignment) => assignment.firstAssignment) ?? null;
+  const firstResweepCoveragePreviewItems = firstSafeStagedAssignment
+    ? [
+        {
+          type: 'blind-spot-reduced',
+          tone: firstSafeStagedAssignment.failureType === 'non couvert' ? 'high' : 'medium',
+          gainRank: firstSafeStagedAssignment.failureType === 'non couvert' ? 1 : 2,
+          copy: firstSafeStagedAssignment.failureType === 'non couvert'
+            ? 'angle mort réduit: la zone passe de non couverte à vérification active'
+            : 'angle mort réduit partiellement: renfort de couverture plutôt que résolution complète',
+        },
+        {
+          type: 'stale-signal-refreshed',
+          tone: firstSafeStagedAssignment.freshnessScore <= 1 ? 'high' : 'medium',
+          gainRank: firstSafeStagedAssignment.freshnessScore <= 1 ? 1 : 3,
+          copy: firstSafeStagedAssignment.freshnessScore <= 1
+            ? 'signal ancien rafraîchi avant engagement nominatif'
+            : 'signal visible reconfirmé sans exposer source, relais ou cause cachée',
+        },
+        {
+          type: 'unsafe-gap-remaining',
+          tone: firstSafeStagedAssignment.failureType === 'couverture trop faible' || firstSafeStagedAssignment.priorityLevel === 'prudente' ? 'low' : 'medium',
+          gainRank: firstSafeStagedAssignment.failureType === 'couverture trop faible' || firstSafeStagedAssignment.priorityLevel === 'prudente' ? 4 : 3,
+          copy: firstSafeStagedAssignment.failureType === 'couverture trop faible' || firstSafeStagedAssignment.priorityLevel === 'prudente'
+            ? 'gain attendu faible: un gap unsafe peut rester malgré l’affectation sûre'
+            : 'gap unsafe surveillé: vérifier le créneau avant départ',
+        },
+      ].sort((left, right) => left.gainRank - right.gainRank || left.type.localeCompare(right.type))
+    : [];
+  const firstResweepCoverageGainLevel = firstResweepCoveragePreviewItems.some((item) => item.tone === 'high') && firstSafeStagedAssignment?.failureType === 'non couvert'
+    ? 'high-gain'
+    : firstSafeStagedAssignment
+      ? 'low-gain'
+      : 'no-preview';
+  const firstResweepCoveragePreviewSummary = firstSafeStagedAssignment
+    ? `${firstSafeStagedAssignment.locationName}: ${firstResweepCoverageGainLevel === 'high-gain' ? 'gain de couverture élevé' : 'gain de couverture faible'} avant confirmation du premier resweep sûr.`
+    : 'Aucun aperçu de couverture: les affectations unsafe/no-safe ne sont pas prévisualisées.';
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -11044,6 +11081,10 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     resweepPrioritySummary,
     stagedResweepAssignments,
     stagedResweepAssignmentSummary,
+    firstSafeStagedAssignment,
+    firstResweepCoveragePreviewItems,
+    firstResweepCoverageGainLevel,
+    firstResweepCoveragePreviewSummary,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -11167,6 +11208,13 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
         ${plan.postOrderCoverage.stagedResweepAssignments.length > 0
           ? `<ol>${plan.postOrderCoverage.stagedResweepAssignments.map((assignment) => `<li class="atlas-counterintelligence-staged-resweep-assignments__item atlas-counterintelligence-staged-resweep-assignments__item--${assignment.assignmentStatus}"><b>#${assignment.assignmentRank} ${assignment.locationName}</b> · ${assignment.assignmentStage}${assignment.firstAssignment ? ' · première affectation' : ''}<small>${assignment.assignmentReason} · ${assignment.safetyGuardrail}</small></li>`).join('')}</ol>`
           : '<small>Aucune affectation sûre: attendre une couverture supplémentaire ou un créneau non contesté.</small>'}
+      </section>
+      <section class="atlas-counterintelligence-first-resweep-preview atlas-counterintelligence-first-resweep-preview--${plan.postOrderCoverage.firstResweepCoverageGainLevel}" aria-label="Aperçu de couverture gagnée avant confirmation du premier resweep">
+        <strong>Couverture gagnée avant confirmation</strong>
+        <p>${plan.postOrderCoverage.firstResweepCoveragePreviewSummary}</p>
+        ${plan.postOrderCoverage.firstResweepCoveragePreviewItems.length > 0
+          ? `<ol>${plan.postOrderCoverage.firstResweepCoveragePreviewItems.map((item) => `<li class="atlas-counterintelligence-first-resweep-preview__item atlas-counterintelligence-first-resweep-preview__item--${item.tone}"><b>${item.type}</b><small>${item.copy}</small></li>`).join('')}</ol>`
+          : '<small>Aucun preview: l’affectation proposée reste unsafe ou sans couverture récupérable sûre.</small>'}
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
         <strong>Conflits de planning</strong>
