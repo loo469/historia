@@ -9,7 +9,7 @@ test('atlas military warning priority stack reuses next-turn warning and route d
   assert.match(webAppSource, /function buildAtlasMilitaryWarningPriorityStack\(warningSummary, features\)/);
   assert.match(webAppSource, /warningSummary\.warnings/);
   assert.match(webAppSource, /getAtlasMilitaryWarningRouteExposure\(warning, features\)/);
-  assert.match(webAppSource, /renderAtlasMilitaryWarningPriorityStack\(commitmentWarningStack\)/);
+  assert.match(webAppSource, /renderAtlasMilitaryWarningPriorityStack\(commitmentWarningStack, stagedCommitment\)/);
   assert.doesNotMatch(webAppSource, /new WarModel|simulateWar|hiddenStack/);
 });
 

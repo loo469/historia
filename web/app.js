@@ -1551,10 +1551,78 @@ function renderAtlasMilitaryTopWarningReliefPreview(reliefPreview) {
   `;
 }
 
-function renderAtlasMilitaryWarningPriorityStack(priorityStack) {
+
+function buildAtlasMilitaryBestNextOrderHint(priorityStack, reliefPreview, commitment) {
+  const topWarning = priorityStack?.stack?.[0] ?? null;
+  const preview = reliefPreview?.preview ?? null;
+  if (!topWarning || !preview) {
+    return {
+      hint: null,
+      summary: 'Aucun ordre recommandé: pas de priorité actionnable avec gain clair.',
+      empty: true,
+    };
+  }
+
+  const candidate = topWarning.debtTone === 'absent'
+    ? {
+      type: 'reinforce-front',
+      order: 'Renforcer front',
+      detail: `basculer l’engagement vers ${topWarning.label}`,
+      score: preview.frontRiskReduction + 18,
+    }
+    : topWarning.routeExposure >= 10 && preview.routeExposureReduced > 0
+      ? {
+        type: 'clear-route-exposure',
+        order: 'Ouvrir route',
+        detail: `sécuriser l’axe exposé de ${topWarning.label}`,
+        score: preview.routeExposureReduced + 14,
+      }
+      : topWarning.debtTone === 'partial'
+        ? {
+          type: 'reduce-overcommitment',
+          order: 'Réduire surengagement',
+          detail: `recentrer ${commitment?.selectedOption?.target ?? topWarning.label}`,
+          score: Math.max(12, preview.reliefScore - 8),
+        }
+        : null;
+
+  if (!candidate || candidate.score < 12) {
+    return {
+      hint: null,
+      summary: `Aucun ordre clair pour ${topWarning.label}: gain trop incertain.`,
+      empty: true,
+    };
+  }
+
+  return {
+    hint: {
+      hintId: `order:${topWarning.warningId}`,
+      ...candidate,
+      label: topWarning.label,
+      reliefTone: preview.tone,
+    },
+    summary: `${candidate.order}: ${candidate.detail} pour débloquer ${preview.reliefScore} de relief.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryBestNextOrderHint(orderHint) {
+  if (!orderHint || orderHint.empty || !orderHint.hint) return '';
+  const hint = orderHint.hint;
+  return `
+    <g class="atlas-military-best-order atlas-military-best-order--${hint.type}" data-atlas-best-next-order="${hint.hintId}" aria-label="Meilleur prochain ordre: ${orderHint.summary}">
+      <rect class="atlas-military-best-order__panel" x="22" y="53.2" width="16" height="4.4" rx="1.2"></rect>
+      <text class="atlas-military-best-order__label" x="23.2" y="54.8">ordre: ${hint.order}</text>
+      <text class="atlas-military-best-order__detail" x="23.2" y="56.4">${hint.detail}</text>
+    </g>
+  `;
+}
+
+function renderAtlasMilitaryWarningPriorityStack(priorityStack, commitment) {
   if (!priorityStack || priorityStack.empty) return '';
   const [topPriority, ...lowerPriorities] = priorityStack.stack;
   const topReliefPreview = buildAtlasMilitaryTopWarningReliefPreview(priorityStack);
+  const bestOrderHint = buildAtlasMilitaryBestNextOrderHint(priorityStack, topReliefPreview, commitment);
   const height = 8.8 + (lowerPriorities.length * 2.7);
   return `
     <g class="atlas-military-warning-stack" aria-label="Pile de priorités des alertes militaires: ${priorityStack.summary}">
@@ -1566,6 +1634,7 @@ function renderAtlasMilitaryWarningPriorityStack(priorityStack) {
         <text class="atlas-military-warning-stack-top__why" x="10" y="51.4">why first: ${topPriority.whyFirst}</text>
       </g>
       ${renderAtlasMilitaryTopWarningReliefPreview(topReliefPreview)}
+      ${renderAtlasMilitaryBestNextOrderHint(bestOrderHint)}
       ${lowerPriorities.map((warning, index) => `
         <g class="atlas-military-warning-stack-item atlas-military-warning-stack-item--${warning.tone}" data-atlas-warning-stack-item="${warning.stackId}" aria-label="Priorité ${index + 2} ${warning.frontRoute}: score ${warning.stackScore}; ${warning.action}">
           <text x="5" y="${54.4 + index * 2.7}">${index + 2}. ${warning.label}</text>
@@ -1685,7 +1754,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentDebtSummary(commitmentDebt)}
       ${renderAtlasMilitaryCommitmentDebtPriorities(commitmentPriority)}
       ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
-      ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack)}
+      ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
         <g class="atlas-military-risk atlas-military-risk--${zone.tone}" data-atlas-risk-province="${zone.provinceId}" aria-label="Zone militaire ${zone.label}: pression ${zone.pressure}">
