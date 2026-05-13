@@ -3309,6 +3309,38 @@ button { font: inherit; }
   display: block;
   margin-top: 2px;
 }
+.atlas-counterintelligence-first-resweep-preview {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(52, 211, 153, 0.26);
+  background: rgba(6, 78, 59, 0.18);
+}
+.atlas-counterintelligence-first-resweep-preview--low-gain {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(113, 63, 18, 0.18);
+}
+.atlas-counterintelligence-first-resweep-preview--no-preview {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(30, 41, 59, 0.18);
+}
+.atlas-counterintelligence-first-resweep-preview p,
+.atlas-counterintelligence-first-resweep-preview small { margin: 0; color: #d1fae5; }
+.atlas-counterintelligence-first-resweep-preview ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 20px;
+  color: #f8fafc;
+}
+.atlas-counterintelligence-first-resweep-preview__item--high { color: #bbf7d0; }
+.atlas-counterintelligence-first-resweep-preview__item--medium { color: #bae6fd; }
+.atlas-counterintelligence-first-resweep-preview__item--low { color: #fde68a; }
+.atlas-counterintelligence-first-resweep-preview li small {
+  display: block;
+  margin-top: 2px;
+}
 .atlas-counterintelligence-schedule-conflicts {
   display: grid;
   gap: 6px;

@@ -341,6 +341,21 @@ test('atlas counterintelligence stages residual blind spot resweep assignments s
   assert.match(stylesSource, /atlas-counterintelligence-staged-resweep-assignments__item--no-safe/);
 });
 
+test('atlas counterintelligence previews first staged resweep coverage gain safely', () => {
+  assert.match(webAppSource, /firstResweepCoveragePreviewItems/);
+  assert.match(webAppSource, /Couverture gagnée avant confirmation/);
+  assert.match(webAppSource, /Aperçu de couverture gagnée avant confirmation du premier resweep/);
+  assert.match(webAppSource, /blind-spot-reduced/);
+  assert.match(webAppSource, /stale-signal-refreshed/);
+  assert.match(webAppSource, /unsafe-gap-remaining/);
+  assert.match(webAppSource, /gain de couverture élevé/);
+  assert.match(webAppSource, /gain de couverture faible/);
+  assert.match(webAppSource, /Aucun aperçu de couverture: les affectations unsafe\/no-safe ne sont pas prévisualisées/);
+  assert.match(webAppSource, /gain attendu faible: un gap unsafe peut rester malgré l’affectation sûre/);
+  assert.match(stylesSource, /atlas-counterintelligence-first-resweep-preview/);
+  assert.match(stylesSource, /atlas-counterintelligence-first-resweep-preview--no-preview/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
