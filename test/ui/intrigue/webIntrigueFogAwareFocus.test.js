@@ -268,6 +268,20 @@ test('atlas counterintelligence turns previews into assignment orders safely', (
   assert.match(stylesSource, /atlas-counterintelligence-assignment-order--blocked/);
 });
 
+test('atlas counterintelligence flags unsafe assignment orders before commitment', () => {
+  assert.match(webAppSource, /assignmentSafetySummary/);
+  assert.match(webAppSource, /data-counterintelligence-safety/);
+  assert.match(webAppSource, /safe/);
+  assert.match(webAppSource, /unsafe avant engagement/);
+  assert.match(webAppSource, /Validation Delta/);
+  assert.match(webAppSource, /exposition et chaleur opérationnelle élevées/);
+  assert.match(webAppSource, /statut réseau incertain sous brouillard/);
+  assert.match(webAppSource, /aucune cause dangereuse visible/);
+  assert.match(webAppSource, /Valider le risque/);
+  assert.match(stylesSource, /atlas-counterintelligence-assignment-order--safe/);
+  assert.match(stylesSource, /atlas-counterintelligence-assignment-order--unsafe/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
