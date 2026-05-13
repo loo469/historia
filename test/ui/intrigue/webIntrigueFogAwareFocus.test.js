@@ -356,6 +356,48 @@ test('atlas counterintelligence previews first staged resweep coverage gain safe
   assert.match(stylesSource, /atlas-counterintelligence-first-resweep-preview--no-preview/);
 });
 
+test('atlas counterintelligence ranks safe staged resweeps by coverage value', () => {
+  const fixtureAssignments = [
+    { locationName: 'Highland', assignmentStatus: 'safe', failureType: 'non couvert', freshnessScore: 1, priorityLevel: 'haute', priorityScore: 5 },
+    { locationName: 'Lowland', assignmentStatus: 'safe', failureType: 'surveillance fragile', freshnessScore: 3, priorityLevel: 'prudente', priorityScore: 2 },
+    { locationName: 'A-tie', assignmentStatus: 'safe', failureType: 'couverture trop faible', freshnessScore: 2, priorityLevel: 'moyenne', priorityScore: 4 },
+    { locationName: 'B-tie', assignmentStatus: 'safe', failureType: 'couverture trop faible', freshnessScore: 2, priorityLevel: 'moyenne', priorityScore: 4 },
+    { locationName: 'Unsafe', assignmentStatus: 'no-safe', failureType: 'non couvert', freshnessScore: 1, priorityLevel: 'haute', priorityScore: 9 },
+  ];
+  const rankedFixture = fixtureAssignments
+    .filter((assignment) => assignment.assignmentStatus === 'safe')
+    .map((assignment) => {
+      const blindSpotValue = assignment.failureType === 'non couvert' ? 4 : assignment.failureType === 'couverture trop faible' ? 2 : 1;
+      const staleRefreshValue = assignment.freshnessScore <= 1 ? 3 : assignment.freshnessScore === 2 ? 2 : 1;
+      const unsafeGapPenalty = assignment.failureType === 'couverture trop faible' || assignment.priorityLevel === 'prudente' ? 2 : 0;
+      const previewValue = assignment.failureType === 'non couvert' ? 3 : assignment.failureType === 'couverture trop faible' ? 1 : 0;
+      return {
+        ...assignment,
+        coverageValueScore: assignment.priorityScore + blindSpotValue + staleRefreshValue + previewValue - unsafeGapPenalty,
+      };
+    })
+    .sort((left, right) => right.coverageValueScore - left.coverageValueScore
+      || right.priorityScore - left.priorityScore
+      || left.failureType.localeCompare(right.failureType)
+      || left.locationName.localeCompare(right.locationName));
+
+  assert.deepEqual(rankedFixture.map((assignment) => assignment.locationName), ['Highland', 'A-tie', 'B-tie', 'Lowland']);
+  assert.equal(rankedFixture[0].coverageValueScore > rankedFixture.at(-1).coverageValueScore, true);
+  assert.equal(rankedFixture.some((assignment) => assignment.locationName === 'Unsafe'), false);
+  assert.match(webAppSource, /rankedStagedResweepAssignments/);
+  assert.match(webAppSource, /Classement des resweeps staged sûrs par valeur de couverture/);
+  assert.match(webAppSource, /Valeur de couverture des resweeps/);
+  assert.match(webAppSource, /coverageValueScore/);
+  assert.match(webAppSource, /bestCoverageValue/);
+  assert.match(webAppSource, /high-value/);
+  assert.match(webAppSource, /low-value/);
+  assert.match(webAppSource, /faible gain: garder en réserve après les resweeps plus rentables/);
+  assert.match(webAppSource, /unsafe exclu/);
+  assert.match(webAppSource, /left\.locationName\.localeCompare\(right\.locationName\)/);
+  assert.match(stylesSource, /atlas-counterintelligence-resweep-value-ranking/);
+  assert.match(stylesSource, /atlas-counterintelligence-resweep-value-ranking__item--low-value/);
+});
+
 test('atlas intrigue filters prioritize stale uncertain recent and probable signals safely', () => {
   assert.match(webAppSource, /atlasIntrigueSignalFilters/);
   assert.match(webAppSource, /function getActiveAtlasIntrigueSignalFilters/);
