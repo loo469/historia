@@ -12276,6 +12276,54 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
       copy: `${followUpAssignment.locationName}: planifier un refresh discret du signal ancien avant tout engagement nominatif.`,
     };
   })();
+  const nextSafeFollowUpPriorityMarker = (() => {
+    if (bestResweepFollowUpSuggestion.state === 'wait-for-safe-window') {
+      return {
+        state: 'wait-for-safe-window',
+        shouldRender: true,
+        label: 'Priorité suivante: attendre une fenêtre sûre avant un second sweep.',
+      };
+    }
+
+    const followUpCandidates = stagedResweepAssignments
+      .filter((assignment) => assignment.assignmentStatus === 'safe' && assignment.locationName !== bestRankedStagedResweepAssignment?.locationName)
+      .map((assignment) => {
+        const priorityState = assignment.failureType === 'non couvert' && ['critique', 'haute'].includes(assignment.priorityLevel)
+          ? 'closes-critical-blind-spot'
+          : assignment.freshnessScore <= 1 && ['critique', 'haute'].includes(assignment.priorityLevel)
+            ? 'refreshes-stale-critical-signal'
+            : 'lowest-exposure-sweep';
+        const priorityWeight = priorityState === 'closes-critical-blind-spot' ? 3 : priorityState === 'refreshes-stale-critical-signal' ? 2 : 1;
+        const exposureRank = assignment.failureType === 'couverture trop faible' || assignment.priorityLevel === 'prudente' ? 1 : 2;
+
+        return { ...assignment, priorityState, priorityWeight, exposureRank };
+      })
+      .sort((left, right) => right.priorityWeight - left.priorityWeight
+        || right.priorityScore - left.priorityScore
+        || left.exposureRank - right.exposureRank
+        || left.locationName.localeCompare(right.locationName));
+
+    if (followUpCandidates.length === 0) {
+      return {
+        state: 'no-safe-follow-up',
+        shouldRender: bestResweepFollowUpSuggestion.state !== 'no-follow-up',
+        label: 'Priorité suivante: aucun follow-up sûr disponible après le meilleur resweep.',
+      };
+    }
+
+    const nextCandidate = followUpCandidates[0];
+    const stateLabel = nextCandidate.priorityState === 'closes-critical-blind-spot'
+      ? 'fermer le blind spot critique'
+      : nextCandidate.priorityState === 'refreshes-stale-critical-signal'
+        ? 'rafraîchir le signal ancien critique'
+        : 'prendre le sweep à exposition minimale';
+
+    return {
+      state: nextCandidate.priorityState,
+      shouldRender: followUpCandidates.length > 1 || !['close-blind-spot', 'refresh-stale-signal'].includes(bestResweepFollowUpSuggestion.state),
+      label: `Priorité suivante: ${nextCandidate.locationName} · ${stateLabel}.`,
+    };
+  })();
   const postOrderCoverage = {
     coveredOrderZones,
     fragileAssignments,
@@ -12296,6 +12344,7 @@ function buildAtlasCounterintelligenceSweepPlan(signals) {
     bestRankedStagedResweepAssignment,
     bestResweepResidualGapWarning,
     bestResweepFollowUpSuggestion,
+    nextSafeFollowUpPriorityMarker,
     summary: postOrderCoverageSummary,
   };
   const exposureCooldownSummary = sweepCandidates.length > 0
@@ -12438,6 +12487,7 @@ function renderAtlasCounterintelligenceSweepPlan(plan) {
           <span>${plan.postOrderCoverage.bestResweepResidualGapWarning.summary}</span>
           <small>${plan.postOrderCoverage.bestResweepResidualGapWarning.detail}</small>
           <small class="atlas-counterintelligence-best-resweep-gap-warning__follow-up atlas-counterintelligence-best-resweep-gap-warning__follow-up--${plan.postOrderCoverage.bestResweepFollowUpSuggestion.state}"><b>Follow-up:</b> ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.label} · ${plan.postOrderCoverage.bestResweepFollowUpSuggestion.copy}</small>
+          ${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.shouldRender ? `<small class="atlas-counterintelligence-best-resweep-gap-warning__next-safe atlas-counterintelligence-best-resweep-gap-warning__next-safe--${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.state}"><b>Next safe sweep:</b> ${plan.postOrderCoverage.nextSafeFollowUpPriorityMarker.label}</small>` : ''}
         </aside>
       </section>
       <section class="atlas-counterintelligence-schedule-conflicts" aria-label="Conflits de calendrier contre-espionnage fog-safe">
