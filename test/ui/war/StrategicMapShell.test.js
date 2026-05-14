@@ -6,6 +6,7 @@ import {
   buildFirstCleanupPayoff,
   buildFollowUpCleanupChoices,
   buildFollowUpCleanupMiniPlan,
+  buildMiniPlanConflictTradeoffs,
   buildMiniPlanDependencyConflicts,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
@@ -262,6 +263,19 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
       targetId: 'front-a',
     },
   ]);
+  assert.deepEqual(shell.miniPlanConflictTradeoffs, [
+    {
+      tradeoffId: 'mini-plan-tradeoff:supply-pressure:front-a',
+      conflictId: 'mini-plan-conflict:supply-pressure:front-a',
+      severity: 'blocking',
+      reason: 'approvisionnement tendu',
+      recommendedChoice: 'réserver le convoi court avant le mini-plan',
+      rejectedChoice: 'Scanner axe détour',
+      rejectedCost: 'retarde Scanner axe détour',
+      label: 'prioriser convoi partagé',
+      targetId: 'front-a',
+    },
+  ]);
 });
 
 test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
@@ -309,7 +323,7 @@ test('StrategicMapShell surfaces dependency conflicts around the follow-up mini-
   const miniPlan = {
     empty: false,
     steps: [
-      { riskReduced: 'axe encore exposé' },
+      { state: 'execute-cleanup', label: 'Scanner axe détour', riskReduced: 'axe encore exposé', untreatedRisk: 'loyauté basse' },
     ],
   };
   const readiness = { state: 'ready-now', residualRiskKey: 'route-exposure:front-a' };
@@ -341,6 +355,62 @@ test('StrategicMapShell surfaces dependency conflicts around the follow-up mini-
   assert.deepEqual(buildMiniPlanDependencyConflicts({ empty: true }, [
     { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
   ], readiness), []);
+});
+
+test('StrategicMapShell turns mini-plan conflicts into explicit choose-one tradeoffs', () => {
+  const miniPlan = {
+    empty: false,
+    steps: [
+      { state: 'execute-cleanup', label: 'Scanner axe détour', untreatedRisk: 'front voisin fragile' },
+    ],
+  };
+
+  assert.deepEqual(buildMiniPlanConflictTradeoffs(miniPlan, [
+    {
+      conflictId: 'mini-plan-conflict:neighbor-front:front-b',
+      severity: 'blocking',
+      label: 'Priorité voisine',
+      reason: 'ordre prioritaire reste à 88',
+      mitigation: 'caler une couverture voisine minimale',
+      residualRiskKey: 'neighbor-front:front-b',
+      targetId: 'front-b',
+    },
+    {
+      conflictId: 'mini-plan-conflict:low-loyalty:front-a',
+      severity: 'watchable',
+      label: 'Loyauté à suivre',
+      reason: 'loyauté 42',
+      mitigation: 'envoyer liaison si le plan dure',
+      residualRiskKey: 'low-loyalty:front-a',
+      targetId: 'front-a',
+    },
+  ]), [
+    {
+      tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+      conflictId: 'mini-plan-conflict:neighbor-front:front-b',
+      severity: 'blocking',
+      reason: 'ordre prioritaire reste à 88',
+      recommendedChoice: 'caler une couverture voisine minimale',
+      rejectedChoice: 'Scanner axe détour',
+      rejectedCost: 'retarde Scanner axe détour',
+      label: 'prioriser priorité voisine',
+      targetId: 'front-b',
+    },
+    {
+      tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+      conflictId: 'mini-plan-conflict:low-loyalty:front-a',
+      severity: 'watchable',
+      reason: 'loyauté 42',
+      recommendedChoice: 'Scanner axe détour',
+      rejectedChoice: 'envoyer liaison si le plan dure',
+      rejectedCost: 'laisse loyauté à suivre sous surveillance',
+      label: 'continuer malgré loyauté à suivre',
+      targetId: 'front-a',
+    },
+  ]);
+  assert.deepEqual(buildMiniPlanConflictTradeoffs({ empty: true }, [
+    { severity: 'blocking', residualRiskKey: 'supply-pressure:front-a' },
+  ]), []);
 });
 
 test('StrategicMapShell explains deterministic readiness blockers for the top follow-up', () => {
