@@ -969,6 +969,41 @@ export function buildMiniPlanMinimalFollowThrough(miniPlanLateCorrectionExitCost
   };
 }
 
+export function buildMiniPlanFollowThroughOpportunityTradeoff(miniPlanMinimalFollowThrough = null) {
+  if (!miniPlanMinimalFollowThrough || miniPlanMinimalFollowThrough.empty) {
+    return {
+      empty: true,
+      state: 'no-conflict',
+      label: 'suivi sans conflit',
+      constraint: null,
+      action: null,
+    };
+  }
+
+  const state = miniPlanMinimalFollowThrough.level === 'urgent'
+    ? 'opportunity-threatened'
+    : miniPlanMinimalFollowThrough.level === 'advised'
+      ? 'manageable-conflict'
+      : 'no-conflict';
+  const constraint = miniPlanMinimalFollowThrough.support ?? 'appui allié';
+
+  return {
+    empty: false,
+    state,
+    label: state === 'opportunity-threatened'
+      ? 'opportunité menacée'
+      : state === 'manageable-conflict'
+        ? 'conflit gérable'
+        : 'suivi sans conflit',
+    constraint,
+    action: state === 'opportunity-threatened'
+      ? 'reporter l’opportunité'
+      : state === 'manageable-conflict'
+        ? (constraint === 'tempo' ? 'limiter l’engagement' : 'sécuriser puis exploiter')
+        : 'suivre maintenant',
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -1075,6 +1110,9 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const miniPlanLastSafeCorrectionCue = buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibilityCue);
   const miniPlanLateCorrectionExitCost = buildMiniPlanLateCorrectionExitCost(miniPlanLastSafeCorrectionCue);
   const miniPlanMinimalFollowThrough = buildMiniPlanMinimalFollowThrough(miniPlanLateCorrectionExitCost);
+  const miniPlanFollowThroughOpportunityTradeoff = buildMiniPlanFollowThroughOpportunityTradeoff(
+    miniPlanMinimalFollowThrough,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1131,6 +1169,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanLastSafeCorrectionCue,
     miniPlanLateCorrectionExitCost,
     miniPlanMinimalFollowThrough,
+    miniPlanFollowThroughOpportunityTradeoff,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
