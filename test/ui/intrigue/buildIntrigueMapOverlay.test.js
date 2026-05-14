@@ -236,6 +236,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Refroidissement: obligatoire.',
           reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
         },
+        activeObservationResumeSignal: {
+          timing: 'resume-later-information-risk',
+          visibleFactor: 'Marge restante',
+          action: 'refresh-signal',
+          label: 'Observation: reprendre plus tard.',
+          reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -311,6 +318,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Refroidissement: obligatoire.',
               reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
+            },
+            activeObservationResumeSignal: {
+              timing: 'resume-later-information-risk',
+              visibleFactor: 'Marge restante',
+              action: 'refresh-signal',
+              label: 'Observation: reprendre plus tard.',
+              reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
             },
         monitoringChecklist: [
           {
@@ -492,6 +506,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Refroidissement: obligatoire.',
           reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
         },
+        activeObservationResumeSignal: {
+          timing: 'resume-later-information-risk',
+          visibleFactor: 'Marge restante',
+          action: 'refresh-signal',
+          label: 'Observation: reprendre plus tard.',
+          reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -567,6 +588,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Refroidissement: obligatoire.',
               reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
+            },
+            activeObservationResumeSignal: {
+              timing: 'resume-later-information-risk',
+              visibleFactor: 'Marge restante',
+              action: 'refresh-signal',
+              label: 'Observation: reprendre plus tard.',
+              reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
             },
         monitoringChecklist: [
           {
@@ -848,6 +876,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Refroidissement: obligatoire.',
           reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
         },
+        activeObservationResumeSignal: {
+          timing: 'resume-later-information-risk',
+          visibleFactor: 'Marge restante',
+          action: 'refresh-signal',
+          label: 'Observation: reprendre plus tard.',
+          reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -1002,6 +1037,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'wait-one-turn',
         label: 'Refroidissement: pause courte.',
         reason: 'Une pause courte suffit à stabiliser le suivi avant de rafraîchir le signal visible.',
+      },
+      activeObservationResumeSignal: {
+        timing: 'wait-before-resume',
+        visibleFactor: 'Gain confiance',
+        action: 'wait-one-turn',
+        label: 'Observation: attendre un tour.',
+        reason: 'La pause courte stabilise le signal visible avant de rouvrir l’observation active.',
       },
       monitoringChecklist: [
         {
@@ -1224,6 +1266,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Refroidissement: inutile.',
         reason: 'La fenêtre de sweep reste ouverte: aucun tour de refroidissement requis tant que le heat reste stable.',
       },
+      activeObservationResumeSignal: {
+        timing: 'resume-now',
+        visibleFactor: 'Fenêtre sûre',
+        action: 'resume-observation',
+        label: 'Observation: reprendre maintenant.',
+        reason: 'La fenêtre visible reste ouverte: reprendre l’observation active sans attendre un refroidissement caché.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1369,6 +1418,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'wait-one-turn',
       label: 'Refroidissement: pause courte.',
       reason: 'Une pause courte suffit à stabiliser le suivi avant de rafraîchir le signal visible.',
+    },
+    activeObservationResumeSignal: {
+      timing: 'wait-before-resume',
+      visibleFactor: 'Fraîcheur signal',
+      action: 'wait-one-turn',
+      label: 'Observation: attendre un tour.',
+      reason: 'La pause courte stabilise le signal visible avant de rouvrir l’observation active.',
     },
     monitoringChecklist: [
       {
