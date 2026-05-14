@@ -222,6 +222,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Résultat: reprise fragile.',
           reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
         },
+        followUpHeatDebt: {
+          debt: 'next-follow-up-blocked',
+          visibleFactor: 'Marge restante',
+          action: 'maintain-surveillance',
+          label: 'Dette heat: suivi bloqué.',
+          reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -283,6 +290,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'maintain-surveillance',
               label: 'Résultat: reprise fragile.',
               reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
+            },
+            followUpHeatDebt: {
+              debt: 'next-follow-up-blocked',
+              visibleFactor: 'Marge restante',
+              action: 'maintain-surveillance',
+              label: 'Dette heat: suivi bloqué.',
+              reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
             },
         monitoringChecklist: [
           {
@@ -450,6 +464,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Résultat: reprise fragile.',
           reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
         },
+        followUpHeatDebt: {
+          debt: 'next-follow-up-blocked',
+          visibleFactor: 'Marge restante',
+          action: 'maintain-surveillance',
+          label: 'Dette heat: suivi bloqué.',
+          reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -511,6 +532,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'maintain-surveillance',
               label: 'Résultat: reprise fragile.',
               reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
+            },
+            followUpHeatDebt: {
+              debt: 'next-follow-up-blocked',
+              visibleFactor: 'Marge restante',
+              action: 'maintain-surveillance',
+              label: 'Dette heat: suivi bloqué.',
+              reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
             },
         monitoringChecklist: [
           {
@@ -778,6 +806,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Résultat: reprise fragile.',
           reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
         },
+        followUpHeatDebt: {
+          debt: 'next-follow-up-blocked',
+          visibleFactor: 'Marge restante',
+          action: 'maintain-surveillance',
+          label: 'Dette heat: suivi bloqué.',
+          reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -918,6 +953,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'maintain-surveillance',
         label: 'Résultat: reprise fragile.',
         reason: 'La qualité du signal suffit à reprendre, mais pas à enchaîner sans surveillance.',
+      },
+      followUpHeatDebt: {
+        debt: 'heat-to-absorb',
+        visibleFactor: 'Gain confiance',
+        action: 'refresh-signal',
+        label: 'Dette heat: à absorber.',
+        reason: 'Le suivi reste possible, mais dépend d’un signal rafraîchi avant d’ajouter du heat.',
       },
       monitoringChecklist: [
         {
@@ -1126,6 +1168,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Résultat: marge restaurée.',
         reason: 'La reprise laisse une marge lisible: enchaîner seulement si la fenêtre reste visible.',
       },
+      followUpHeatDebt: {
+        debt: 'heat-stable',
+        visibleFactor: 'Fenêtre sûre',
+        action: 'chain-sweep',
+        label: 'Dette heat: stable.',
+        reason: 'La fenêtre de sweep reste lisible: enchaîner seulement si le heat visible ne remonte pas.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1257,6 +1306,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'maintain-surveillance',
       label: 'Résultat: reprise fragile.',
       reason: 'La qualité du signal suffit à reprendre, mais pas à enchaîner sans surveillance.',
+    },
+    followUpHeatDebt: {
+      debt: 'heat-to-absorb',
+      visibleFactor: 'Fraîcheur signal',
+      action: 'refresh-signal',
+      label: 'Dette heat: à absorber.',
+      reason: 'Le suivi reste possible, mais dépend d’un signal rafraîchi avant d’ajouter du heat.',
     },
     monitoringChecklist: [
       {
