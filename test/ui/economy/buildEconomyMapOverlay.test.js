@@ -544,6 +544,15 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         mainConstraint: null,
         summary: 'Aucune décision abandon/inversion requise: la séquence reste rentable après délai.',
       },
+      postSalvageDecisionComparison: {
+        status: 'neutral',
+        confirmNow: 'continuer sans coût d’attente notable',
+        wait: 'temporiser reste acceptable tant que la marge nette reste positive',
+        recommendation: 'continue',
+        dominantConstraint: null,
+        waitTurnsDurableLoss: false,
+        summary: 'Neutre: aucun coût d’attente notable tant que la marge reste positive.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -675,6 +684,15 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       mainConstraint: null,
       summary: 'Aucune décision abandon/inversion requise: la séquence reste rentable après délai.',
     },
+    postSalvageDecisionComparison: {
+      status: 'neutral',
+      confirmNow: 'continuer sans coût d’attente notable',
+      wait: 'temporiser reste acceptable tant que la marge nette reste positive',
+      recommendation: 'continue',
+      dominantConstraint: null,
+      waitTurnsDurableLoss: false,
+      summary: 'Neutre: aucun coût d’attente notable tant que la marge reste positive.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -755,6 +773,16 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     mainConstraint: 'alternative-plus-sure',
     summary: 'Abandonner la séquence: alternative-plus-sure garde le coût restant trop élevé.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageDecisionComparison, {
+    status: 'wait-dangerous',
+    confirmNow: 'abandonner ou inverser immédiatement pour éviter une perte durable',
+    wait: 'attendre ajoute 8 coût et fige la perte durable',
+    recommendation: 'abandon-sequence',
+    dominantConstraint: 'alternative-plus-sure',
+    waitCost: 8,
+    waitTurnsDurableLoss: true,
+    summary: 'abandonner ou inverser immédiatement pour éviter une perte durable: temporiser transforme la décision en perte durable.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -801,6 +829,16 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     recommendation: 'invert-durably',
     mainConstraint: 'alternative-plus-sure',
     summary: 'Inverser durablement: grain:reserve-buffer reste plus sûr malgré le salvage.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageDecisionComparison, {
+    status: 'wait-dangerous',
+    confirmNow: 'confirmer l’inversion vers grain:reserve-buffer',
+    wait: 'attendre ajoute 5 coût et rend l’alternative plus sûre durablement',
+    recommendation: 'invert-durably',
+    dominantConstraint: 'alternative-plus-sure',
+    waitCost: 5,
+    waitTurnsDurableLoss: true,
+    summary: 'confirmer l’inversion vers grain:reserve-buffer: temporiser transforme la décision en perte durable.',
   });
 });
 
