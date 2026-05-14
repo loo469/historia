@@ -872,6 +872,18 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         expectedGain: 'retire un tradeoff de support qui entretient la dette de stabilisation',
         blockedUntilSupport: false,
       },
+      topRetirementReadiness: {
+        status: 'blocked',
+        blockers: [
+          {
+            blockerId: 'shared-marsh:debt:incompatibility:shared-marsh:culture-marsh:bundle:guided-opening:timing',
+            type: 'timing-local-pressure',
+            reason: 'surveiller les relais savants et le rythme d’ouverture',
+            nextSmallStep: 'stabiliser la pression locale avant retrait',
+          },
+        ],
+        nextSmallStep: 'stabiliser la pression locale avant retrait',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -924,6 +936,11 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
       debts: [],
       dependencyRetirementRanking: [],
       recommendedFirstRetirement: null,
+      topRetirementReadiness: {
+        status: 'ready',
+        blockers: [],
+        nextSmallStep: 'aucune dépendance prioritaire à retirer',
+      },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
   });
