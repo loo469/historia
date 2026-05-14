@@ -604,6 +604,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         action: 'normaliser sans promotion automatique',
         summary: 'Corridor normalisé: garder la lecture active sans promotion automatique.',
       },
+      postNormalizationSurplusUse: {
+        status: 'invest-next-corridor',
+        priority: 'investir dans le prochain corridor utile',
+        guidingConstraint: 'charge voisine',
+        microAction: 'attendre stabilité confirmée puis investir',
+        summary: 'Surplus disponible: viser le prochain corridor utile après stabilité confirmée.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -795,6 +802,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       action: 'normaliser sans promotion automatique',
       summary: 'Corridor normalisé: garder la lecture active sans promotion automatique.',
     },
+    postNormalizationSurplusUse: {
+      status: 'invest-next-corridor',
+      priority: 'investir dans le prochain corridor utile',
+      guidingConstraint: 'charge voisine',
+      microAction: 'attendre stabilité confirmée puis investir',
+      summary: 'Surplus disponible: viser le prochain corridor utile après stabilité confirmée.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -936,6 +950,13 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     action: 'stabiliser avant de normaliser',
     summary: 'Garde toujours nécessaire: stabiliser risque de rollback avant normalisation.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postNormalizationSurplusUse, {
+    status: 'keep-surplus-reserve',
+    priority: 'garder le surplus en réserve',
+    guidingConstraint: 'risque de rechute',
+    microAction: 'conserver jusqu’à stabilité visible',
+    summary: 'Surplus en réserve: attendre que le risque de rechute baisse avant dépense.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -1043,6 +1064,13 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     remainingConstraint: 'alternative fragile',
     action: 'appliquer l’allègement puis surveiller un tour',
     summary: 'Normalisation surveillée possible: vérifier alternative fragile après allègement.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postNormalizationSurplusUse, {
+    status: 'reinforce-fragile-alternative',
+    priority: 'renforcer une alternative fragile',
+    guidingConstraint: 'alternative critique',
+    microAction: 'renforcer avant de consommer le surplus',
+    summary: 'Surplus prudent: renforcer l’alternative critique avant nouvel investissement.',
   });
 });
 

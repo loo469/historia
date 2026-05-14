@@ -721,6 +721,36 @@ function buildGuardedCorridorNormalizationCheckpoint(
   };
 }
 
+function buildPostNormalizationSurplusUse(guardedCorridorNormalizationCheckpoint) {
+  if (guardedCorridorNormalizationCheckpoint.status === 'corridor-normalized') {
+    return {
+      status: 'invest-next-corridor',
+      priority: 'investir dans le prochain corridor utile',
+      guidingConstraint: 'charge voisine',
+      microAction: 'attendre stabilité confirmée puis investir',
+      summary: 'Surplus disponible: viser le prochain corridor utile après stabilité confirmée.',
+    };
+  }
+
+  if (guardedCorridorNormalizationCheckpoint.status === 'monitored-normalization-possible') {
+    return {
+      status: 'reinforce-fragile-alternative',
+      priority: 'renforcer une alternative fragile',
+      guidingConstraint: 'alternative critique',
+      microAction: 'renforcer avant de consommer le surplus',
+      summary: 'Surplus prudent: renforcer l’alternative critique avant nouvel investissement.',
+    };
+  }
+
+  return {
+    status: 'keep-surplus-reserve',
+    priority: 'garder le surplus en réserve',
+    guidingConstraint: 'risque de rechute',
+    microAction: 'conserver jusqu’à stabilité visible',
+    summary: 'Surplus en réserve: attendre que le risque de rechute baisse avant dépense.',
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -945,6 +975,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     rollbackGuardLoadMargin,
     monitoredCorridorRollbackGuard,
   );
+  const postNormalizationSurplusUse = buildPostNormalizationSurplusUse(guardedCorridorNormalizationCheckpoint);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -967,6 +998,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     rollbackGuardLoadMargin,
     guardedCorridorLoadRelief,
     guardedCorridorNormalizationCheckpoint,
+    postNormalizationSurplusUse,
   };
 }
 
