@@ -1047,6 +1047,46 @@ export function buildMiniPlanSafestTacticalFallback(miniPlanFollowThroughOpportu
   };
 }
 
+function holdPlanRiskForConstraint(constraint) {
+  if (constraint === 'tempo') return 'tempo repris par le rival';
+  if (constraint === 'fatigue') return 'fatigue transforme le repli en retard';
+  if (constraint === 'position') return 'position se rouvre';
+  if (constraint === 'appui allié') return 'appui allié se disperse';
+  if (constraint === 'ordre engagé') return 'ordre engagé se verrouille';
+  return 'fenêtre d’opportunité se referme';
+}
+
+export function buildMiniPlanNextTurnHoldPlan(miniPlanSafestTacticalFallback = null) {
+  if (!miniPlanSafestTacticalFallback || miniPlanSafestTacticalFallback.empty) {
+    return {
+      empty: true,
+      label: 'plan prochain tour non requis',
+      action: null,
+      constraint: null,
+      riskIfIgnored: null,
+    };
+  }
+
+  const constraint = miniPlanSafestTacticalFallback.constraint ?? 'fenêtre d’opportunité';
+  const action = miniPlanSafestTacticalFallback.state === 'urgent-save-opportunity'
+    ? (miniPlanSafestTacticalFallback.action === 'abandonner l’ouverture' ? 'tenir position engagée' : 'verrouiller exploitation')
+    : miniPlanSafestTacticalFallback.state === 'value-advised'
+      ? (constraint === 'position' ? 'ancrer position' : 'garder réserve courte')
+      : 'maintenir tempo';
+
+  return {
+    empty: false,
+    label: miniPlanSafestTacticalFallback.state === 'urgent-save-opportunity'
+      ? 'tenir ouverture sauvée'
+      : miniPlanSafestTacticalFallback.state === 'value-advised'
+        ? 'tenir repli de valeur'
+        : 'tenir exploitation simple',
+    action,
+    constraint,
+    riskIfIgnored: holdPlanRiskForConstraint(constraint),
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -1159,6 +1199,9 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const miniPlanSafestTacticalFallback = buildMiniPlanSafestTacticalFallback(
     miniPlanFollowThroughOpportunityTradeoff,
   );
+  const miniPlanNextTurnHoldPlan = buildMiniPlanNextTurnHoldPlan(
+    miniPlanSafestTacticalFallback,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1217,6 +1260,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanMinimalFollowThrough,
     miniPlanFollowThroughOpportunityTradeoff,
     miniPlanSafestTacticalFallback,
+    miniPlanNextTurnHoldPlan,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
