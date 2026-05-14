@@ -961,6 +961,75 @@ export function buildResidualCultureFollowUpWindow(residualCultureActionPayoff, 
   };
 }
 
+function buildResidualCultureClosureConstraint(limitingConstraint) {
+  if (limitingConstraint === 'support local') {
+    return 'support local';
+  }
+
+  if (limitingConstraint === 'médiation') {
+    return 'fatigue de médiation';
+  }
+
+  if (limitingConstraint === 'timing') {
+    return 'timing rituel';
+  }
+
+  if (limitingConstraint === 'dépendance restante') {
+    return 'dépendance restante';
+  }
+
+  if (limitingConstraint === 'pression') {
+    return 'pression externe';
+  }
+
+  return 'aucune contrainte visible';
+}
+
+export function buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow) {
+  const visibleConstraint = buildResidualCultureClosureConstraint(residualCultureFollowUpWindow.limitingConstraint);
+
+  if (residualCultureFollowUpWindow.status === 'stable') {
+    return {
+      status: 'none',
+      visibleConstraint,
+      threatSummary: 'aucune pression notable sur la fenêtre de suivi',
+      recommendedGesture: null,
+    };
+  }
+
+  if (residualCultureFollowUpWindow.status === 'fragile-exploitable') {
+    return {
+      status: 'manageable',
+      visibleConstraint,
+      threatSummary: `${visibleConstraint} peut refermer la fenêtre si le suivi tarde`,
+      recommendedGesture: visibleConstraint === 'fatigue de médiation'
+        ? 'borner la médiation avant le prochain suivi'
+        : visibleConstraint === 'timing rituel'
+          ? 'caler le suivi sur un rythme rituel court'
+          : visibleConstraint === 'dépendance restante'
+            ? 'nommer la dépendance à lever avant enchaînement'
+            : visibleConstraint === 'support local'
+              ? 'préparer un relais local minimal'
+              : 'réduire la pression visible avant d’enchaîner',
+    };
+  }
+
+  return {
+    status: 'likely-close',
+    visibleConstraint,
+    threatSummary: `${visibleConstraint} refermera probablement la fenêtre avant un suivi sûr`,
+    recommendedGesture: visibleConstraint === 'support local'
+      ? 'sécuriser un support local avant tout suivi'
+      : visibleConstraint === 'fatigue de médiation'
+        ? 'reporter le suivi et réduire la fatigue de médiation'
+        : visibleConstraint === 'timing rituel'
+          ? 'attendre une meilleure fenêtre rituelle'
+          : visibleConstraint === 'dépendance restante'
+            ? 'lever la dépendance restante avant de rouvrir la fenêtre'
+            : 'réduire la pression externe avant de rouvrir la fenêtre',
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1018,6 +1087,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualRiskAfterNextRetirement = buildResidualRiskAfterNextRetirement(dependencyRetirementRanking, nextDependencyRetirementPath, postBundleCumulativeRisk);
   const residualCultureRiskNextAction = buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement);
   const residualCultureActionPayoff = buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction);
+  const residualCultureFollowUpWindow = buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1031,7 +1101,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualRiskAfterNextRetirement,
     residualCultureRiskNextAction,
     residualCultureActionPayoff,
-    residualCultureFollowUpWindow: buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction),
+    residualCultureFollowUpWindow,
+    residualCultureWindowClosureThreat: buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow),
   };
 }
 
