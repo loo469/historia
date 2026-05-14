@@ -154,6 +154,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         preparationOptions: [],
         bestValuePreparation: null,
         preparationSequence: [],
+        opportunityCostComparison: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -193,6 +194,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         preparationOptions: [],
         bestValuePreparation: null,
         preparationSequence: [],
+        opportunityCostComparison: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -261,6 +263,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     preparationOptions: [],
     bestValuePreparation: null,
     preparationSequence: [],
+    opportunityCostComparison: null,
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -348,6 +351,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
     ],
     bestValuePreparation: null,
     preparationSequence: [],
+    opportunityCostComparison: null,
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -429,6 +433,27 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         reason: 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
       },
     ],
+    opportunityCostComparison: {
+      id: 'opportunity-cost:grain:shift-to-tools:vs:grain:reserve-buffer',
+      recommendedOptionId: 'grain:shift-to-tools',
+      alternativeOptionId: 'grain:reserve-buffer',
+      summary: 'Meilleure maintenant: +10 valeur protégée contre Libérer 1 capacité grain.',
+      gained: {
+        protectedValue: 10,
+        margin: 1,
+        reason: 'Reporter une partie du flux vers tools protège davantage le corridor avant la dépense.',
+      },
+      deferred: {
+        effort: 1,
+        unit: 'turns',
+        reason: 'Libérer 1 capacité grain reste moins coûteuse si le coût immédiat devient prioritaire.',
+      },
+      aggravated: {
+        risk: 'none',
+        reason: 'Aucune aggravation nette détectée par rapport à l’alternative comparée.',
+      },
+      reconsiderWhen: 'Reconsidérer si le risque corridor augmente encore ou si la capacité opérationnelle manque.',
+    },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
     {
@@ -456,6 +481,27 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       reason: 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
     },
   ]);
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.opportunityCostComparison, {
+    id: 'opportunity-cost:grain:shift-to-tools:vs:grain:reserve-buffer',
+    recommendedOptionId: 'grain:shift-to-tools',
+    alternativeOptionId: 'grain:reserve-buffer',
+    summary: 'Meilleure maintenant: +10 valeur protégée contre Libérer 1 capacité grain.',
+    gained: {
+      protectedValue: 10,
+      margin: 1,
+      reason: 'Reporter une partie du flux vers tools protège davantage le corridor avant la dépense.',
+    },
+    deferred: {
+      effort: 1,
+      unit: 'turns',
+      reason: 'Libérer 1 capacité grain reste moins coûteuse si le coût immédiat devient prioritaire.',
+    },
+    aggravated: {
+      risk: 'none',
+      reason: 'Aucune aggravation nette détectée par rapport à l’alternative comparée.',
+    },
+    reconsiderWhen: 'Reconsidérer si le risque corridor augmente encore ou si la capacité opérationnelle manque.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
     overlay.routes[0].capacitySpendPreview.bestValuePreparation,
