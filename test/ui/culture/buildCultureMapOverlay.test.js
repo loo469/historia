@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -959,6 +959,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         stabilitySummary: 'accalmie utile: renforcer réduit le risque lié à fatigue de médiation',
         nextMicroDecision: null,
       },
+      residualCultureReevaluationTrigger: {
+        status: 'watch-signal',
+        visibleTrigger: 'fatigue de médiation',
+        triggerSummary: 'surveiller le signal: fatigue de médiation peut écourter l’accalmie',
+        microDecision: 'revoir le support si fatigue de médiation remonte',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1071,6 +1077,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         dominantFactor: 'aucune contrainte visible',
         stabilitySummary: 'stabilité durable: aucun support immédiat ne change la fenêtre visible',
         nextMicroDecision: null,
+      },
+      residualCultureReevaluationTrigger: {
+        status: 'none-soon',
+        visibleTrigger: 'aucune contrainte visible',
+        triggerSummary: 'pas de réévaluation proche: stabilité durable visible',
+        microDecision: null,
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1503,6 +1515,53 @@ test('buildResidualCulturePostAllocationStability covers durable, useful lull, a
       dominantFactor: 'support local',
       stabilitySummary: 'fragile après action: support local peut encore rouvrir la dette culturelle',
       nextMicroDecision: 'sécuriser un support local avant tout suivi',
+    },
+  );
+});
+
+test('buildResidualCultureReevaluationTrigger covers none, watch, and urgent follow-up', () => {
+  assert.deepEqual(
+    buildResidualCultureReevaluationTrigger({
+      status: 'durable',
+      dominantFactor: 'aucune contrainte visible',
+      stabilitySummary: 'stabilité durable: aucun support immédiat ne change la fenêtre visible',
+      nextMicroDecision: null,
+    }),
+    {
+      status: 'none-soon',
+      visibleTrigger: 'aucune contrainte visible',
+      triggerSummary: 'pas de réévaluation proche: stabilité durable visible',
+      microDecision: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureReevaluationTrigger({
+      status: 'useful-lull',
+      dominantFactor: 'fatigue de médiation',
+      stabilitySummary: 'accalmie utile: renforcer réduit le risque lié à fatigue de médiation',
+      nextMicroDecision: null,
+    }),
+    {
+      status: 'watch-signal',
+      visibleTrigger: 'fatigue de médiation',
+      triggerSummary: 'surveiller le signal: fatigue de médiation peut écourter l’accalmie',
+      microDecision: 'revoir le support si fatigue de médiation remonte',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureReevaluationTrigger({
+      status: 'fragile-after-action',
+      dominantFactor: 'support local',
+      stabilitySummary: 'fragile après action: support local peut encore rouvrir la dette culturelle',
+      nextMicroDecision: 'sécuriser un support local avant tout suivi',
+    }),
+    {
+      status: 'urgent',
+      visibleTrigger: 'support local',
+      triggerSummary: 'réévaluation urgente si support local réapparaît',
+      microDecision: 'sécuriser un support local avant tout suivi',
     },
   );
 });

@@ -1100,6 +1100,35 @@ export function buildResidualCulturePostAllocationStability(residualCultureSuppo
   };
 }
 
+export function buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability) {
+  const visibleTrigger = residualCulturePostAllocationStability.dominantFactor;
+
+  if (residualCulturePostAllocationStability.status === 'durable') {
+    return {
+      status: 'none-soon',
+      visibleTrigger,
+      triggerSummary: 'pas de réévaluation proche: stabilité durable visible',
+      microDecision: null,
+    };
+  }
+
+  if (residualCulturePostAllocationStability.status === 'useful-lull') {
+    return {
+      status: 'watch-signal',
+      visibleTrigger,
+      triggerSummary: `surveiller le signal: ${visibleTrigger} peut écourter l’accalmie`,
+      microDecision: `revoir le support si ${visibleTrigger} remonte`,
+    };
+  }
+
+  return {
+    status: 'urgent',
+    visibleTrigger,
+    triggerSummary: `réévaluation urgente si ${visibleTrigger} réapparaît`,
+    microDecision: residualCulturePostAllocationStability.nextMicroDecision,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1160,6 +1189,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureFollowUpWindow = buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction);
   const residualCultureWindowClosureThreat = buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow);
   const residualCultureSupportAllocationChoice = buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk);
+  const residualCulturePostAllocationStability = buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1176,7 +1206,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureFollowUpWindow,
     residualCultureWindowClosureThreat,
     residualCultureSupportAllocationChoice,
-    residualCulturePostAllocationStability: buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat),
+    residualCulturePostAllocationStability,
+    residualCultureReevaluationTrigger: buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability),
   };
 }
 
