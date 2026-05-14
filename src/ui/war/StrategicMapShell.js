@@ -119,6 +119,43 @@ export function buildFirstCleanupPayoff(cleanupOrders = [], residualRisks = []) 
   };
 }
 
+export function buildFollowUpCleanupChoices(cleanupOrders = [], residualRisks = [], firstCleanupPayoff = null) {
+  const normalizedOrders = normalizeCleanupInput(cleanupOrders, 'StrategicMapShell cleanupOrders');
+  const normalizedRisks = normalizeCleanupInput(residualRisks, 'StrategicMapShell residualRisks');
+  const skippedOrderId = String(firstCleanupPayoff?.cleanupOrderId ?? normalizedOrders[0]?.id ?? '').trim();
+  const skippedRiskKey = String(firstCleanupPayoff?.residualRiskKey ?? normalizedOrders[0]?.residualRiskKey ?? '').trim();
+
+  return normalizedOrders
+    .filter((order) => {
+      const orderId = String(order.id ?? '').trim();
+      const residualRiskKey = String(order.residualRiskKey ?? '').trim();
+
+      return orderId !== skippedOrderId && residualRiskKey !== skippedRiskKey;
+    })
+    .map((order) => {
+      const residualRiskKey = String(order.residualRiskKey ?? '').trim();
+      const matchingRisk = normalizedRisks.find((risk) => String(risk.key ?? '').trim() === residualRiskKey) ?? null;
+      const riskCovered = String(order.riskReduced ?? matchingRisk?.label ?? 'risque résiduel').trim() || 'risque résiduel';
+
+      return {
+        rank: 0,
+        cleanupOrderId: String(order.id ?? '').trim() || null,
+        cleanupOrderLabel: String(order.label ?? 'Ordre de suivi').trim() || 'Ordre de suivi',
+        residualRiskKey,
+        targetId: getRiskLocationId(residualRiskKey),
+        riskCovered,
+        expectedBenefit: String(order.expectedBenefit ?? order.expectedEffect ?? `réduit ${riskCovered}`).trim(),
+        rankReason: String(order.reason ?? matchingRisk?.reason ?? 'meilleur suivi restant').trim() || 'meilleur suivi restant',
+        safetyScore: Number.isFinite(order.safetyScore) ? order.safetyScore : 0,
+      };
+    })
+    .sort((left, right) => right.safetyScore - left.safetyScore
+      || left.residualRiskKey.localeCompare(right.residualRiskKey)
+      || String(left.cleanupOrderId ?? '').localeCompare(String(right.cleanupOrderId ?? '')))
+    .slice(0, 3)
+    .map((choice, index) => ({ ...choice, rank: index + 1 }));
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -171,6 +208,11 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const overlaySlots = normalizeOverlaySlots(normalizedOptions.overlaySlots);
   const provinceGeometryById = normalizeGeometryMap(normalizedOptions.provinceGeometryById);
   const firstCleanupPayoff = buildFirstCleanupPayoff(normalizedOptions.cleanupOrders, normalizedOptions.residualRisks);
+  const followUpCleanupChoices = buildFollowUpCleanupChoices(
+    normalizedOptions.cleanupOrders,
+    normalizedOptions.residualRisks,
+    firstCleanupPayoff,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -211,6 +253,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
       })),
     },
     firstCleanupPayoff,
+    followUpCleanupChoices,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,

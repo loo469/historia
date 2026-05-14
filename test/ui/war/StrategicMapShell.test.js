@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { Province } from '../../../src/domain/war/Province.js';
-import { buildFirstCleanupPayoff, buildStrategicMapShell } from '../../../src/ui/war/StrategicMapShell.js';
+import { buildFirstCleanupPayoff, buildFollowUpCleanupChoices, buildStrategicMapShell } from '../../../src/ui/war/StrategicMapShell.js';
 
 function createProvince(overrides = {}) {
   return new Province({
@@ -135,6 +135,77 @@ test('StrategicMapShell exposes the first cleanup payoff from cleanup orders and
       { key: 'low-loyalty:front-a', label: 'loyauté basse', reason: 'loyauté 42' },
     ],
   });
+});
+
+test('StrategicMapShell ranks follow-up cleanup choices after the first payoff', () => {
+  const shell = buildStrategicMapShell([createProvince({ id: 'front-a', name: 'Front A' })], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement', reason: 'approvisionnement tendu' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse', reason: 'loyauté 42' },
+      { key: 'route-exposure:front-b', label: 'axe encore exposé', reason: 'exposition route 21' },
+    ],
+    cleanupOrders: [
+      {
+        id: 'cleanup:route-blocked:supply-pressure:front-a',
+        label: 'Prioriser convoi court',
+        residualRiskKey: 'supply-pressure:front-a',
+        riskReduced: 'pression ravitaillement',
+        reason: 'ravitaillement visible à faible détour',
+        safetyScore: 46,
+      },
+      {
+        id: 'cleanup:route-blocked:low-loyalty:front-a',
+        label: 'Envoyer liaison locale',
+        residualRiskKey: 'low-loyalty:front-a',
+        riskReduced: 'loyauté basse',
+        reason: 'faible coût et peu d’effet secondaire',
+        safetyScore: 42,
+      },
+      {
+        id: 'cleanup:route-blocked:route-exposure:front-b',
+        label: 'Scanner axe détour',
+        residualRiskKey: 'route-exposure:front-b',
+        riskReduced: 'axe encore exposé',
+        reason: 'réduit l’exposition sans combat',
+        safetyScore: 45,
+      },
+    ],
+  });
+
+  assert.deepEqual(shell.followUpCleanupChoices, [
+    {
+      rank: 1,
+      cleanupOrderId: 'cleanup:route-blocked:route-exposure:front-b',
+      cleanupOrderLabel: 'Scanner axe détour',
+      residualRiskKey: 'route-exposure:front-b',
+      targetId: 'front-b',
+      riskCovered: 'axe encore exposé',
+      expectedBenefit: 'réduit axe encore exposé',
+      rankReason: 'réduit l’exposition sans combat',
+      safetyScore: 45,
+    },
+    {
+      rank: 2,
+      cleanupOrderId: 'cleanup:route-blocked:low-loyalty:front-a',
+      cleanupOrderLabel: 'Envoyer liaison locale',
+      residualRiskKey: 'low-loyalty:front-a',
+      targetId: 'front-a',
+      riskCovered: 'loyauté basse',
+      expectedBenefit: 'réduit loyauté basse',
+      rankReason: 'faible coût et peu d’effet secondaire',
+      safetyScore: 42,
+    },
+  ]);
+});
+
+test('StrategicMapShell returns empty follow-up cleanup choices when no follow-up is useful', () => {
+  assert.deepEqual(buildFollowUpCleanupChoices([
+    { id: 'cleanup:first', residualRiskKey: 'low-loyalty:front-a', riskReduced: 'loyauté basse' },
+  ], [{ key: 'low-loyalty:front-a', label: 'loyauté basse' }], {
+    cleanupOrderId: 'cleanup:first',
+    residualRiskKey: 'low-loyalty:front-a',
+  }), []);
+  assert.deepEqual(buildStrategicMapShell([], {}).followUpCleanupChoices, []);
 });
 
 test('StrategicMapShell returns a neutral cleanup payoff when no cleanup order is useful', () => {
