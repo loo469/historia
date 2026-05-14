@@ -196,6 +196,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           recommendedAction: 'postpone',
           reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
         },
+        monitoringMarginResponsePriority: {
+          response: 'postpone-neutral',
+          priorityFactor: 'Données insuffisantes',
+          label: 'Priorité: reporter sans urgence.',
+          reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -231,6 +237,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               trend: 'unknown',
               recommendedAction: 'postpone',
               reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
+            },
+            monitoringMarginResponsePriority: {
+              response: 'postpone-neutral',
+              priorityFactor: 'Données insuffisantes',
+              label: 'Priorité: reporter sans urgence.',
+              reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
             },
         monitoringChecklist: [
           {
@@ -372,6 +384,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           recommendedAction: 'postpone',
           reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
         },
+        monitoringMarginResponsePriority: {
+          response: 'postpone-neutral',
+          priorityFactor: 'Données insuffisantes',
+          label: 'Priorité: reporter sans urgence.',
+          reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -407,6 +425,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               trend: 'unknown',
               recommendedAction: 'postpone',
               reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
+            },
+            monitoringMarginResponsePriority: {
+              response: 'postpone-neutral',
+              priorityFactor: 'Données insuffisantes',
+              label: 'Priorité: reporter sans urgence.',
+              reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
             },
         monitoringChecklist: [
           {
@@ -648,6 +672,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           recommendedAction: 'postpone',
           reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
         },
+        monitoringMarginResponsePriority: {
+          response: 'postpone-neutral',
+          priorityFactor: 'Données insuffisantes',
+          label: 'Priorité: reporter sans urgence.',
+          reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -762,6 +792,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         trend: 'needs-confirmation',
         recommendedAction: 'refresh-signal',
         reason: 'Gain confiance garde une marge étroite: rafraîchir le signal avant de relancer.',
+      },
+      monitoringMarginResponsePriority: {
+        response: 'refresh-signal',
+        priorityFactor: 'Gain confiance',
+        label: 'Priorité: rafraîchir le signal.',
+        reason: 'Qualité du signal fragile; confirmer avant toute relance.',
       },
       monitoringChecklist: [
         {
@@ -944,6 +980,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         recommendedAction: 'launch-now',
         reason: 'Fenêtre sûre peut encore peser, mais la marge devrait tenir jusqu’au prochain sweep sûr.',
       },
+      monitoringMarginResponsePriority: {
+        response: 'launch-now',
+        priorityFactor: 'Fenêtre sûre',
+        label: 'Priorité: lancer maintenant.',
+        reason: 'Fenêtre de sweep encore lisible; ne pas laisser la marge se fermer.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1050,6 +1092,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       recommendedAction: 'refresh-signal',
       reason: 'Fraîcheur signal peut dégrader la marge avant la prochaine fenêtre: agir sans révéler de cible cachée.',
     },
+    monitoringMarginResponsePriority: {
+      response: 'refresh-signal',
+      priorityFactor: 'Fraîcheur signal',
+      label: 'Priorité: rafraîchir le signal.',
+      reason: 'Qualité du signal fragile; confirmer avant toute relance.',
+    },
     monitoringChecklist: [
       {
         signal: 'Fraîcheur signal',
@@ -1113,6 +1161,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     trend: 'decays-before-next-sweep',
     recommendedAction: 'reduce-heat',
     reason: 'Le heat consomme la marge avant la prochaine fenêtre sûre: réduire la pression visible.',
+  });
+  assert.deepEqual(tooExposed.thirdSweepRecommendation.monitoringRationale.monitoringMarginResponsePriority, {
+    response: 'reduce-heat',
+    priorityFactor: 'Heat',
+    label: 'Priorité: réduire heat.',
+    reason: 'Heat visible trop haut; baisser la pression avant reprise.',
   });
 });
 
