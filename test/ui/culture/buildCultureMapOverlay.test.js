@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -947,6 +947,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         threatSummary: 'fatigue de médiation peut refermer la fenêtre si le suivi tarde',
         recommendedGesture: 'borner la médiation avant le prochain suivi',
       },
+      residualCultureSupportAllocationChoice: {
+        recommendation: 'reinforce-now',
+        dominantConstraint: 'fatigue de médiation',
+        riskAvoided: 'évite de perdre une fenêtre encore exploitable sous fatigue de médiation',
+        summary: 'renforcer maintenant: la fenêtre reste utile mais socialement coûteuse',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1047,6 +1053,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         visibleConstraint: 'aucune contrainte visible',
         threatSummary: 'aucune pression notable sur la fenêtre de suivi',
         recommendedGesture: null,
+      },
+      residualCultureSupportAllocationChoice: {
+        recommendation: 'wait-neutral',
+        dominantConstraint: 'aucune contrainte visible',
+        riskAvoided: 'aucun coût notable évité par un renfort immédiat',
+        summary: 'attendre sans coût notable: la fenêtre ne réclame pas de support dédié',
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1364,6 +1376,62 @@ test('buildResidualCultureWindowClosureThreat covers absent, manageable, and lik
       visibleConstraint: 'support local',
       threatSummary: 'support local refermera probablement la fenêtre avant un suivi sûr',
       recommendedGesture: 'sécuriser un support local avant tout suivi',
+    },
+  );
+});
+
+test('buildResidualCultureSupportAllocationChoice compares reinforcing, keeping support, and neutral wait', () => {
+  assert.deepEqual(
+    buildResidualCultureSupportAllocationChoice(
+      {
+        status: 'manageable',
+        visibleConstraint: 'fatigue de médiation',
+        threatSummary: 'fatigue de médiation peut refermer la fenêtre si le suivi tarde',
+        recommendedGesture: 'borner la médiation avant le prochain suivi',
+      },
+      { remainingPriority: 'isolement du support' },
+    ),
+    {
+      recommendation: 'reinforce-now',
+      dominantConstraint: 'fatigue de médiation',
+      riskAvoided: 'évite de perdre une fenêtre encore exploitable sous fatigue de médiation',
+      summary: 'renforcer maintenant: la fenêtre reste utile mais socialement coûteuse',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureSupportAllocationChoice(
+      {
+        status: 'none',
+        visibleConstraint: 'aucune contrainte visible',
+        threatSummary: 'aucune pression notable sur la fenêtre de suivi',
+        recommendedGesture: null,
+      },
+      { remainingPriority: 'pression frontalière' },
+    ),
+    {
+      recommendation: 'keep-support',
+      dominantConstraint: 'autre foyer visible',
+      riskAvoided: 'évite de détourner le support du risque pression frontalière',
+      summary: 'garder le support: la fenêtre résiduelle ne subit pas de pression notable',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureSupportAllocationChoice(
+      {
+        status: 'none',
+        visibleConstraint: 'aucune contrainte visible',
+        threatSummary: 'aucune pression notable sur la fenêtre de suivi',
+        recommendedGesture: null,
+      },
+      { remainingPriority: 'aucun' },
+    ),
+    {
+      recommendation: 'wait-neutral',
+      dominantConstraint: 'aucune contrainte visible',
+      riskAvoided: 'aucun coût notable évité par un renfort immédiat',
+      summary: 'attendre sans coût notable: la fenêtre ne réclame pas de support dédié',
     },
   );
 });
