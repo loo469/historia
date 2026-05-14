@@ -73,6 +73,7 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /buildMiniPlanConfidenceSignalCue\(/);
   assert.match(webAppSource, /buildMiniPlanDecisionReversibilityCue\(/);
   assert.match(webAppSource, /buildMiniPlanLastSafeCorrectionCue\(/);
+  assert.match(webAppSource, /buildMiniPlanLateCorrectionExitCost\(/);
   assert.match(webAppSource, /firstCleanupPayoff/);
   assert.match(webAppSource, /followUpCleanupChoices/);
   assert.match(webAppSource, /topFollowUpReadiness/);
@@ -115,6 +116,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /miniPlanConfidenceSignalCue: buildMiniPlanConfidenceSignalCue\(/);
   assert.match(webAppSource, /miniPlanDecisionReversibilityCue: buildMiniPlanDecisionReversibilityCue\(/);
   assert.match(webAppSource, /miniPlanLastSafeCorrectionCue: buildMiniPlanLastSafeCorrectionCue\(/);
+  assert.match(webAppSource, /miniPlanLateCorrectionExitCost: buildMiniPlanLateCorrectionExitCost\(/);
   assert.match(webAppSource, /Risque si: aucun rival lisible/);
   assert.match(webAppSource, /branches: aucune comparaison/);
   assert.match(webAppSource, /fallback: aucun repli requis/);
@@ -123,6 +125,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /confiance: non évaluée/);
   assert.match(webAppSource, /réversibilité: non évaluée/);
   assert.match(webAppSource, /dernier sûr: non évalué/);
+  assert.match(webAppSource, /sortie tardive: non évaluée/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
@@ -138,6 +141,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__confidence-signal/);
   assert.match(webAppSource, /atlas-military-fallback-order__decision-reversibility/);
   assert.match(webAppSource, /atlas-military-fallback-order__last-safe-correction/);
+  assert.match(webAppSource, /atlas-military-fallback-order__late-correction-exit-cost/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
@@ -153,6 +157,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /\$\{confidenceSignal\.label\}: \$\{confidenceSignal\.signal\} · \$\{confidenceSignal\.waitCost\}/);
   assert.match(webAppSource, /réversibilité: \$\{reversibility\.label\} · \$\{reversibility\.constraint\}\$\{reversibility\.nextStep \? ` · \$\{reversibility\.nextStep\}` : ''\}/);
   assert.match(webAppSource, /dernier sûr: \$\{lastSafeCorrection\.label\} · \$\{lastSafeCorrection\.constraint\}\$\{lastSafeCorrection\.nextStep \? ` · \$\{lastSafeCorrection\.nextStep\}` : ''\}/);
+  assert.match(webAppSource, /sortie tardive: \$\{exitCost\.label\} · perte \$\{exitCost\.loss\} · \$\{exitCost\.decision\}/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
@@ -178,4 +183,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__confidence-signal/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__decision-reversibility/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__last-safe-correction/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__late-correction-exit-cost/);
 });

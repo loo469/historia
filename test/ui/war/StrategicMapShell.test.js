@@ -10,6 +10,7 @@ import {
   buildMiniPlanConfidenceSignalCue,
   buildMiniPlanDecisionReversibilityCue,
   buildMiniPlanLastSafeCorrectionCue,
+  buildMiniPlanLateCorrectionExitCost,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -366,6 +367,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     label: 'fenêtre correction inconnue',
     constraint: null,
     nextStep: null,
+  });
+  assert.deepEqual(shell.miniPlanLateCorrectionExitCost, {
+    empty: true,
+    severity: 'none',
+    label: 'coût de sortie inconnu',
+    loss: null,
+    decision: null,
   });
 });
 
@@ -731,12 +739,20 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     constraint: 'position moins prioritaire',
     nextStep: null,
   });
-  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(reversibility), {
+  const lastSafe = buildMiniPlanLastSafeCorrectionCue(reversibility);
+  assert.deepEqual(lastSafe, {
     empty: false,
     state: 'locked-commitment',
     label: 'engagement verrouillé',
     constraint: 'position moins prioritaire',
     nextStep: null,
+  });
+  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(lastSafe), {
+    empty: false,
+    severity: 'deterrent',
+    label: 'coût dissuasif',
+    loss: 'position',
+    decision: 'attendre sans nouvelle correction',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -803,12 +819,20 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     constraint: 'coût d’opportunité',
     nextStep: 'garder un ordre court en réserve',
   });
-  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(reversibility), {
+  const lastSafe = buildMiniPlanLastSafeCorrectionCue(reversibility);
+  assert.deepEqual(lastSafe, {
     empty: false,
     state: 'safe-correction',
     label: 'correction encore sûre',
     constraint: 'coût d’opportunité',
     nextStep: 'préparer correction courte',
+  });
+  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(lastSafe), {
+    empty: false,
+    severity: 'light',
+    label: 'coût léger',
+    loss: 'opportunité rivale',
+    decision: 'corriger maintenant',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -866,12 +890,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     constraint: 'tempo rival',
     nextStep: 'préserver un tempo de correction',
   });
-  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(reversibility), {
+  const lastSafe = buildMiniPlanLastSafeCorrectionCue(reversibility);
+  assert.deepEqual(lastSafe, {
     empty: false,
     state: 'last-correction-turn',
     label: 'dernier tour de correction',
     constraint: 'tempo rival',
     nextStep: 'corriger maintenant ou assumer',
+  });
+  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(lastSafe), {
+    empty: false,
+    severity: 'costly',
+    label: 'coûteux mais possible',
+    loss: 'tempo',
+    decision: 'assumer le plan',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -901,6 +933,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     label: 'fenêtre correction inconnue',
     constraint: null,
     nextStep: null,
+  });
+  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(null), {
+    empty: true,
+    severity: 'none',
+    label: 'coût de sortie inconnu',
+    loss: null,
+    decision: null,
   });
 });
 
