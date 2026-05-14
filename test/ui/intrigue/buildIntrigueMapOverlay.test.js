@@ -160,6 +160,40 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               'Continuer à surveiller sans nouveau gap lisible.',
             ],
             sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+        monitoringChecklist: [
+          {
+            signal: 'Nouveau gap',
+            status: 'à surveiller',
+            note: 'Relancer seulement avec un gap fog-safe lisible.',
+          },
+          {
+            signal: 'Fraîcheur signal',
+            status: 'à surveiller',
+            note: 'Confirmer que le signal n’est pas périmé.',
+          },
+          {
+            signal: 'Exposition',
+            status: 'calme',
+            note: 'Ne pas ajouter d’exposition sans gain concret.',
+          },
+        ],
+            monitoringChecklist: [
+              {
+                signal: 'Nouveau gap',
+                status: 'à surveiller',
+                note: 'Relancer seulement avec un gap fog-safe lisible.',
+              },
+              {
+                signal: 'Fraîcheur signal',
+                status: 'à surveiller',
+                note: 'Confirmer que le signal n’est pas périmé.',
+              },
+              {
+                signal: 'Exposition',
+                status: 'calme',
+                note: 'Ne pas ajouter d’exposition sans gain concret.',
+              },
+            ],
           },
           rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
@@ -230,6 +264,40 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               'Continuer à surveiller sans nouveau gap lisible.',
             ],
             sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+        monitoringChecklist: [
+          {
+            signal: 'Nouveau gap',
+            status: 'à surveiller',
+            note: 'Relancer seulement avec un gap fog-safe lisible.',
+          },
+          {
+            signal: 'Fraîcheur signal',
+            status: 'à surveiller',
+            note: 'Confirmer que le signal n’est pas périmé.',
+          },
+          {
+            signal: 'Exposition',
+            status: 'calme',
+            note: 'Ne pas ajouter d’exposition sans gain concret.',
+          },
+        ],
+            monitoringChecklist: [
+              {
+                signal: 'Nouveau gap',
+                status: 'à surveiller',
+                note: 'Relancer seulement avec un gap fog-safe lisible.',
+              },
+              {
+                signal: 'Fraîcheur signal',
+                status: 'à surveiller',
+                note: 'Confirmer que le signal n’est pas périmé.',
+              },
+              {
+                signal: 'Exposition',
+                status: 'calme',
+                note: 'Ne pas ajouter d’exposition sans gain concret.',
+              },
+            ],
           },
           rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
@@ -400,6 +468,23 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           'Continuer à surveiller sans nouveau gap lisible.',
         ],
         sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+        monitoringChecklist: [
+          {
+            signal: 'Nouveau gap',
+            status: 'à surveiller',
+            note: 'Relancer seulement avec un gap fog-safe lisible.',
+          },
+          {
+            signal: 'Fraîcheur signal',
+            status: 'à surveiller',
+            note: 'Confirmer que le signal n’est pas périmé.',
+          },
+          {
+            signal: 'Exposition',
+            status: 'calme',
+            note: 'Ne pas ajouter d’exposition sans gain concret.',
+          },
+        ],
       },
       rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
     },
@@ -462,6 +547,23 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         'Continuer à surveiller tant que le gain reste marginal.',
       ],
       sweepRestartComparison: 'Surveiller bat la relance: +3 confiance attendue reste trop faible pour +9 exposition.',
+      monitoringChecklist: [
+        {
+          signal: 'Gain confiance',
+          status: 'à surveiller',
+          note: 'Relancer si le gain dépasse +3.',
+        },
+        {
+          signal: 'Signaux frais',
+          status: 'déclencheur potentiel',
+          note: 'Deux signaux convergents peuvent rouvrir une sweep.',
+        },
+        {
+          signal: 'Heat',
+          status: 'calme',
+          note: 'Surveillance suffisante tant que le heat reste contenu.',
+        },
+      ],
     },
     rationale: 'Arrêter après la seconde passe: le gain restant serait trop faible par rapport à l’exposition marginale.',
   });
@@ -590,6 +692,23 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         'Basculer en surveillance si le heat remonte avant l’ordre.',
       ],
       sweepRestartComparison: 'Relancer bat la surveillance: +14 confiance attendue pour +9 exposition.',
+      monitoringChecklist: [
+        {
+          signal: 'Fenêtre sûre',
+          status: 'déclencheur potentiel',
+          note: 'Relancer si elle reste stable.',
+        },
+        {
+          signal: 'Heat',
+          status: 'calme',
+          note: 'Basculer en surveillance si le heat remonte.',
+        },
+        {
+          signal: 'Gain confiance',
+          status: 'déclencheur potentiel',
+          note: '+14 attendu dépasse +9 exposition.',
+        },
+      ],
     },
     rationale: 'Préparer une troisième passe prudente: 2 inconnues resteraient et le gain de confiance attendu dépasse l’exposition marginale.',
   });
@@ -643,6 +762,23 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       'Continuer à surveiller si la fraîcheur reste insuffisante.',
     ],
     sweepRestartComparison: 'Surveiller bat la relance: le signal est trop ancien pour justifier une nouvelle exposition.',
+    monitoringChecklist: [
+      {
+        signal: 'Fraîcheur signal',
+        status: 'à surveiller',
+        note: 'Attendre un signal récent avant reprise.',
+      },
+      {
+        signal: 'Fenêtre low-risk',
+        status: 'à surveiller',
+        note: 'Relancer seulement si un gap lisible réapparaît.',
+      },
+      {
+        signal: 'Exposition',
+        status: 'calme',
+        note: 'Rester sous +8 exposition marginale.',
+      },
+    ],
   });
 
   const tooExposed = buildIntrigueMapOverlay([

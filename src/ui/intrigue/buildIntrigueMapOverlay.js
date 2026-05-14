@@ -274,6 +274,58 @@ function buildSecondSweepStopCondition({ nextSafeSweep, unknownsRemaining, sabot
 }
 
 
+
+function buildMonitoringChecklist({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
+  const exposure = clampPercent(marginalExposureAdded);
+  const confidenceGain = clampPercent(expectedConfidenceGain);
+
+  if (state === 'safe-action-available') {
+    return [
+      { signal: 'Fenêtre sûre', status: 'déclencheur potentiel', note: 'Relancer si elle reste stable.' },
+      { signal: 'Heat', status: 'calme', note: 'Basculer en surveillance si le heat remonte.' },
+      { signal: 'Gain confiance', status: 'déclencheur potentiel', note: `+${confidenceGain} attendu dépasse +${exposure} exposition.` },
+    ];
+  }
+
+  if (state === 'await-fresh-signal') {
+    return [
+      { signal: 'Fraîcheur signal', status: 'à surveiller', note: 'Attendre un signal récent avant reprise.' },
+      { signal: 'Fenêtre low-risk', status: 'à surveiller', note: 'Relancer seulement si un gap lisible réapparaît.' },
+      { signal: 'Exposition', status: 'calme', note: `Rester sous +${Math.max(3, exposure)} exposition marginale.` },
+    ];
+  }
+
+  if (state === 'heat-too-high') {
+    return [
+      { signal: 'Heat', status: 'à surveiller', note: 'Attendre une baisse nette avant reprise.' },
+      { signal: 'Exposition', status: 'à surveiller', note: `+${exposure} marginal reste trop élevé.` },
+      { signal: 'Gain confiance', status: 'calme', note: 'Aucun gain fiable ne justifie la relance.' },
+    ];
+  }
+
+  if (state === 'wait-for-cooldown') {
+    return [
+      { signal: 'Cooldown heat', status: 'à surveiller', note: 'Relancer si la fenêtre refroidit.' },
+      { signal: 'Gap visible', status: 'déclencheur potentiel', note: 'Reprendre si le gap reste lisible après cooldown.' },
+      { signal: 'Exposition', status: 'à surveiller', note: `Comparer +${exposure} exposition au gain +${confidenceGain}.` },
+    ];
+  }
+
+  if (state === 'low-confidence-gain') {
+    return [
+      { signal: 'Gain confiance', status: 'à surveiller', note: `Relancer si le gain dépasse +${confidenceGain}.` },
+      { signal: 'Signaux frais', status: 'déclencheur potentiel', note: 'Deux signaux convergents peuvent rouvrir une sweep.' },
+      { signal: 'Heat', status: 'calme', note: 'Surveillance suffisante tant que le heat reste contenu.' },
+    ];
+  }
+
+  return [
+    { signal: 'Nouveau gap', status: monitoringPreferred ? 'à surveiller' : 'calme', note: 'Relancer seulement avec un gap fog-safe lisible.' },
+    { signal: 'Fraîcheur signal', status: 'à surveiller', note: 'Confirmer que le signal n’est pas périmé.' },
+    { signal: 'Exposition', status: 'calme', note: 'Ne pas ajouter d’exposition sans gain concret.' },
+  ];
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -347,6 +399,12 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
   return {
     ...rationale,
     ...buildMonitoringRestartPlan({
+      state: rationale.state,
+      monitoringPreferred: rationale.monitoringPreferred,
+      marginalExposureAdded,
+      expectedConfidenceGain,
+    }),
+    monitoringChecklist: buildMonitoringChecklist({
       state: rationale.state,
       monitoringPreferred: rationale.monitoringPreferred,
       marginalExposureAdded,
