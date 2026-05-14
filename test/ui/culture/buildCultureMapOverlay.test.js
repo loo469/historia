@@ -6,9 +6,9 @@ import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js'
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
 import { buildCultureMapOverlay } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
-function withoutRiskChangePreview(value) {
+function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
-    return value.map(withoutRiskChangePreview);
+    return value.map(withoutSupportRiskPreviews);
   }
 
   if (value === null || typeof value !== 'object') {
@@ -17,8 +17,8 @@ function withoutRiskChangePreview(value) {
 
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => key !== 'riskChangePreview')
-      .map(([key, nestedValue]) => [key, withoutRiskChangePreview(nestedValue)]),
+      .filter(([key]) => !['riskChangePreview', 'postBundleCumulativeRisk'].includes(key))
+      .map(([key, nestedValue]) => [key, withoutSupportRiskPreviews(nestedValue)]),
   );
 }
 
@@ -90,7 +90,7 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
     },
   );
 
-  assert.deepEqual(withoutRiskChangePreview(overlay), [
+  assert.deepEqual(withoutSupportRiskPreviews(overlay), [
     {
       overlayId: 'archipelago:culture-north',
       regionId: 'archipelago',
@@ -432,7 +432,7 @@ test('buildCultureMapOverlay distinguishes overlapping cultural influences in th
     },
   );
 
-  assert.deepEqual(withoutRiskChangePreview(overlay), [
+  assert.deepEqual(withoutSupportRiskPreviews(overlay), [
     {
       overlayId: 'shared-bay:culture-delta',
       regionId: 'shared-bay',
@@ -749,8 +749,25 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
       tradeoffToWatch: 'cohésion + / ouverture -',
       reason: 'réduit la fragmentation visible avant soutien externe',
     },
+    postBundleCumulativeRisk: {
+      status: 'redirects-attention',
+      before: {
+        score: 67,
+        level: 'elevated',
+      },
+      after: {
+        score: 67,
+        level: 'elevated',
+      },
+      reducedRisk: 'fragmentation culturelle',
+      remainingPriority: 'isolement du support',
+      fragileRegionId: 'shared-marsh',
+      fragileCultureId: 'culture-marsh',
+      nextAttention: 'surveiller les relais savants et le rythme d’ouverture',
+    },
   });
   assert.deepEqual(marsh.riskChangePreview, marsh.recommendedFirstBundle.riskChangePreview);
+  assert.deepEqual(marsh.postBundleCumulativeRisk, marsh.recommendedFirstBundle.postBundleCumulativeRisk);
   assert.deepEqual(stable.supportBundles, undefined);
   assert.deepEqual(stable.recommendedFirstBundle, undefined);
   assert.deepEqual(stable.riskChangePreview, {
@@ -761,6 +778,22 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
     monitoredRisk: 'aucun support recommandé',
     tradeoffToWatch: 'aucun',
     reason: 'aucun bundle recommandé: stabilité suffisante',
+  });
+  assert.deepEqual(stable.postBundleCumulativeRisk, {
+    status: 'neutral',
+    before: {
+      score: 0,
+      level: 'low',
+    },
+    after: {
+      score: 0,
+      level: 'low',
+    },
+    reducedRisk: 'aucun support recommandé',
+    remainingPriority: 'aucun',
+    fragileRegionId: null,
+    fragileCultureId: null,
+    nextAttention: 'aucune attention supplémentaire recommandée',
   });
 });
 

@@ -457,6 +457,89 @@ function buildCultureSupportRiskChangePreview(culture, bundle, regionPresence, c
   };
 }
 
+function buildCumulativeRiskLevel(score) {
+  if (score >= 75) {
+    return 'critical';
+  }
+
+  if (score >= 55) {
+    return 'elevated';
+  }
+
+  if (score >= 30) {
+    return 'guarded';
+  }
+
+  return 'low';
+}
+
+function buildCultureSupportCumulativeRisk(culture, regionId, riskChangePreview, regionPresence, cultureState) {
+  if (riskChangePreview.status === 'neutral') {
+    return {
+      status: 'neutral',
+      before: { score: 0, level: 'low' },
+      after: { score: 0, level: 'low' },
+      reducedRisk: 'aucun support recommandé',
+      remainingPriority: 'aucun',
+      fragileRegionId: null,
+      fragileCultureId: null,
+      nextAttention: 'aucune attention supplémentaire recommandée',
+    };
+  }
+
+  const rivalPressure = Math.max(
+    0,
+    ...regionPresence
+      .filter((entry) => entry.cultureId !== culture.id)
+      .map((entry) => entry.influenceScore - cultureState.influenceScore),
+  );
+  const riskComponents = [
+    {
+      risk: 'fragmentation culturelle',
+      score: clampScore((100 - culture.cohesion) + (rivalPressure > 0 ? 8 : 0)),
+      nextAttention: 'consolider les repères locaux après le premier soutien',
+    },
+    {
+      risk: 'isolement du support',
+      score: clampScore((100 - culture.openness) + (cultureState.signals.activeResearchCount * 5)),
+      nextAttention: 'surveiller les relais savants et le rythme d’ouverture',
+    },
+    {
+      risk: 'pression frontalière',
+      score: clampScore(45 + rivalPressure + (regionPresence.length > 1 ? regionPresence.length * 3 : 0)),
+      nextAttention: 'suivre les compromis avec les influences voisines',
+    },
+  ];
+  const beforeScore = Math.max(...riskComponents.map((component) => component.score));
+  const afterComponents = riskComponents.map((component) => ({
+    ...component,
+    score: component.risk === riskChangePreview.monitoredRisk
+      ? riskChangePreview.expectedRisk
+      : component.score,
+  }));
+  const afterScore = Math.max(...afterComponents.map((component) => component.score));
+  const remainingPriority = afterComponents
+    .slice()
+    .sort((left, right) => right.score - left.score || left.risk.localeCompare(right.risk))[0];
+
+  return {
+    status: afterScore < beforeScore ? 'improves' : 'redirects-attention',
+    before: {
+      score: beforeScore,
+      level: buildCumulativeRiskLevel(beforeScore),
+    },
+    after: {
+      score: afterScore,
+      level: buildCumulativeRiskLevel(afterScore),
+    },
+    reducedRisk: riskChangePreview.monitoredRisk,
+    remainingPriority: remainingPriority.risk,
+    fragileRegionId: regionId,
+    fragileCultureId: culture.id,
+    nextAttention: remainingPriority.nextAttention,
+  };
+}
+
 function rankCultureSupportBundles(bundles) {
   return bundles
     .map((bundle) => {
@@ -476,7 +559,7 @@ function rankCultureSupportBundles(bundles) {
     }));
 }
 
-function buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview) {
+function buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview, postBundleCumulativeRisk) {
   const firstBundle = supportBundles[0] ?? null;
 
   if (!firstBundle) {
@@ -490,6 +573,7 @@ function buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePre
     reason: firstBundle.safetyReason,
     monitoredRisk: firstBundle.monitoredRisk,
     riskChangePreview,
+    postBundleCumulativeRisk,
   };
 }
 
@@ -604,7 +688,8 @@ export function buildCultureMapOverlay(payload, options = {}) {
           : null;
         const supportBundles = buildCultureSupportBundles(culture, regionId, regionPresence, cultureState);
         const riskChangePreview = buildCultureSupportRiskChangePreview(culture, supportBundles[0] ?? null, regionPresence, cultureState);
-        const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview);
+        const postBundleCumulativeRisk = buildCultureSupportCumulativeRisk(culture, regionId, riskChangePreview, regionPresence, cultureState);
+        const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview, postBundleCumulativeRisk);
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -671,6 +756,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           dominantInRegion: dominantCulture?.cultureId === culture.id,
           competingCultureIds: regionPresence.filter((entry) => entry.cultureId !== culture.id).map((entry) => entry.cultureId),
           riskChangePreview,
+          postBundleCumulativeRisk,
           ...(supportBundles.length > 0 ? { supportBundles, recommendedFirstBundle } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
