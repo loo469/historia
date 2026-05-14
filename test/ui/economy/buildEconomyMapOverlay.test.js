@@ -481,6 +481,11 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         scenarioId: null,
         alternativeOptionId: null,
         reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
+        actionability: {
+          threshold: null,
+          consequence: 'continuer la séquence recommandée',
+          advice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
+        },
       },
       scenarios: [
         {
@@ -521,6 +526,7 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         },
       ],
       reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
+      actionableAdvice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -589,6 +595,11 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       scenarioId: null,
       alternativeOptionId: null,
       reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
+      actionability: {
+        threshold: null,
+        consequence: 'continuer la séquence recommandée',
+        advice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
+      },
     },
     scenarios: [
       {
@@ -629,6 +640,7 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       },
     ],
     reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
+    actionableAdvice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -663,7 +675,16 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     scenarioId: 'delay-one-turn',
     alternativeOptionId: 'grain:reserve-buffer',
     reason: 'La recommandation bascule vers grain:reserve-buffer si retard d’un tour.',
+    actionability: {
+      threshold: 'dès 1 tour de retard',
+      consequence: 'inverser la priorité avant d’attendre',
+      advice: 'inverser la priorité avant d’attendre: basculer vers grain:reserve-buffer dès 1 tour de retard.',
+    },
   });
+  assert.equal(
+    overlay.routes[0].capacitySpendPreview.timingSensitivity.actionableAdvice,
+    'inverser la priorité avant d’attendre: basculer vers grain:reserve-buffer dès 1 tour de retard.',
+  );
   assert.equal(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.summary,
     'bascule vers grain:reserve-buffer si retard d’un tour.',
