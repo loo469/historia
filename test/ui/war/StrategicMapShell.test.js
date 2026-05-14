@@ -5,6 +5,7 @@ import { Province } from '../../../src/domain/war/Province.js';
 import {
   buildFirstCleanupPayoff,
   buildFollowUpCleanupChoices,
+  buildFollowUpCleanupMiniPlan,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
 } from '../../../src/ui/war/StrategicMapShell.js';
@@ -214,6 +215,81 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     action: 'sécuriser le corridor court avant exécution',
     targetId: 'front-b',
     residualRiskKey: 'route-exposure:front-b',
+  });
+  assert.deepEqual(shell.followUpCleanupMiniPlan, {
+    empty: false,
+    reason: 'Logistique à vérifier',
+    targetId: 'front-b',
+    steps: [
+      {
+        stepId: 'followup-readiness:route-exposure:front-b',
+        order: 1,
+        label: 'sécuriser le corridor court avant exécution',
+        prerequisite: 'éclaireurs disponibles',
+        riskReduced: 'bloqueur readiness',
+        untreatedRisk: 'axe encore exposé',
+        state: 'needs-logistics',
+      },
+      {
+        stepId: 'followup-cleanup:route-exposure:front-b',
+        order: 2,
+        label: 'Scanner axe détour',
+        prerequisite: 'éclaireurs disponibles',
+        riskReduced: 'axe encore exposé',
+        untreatedRisk: 'pression ravitaillement',
+        state: 'execute-cleanup',
+      },
+      {
+        stepId: 'followup-next:low-loyalty:front-a',
+        order: 3,
+        label: 'Envoyer liaison locale',
+        prerequisite: 'émissaire disponible',
+        riskReduced: 'loyauté basse',
+        untreatedRisk: 'pression ravitaillement',
+        state: 'next-followup',
+      },
+    ],
+  });
+});
+
+test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
+  const readiness = buildTopFollowUpReadiness([
+    {
+      cleanupOrderLabel: 'Surveiller risque restant',
+      residualRiskKey: 'watch:front-a',
+      targetId: 'front-a',
+      riskCovered: 'alerte diffuse',
+    },
+  ]);
+
+  assert.deepEqual(buildFollowUpCleanupMiniPlan([
+    {
+      cleanupOrderLabel: 'Surveiller risque restant',
+      residualRiskKey: 'watch:front-a',
+      targetId: 'front-a',
+      riskCovered: 'alerte diffuse',
+    },
+  ], [{ key: 'watch:front-a', label: 'alerte diffuse' }], readiness), {
+    empty: false,
+    reason: 'Prêt maintenant',
+    targetId: 'front-a',
+    steps: [
+      {
+        stepId: 'followup-cleanup:watch:front-a',
+        order: 1,
+        label: 'Surveiller risque restant',
+        prerequisite: 'aucun bloqueur visible',
+        riskReduced: 'alerte diffuse',
+        untreatedRisk: 'aucun risque visible',
+        state: 'execute-cleanup',
+      },
+    ],
+  });
+  assert.deepEqual(buildFollowUpCleanupMiniPlan([], [], buildTopFollowUpReadiness([], [])), {
+    empty: true,
+    reason: 'aucun cleanup suivi sûr',
+    targetId: null,
+    steps: [],
   });
 });
 
