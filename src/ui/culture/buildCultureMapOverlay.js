@@ -1187,6 +1187,35 @@ export function buildResidualCultureMinimalDelayedSupport(residualCultureReevalu
   };
 }
 
+export function buildResidualCultureReliabilityUpgradeCondition(residualCultureMinimalDelayedSupport) {
+  const visibleConstraint = residualCultureMinimalDelayedSupport.visibleConstraint;
+
+  if (residualCultureMinimalDelayedSupport.status === 'none-needed') {
+    return {
+      status: 'already-reliable',
+      firstCondition: 'aucune condition supplémentaire visible',
+      guidance: 'stabilité déjà fiable après le soutien minimal',
+      microDecision: null,
+    };
+  }
+
+  if (residualCultureMinimalDelayedSupport.status === 'light-support-enough') {
+    return {
+      status: 'upgrade-available',
+      firstCondition: `confirmer que ${visibleConstraint} reste borné après le support léger`,
+      guidance: `fiabiliser: garder ${visibleConstraint} sous contrôle au prochain suivi`,
+      microDecision: residualCultureMinimalDelayedSupport.microDecision,
+    };
+  }
+
+  return {
+    status: 'blocked-until-support',
+    firstCondition: `appliquer le soutien immédiat sur ${visibleConstraint}`,
+    guidance: `stabilité encore fragile tant que ${visibleConstraint} n’est pas stabilisé`,
+    microDecision: residualCultureMinimalDelayedSupport.microDecision,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1250,6 +1279,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCulturePostAllocationStability = buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat);
   const residualCultureReevaluationTrigger = buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability);
   const residualCultureReevaluationDelayCost = buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger);
+  const residualCultureMinimalDelayedSupport = buildResidualCultureMinimalDelayedSupport(residualCultureReevaluationDelayCost);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1269,7 +1299,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCulturePostAllocationStability,
     residualCultureReevaluationTrigger,
     residualCultureReevaluationDelayCost,
-    residualCultureMinimalDelayedSupport: buildResidualCultureMinimalDelayedSupport(residualCultureReevaluationDelayCost),
+    residualCultureMinimalDelayedSupport,
+    residualCultureReliabilityUpgradeCondition: buildResidualCultureReliabilityUpgradeCondition(residualCultureMinimalDelayedSupport),
   };
 }
 
