@@ -153,6 +153,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         nextBottleneck: null,
         preparationOptions: [],
         bestValuePreparation: null,
+        preparationSequence: [],
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -191,6 +192,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         nextBottleneck: null,
         preparationOptions: [],
         bestValuePreparation: null,
+        preparationSequence: [],
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -258,6 +260,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     nextBottleneck: null,
     preparationOptions: [],
     bestValuePreparation: null,
+    preparationSequence: [],
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -344,6 +347,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
       },
     ],
     bestValuePreparation: null,
+    preparationSequence: [],
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -399,7 +403,59 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       optionId: 'grain:reserve-buffer',
       condition: 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
     },
+    sequence: [
+      {
+        id: 'grain:shift-to-tools:now',
+        timing: 'now',
+        optionId: 'grain:shift-to-tools',
+        action: 'shift-load-to-spare-resource',
+        label: 'Reporter une partie du flux vers tools',
+        reason: 'Sécurise 20 valeur corridor avant dépense.',
+      },
+      {
+        id: 'grain:shift-to-tools:next',
+        timing: 'next',
+        optionId: 'grain:shift-to-tools',
+        action: 'spend-capacity-after-preparation',
+        label: 'Dépenser la capacité après marge confirmée',
+        reason: 'Engage la dépense seulement après +2 marge préparée.',
+      },
+      {
+        id: 'grain:reserve-buffer:defer',
+        timing: 'defer',
+        optionId: 'grain:reserve-buffer',
+        action: 'keep-cheaper-fallback',
+        label: 'Garder l’option moins chère en repli',
+        reason: 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
+      },
+    ],
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
+    {
+      id: 'grain:shift-to-tools:now',
+      timing: 'now',
+      optionId: 'grain:shift-to-tools',
+      action: 'shift-load-to-spare-resource',
+      label: 'Reporter une partie du flux vers tools',
+      reason: 'Sécurise 20 valeur corridor avant dépense.',
+    },
+    {
+      id: 'grain:shift-to-tools:next',
+      timing: 'next',
+      optionId: 'grain:shift-to-tools',
+      action: 'spend-capacity-after-preparation',
+      label: 'Dépenser la capacité après marge confirmée',
+      reason: 'Engage la dépense seulement après +2 marge préparée.',
+    },
+    {
+      id: 'grain:reserve-buffer:defer',
+      timing: 'defer',
+      optionId: 'grain:reserve-buffer',
+      action: 'keep-cheaper-fallback',
+      label: 'Garder l’option moins chère en repli',
+      reason: 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
+    },
+  ]);
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
     overlay.routes[0].capacitySpendPreview.bestValuePreparation,
