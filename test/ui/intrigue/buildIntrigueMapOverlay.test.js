@@ -229,6 +229,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Dette heat: suivi bloqué.',
           reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
         },
+        followUpCoolingWindow: {
+          window: 'mandatory-cooling',
+          visibleFactor: 'Marge restante',
+          action: 'refresh-signal',
+          label: 'Refroidissement: obligatoire.',
+          reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -297,6 +304,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'maintain-surveillance',
               label: 'Dette heat: suivi bloqué.',
               reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
+            },
+            followUpCoolingWindow: {
+              window: 'mandatory-cooling',
+              visibleFactor: 'Marge restante',
+              action: 'refresh-signal',
+              label: 'Refroidissement: obligatoire.',
+              reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
             },
         monitoringChecklist: [
           {
@@ -471,6 +485,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Dette heat: suivi bloqué.',
           reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
         },
+        followUpCoolingWindow: {
+          window: 'mandatory-cooling',
+          visibleFactor: 'Marge restante',
+          action: 'refresh-signal',
+          label: 'Refroidissement: obligatoire.',
+          reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -539,6 +560,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'maintain-surveillance',
               label: 'Dette heat: suivi bloqué.',
               reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
+            },
+            followUpCoolingWindow: {
+              window: 'mandatory-cooling',
+              visibleFactor: 'Marge restante',
+              action: 'refresh-signal',
+              label: 'Refroidissement: obligatoire.',
+              reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
             },
         monitoringChecklist: [
           {
@@ -813,6 +841,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Dette heat: suivi bloqué.',
           reason: 'Marge restante trop peu lisible: maintenir la surveillance avant d’ajouter du heat.',
         },
+        followUpCoolingWindow: {
+          window: 'mandatory-cooling',
+          visibleFactor: 'Marge restante',
+          action: 'refresh-signal',
+          label: 'Refroidissement: obligatoire.',
+          reason: 'La fenêtre reste illisible: rafraîchir le signal visible avant le prochain suivi.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -960,6 +995,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'refresh-signal',
         label: 'Dette heat: à absorber.',
         reason: 'Le suivi reste possible, mais dépend d’un signal rafraîchi avant d’ajouter du heat.',
+      },
+      followUpCoolingWindow: {
+        window: 'short-pause-sufficient',
+        visibleFactor: 'Gain confiance',
+        action: 'wait-one-turn',
+        label: 'Refroidissement: pause courte.',
+        reason: 'Une pause courte suffit à stabiliser le suivi avant de rafraîchir le signal visible.',
       },
       monitoringChecklist: [
         {
@@ -1175,6 +1217,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Dette heat: stable.',
         reason: 'La fenêtre de sweep reste lisible: enchaîner seulement si le heat visible ne remonte pas.',
       },
+      followUpCoolingWindow: {
+        window: 'cooling-not-needed',
+        visibleFactor: 'Fenêtre sûre',
+        action: 'chain-sweep',
+        label: 'Refroidissement: inutile.',
+        reason: 'La fenêtre de sweep reste ouverte: aucun tour de refroidissement requis tant que le heat reste stable.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1313,6 +1362,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'refresh-signal',
       label: 'Dette heat: à absorber.',
       reason: 'Le suivi reste possible, mais dépend d’un signal rafraîchi avant d’ajouter du heat.',
+    },
+    followUpCoolingWindow: {
+      window: 'short-pause-sufficient',
+      visibleFactor: 'Fraîcheur signal',
+      action: 'wait-one-turn',
+      label: 'Refroidissement: pause courte.',
+      reason: 'Une pause courte suffit à stabiliser le suivi avant de rafraîchir le signal visible.',
     },
     monitoringChecklist: [
       {
