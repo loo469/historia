@@ -183,6 +183,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           nextDecision: 'continue-monitoring',
           reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
         },
+        postRecoverySafetyMargin: {
+          level: 'insufficient-data',
+          fastestConsumingSignal: null,
+          nextAction: 'reinforce-monitoring',
+          reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -205,6 +211,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               targetSignal: null,
               nextDecision: 'continue-monitoring',
               reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
+            },
+            postRecoverySafetyMargin: {
+              level: 'insufficient-data',
+              fastestConsumingSignal: null,
+              nextAction: 'reinforce-monitoring',
+              reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
             },
         monitoringChecklist: [
           {
@@ -333,6 +345,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           nextDecision: 'continue-monitoring',
           reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
         },
+        postRecoverySafetyMargin: {
+          level: 'insufficient-data',
+          fastestConsumingSignal: null,
+          nextAction: 'reinforce-monitoring',
+          reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -355,6 +373,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               targetSignal: null,
               nextDecision: 'continue-monitoring',
               reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
+            },
+            postRecoverySafetyMargin: {
+              level: 'insufficient-data',
+              fastestConsumingSignal: null,
+              nextAction: 'reinforce-monitoring',
+              reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
             },
         monitoringChecklist: [
           {
@@ -583,6 +607,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           nextDecision: 'continue-monitoring',
           reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
         },
+        postRecoverySafetyMargin: {
+          level: 'insufficient-data',
+          fastestConsumingSignal: null,
+          nextAction: 'reinforce-monitoring',
+          reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -684,6 +714,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         targetSignal: 'Gain confiance',
         nextDecision: 'wait-fresh-signal',
         reason: 'La reprise reste surveillable seulement: attendre un signal frais avant tout sweep.',
+      },
+      postRecoverySafetyMargin: {
+        level: 'narrow',
+        fastestConsumingSignal: 'Gain confiance',
+        nextAction: 'wait-confirmation',
+        reason: 'Gain confiance laisse une marge surveillable mais pas suffisante pour lancer tout de suite.',
       },
       monitoringChecklist: [
         {
@@ -853,6 +889,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         nextDecision: 'resume-sweep',
         reason: 'L’exposition sécurisée maintient la fenêtre sûre: le sweep peut reprendre si le signal reste lisible.',
       },
+      postRecoverySafetyMargin: {
+        level: 'comfortable',
+        fastestConsumingSignal: 'Fenêtre sûre',
+        nextAction: 'launch-sweep',
+        reason: 'Fenêtre sûre consomme encore la marge, mais la fenêtre reste assez protégée pour lancer le sweep.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -946,6 +988,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       nextDecision: 'wait-fresh-signal',
       reason: 'La reprise reste surveillable seulement: attendre un signal frais avant tout sweep.',
     },
+    postRecoverySafetyMargin: {
+      level: 'narrow',
+      fastestConsumingSignal: 'Fraîcheur signal',
+      nextAction: 'wait-confirmation',
+      reason: 'Fraîcheur signal laisse une marge surveillable mais pas suffisante pour lancer tout de suite.',
+    },
     monitoringChecklist: [
       {
         signal: 'Fraîcheur signal',
@@ -997,6 +1045,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
   assert.match(tooExposed.secondSweepStopCondition.stopSignal, /Stop si le second sweep ajoute/);
   assert.equal(tooExposed.thirdSweepRecommendation.state, 'stop-after-second');
   assert.equal(tooExposed.thirdSweepRecommendation.monitoringRationale.state, 'heat-too-high');
+  assert.deepEqual(tooExposed.thirdSweepRecommendation.monitoringRationale.postRecoverySafetyMargin, {
+    level: 'absent',
+    fastestConsumingSignal: 'Heat',
+    nextAction: 'reinforce-monitoring',
+    reason: 'Heat consomme toute la marge: renforcer le monitoring avant tout sweep.',
+  });
 });
 
 test('buildIntrigueMapOverlay rejects invalid inputs', () => {
