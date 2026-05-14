@@ -577,6 +577,52 @@ function buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePre
   };
 }
 
+function buildNextSafeSupportBundle(supportBundles, recommendedFirstBundle, postBundleCumulativeRisk) {
+  if (!recommendedFirstBundle || postBundleCumulativeRisk.status === 'neutral') {
+    return null;
+  }
+
+  const remainingCandidates = supportBundles
+    .filter((bundle) => bundle.id !== recommendedFirstBundle.bundleId)
+    .map((bundle) => {
+      const residualMatchBonus = bundle.monitoredRisk === postBundleCumulativeRisk.remainingPriority ? 8 : 0;
+      const tradeoffGuardPenalty = bundle.tradeoff.includes('recherche ralentie')
+        ? 3
+        : bundle.tradeoff.includes('sous surveillance') || bundle.tradeoff.includes('ouverture -')
+          ? 1
+          : 0;
+      const residualReliefScore = Math.max(0, bundle.safetyScore + residualMatchBonus - tradeoffGuardPenalty);
+
+      return { ...bundle, residualReliefScore, tradeoffGuardPenalty };
+    })
+    .filter((bundle) => bundle.residualReliefScore >= 4)
+    .sort((left, right) => (
+      right.residualReliefScore - left.residualReliefScore
+      || right.safetyScore - left.safetyScore
+      || left.id.localeCompare(right.id)
+    ));
+
+  const nextBundle = remainingCandidates[0] ?? null;
+
+  if (!nextBundle) {
+    return null;
+  }
+
+  const safetyReason = nextBundle.monitoredRisk === postBundleCumulativeRisk.remainingPriority
+    ? `second soutien sûr: cible le risque résiduel ${nextBundle.monitoredRisk} · score ${nextBundle.residualReliefScore}`
+    : `second soutien sûr: garde-fou compatible après ${recommendedFirstBundle.label} · score ${nextBundle.residualReliefScore}`;
+
+  return {
+    bundleId: nextBundle.id,
+    label: nextBundle.label,
+    residualReliefScore: nextBundle.residualReliefScore,
+    reason: safetyReason,
+    monitoredRisk: nextBundle.monitoredRisk,
+    tradeoffToWatch: nextBundle.tradeoff,
+    followsBundleId: recommendedFirstBundle.bundleId,
+  };
+}
+
 function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById) {
   const cultureIds = regionPresence.map((entry) => entry.cultureId).sort();
   const cultureNames = regionPresence.map((entry) => entry.cultureName).sort();
@@ -690,6 +736,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
         const riskChangePreview = buildCultureSupportRiskChangePreview(culture, supportBundles[0] ?? null, regionPresence, cultureState);
         const postBundleCumulativeRisk = buildCultureSupportCumulativeRisk(culture, regionId, riskChangePreview, regionPresence, cultureState);
         const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview, postBundleCumulativeRisk);
+        const nextSafeSupportBundle = buildNextSafeSupportBundle(supportBundles, recommendedFirstBundle, postBundleCumulativeRisk);
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -757,6 +804,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           competingCultureIds: regionPresence.filter((entry) => entry.cultureId !== culture.id).map((entry) => entry.cultureId),
           riskChangePreview,
           postBundleCumulativeRisk,
+          nextSafeSupportBundle,
           ...(supportBundles.length > 0 ? { supportBundles, recommendedFirstBundle } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
