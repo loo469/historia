@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -941,6 +941,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         windowSummary: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
         nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
       },
+      residualCultureWindowClosureThreat: {
+        status: 'manageable',
+        visibleConstraint: 'fatigue de médiation',
+        threatSummary: 'fatigue de médiation peut refermer la fenêtre si le suivi tarde',
+        recommendedGesture: 'borner la médiation avant le prochain suivi',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1035,6 +1041,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         limitingConstraint: 'aucune contrainte résiduelle',
         windowSummary: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
         nextDecision: 'enchaîner le suivi culturel léger au prochain tour',
+      },
+      residualCultureWindowClosureThreat: {
+        status: 'none',
+        visibleConstraint: 'aucune contrainte visible',
+        threatSummary: 'aucune pression notable sur la fenêtre de suivi',
+        recommendedGesture: null,
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1305,6 +1317,53 @@ test('buildResidualCultureFollowUpWindow covers stable, fragile exploitable, and
       limitingConstraint: 'support local',
       windowSummary: 'fenêtre trop courte: support local bloque un enchaînement sûr',
       nextDecision: null,
+    },
+  );
+});
+
+test('buildResidualCultureWindowClosureThreat covers absent, manageable, and likely closure pressure', () => {
+  assert.deepEqual(
+    buildResidualCultureWindowClosureThreat({
+      status: 'stable',
+      limitingConstraint: 'aucune contrainte résiduelle',
+      windowSummary: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
+      nextDecision: 'enchaîner le suivi culturel léger au prochain tour',
+    }),
+    {
+      status: 'none',
+      visibleConstraint: 'aucune contrainte visible',
+      threatSummary: 'aucune pression notable sur la fenêtre de suivi',
+      recommendedGesture: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureWindowClosureThreat({
+      status: 'fragile-exploitable',
+      limitingConstraint: 'médiation',
+      windowSummary: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
+      nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
+    }),
+    {
+      status: 'manageable',
+      visibleConstraint: 'fatigue de médiation',
+      threatSummary: 'fatigue de médiation peut refermer la fenêtre si le suivi tarde',
+      recommendedGesture: 'borner la médiation avant le prochain suivi',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureWindowClosureThreat({
+      status: 'too-short',
+      limitingConstraint: 'support local',
+      windowSummary: 'fenêtre trop courte: support local bloque un enchaînement sûr',
+      nextDecision: null,
+    }),
+    {
+      status: 'likely-close',
+      visibleConstraint: 'support local',
+      threatSummary: 'support local refermera probablement la fenêtre avant un suivi sûr',
+      recommendedGesture: 'sécuriser un support local avant tout suivi',
     },
   );
 });
