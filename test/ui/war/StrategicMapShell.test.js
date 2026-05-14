@@ -8,6 +8,7 @@ import {
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanDependencyConflicts,
+  buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
@@ -286,6 +287,15 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     prerequisite: 'approvisionnement tendu',
     expectedBenefit: 'débloque Scanner axe détour',
   });
+  assert.deepEqual(shell.miniPlanRivalResponseRisk, {
+    empty: false,
+    level: 'high',
+    label: 'Risque élevé',
+    response: 'coupure du convoi partagé',
+    watch: 'À surveiller: approvisionnement tendu',
+    tradeoffId: 'mini-plan-tradeoff:supply-pressure:front-a',
+    targetId: 'front-a',
+  });
 });
 
 test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
@@ -473,6 +483,49 @@ test('StrategicMapShell previews the action unlocked by the recommended mini-pla
     action: null,
     prerequisite: null,
     expectedBenefit: null,
+  });
+});
+
+test('StrategicMapShell shows the rival response risk that can invalidate a chosen tradeoff', () => {
+  assert.deepEqual(buildMiniPlanRivalResponseRisk({
+    empty: false,
+    reason: 'ordre prioritaire reste à 88',
+    tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+    targetId: 'front-b',
+    action: 'caler une couverture voisine minimale',
+  }, [{
+    tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+    severity: 'blocking',
+    reason: 'ordre prioritaire reste à 88',
+    targetId: 'front-b',
+  }]), {
+    empty: false,
+    level: 'high',
+    label: 'Risque élevé',
+    response: 'contre-poussée du front voisin',
+    watch: 'À surveiller: ordre prioritaire reste à 88',
+    tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+    targetId: 'front-b',
+  });
+  assert.deepEqual(buildMiniPlanRivalResponseRisk({
+    empty: false,
+    reason: 'loyauté 42',
+    tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+    targetId: 'front-a',
+    action: 'Scanner axe détour',
+  }, [{
+    tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+    severity: 'watchable',
+    reason: 'loyauté 42',
+  }]).level, 'medium');
+  assert.deepEqual(buildMiniPlanRivalResponseRisk({ empty: true }, []), {
+    empty: true,
+    level: 'low',
+    label: 'Risque faible',
+    response: 'aucune réponse adverse lisible',
+    watch: null,
+    tradeoffId: null,
+    targetId: null,
   });
 });
 

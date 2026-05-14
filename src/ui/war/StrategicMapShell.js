@@ -458,6 +458,62 @@ export function buildMiniPlanTradeoffActionPreview(followUpCleanupMiniPlan = nul
   };
 }
 
+function describeRivalResponse(reason, action) {
+  const text = `${reason} ${action}`;
+
+  if (/convoi|ravitaillement|approvisionnement/i.test(text)) return 'coupure du convoi partagé';
+  if (/front voisin|priorité|couverture/i.test(text)) return 'contre-poussée du front voisin';
+  if (/loyaut|émissaire|liaison/i.test(text)) return 'agitation locale avant liaison';
+  if (/route|axe|détour|corridor|éclaireur/i.test(text)) return 'interception du détour';
+  if (/occupation|patrouille|disput/i.test(text)) return 'reprise de zone disputée';
+
+  return 'réponse adverse imprévue';
+}
+
+export function buildMiniPlanRivalResponseRisk(miniPlanTradeoffActionPreview = null, miniPlanConflictTradeoffs = []) {
+  const normalizedTradeoffs = normalizeCleanupInput(
+    miniPlanConflictTradeoffs,
+    'StrategicMapShell miniPlanConflictTradeoffs',
+  );
+  const chosenTradeoff = normalizedTradeoffs.find(
+    (tradeoff) => tradeoff.tradeoffId === miniPlanTradeoffActionPreview?.tradeoffId,
+  ) ?? normalizedTradeoffs[0] ?? null;
+
+  if (!miniPlanTradeoffActionPreview || miniPlanTradeoffActionPreview.empty || !chosenTradeoff) {
+    return {
+      empty: true,
+      level: 'low',
+      label: 'Risque faible',
+      response: 'aucune réponse adverse lisible',
+      watch: null,
+      tradeoffId: null,
+      targetId: null,
+    };
+  }
+
+  const reason = String(chosenTradeoff.reason ?? miniPlanTradeoffActionPreview.reason ?? 'donnée incertaine').trim()
+    || 'donnée incertaine';
+  const action = String(miniPlanTradeoffActionPreview.action ?? chosenTradeoff.recommendedChoice ?? '').trim();
+  const level = chosenTradeoff.severity === 'blocking'
+    ? 'high'
+    : (/loyaut|route|axe|occupation|disput/i.test(reason) ? 'medium' : 'low');
+  const labelByLevel = {
+    high: 'Risque élevé',
+    medium: 'Risque moyen',
+    low: 'Risque faible',
+  };
+
+  return {
+    empty: false,
+    level,
+    label: labelByLevel[level],
+    response: describeRivalResponse(reason, action),
+    watch: `À surveiller: ${reason}`,
+    tradeoffId: chosenTradeoff.tradeoffId ?? null,
+    targetId: miniPlanTradeoffActionPreview.targetId ?? chosenTradeoff.targetId ?? null,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -534,6 +590,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     followUpCleanupMiniPlan,
     miniPlanConflictTradeoffs,
   );
+  const miniPlanRivalResponseRisk = buildMiniPlanRivalResponseRisk(
+    miniPlanTradeoffActionPreview,
+    miniPlanConflictTradeoffs,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -580,6 +640,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanDependencyConflicts,
     miniPlanConflictTradeoffs,
     miniPlanTradeoffActionPreview,
+    miniPlanRivalResponseRisk,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
