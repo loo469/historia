@@ -579,6 +579,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         nextGesture: 'promouvoir',
         summary: 'Promotion sûre: le corridor peut devenir route principale.',
       },
+      monitoredCorridorRollbackGuard: {
+        status: 'rollback-unneeded',
+        constraint: null,
+        nextGesture: 'promouvoir sans garde',
+        summary: 'Rollback inutile: la promotion peut avancer sans garde dédiée.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -745,6 +751,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       nextGesture: 'promouvoir',
       summary: 'Promotion sûre: le corridor peut devenir route principale.',
     },
+    monitoredCorridorRollbackGuard: {
+      status: 'rollback-unneeded',
+      constraint: null,
+      nextGesture: 'promouvoir sans garde',
+      summary: 'Rollback inutile: la promotion peut avancer sans garde dédiée.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -861,6 +873,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     nextGesture: 'garder en secours',
     summary: 'Promotion prématurée: alternative expose encore le corridor principal.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.monitoredCorridorRollbackGuard, {
+    status: 'rollback-ready-required',
+    constraint: 'alternative',
+    nextGesture: 'revenir en secours',
+    summary: 'Rollback prêt requis: alternative impose une alternative avant promotion.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -943,6 +961,12 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     remainingConstraint: 'alternative',
     nextGesture: 'plafonner le flux',
     summary: 'Promotion sous limite: plafonner le flux tant que alternative reste surveillé.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.monitoredCorridorRollbackGuard, {
+    status: 'guard-recommended',
+    constraint: 'alternative',
+    nextGesture: 'plafonner avec garde',
+    summary: 'Garde conseillée: plafonner le flux et surveiller alternative.',
   });
 });
 
