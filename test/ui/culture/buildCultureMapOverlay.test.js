@@ -909,6 +909,16 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         },
         reason: 'lever timing-local-pressure pour rendre le retrait #2 lisible',
       },
+      residualRiskAfterNextRetirement: {
+        status: 'partial',
+        principalResidualFragility: {
+          type: 'regional-mediation',
+          cause: 'risque restant: isolement du support',
+          urgency: 'medium',
+        },
+        nextActionAfterRetirement: 'surveiller les relais savants et le rythme d’ouverture',
+        reason: 'stabilisation partielle: surveiller risque restant: isolement du support',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -979,6 +989,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         recommendedRecoveryPath: 'aucune récupération culturelle prioritaire',
         mainRemainingBlocker: null,
         reason: 'aucune dette culturelle restante à convertir en retrait suivant',
+      },
+      residualRiskAfterNextRetirement: {
+        status: 'complete',
+        principalResidualFragility: null,
+        nextActionAfterRetirement: 'aucune action culturelle supplémentaire prioritaire',
+        reason: 'aucune dette résiduelle après stabilisation',
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
