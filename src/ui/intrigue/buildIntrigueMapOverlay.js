@@ -598,6 +598,68 @@ function buildPostRecoverySafetyMargin({ preventiveRecoveryState, preventiveActi
   };
 }
 
+
+function buildPostRecoveryMarginDecay({ postRecoverySafetyMargin, driftForecast }) {
+  if (postRecoverySafetyMargin.level === 'insufficient-data' || driftForecast.signal === null) {
+    return {
+      state: 'insufficient-data',
+      responsibleSignal: null,
+      trend: 'unknown',
+      recommendedAction: 'postpone',
+      reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
+    };
+  }
+
+  if (postRecoverySafetyMargin.level === 'comfortable') {
+    return {
+      state: 'comfortable-stable',
+      responsibleSignal: driftForecast.signal,
+      trend: 'holds-until-next-sweep',
+      recommendedAction: 'launch-now',
+      reason: `${driftForecast.signal} peut encore peser, mais la marge devrait tenir jusqu’au prochain sweep sûr.`,
+    };
+  }
+
+  if (postRecoverySafetyMargin.level === 'narrow' && driftForecast.direction === 'retards-next-sweep') {
+    const recommendedAction = driftForecast.signal === 'Fraîcheur signal' ? 'refresh-signal' : 'launch-now';
+    return {
+      state: 'expiring-before-next-sweep',
+      responsibleSignal: driftForecast.signal,
+      trend: 'decays-before-next-sweep',
+      recommendedAction,
+      reason: `${driftForecast.signal} peut dégrader la marge avant la prochaine fenêtre: agir sans révéler de cible cachée.`,
+    };
+  }
+
+  if (postRecoverySafetyMargin.level === 'narrow') {
+    return {
+      state: 'narrow-watch',
+      responsibleSignal: driftForecast.signal,
+      trend: 'needs-confirmation',
+      recommendedAction: 'refresh-signal',
+      reason: `${driftForecast.signal} garde une marge étroite: rafraîchir le signal avant de relancer.`,
+    };
+  }
+
+  if (driftForecast.signal === 'Heat') {
+    return {
+      state: 'expiring-before-next-sweep',
+      responsibleSignal: driftForecast.signal,
+      trend: 'decays-before-next-sweep',
+      recommendedAction: 'reduce-heat',
+      reason: 'Le heat consomme la marge avant la prochaine fenêtre sûre: réduire la pression visible.',
+    };
+  }
+
+  return {
+    state: 'expiring-before-next-sweep',
+    responsibleSignal: driftForecast.signal,
+    trend: 'decays-before-next-sweep',
+    recommendedAction: 'postpone',
+    reason: `${driftForecast.signal} laisse une marge absente: reporter jusqu’à une dérive stabilisée.`,
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -719,6 +781,38 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
       }),
       preventiveAction: buildMonitoringPreventiveAction({
         state: rationale.state,
+        driftForecast: buildMonitoringDriftForecast({
+          state: rationale.state,
+          marginalExposureAdded,
+          expectedConfidenceGain,
+        }),
+      }),
+      driftForecast: buildMonitoringDriftForecast({
+        state: rationale.state,
+        marginalExposureAdded,
+        expectedConfidenceGain,
+      }),
+    }),
+    postRecoveryMarginDecay: buildPostRecoveryMarginDecay({
+      postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+        preventiveRecoveryState: buildPreventiveRecoveryState({
+          preventiveAction: buildMonitoringPreventiveAction({
+            state: rationale.state,
+            driftForecast: buildMonitoringDriftForecast({
+              state: rationale.state,
+              marginalExposureAdded,
+              expectedConfidenceGain,
+            }),
+          }),
+        }),
+        preventiveAction: buildMonitoringPreventiveAction({
+          state: rationale.state,
+          driftForecast: buildMonitoringDriftForecast({
+            state: rationale.state,
+            marginalExposureAdded,
+            expectedConfidenceGain,
+          }),
+        }),
         driftForecast: buildMonitoringDriftForecast({
           state: rationale.state,
           marginalExposureAdded,

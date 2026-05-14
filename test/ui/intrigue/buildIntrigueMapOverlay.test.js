@@ -189,6 +189,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           nextAction: 'reinforce-monitoring',
           reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
         },
+        postRecoveryMarginDecay: {
+          state: 'insufficient-data',
+          responsibleSignal: null,
+          trend: 'unknown',
+          recommendedAction: 'postpone',
+          reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -217,6 +224,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               fastestConsumingSignal: null,
               nextAction: 'reinforce-monitoring',
               reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
+            },
+            postRecoveryMarginDecay: {
+              state: 'insufficient-data',
+              responsibleSignal: null,
+              trend: 'unknown',
+              recommendedAction: 'postpone',
+              reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
             },
         monitoringChecklist: [
           {
@@ -351,6 +365,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           nextAction: 'reinforce-monitoring',
           reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
         },
+        postRecoveryMarginDecay: {
+          state: 'insufficient-data',
+          responsibleSignal: null,
+          trend: 'unknown',
+          recommendedAction: 'postpone',
+          reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -379,6 +400,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               fastestConsumingSignal: null,
               nextAction: 'reinforce-monitoring',
               reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
+            },
+            postRecoveryMarginDecay: {
+              state: 'insufficient-data',
+              responsibleSignal: null,
+              trend: 'unknown',
+              recommendedAction: 'postpone',
+              reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
             },
         monitoringChecklist: [
           {
@@ -613,6 +641,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           nextAction: 'reinforce-monitoring',
           reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
         },
+        postRecoveryMarginDecay: {
+          state: 'insufficient-data',
+          responsibleSignal: null,
+          trend: 'unknown',
+          recommendedAction: 'postpone',
+          reason: 'Dérive insuffisamment lisible: reporter le sweep et garder le monitoring actif.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -720,6 +755,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         fastestConsumingSignal: 'Gain confiance',
         nextAction: 'wait-confirmation',
         reason: 'Gain confiance laisse une marge surveillable mais pas suffisante pour lancer tout de suite.',
+      },
+      postRecoveryMarginDecay: {
+        state: 'narrow-watch',
+        responsibleSignal: 'Gain confiance',
+        trend: 'needs-confirmation',
+        recommendedAction: 'refresh-signal',
+        reason: 'Gain confiance garde une marge étroite: rafraîchir le signal avant de relancer.',
       },
       monitoringChecklist: [
         {
@@ -895,6 +937,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         nextAction: 'launch-sweep',
         reason: 'Fenêtre sûre consomme encore la marge, mais la fenêtre reste assez protégée pour lancer le sweep.',
       },
+      postRecoveryMarginDecay: {
+        state: 'comfortable-stable',
+        responsibleSignal: 'Fenêtre sûre',
+        trend: 'holds-until-next-sweep',
+        recommendedAction: 'launch-now',
+        reason: 'Fenêtre sûre peut encore peser, mais la marge devrait tenir jusqu’au prochain sweep sûr.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -994,6 +1043,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       nextAction: 'wait-confirmation',
       reason: 'Fraîcheur signal laisse une marge surveillable mais pas suffisante pour lancer tout de suite.',
     },
+    postRecoveryMarginDecay: {
+      state: 'expiring-before-next-sweep',
+      responsibleSignal: 'Fraîcheur signal',
+      trend: 'decays-before-next-sweep',
+      recommendedAction: 'refresh-signal',
+      reason: 'Fraîcheur signal peut dégrader la marge avant la prochaine fenêtre: agir sans révéler de cible cachée.',
+    },
     monitoringChecklist: [
       {
         signal: 'Fraîcheur signal',
@@ -1050,6 +1106,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     fastestConsumingSignal: 'Heat',
     nextAction: 'reinforce-monitoring',
     reason: 'Heat consomme toute la marge: renforcer le monitoring avant tout sweep.',
+  });
+  assert.deepEqual(tooExposed.thirdSweepRecommendation.monitoringRationale.postRecoveryMarginDecay, {
+    state: 'expiring-before-next-sweep',
+    responsibleSignal: 'Heat',
+    trend: 'decays-before-next-sweep',
+    recommendedAction: 'reduce-heat',
+    reason: 'Le heat consomme la marge avant la prochaine fenêtre sûre: réduire la pression visible.',
   });
 });
 
