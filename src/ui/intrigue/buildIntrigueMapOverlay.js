@@ -326,6 +326,55 @@ function buildMonitoringChecklist({ state, monitoringPreferred, marginalExposure
   ];
 }
 
+
+function buildMonitoringChecklistFocus({ state }) {
+  if (state === 'safe-action-available') {
+    return {
+      signal: 'Fenêtre sûre',
+      state: 'earliest-fragile',
+      reason: 'Seuil proche: si la fenêtre se ferme, la relance sûre disparaît en premier.',
+    };
+  }
+
+  if (state === 'await-fresh-signal') {
+    return {
+      signal: 'Fraîcheur signal',
+      state: 'earliest-fragile',
+      reason: 'Durée restante: le signal périme avant que la fenêtre low-risk soit confirmée.',
+    };
+  }
+
+  if (state === 'heat-too-high') {
+    return {
+      signal: 'Heat',
+      state: 'earliest-fragile',
+      reason: 'Pression: le heat est le seuil le plus proche de bloquer toute reprise.',
+    };
+  }
+
+  if (state === 'wait-for-cooldown') {
+    return {
+      signal: 'Cooldown heat',
+      state: 'earliest-fragile',
+      reason: 'Durée restante: le cooldown conditionne la première fenêtre de reprise.',
+    };
+  }
+
+  if (state === 'low-confidence-gain') {
+    return {
+      signal: 'Signaux frais',
+      state: 'earliest-fragile',
+      reason: 'Dépendance non sécurisée: sans signaux convergents, le gain reste marginal.',
+    };
+  }
+
+  return {
+    signal: null,
+    state: 'stable-for-now',
+    reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -410,6 +459,7 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
       marginalExposureAdded,
       expectedConfidenceGain,
     }),
+    monitoringChecklistFocus: buildMonitoringChecklistFocus({ state: rationale.state }),
   };
 }
 
