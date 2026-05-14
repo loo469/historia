@@ -905,6 +905,62 @@ export function buildResidualCultureActionPayoff(residualRiskAfterNextRetirement
   };
 }
 
+function buildResidualCultureWindowConstraint(residualCultureRiskNextAction, remainingFragility) {
+  if (!remainingFragility) {
+    return 'aucune contrainte résiduelle';
+  }
+
+  if (residualCultureRiskNextAction.actionType === 'local-support' || remainingFragility.type === 'missing-support') {
+    return 'support local';
+  }
+
+  if (residualCultureRiskNextAction.actionType === 'mediation' || remainingFragility.type === 'regional-mediation') {
+    return 'médiation';
+  }
+
+  if (residualCultureRiskNextAction.actionType === 'timing-pause' || remainingFragility.type === 'bundle-incompatibility') {
+    return 'timing';
+  }
+
+  if (residualCultureRiskNextAction.actionType === 'culture-lock' || remainingFragility.type === 'bundle-dependency') {
+    return 'dépendance restante';
+  }
+
+  return 'pression';
+}
+
+export function buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction) {
+  const limitingConstraint = buildResidualCultureWindowConstraint(
+    residualCultureRiskNextAction,
+    residualCultureActionPayoff.remainingFragility,
+  );
+
+  if (residualCultureActionPayoff.status === 'complete') {
+    return {
+      status: 'stable',
+      limitingConstraint,
+      windowSummary: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
+      nextDecision: 'enchaîner le suivi culturel léger au prochain tour',
+    };
+  }
+
+  if (residualCultureActionPayoff.status === 'partial') {
+    return {
+      status: 'fragile-exploitable',
+      limitingConstraint,
+      windowSummary: `fenêtre fragile mais exploitable: ${limitingConstraint} limite encore le suivi`,
+      nextDecision: residualCultureActionPayoff.nextDecision,
+    };
+  }
+
+  return {
+    status: 'too-short',
+    limitingConstraint,
+    windowSummary: `fenêtre trop courte: ${limitingConstraint} bloque un enchaînement sûr`,
+    nextDecision: null,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -961,6 +1017,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const nextDependencyRetirementPath = buildNextDependencyRetirementPath(dependencyRetirementRanking, topRetirementReadiness, topRetirementRecoveryPreview);
   const residualRiskAfterNextRetirement = buildResidualRiskAfterNextRetirement(dependencyRetirementRanking, nextDependencyRetirementPath, postBundleCumulativeRisk);
   const residualCultureRiskNextAction = buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement);
+  const residualCultureActionPayoff = buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -973,7 +1030,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     nextDependencyRetirementPath,
     residualRiskAfterNextRetirement,
     residualCultureRiskNextAction,
-    residualCultureActionPayoff: buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction),
+    residualCultureActionPayoff,
+    residualCultureFollowUpWindow: buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction),
   };
 }
 
