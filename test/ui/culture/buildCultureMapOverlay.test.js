@@ -17,7 +17,7 @@ function withoutSupportRiskPreviews(value) {
 
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => !['riskChangePreview', 'postBundleCumulativeRisk'].includes(key))
+      .filter(([key]) => !['riskChangePreview', 'postBundleCumulativeRisk', 'nextSafeSupportBundle'].includes(key))
       .map(([key, nestedValue]) => [key, withoutSupportRiskPreviews(nestedValue)]),
   );
 }
@@ -768,6 +768,15 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
   });
   assert.deepEqual(marsh.riskChangePreview, marsh.recommendedFirstBundle.riskChangePreview);
   assert.deepEqual(marsh.postBundleCumulativeRisk, marsh.recommendedFirstBundle.postBundleCumulativeRisk);
+  assert.deepEqual(marsh.nextSafeSupportBundle, {
+    bundleId: 'shared-marsh:culture-marsh:bundle:guided-opening',
+    label: 'ouvrir par relais savant',
+    residualReliefScore: 12,
+    reason: 'second soutien sûr: cible le risque résiduel isolement du support · score 12',
+    monitoredRisk: 'isolement du support',
+    tradeoffToWatch: 'ouverture + / cohésion sous surveillance',
+    followsBundleId: 'shared-marsh:culture-marsh:bundle:cohesion-anchor',
+  });
   assert.deepEqual(stable.supportBundles, undefined);
   assert.deepEqual(stable.recommendedFirstBundle, undefined);
   assert.deepEqual(stable.riskChangePreview, {
@@ -795,6 +804,7 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
     fragileCultureId: null,
     nextAttention: 'aucune attention supplémentaire recommandée',
   });
+  assert.equal(stable.nextSafeSupportBundle, null);
 });
 
 test('buildCultureMapOverlay can summarize overlapping culture clusters with discovery and event pins', () => {
