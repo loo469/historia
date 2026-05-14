@@ -224,7 +224,61 @@ function buildPreparationOptions(nextResource, resourceRows, routeRiskLevel) {
     .slice(0, 3);
 }
 
-function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId, routeRiskLevel) {
+function scorePreparationOption(option, routeValue, routeRiskLevel) {
+  const safetyWeight = { safe: 2, conditional: 1, risky: 0 };
+  const riskAvoided = option.safety === 'risky'
+    ? Math.ceil(routeRiskLevel / 25)
+    : option.safety === 'conditional'
+      ? Math.ceil(routeRiskLevel / 35)
+      : 1;
+
+  return (option.expectedEffect.marginGain * routeValue)
+    + riskAvoided
+    + (safetyWeight[option.safety] ?? 0)
+    - option.effort.amount;
+}
+
+function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel) {
+  if (preparationOptions.length < 2) {
+    return null;
+  }
+
+  const scoredOptions = preparationOptions
+    .map((option) => ({
+      option,
+      score: scorePreparationOption(option, routeValue, routeRiskLevel),
+      estimatedValueProtected: option.expectedEffect.marginGain * routeValue,
+    }))
+    .sort((left, right) => right.score - left.score
+      || right.estimatedValueProtected - left.estimatedValueProtected
+      || left.option.effort.amount - right.option.effort.amount
+      || left.option.id.localeCompare(right.option.id));
+  const best = scoredOptions[0];
+  const cheapest = preparationOptions
+    .slice()
+    .sort((left, right) => left.effort.amount - right.effort.amount || left.id.localeCompare(right.id))[0];
+  const cheaperAcceptable = cheapest.id === best.option.id
+    ? null
+    : {
+      optionId: cheapest.id,
+      condition: cheapest.expectedEffect.marginGain >= best.option.expectedEffect.marginGain
+        ? 'acceptable si le risque corridor reste stable'
+        : 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
+    };
+
+  return {
+    id: `best-value:${best.option.id}`,
+    optionId: best.option.id,
+    action: best.option.action,
+    estimatedValueProtected: best.estimatedValueProtected,
+    marginGain: best.option.expectedEffect.marginGain,
+    effort: { ...best.option.effort },
+    reason: `Protège ${best.estimatedValueProtected} valeur corridor avec +${best.option.expectedEffect.marginGain} marge pour ${best.option.effort.amount} ${best.option.effort.unit}.`,
+    cheaperAcceptable,
+  };
+}
+
+function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId, routeRiskLevel, routeValue) {
   if (capacityMobilized === 0) {
     return null;
   }
@@ -238,12 +292,15 @@ function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId
     return null;
   }
 
+  const preparationOptions = buildPreparationOptions(nextResource, resourceRows, routeRiskLevel);
+
   return {
     type: nextResource.capacityRemaining === 0 ? 'capacity-exhausted' : 'low-margin',
     resourceId: limitingResourceId ?? nextResource.resourceId,
     marginRemaining: nextResource.capacityRemaining,
     preparationAction: nextResource.capacityRemaining === 0 ? 'free-route-capacity' : 'reserve-capacity-buffer',
-    preparationOptions: buildPreparationOptions(nextResource, resourceRows, routeRiskLevel),
+    preparationOptions,
+    bestValuePreparation: buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel),
   };
 }
 
@@ -269,7 +326,13 @@ function buildCapacitySpendPreview(route, spendPlan) {
       .sort((left, right) => left.capacityRemaining - right.capacityRemaining || left.resourceId.localeCompare(right.resourceId))[0]?.resourceId
     ?? null;
 
-  const nextBottleneck = buildNextBottleneck(resourceRows, capacityMobilized, computedLimitingResourceId, route.riskLevel);
+  const nextBottleneck = buildNextBottleneck(
+    resourceRows,
+    capacityMobilized,
+    computedLimitingResourceId,
+    route.riskLevel,
+    currentCapacity,
+  );
 
   return {
     routeId: route.id,
@@ -279,6 +342,7 @@ function buildCapacitySpendPreview(route, spendPlan) {
     limitingResourceId: computedLimitingResourceId,
     nextBottleneck,
     preparationOptions: nextBottleneck?.preparationOptions ?? [],
+    bestValuePreparation: nextBottleneck?.bestValuePreparation ?? null,
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0

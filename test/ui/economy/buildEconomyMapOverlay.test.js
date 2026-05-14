@@ -152,6 +152,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         limitingResourceId: null,
         nextBottleneck: null,
         preparationOptions: [],
+        bestValuePreparation: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -189,6 +190,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         limitingResourceId: null,
         nextBottleneck: null,
         preparationOptions: [],
+        bestValuePreparation: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -255,6 +257,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     limitingResourceId: null,
     nextBottleneck: null,
     preparationOptions: [],
+    bestValuePreparation: null,
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -320,6 +323,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
           safety: 'safe',
         },
       ],
+      bestValuePreparation: null,
     },
     preparationOptions: [
       {
@@ -339,6 +343,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
         safety: 'safe',
       },
     ],
+    bestValuePreparation: null,
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -378,6 +383,27 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationOptions.map((option) => option.effort.amount), [1, 2, 3]);
   assert.equal(overlay.routes[0].capacitySpendPreview.preparationOptions[0].expectedEffect.marginGain, 1);
   assert.equal(overlay.routes[0].capacitySpendPreview.preparationOptions[2].safety, 'risky');
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.bestValuePreparation, {
+    id: 'best-value:grain:shift-to-tools',
+    optionId: 'grain:shift-to-tools',
+    action: 'shift-load-to-spare-resource',
+    estimatedValueProtected: 20,
+    marginGain: 2,
+    effort: {
+      type: 'coordination',
+      amount: 2,
+      unit: 'turns',
+    },
+    reason: 'Protège 20 valeur corridor avec +2 marge pour 2 turns.',
+    cheaperAcceptable: {
+      optionId: 'grain:reserve-buffer',
+      condition: 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
+    },
+  });
+  assert.deepEqual(
+    overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
+    overlay.routes[0].capacitySpendPreview.bestValuePreparation,
+  );
 });
 
 test('buildEconomyMapOverlay rejects invalid inputs', () => {
