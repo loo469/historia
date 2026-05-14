@@ -202,6 +202,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Priorité: reporter sans urgence.',
           reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
         },
+        monitoringSafeCadence: {
+          cadence: 'wait-no-urgency',
+          cadenceFactor: 'Données insuffisantes',
+          label: 'Cadence: attendre sans urgence.',
+          reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -243,6 +249,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               priorityFactor: 'Données insuffisantes',
               label: 'Priorité: reporter sans urgence.',
               reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
+            },
+            monitoringSafeCadence: {
+              cadence: 'wait-no-urgency',
+              cadenceFactor: 'Données insuffisantes',
+              label: 'Cadence: attendre sans urgence.',
+              reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
             },
         monitoringChecklist: [
           {
@@ -390,6 +402,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Priorité: reporter sans urgence.',
           reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
         },
+        monitoringSafeCadence: {
+          cadence: 'wait-no-urgency',
+          cadenceFactor: 'Données insuffisantes',
+          label: 'Cadence: attendre sans urgence.',
+          reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -431,6 +449,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               priorityFactor: 'Données insuffisantes',
               label: 'Priorité: reporter sans urgence.',
               reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
+            },
+            monitoringSafeCadence: {
+              cadence: 'wait-no-urgency',
+              cadenceFactor: 'Données insuffisantes',
+              label: 'Cadence: attendre sans urgence.',
+              reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
             },
         monitoringChecklist: [
           {
@@ -678,6 +702,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Priorité: reporter sans urgence.',
           reason: 'Marge non exploitable maintenant; maintenir le monitoring sans révéler de cible.',
         },
+        monitoringSafeCadence: {
+          cadence: 'wait-no-urgency',
+          cadenceFactor: 'Données insuffisantes',
+          label: 'Cadence: attendre sans urgence.',
+          reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -798,6 +828,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         priorityFactor: 'Gain confiance',
         label: 'Priorité: rafraîchir le signal.',
         reason: 'Qualité du signal fragile; confirmer avant toute relance.',
+      },
+      monitoringSafeCadence: {
+        cadence: 'refresh-then-sweep',
+        cadenceFactor: 'Gain confiance',
+        label: 'Cadence: rafraîchir puis sweep.',
+        reason: 'Qualité du signal pilote le tempo: confirmer, puis relancer court.',
       },
       monitoringChecklist: [
         {
@@ -986,6 +1022,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Priorité: lancer maintenant.',
         reason: 'Fenêtre de sweep encore lisible; ne pas laisser la marge se fermer.',
       },
+      monitoringSafeCadence: {
+        cadence: 'sweep-now',
+        cadenceFactor: 'Fenêtre sûre',
+        label: 'Cadence: sweep maintenant.',
+        reason: 'Fenêtre visible encore ouverte: lancer avant le prochain tick de dérive.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1098,6 +1140,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       label: 'Priorité: rafraîchir le signal.',
       reason: 'Qualité du signal fragile; confirmer avant toute relance.',
     },
+    monitoringSafeCadence: {
+      cadence: 'refresh-then-sweep',
+      cadenceFactor: 'Fraîcheur signal',
+      label: 'Cadence: rafraîchir puis sweep.',
+      reason: 'Qualité du signal pilote le tempo: confirmer, puis relancer court.',
+    },
     monitoringChecklist: [
       {
         signal: 'Fraîcheur signal',
@@ -1167,6 +1215,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     priorityFactor: 'Heat',
     label: 'Priorité: réduire heat.',
     reason: 'Heat visible trop haut; baisser la pression avant reprise.',
+  });
+  assert.deepEqual(tooExposed.thirdSweepRecommendation.monitoringRationale.monitoringSafeCadence, {
+    cadence: 'space-for-heat',
+    cadenceFactor: 'Heat',
+    label: 'Cadence: espacer pour heat.',
+    reason: 'Espacer les sweeps laisse la pression visible retomber avant reprise.',
   });
 });
 
