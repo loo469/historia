@@ -16,6 +16,7 @@ import {
   buildMiniPlanSafestTacticalFallback,
   buildMiniPlanNextTurnHoldPlan,
   buildMiniPlanHoldReleaseCue,
+  buildMiniPlanFirstSafeReengagement,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -412,6 +413,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     empty: true,
     state: 'safe-release',
     label: 'relâchement sûr',
+    constraint: null,
+    action: null,
+  });
+  assert.deepEqual(shell.miniPlanFirstSafeReengagement, {
+    empty: true,
+    state: 'main-safe',
+    label: 'réengagement principal sûr',
     constraint: null,
     action: null,
   });
@@ -827,12 +835,20 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     constraint: 'position',
     riskIfIgnored: 'position se rouvre',
   });
-  assert.deepEqual(buildMiniPlanHoldReleaseCue(holdPlan), {
+  const releaseCue = buildMiniPlanHoldReleaseCue(holdPlan);
+  assert.deepEqual(releaseCue, {
     empty: false,
     state: 'hold-required',
     label: 'maintien encore requis',
     constraint: 'front exposé',
     action: 'tenir écran',
+  });
+  assert.deepEqual(buildMiniPlanFirstSafeReengagement(releaseCue), {
+    empty: false,
+    state: 'defensive-stance',
+    label: 'rester en posture défensive',
+    constraint: 'front voisin instable',
+    action: 'garder écran',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -947,11 +963,19 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     constraint: 'fenêtre d’opportunité',
     riskIfIgnored: 'fenêtre d’opportunité se referme',
   });
-  assert.deepEqual(buildMiniPlanHoldReleaseCue(holdPlan), {
+  const releaseCue = buildMiniPlanHoldReleaseCue(holdPlan);
+  assert.deepEqual(releaseCue, {
     empty: false,
     state: 'safe-release',
     label: 'relâchement sûr',
     constraint: 'opportunité encore fragile',
+    action: null,
+  });
+  assert.deepEqual(buildMiniPlanFirstSafeReengagement(releaseCue), {
+    empty: false,
+    state: 'main-safe',
+    label: 'réengagement principal sûr',
+    constraint: 'opportunité trop fragile',
     action: null,
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
@@ -1058,12 +1082,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     constraint: 'tempo',
     riskIfIgnored: 'tempo repris par le rival',
   });
-  assert.deepEqual(buildMiniPlanHoldReleaseCue(holdPlan), {
+  const releaseCue = buildMiniPlanHoldReleaseCue(holdPlan);
+  assert.deepEqual(releaseCue, {
     empty: false,
     state: 'cautious-release',
     label: 'relâchement prudent possible',
     constraint: 'menace voisine',
     action: 'surveiller voisin',
+  });
+  assert.deepEqual(buildMiniPlanFirstSafeReengagement(releaseCue), {
+    empty: false,
+    state: 'limited-reengagement',
+    label: 'réengagement limité possible',
+    constraint: 'menace non résolue',
+    action: 'tester avancée',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -1133,6 +1165,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     empty: true,
     state: 'safe-release',
     label: 'relâchement sûr',
+    constraint: null,
+    action: null,
+  });
+  assert.deepEqual(buildMiniPlanFirstSafeReengagement(null), {
+    empty: true,
+    state: 'main-safe',
+    label: 'réengagement principal sûr',
     constraint: null,
     action: null,
   });

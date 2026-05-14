@@ -1132,6 +1132,48 @@ export function buildMiniPlanHoldReleaseCue(miniPlanNextTurnHoldPlan = null) {
   };
 }
 
+function reengagementConstraintForRelease(holdReleaseCue) {
+  if (holdReleaseCue.constraint === 'front exposé') return 'front voisin instable';
+  if (holdReleaseCue.constraint === 'support absent') return 'support incomplet';
+  if (holdReleaseCue.constraint === 'opportunité encore fragile') return 'opportunité trop fragile';
+  return 'menace non résolue';
+}
+
+export function buildMiniPlanFirstSafeReengagement(miniPlanHoldReleaseCue = null) {
+  if (!miniPlanHoldReleaseCue || miniPlanHoldReleaseCue.empty) {
+    return {
+      empty: true,
+      state: 'main-safe',
+      label: 'réengagement principal sûr',
+      constraint: null,
+      action: null,
+    };
+  }
+
+  const state = miniPlanHoldReleaseCue.state === 'hold-required'
+    ? 'defensive-stance'
+    : miniPlanHoldReleaseCue.state === 'cautious-release'
+      ? 'limited-reengagement'
+      : 'main-safe';
+  const constraint = reengagementConstraintForRelease(miniPlanHoldReleaseCue);
+
+  return {
+    empty: false,
+    state,
+    label: state === 'defensive-stance'
+      ? 'rester en posture défensive'
+      : state === 'limited-reengagement'
+        ? 'réengagement limité possible'
+        : 'réengagement principal sûr',
+    constraint,
+    action: state === 'defensive-stance'
+      ? 'garder écran'
+      : state === 'limited-reengagement'
+        ? 'tester avancée'
+        : null,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -1250,6 +1292,9 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const miniPlanHoldReleaseCue = buildMiniPlanHoldReleaseCue(
     miniPlanNextTurnHoldPlan,
   );
+  const miniPlanFirstSafeReengagement = buildMiniPlanFirstSafeReengagement(
+    miniPlanHoldReleaseCue,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1310,6 +1355,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanSafestTacticalFallback,
     miniPlanNextTurnHoldPlan,
     miniPlanHoldReleaseCue,
+    miniPlanFirstSafeReengagement,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
