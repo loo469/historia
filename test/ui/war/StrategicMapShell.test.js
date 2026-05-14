@@ -13,6 +13,7 @@ import {
   buildMiniPlanLateCorrectionExitCost,
   buildMiniPlanMinimalFollowThrough,
   buildMiniPlanFollowThroughOpportunityTradeoff,
+  buildMiniPlanSafestTacticalFallback,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -388,6 +389,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     empty: true,
     state: 'no-conflict',
     label: 'suivi sans conflit',
+    constraint: null,
+    action: null,
+  });
+  assert.deepEqual(shell.miniPlanSafestTacticalFallback, {
+    empty: true,
+    state: 'unneeded',
+    label: 'repli inutile',
     constraint: null,
     action: null,
   });
@@ -779,12 +787,20 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     support: 'position',
     action: 'protéger position',
   });
-  assert.deepEqual(buildMiniPlanFollowThroughOpportunityTradeoff(followThrough), {
+  const opportunityTradeoff = buildMiniPlanFollowThroughOpportunityTradeoff(followThrough);
+  assert.deepEqual(opportunityTradeoff, {
     empty: false,
     state: 'opportunity-threatened',
     label: 'opportunité menacée',
     constraint: 'position',
     action: 'reporter l’opportunité',
+  });
+  assert.deepEqual(buildMiniPlanSafestTacticalFallback(opportunityTradeoff), {
+    empty: false,
+    state: 'urgent-save-opportunity',
+    label: 'repli urgent pour sauver l’opportunité',
+    constraint: 'position',
+    action: 'exploiter maintenant',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -875,12 +891,20 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     support: 'opportunité rivale',
     action: 'surveiller',
   });
-  assert.deepEqual(buildMiniPlanFollowThroughOpportunityTradeoff(followThrough), {
+  const opportunityTradeoff = buildMiniPlanFollowThroughOpportunityTradeoff(followThrough);
+  assert.deepEqual(opportunityTradeoff, {
     empty: false,
     state: 'no-conflict',
     label: 'suivi sans conflit',
     constraint: 'opportunité rivale',
     action: 'suivre maintenant',
+  });
+  assert.deepEqual(buildMiniPlanSafestTacticalFallback(opportunityTradeoff), {
+    empty: false,
+    state: 'unneeded',
+    label: 'repli inutile',
+    constraint: 'fenêtre d’opportunité',
+    action: 'exploiter maintenant',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -962,12 +986,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     support: 'tempo',
     action: 'consolider',
   });
-  assert.deepEqual(buildMiniPlanFollowThroughOpportunityTradeoff(followThrough), {
+  const opportunityTradeoff = buildMiniPlanFollowThroughOpportunityTradeoff(followThrough);
+  assert.deepEqual(opportunityTradeoff, {
     empty: false,
     state: 'manageable-conflict',
     label: 'conflit gérable',
     constraint: 'tempo',
     action: 'limiter l’engagement',
+  });
+  assert.deepEqual(buildMiniPlanSafestTacticalFallback(opportunityTradeoff), {
+    empty: false,
+    state: 'value-advised',
+    label: 'repli de valeur conseillé',
+    constraint: 'tempo',
+    action: 'sécuriser puis exploiter',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -1016,6 +1048,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     empty: true,
     state: 'no-conflict',
     label: 'suivi sans conflit',
+    constraint: null,
+    action: null,
+  });
+  assert.deepEqual(buildMiniPlanSafestTacticalFallback(null), {
+    empty: true,
+    state: 'unneeded',
+    label: 'repli inutile',
     constraint: null,
     action: null,
   });

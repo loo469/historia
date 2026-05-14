@@ -76,6 +76,7 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /buildMiniPlanLateCorrectionExitCost\(/);
   assert.match(webAppSource, /buildMiniPlanMinimalFollowThrough\(/);
   assert.match(webAppSource, /buildMiniPlanFollowThroughOpportunityTradeoff\(/);
+  assert.match(webAppSource, /buildMiniPlanSafestTacticalFallback\(/);
   assert.match(webAppSource, /firstCleanupPayoff/);
   assert.match(webAppSource, /followUpCleanupChoices/);
   assert.match(webAppSource, /topFollowUpReadiness/);
@@ -121,6 +122,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /miniPlanLateCorrectionExitCost: buildMiniPlanLateCorrectionExitCost\(/);
   assert.match(webAppSource, /miniPlanMinimalFollowThrough: buildMiniPlanMinimalFollowThrough\(/);
   assert.match(webAppSource, /miniPlanFollowThroughOpportunityTradeoff: buildMiniPlanFollowThroughOpportunityTradeoff\(/);
+  assert.match(webAppSource, /miniPlanSafestTacticalFallback: buildMiniPlanSafestTacticalFallback\(/);
   assert.match(webAppSource, /Risque si: aucun rival lisible/);
   assert.match(webAppSource, /branches: aucune comparaison/);
   assert.match(webAppSource, /fallback: aucun repli requis/);
@@ -132,6 +134,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /sortie tardive: non évaluée/);
   assert.match(webAppSource, /suivi minimal: non critique/);
   assert.match(webAppSource, /opportunité: aucun conflit/);
+  assert.match(webAppSource, /repli tactique: inutile/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
@@ -150,6 +153,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__late-correction-exit-cost/);
   assert.match(webAppSource, /atlas-military-fallback-order__minimal-follow-through/);
   assert.match(webAppSource, /atlas-military-fallback-order__follow-through-opportunity/);
+  assert.match(webAppSource, /atlas-military-fallback-order__safest-tactical-fallback/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
@@ -168,6 +172,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /sortie tardive: \$\{exitCost\.label\} · perte \$\{exitCost\.loss\} · \$\{exitCost\.decision\}/);
   assert.match(webAppSource, /suivi minimal: \$\{minimalFollowThrough\.label\} · \$\{minimalFollowThrough\.support\} · \$\{minimalFollowThrough\.action\}/);
   assert.match(webAppSource, /opportunité: \$\{opportunityTradeoff\.label\} · \$\{opportunityTradeoff\.constraint\} · \$\{opportunityTradeoff\.action\}/);
+  assert.match(webAppSource, /repli tactique: \$\{safestTacticalFallback\.label\} · \$\{safestTacticalFallback\.constraint\} · \$\{safestTacticalFallback\.action\}/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
@@ -196,4 +201,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__late-correction-exit-cost/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__minimal-follow-through/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__follow-through-opportunity/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__safest-tactical-fallback/);
 });

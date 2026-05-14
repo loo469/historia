@@ -14,6 +14,7 @@ import {
   buildMiniPlanLateCorrectionExitCost,
   buildMiniPlanMinimalFollowThrough,
   buildMiniPlanFollowThroughOpportunityTradeoff,
+  buildMiniPlanSafestTacticalFallback,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -2028,6 +2029,9 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanFollowThroughOpportunityTradeoff: buildMiniPlanFollowThroughOpportunityTradeoff(
         buildMiniPlanMinimalFollowThrough(null),
       ),
+      miniPlanSafestTacticalFallback: buildMiniPlanSafestTacticalFallback(
+        buildMiniPlanFollowThroughOpportunityTradeoff(null),
+      ),
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -2088,6 +2092,9 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
   const miniPlanFollowThroughOpportunityTradeoff = buildMiniPlanFollowThroughOpportunityTradeoff(
     miniPlanMinimalFollowThrough,
   );
+  const miniPlanSafestTacticalFallback = buildMiniPlanSafestTacticalFallback(
+    miniPlanFollowThroughOpportunityTradeoff,
+  );
 
   return {
     fallback: {
@@ -2117,6 +2124,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanLateCorrectionExitCost,
       miniPlanMinimalFollowThrough,
       miniPlanFollowThroughOpportunityTradeoff,
+      miniPlanSafestTacticalFallback,
     },
     safetyReason,
     crossDomainBlocker,
@@ -2141,7 +2149,8 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanLateCorrectionExitCost,
     miniPlanMinimalFollowThrough,
     miniPlanFollowThroughOpportunityTradeoff,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}; dernier sûr: ${miniPlanLastSafeCorrectionCue.empty ? 'aucun' : miniPlanLastSafeCorrectionCue.state}; coût sortie: ${miniPlanLateCorrectionExitCost.empty ? 'aucun' : miniPlanLateCorrectionExitCost.severity}; suivi minimal: ${miniPlanMinimalFollowThrough.empty ? 'aucun' : miniPlanMinimalFollowThrough.level}; arbitrage opportunité: ${miniPlanFollowThroughOpportunityTradeoff.empty ? 'aucun' : miniPlanFollowThroughOpportunityTradeoff.state}).`,
+    miniPlanSafestTacticalFallback,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}; dernier sûr: ${miniPlanLastSafeCorrectionCue.empty ? 'aucun' : miniPlanLastSafeCorrectionCue.state}; coût sortie: ${miniPlanLateCorrectionExitCost.empty ? 'aucun' : miniPlanLateCorrectionExitCost.severity}; suivi minimal: ${miniPlanMinimalFollowThrough.empty ? 'aucun' : miniPlanMinimalFollowThrough.level}; arbitrage opportunité: ${miniPlanFollowThroughOpportunityTradeoff.empty ? 'aucun' : miniPlanFollowThroughOpportunityTradeoff.state}; repli tactique: ${miniPlanSafestTacticalFallback.empty ? 'aucun' : miniPlanSafestTacticalFallback.state}).`,
     empty: false,
   };
 }
@@ -2224,9 +2233,13 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const opportunityTradeoffLabel = opportunityTradeoff && !opportunityTradeoff.empty
     ? `opportunité: ${opportunityTradeoff.label} · ${opportunityTradeoff.constraint} · ${opportunityTradeoff.action}`
     : 'opportunité: aucun conflit';
+  const safestTacticalFallback = fallback.miniPlanSafestTacticalFallback;
+  const safestTacticalFallbackLabel = safestTacticalFallback && !safestTacticalFallback.empty
+    ? `repli tactique: ${safestTacticalFallback.label} · ${safestTacticalFallback.constraint} · ${safestTacticalFallback.action}`
+    : 'repli tactique: inutile';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="30" rx="1.2"></rect>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="31.2" rx="1.2"></rect>
       <text class="atlas-military-fallback-order__label" x="23.2" y="59.1">repli: ${fallback.order}</text>
       <text class="atlas-military-fallback-order__detail" x="23.2" y="60.2">${fallback.detail}</text>
       <text class="atlas-military-fallback-order__safety" x="23.2" y="61.3">${fallback.safetyReason.label}</text>
@@ -2252,6 +2265,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       <text class="atlas-military-fallback-order__late-correction-exit-cost atlas-military-fallback-order__late-correction-exit-cost--${exitCost?.severity ?? 'none'}" x="23.2" y="83.3">${exitCostLabel}</text>
       <text class="atlas-military-fallback-order__minimal-follow-through atlas-military-fallback-order__minimal-follow-through--${minimalFollowThrough?.level ?? 'none'}" x="23.2" y="84.4">${minimalFollowThroughLabel}</text>
       <text class="atlas-military-fallback-order__follow-through-opportunity atlas-military-fallback-order__follow-through-opportunity--${opportunityTradeoff?.state ?? 'no-conflict'}" x="23.2" y="85.5">${opportunityTradeoffLabel}</text>
+      <text class="atlas-military-fallback-order__safest-tactical-fallback atlas-military-fallback-order__safest-tactical-fallback--${safestTacticalFallback?.state ?? 'unneeded'}" x="23.2" y="86.6">${safestTacticalFallbackLabel}</text>
     </g>
   `;
 }
