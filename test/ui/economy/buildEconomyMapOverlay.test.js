@@ -560,6 +560,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         needsCapacityProtection: false,
         summary: 'Robuste: surveiller saturation, la marge reste positive après salvage.',
       },
+      postSalvageStabilizer: {
+        status: 'none-required',
+        stabilizer: null,
+        nextGesture: 'surveiller',
+        benefit: 'Aucun stabilisateur requis: le corridor reste robuste après salvage.',
+        summary: 'Stabilisateur neutre: surveiller sans action supplémentaire.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -707,6 +714,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       needsCapacityProtection: false,
       summary: 'Robuste: surveiller saturation, la marge reste positive après salvage.',
     },
+    postSalvageStabilizer: {
+      status: 'none-required',
+      stabilizer: null,
+      nextGesture: 'surveiller',
+      benefit: 'Aucun stabilisateur requis: le corridor reste robuste après salvage.',
+      summary: 'Stabilisateur neutre: surveiller sans action supplémentaire.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -804,6 +818,13 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     needsCapacityProtection: false,
     summary: 'Vulnérable: alternative-plus-sure menace une perte durable; basculer vers alternative.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageStabilizer, {
+    status: 'urgent-stabilization',
+    stabilizer: 'alternative de secours',
+    nextGesture: 'basculer vers alternative',
+    benefit: 'transforme l’inversion possible en flux fiable.',
+    summary: 'Stabilisation urgente: alternative de secours pour éviter une perte durable.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -867,6 +888,13 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     nextGesture: 'basculer vers alternative',
     needsCapacityProtection: false,
     summary: 'Fragile mais utilisable: alternative-plus-sure reste serré; basculer vers alternative.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageStabilizer, {
+    status: 'stabilizer-recommended',
+    stabilizer: 'alternative de secours',
+    nextGesture: 'basculer vers alternative',
+    benefit: 'transforme l’inversion possible en flux fiable.',
+    summary: 'Stabilisateur recommandé: alternative de secours pour fiabiliser le corridor fragile.',
   });
 });
 

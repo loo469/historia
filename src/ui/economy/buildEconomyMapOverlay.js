@@ -467,6 +467,45 @@ function buildPostSalvageRobustness(postSalvageDecisionAlert, postSalvageDecisio
   };
 }
 
+function buildPostSalvageStabilizer(postSalvageRobustness) {
+  if (postSalvageRobustness.status === 'robust') {
+    return {
+      status: 'none-required',
+      stabilizer: null,
+      nextGesture: 'surveiller',
+      benefit: 'Aucun stabilisateur requis: le corridor reste robuste après salvage.',
+      summary: 'Stabilisateur neutre: surveiller sans action supplémentaire.',
+    };
+  }
+
+  const stabilizerByConstraint = {
+    capacity: 'capacité tampon',
+    saturation: 'lissage de charge',
+    delay: 'protection d’étape',
+    cost: 'réserve transportée',
+    'alternative-plus-sure': 'alternative de secours',
+  };
+  const benefitByStabilizer = {
+    'capacité tampon': 'absorbe la prochaine contrainte de capacité avant rupture.',
+    'lissage de charge': 'réduit la saturation du goulot sans changer la priorité.',
+    'protection d’étape': 'garde la fenêtre active malgré le prochain délai.',
+    'réserve transportée': 'couvre le coût restant sans relancer toute la séquence.',
+    'alternative de secours': 'transforme l’inversion possible en flux fiable.',
+  };
+  const stabilizer = stabilizerByConstraint[postSalvageRobustness.dominantConstraint] ?? 'détour sécurisé';
+  const isUrgent = postSalvageRobustness.status === 'vulnerable';
+
+  return {
+    status: isUrgent ? 'urgent-stabilization' : 'stabilizer-recommended',
+    stabilizer,
+    nextGesture: postSalvageRobustness.nextGesture,
+    benefit: benefitByStabilizer[stabilizer] ?? 'sécurise un détour fiable avant la prochaine contrainte.',
+    summary: isUrgent
+      ? `Stabilisation urgente: ${stabilizer} pour éviter une perte durable.`
+      : `Stabilisateur recommandé: ${stabilizer} pour fiabiliser le corridor fragile.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -680,6 +719,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     delayOpportunityCost,
     scenarios,
   );
+  const postSalvageStabilizer = buildPostSalvageStabilizer(postSalvageRobustness);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -695,6 +735,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     postSalvageDecisionAlert,
     postSalvageDecisionComparison,
     postSalvageRobustness,
+    postSalvageStabilizer,
   };
 }
 
