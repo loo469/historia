@@ -538,6 +538,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         reason: 'Le délai retire 5 marge au bénéfice de grain:shift-to-tools, dérivé de la comparaison actuelle.',
         salvageAction: null,
       },
+      postSalvageDecisionAlert: {
+        status: 'no-additional-decision',
+        recommendation: 'continue',
+        mainConstraint: null,
+        summary: 'Aucune décision abandon/inversion requise: la séquence reste rentable après délai.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -663,6 +669,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       reason: 'Le délai retire 5 marge au bénéfice de grain:shift-to-tools, dérivé de la comparaison actuelle.',
       salvageAction: null,
     },
+    postSalvageDecisionAlert: {
+      status: 'no-additional-decision',
+      recommendation: 'continue',
+      mainConstraint: null,
+      summary: 'Aucune décision abandon/inversion requise: la séquence reste rentable après délai.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -710,25 +722,25 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.delayOpportunityCost, {
     id: 'delay-cost:grain:priority-window',
     recommendedOptionId: 'grain:priority-window',
-    cost: 2,
-    delayedNetValue: -2,
-    summary: 'Attendre coûte 2 valeur et rend le délai dangereux.',
+    cost: 4,
+    delayedNetValue: -4,
+    summary: 'Attendre coûte 4 valeur et rend le délai dangereux.',
     dangerThreshold: 'dès 1 tour de retard',
     practicalConsequence: 'inverser la priorité avant d’attendre',
-    reason: 'Le délai retire 2 marge au bénéfice de grain:priority-window, dérivé de la comparaison actuelle.',
+    reason: 'Le délai retire 4 marge au bénéfice de grain:priority-window, dérivé de la comparaison actuelle.',
     salvageAction: {
       id: 'salvage:grain:priority-window:delay-one-turn',
       trigger: 'delay-one-turn',
       action: 'invert-priority-to-alternative',
       label: 'Basculer vers grain:reserve-buffer',
       alternativeOptionId: 'grain:reserve-buffer',
-      remainingCost: 2,
-      summary: 'Basculer vers grain:reserve-buffer: coût restant 2 après délai dangereux.',
+      remainingCost: 4,
+      summary: 'Basculer vers grain:reserve-buffer: coût restant 4 après délai dangereux.',
       restorationSummary: {
-        status: 'partially-stabilized',
+        status: 'still-unprofitable',
         mainConstraint: 'alternative-plus-sure',
         nextDecision: 'switch-to-alternative',
-        summary: 'Salvage stabilise partiellement: Basculer vers grain:reserve-buffer; coût restant 2.',
+        summary: 'Salvage insuffisant: basculer vers grain:reserve-buffer reste plus sûr.',
       },
     },
   });
@@ -737,6 +749,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     'bascule vers grain:reserve-buffer si retard d’un tour.',
   );
   assert.equal(overlay.routes[0].capacitySpendPreview.timingSensitivity.status, 'fragile');
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageDecisionAlert, {
+    status: 'decision-required',
+    recommendation: 'abandon-sequence',
+    mainConstraint: 'alternative-plus-sure',
+    summary: 'Abandonner la séquence: alternative-plus-sure garde le coût restant trop élevé.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -751,6 +769,39 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
       ['bottleneck-saturation', 'saturation', 'switch-to-alternative', 'grain:reserve-buffer'],
     ],
   );
+});
+
+test('buildEconomyMapOverlay flags partially restored salvage as durable inversion decision', () => {
+  const overlay = buildEconomyMapOverlay([], [
+    {
+      id: 'route-partial',
+      name: 'Partial Road',
+      stopCityIds: ['city-a', 'city-b'],
+      distance: 2,
+      capacityByResource: { grain: 3 },
+      transportMode: 'land',
+      riskLevel: 100,
+    },
+  ], {
+    recommendedUnlockByRouteId: {
+      'route-partial': {
+        mobilizedByResource: { grain: 3 },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.delayOpportunityCost.salvageAction.restorationSummary, {
+    status: 'partially-stabilized',
+    mainConstraint: 'alternative-plus-sure',
+    nextDecision: 'switch-to-alternative',
+    summary: 'Salvage stabilise partiellement: Basculer vers grain:reserve-buffer; coût restant 2.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageDecisionAlert, {
+    status: 'decision-required',
+    recommendation: 'invert-durably',
+    mainConstraint: 'alternative-plus-sure',
+    summary: 'Inverser durablement: grain:reserve-buffer reste plus sûr malgré le salvage.',
+  });
 });
 
 test('buildEconomyMapOverlay rejects invalid inputs', () => {

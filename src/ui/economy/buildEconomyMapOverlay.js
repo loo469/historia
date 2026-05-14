@@ -387,6 +387,45 @@ function buildFlipActionability(flipScenario, opportunityCostComparison, capacit
   };
 }
 
+function buildPostSalvageDecisionAlert(salvageAction) {
+  if (salvageAction === null) {
+    return {
+      status: 'no-additional-decision',
+      recommendation: 'continue',
+      mainConstraint: null,
+      summary: 'Aucune décision abandon/inversion requise: la séquence reste rentable après délai.',
+    };
+  }
+
+  const restoration = salvageAction.restorationSummary;
+  if (restoration.status === 'restores-priority') {
+    return {
+      status: 'no-additional-decision',
+      recommendation: 'continue',
+      mainConstraint: restoration.mainConstraint,
+      summary: 'Salvage restauré: continuer la séquence prioritaire.',
+    };
+  }
+
+  const recommendation = restoration.status === 'still-unprofitable'
+    ? 'abandon-sequence'
+    : restoration.nextDecision === 'switch-to-alternative'
+      ? 'invert-durably'
+      : 'secure-minimal-investment';
+  const summaryByRecommendation = {
+    'abandon-sequence': `Abandonner la séquence: ${restoration.mainConstraint} garde le coût restant trop élevé.`,
+    'invert-durably': `Inverser durablement: ${salvageAction.alternativeOptionId} reste plus sûr malgré le salvage.`,
+    'secure-minimal-investment': `Sécuriser un complément minimal: contrainte restante ${restoration.mainConstraint}.`,
+  };
+
+  return {
+    status: 'decision-required',
+    recommendation,
+    mainConstraint: restoration.mainConstraint,
+    summary: summaryByRecommendation[recommendation],
+  };
+}
+
 function buildSalvageRestorationSummary(salvageAction, delayScenario) {
   if (salvageAction === null) {
     return null;
@@ -496,7 +535,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
       id: 'delay-one-turn',
       assumption: 'retard d’un tour',
       cause: 'delay',
-      netValue: preparationBreakEven.netValue - capacityCost,
+      netValue: preparationBreakEven.netValue - capacityCost - (preparationBreakEven.netValue <= 0 ? capacityCost : 0),
     },
     {
       id: 'lower-capacity',
@@ -550,6 +589,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     flipWarning,
     capacityCost,
   );
+  const postSalvageDecisionAlert = buildPostSalvageDecisionAlert(delayOpportunityCost.salvageAction);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -562,6 +602,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     reason: flipWarning.reason,
     actionableAdvice: actionability.advice,
     delayOpportunityCost,
+    postSalvageDecisionAlert,
   };
 }
 
