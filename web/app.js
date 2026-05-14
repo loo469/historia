@@ -9058,6 +9058,90 @@ function buildNextClimateCommitmentDeferralRisk(nextClimateCommitment, remaining
   };
 }
 
+function buildClimateNextTurnDecisionWindow(nextClimateCommitment, remainingDeadlinePressure) {
+  if (!nextClimateCommitment?.deferralRiskPreview) {
+    return null;
+  }
+
+  const deferralRisk = nextClimateCommitment.deferralRiskPreview;
+  const immediateRisk = ['deadline-threatened', 'regional-capacity-insufficient', 'exposure-worsens'].includes(deferralRisk.state);
+  const debtAfterAction = nextClimateCommitment.remainsAfterCommitment.length > 0
+    ? nextClimateCommitment.remainsAfterCommitment.join(' → ')
+    : 'dette climat stabilisée';
+  const waitDeadlineEffect = deferralRisk.deadlineTouched
+    ? `${deferralRisk.deadlineTouched}: ${deferralRisk.pressureAdded}`
+    : 'deadline inchangée';
+  const synergySignals = [
+    {
+      domain: 'logistique',
+      type: deferralRisk.state === 'regional-capacity-insufficient' ? 'conflict' : 'synergy',
+      label: deferralRisk.state === 'regional-capacity-insufficient'
+        ? 'capacité régionale à réserver avant les routes secondaires'
+        : 'fenêtre compatible avec une préparation logistique courte',
+    },
+    {
+      domain: 'militaire',
+      type: immediateRisk ? 'conflict' : 'neutral',
+      label: immediateRisk
+        ? 'éviter de consommer le prochain tour sur une opération non climatique longue'
+        : 'aucun conflit militaire immédiat visible',
+    },
+    {
+      domain: 'culture',
+      type: deferralRisk.state === 'exposure-worsens' ? 'conflict' : 'synergy',
+      label: deferralRisk.state === 'exposure-worsens'
+        ? 'exposition accrue peut durcir les arbitrages culturels locaux'
+        : 'stabilisation climatique lisible pour le support local',
+    },
+  ];
+  const choices = [
+    {
+      key: 'act-now',
+      label: 'Agir maintenant',
+      priority: immediateRisk ? 1 : 2,
+      deadlineEffect: `${nextClimateCommitment.deadlineTargeted}: ${nextClimateCommitment.pressureReduced}`,
+      regionalPressureEffect: `réduit ${nextClimateCommitment.pressureReduced}`,
+      climateDebtAfter: debtAfterAction,
+      recommendation: immediateRisk ? 'recommandé' : 'sûr mais pas obligatoire',
+      reason: nextClimateCommitment.reason,
+    },
+    {
+      key: 'wait-one-turn',
+      label: 'Attendre un tour',
+      priority: immediateRisk ? 3 : 1,
+      deadlineEffect: waitDeadlineEffect,
+      regionalPressureEffect: deferralRisk.pressureMaintained,
+      climateDebtAfter: `${deferralRisk.mainRisk}; dette future: ${debtAfterAction}`,
+      recommendation: immediateRisk ? 'risqué' : 'tolérable',
+      reason: deferralRisk.reason,
+    },
+    {
+      key: 'replace-commitment',
+      label: 'Abandonner/remplacer',
+      priority: 4,
+      deadlineEffect: `${nextClimateCommitment.deadlineTargeted}: non confirmé`,
+      regionalPressureEffect: 'pression régionale redirigée mais non réduite',
+      climateDebtAfter: `dette future accrue: ${deferralRisk.mainRisk}`,
+      recommendation: 'dernier recours',
+      reason: `À utiliser seulement si une décision militaire, logistique ou culturelle bloque ${nextClimateCommitment.action}.`,
+    },
+  ].sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label));
+
+  return {
+    state: immediateRisk ? 'urgent-window' : 'flexible-window',
+    title: 'Fenêtre décision climat prochain tour',
+    immediateRisk: deferralRisk.mainRisk,
+    futureDebt: debtAfterAction,
+    sourceDeadline: nextClimateCommitment.deadlineTargeted,
+    choices,
+    synergies: synergySignals.filter((signal) => signal.type === 'synergy'),
+    conflicts: synergySignals.filter((signal) => signal.type === 'conflict'),
+    summary: immediateRisk
+      ? `Décider maintenant: ${deferralRisk.mainRisk} sinon ${deferralRisk.pressureAdded}.`
+      : `Report possible: ${deferralRisk.mainRisk}, dette future ${debtAfterAction}.`,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9082,9 +9166,15 @@ function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment,
     reason: `Après l’engagement minimal, cibler ${remainingDeadlinePressure.deadlineStillThreatened} réduit la pression deadline restante sans répéter ${cheapestSafeCommitment.pressureReduced}.`,
   };
 
-  return {
+  const deferralRiskPreview = buildNextClimateCommitmentDeferralRisk(nextClimateCommitment, remainingDeadlinePressure);
+  const nextClimateCommitmentWithDeferral = {
     ...nextClimateCommitment,
-    deferralRiskPreview: buildNextClimateCommitmentDeferralRisk(nextClimateCommitment, remainingDeadlinePressure),
+    deferralRiskPreview,
+  };
+
+  return {
+    ...nextClimateCommitmentWithDeferral,
+    decisionWindow: buildClimateNextTurnDecisionWindow(nextClimateCommitmentWithDeferral, remainingDeadlinePressure),
   };
 }
 
@@ -9095,6 +9185,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       cheapestSafeCommitment: null,
       remainingDeadlinePressure: null,
       nextClimateCommitment: null,
+      decisionWindow: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9138,6 +9229,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     cheapestSafeCommitment,
     remainingDeadlinePressure,
     nextClimateCommitment,
+    decisionWindow: nextClimateCommitment?.decisionWindow ?? null,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9164,6 +9256,8 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.nextClimateCommitment ? `<small><b>Si différé</b> · ${view.nextClimateCommitment.deferralRiskPreview.decideNowHint} ${view.nextClimateCommitment.deferralRiskPreview.reason}</small>` : ''}
       ${view.nextClimateCommitment ? `<small><b>Risque de report</b> · ${view.nextClimateCommitment.deferralRiskPreview.mainRisk}; ${view.nextClimateCommitment.deferralRiskPreview.pressureAdded}</small>` : ''}
       ${view.nextClimateCommitment ? `<small><b>Après lui</b> · ${view.nextClimateCommitment.remainsAfterCommitment.length > 0 ? view.nextClimateCommitment.remainsAfterCommitment.join(' → ') : 'aucune pression deadline visible'}</small>` : ''}
+      ${view.decisionWindow ? `<small><b>${view.decisionWindow.title}</b> · ${view.decisionWindow.choices.map((choice) => `${choice.label}: ${choice.recommendation}, ${choice.deadlineEffect}, dette ${choice.climateDebtAfter}`).join(' | ')}</small>` : ''}
+      ${view.decisionWindow ? `<small><b>Synergies/conflits</b> · ${[...view.decisionWindow.synergies, ...view.decisionWindow.conflicts].map((signal) => `${signal.domain}: ${signal.label}`).join(' | ')}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
