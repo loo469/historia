@@ -9220,6 +9220,37 @@ function buildClimateDecisionDebtRanking(decisionWindow) {
   };
 }
 
+function buildTopClimateDebtPaymentExplanation(decisionDebtRanking, decisionWindow) {
+  const topChoice = decisionDebtRanking?.items?.[0] ?? null;
+
+  if (!topChoice || !decisionWindow) {
+    return null;
+  }
+
+  const matchingChoice = decisionWindow.choices.find((choice) => choice.key === topChoice.key) ?? null;
+  const pressureReduced = matchingChoice?.regionalPressureEffect ?? 'pression climat prioritaire réduite';
+  const cascadeAvoided = topChoice.reason.includes('non confirmé') || topChoice.reason.includes('pression de report')
+    ? 'évite une cascade de report sur la dette climat suivante'
+    : 'évite de rouvrir la dette climat déjà classée';
+  const protectedWindow = decisionWindow.sourceDeadline
+    ? `protège ${decisionWindow.sourceDeadline}`
+    : 'protège la fenêtre climat du prochain tour';
+  const deferralRisk = decisionWindow.choices.find((choice) => choice.key === 'wait-one-turn')?.climateDebtAfter
+    ?? decisionWindow.immediateRisk
+    ?? 'dette climat future moins lisible';
+
+  return {
+    choiceKey: topChoice.key,
+    choiceLabel: topChoice.label,
+    pressureReduced,
+    cascadeAvoided,
+    protectedWindow,
+    riskIfDeferred: `Si encore différé: ${deferralRisk}.`,
+    reason: `${topChoice.label} passe en premier car ${pressureReduced}, ${cascadeAvoided}, et ${protectedWindow}.`,
+    actionHint: `Payer maintenant: ${topChoice.bestUse}.`,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9265,6 +9296,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       nextClimateCommitment: null,
       decisionWindow: null,
       decisionDebtRanking: { state: 'neutral', items: [], summary: 'Aucun classement de dette climat: aucune fenêtre de décision active.', uncertainty: 'données insuffisantes' },
+      topClimateDebtPaymentExplanation: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9302,6 +9334,9 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     cheapestSafeCommitment,
     remainingDeadlinePressure,
   );
+  const decisionWindow = nextClimateCommitment?.decisionWindow ?? null;
+  const decisionDebtRanking = buildClimateDecisionDebtRanking(decisionWindow);
+  const topClimateDebtPaymentExplanation = buildTopClimateDebtPaymentExplanation(decisionDebtRanking, decisionWindow);
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -9310,6 +9345,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     nextClimateCommitment,
     decisionWindow,
     decisionDebtRanking,
+    topClimateDebtPaymentExplanation,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9339,6 +9375,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.decisionWindow ? `<small><b>${view.decisionWindow.title}</b> · ${view.decisionWindow.choices.map((choice) => `${choice.label}: ${choice.recommendation}, ${choice.deadlineEffect}, dette ${choice.climateDebtAfter}`).join(' | ')}</small>` : ''}
       ${view.decisionWindow ? `<small><b>Synergies/conflits</b> · ${[...view.decisionWindow.synergies, ...view.decisionWindow.conflicts].map((signal) => `${signal.domain}: ${signal.label}`).join(' | ')}</small>` : ''}
       ${view.decisionDebtRanking?.items?.length ? `<small><b>Dette aval classée</b> · ${view.decisionDebtRanking.items.map((item) => `${item.rank}. ${item.label}: dette ${item.estimatedDownstreamDebt}, ${item.mainRisk}`).join(' | ')} · ${view.decisionDebtRanking.uncertainty}</small>` : ''}
+      ${view.topClimateDebtPaymentExplanation ? `<small><b>Pourquoi payer #1</b> · ${view.topClimateDebtPaymentExplanation.reason} ${view.topClimateDebtPaymentExplanation.riskIfDeferred}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
