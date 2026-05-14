@@ -428,6 +428,45 @@ function buildPostSalvageDecisionComparison(postSalvageDecisionAlert, delayOppor
   };
 }
 
+function buildPostSalvageRobustness(postSalvageDecisionAlert, postSalvageDecisionComparison, delayOpportunityCost, scenarios) {
+  const tightestScenario = scenarios
+    .slice()
+    .sort((left, right) => left.netValue - right.netValue || left.id.localeCompare(right.id))[0] ?? null;
+  const dominantConstraint = postSalvageDecisionAlert.mainConstraint ?? tightestScenario?.cause ?? null;
+
+  if (postSalvageDecisionAlert.status === 'no-additional-decision') {
+    return {
+      status: 'robust',
+      dominantConstraint,
+      nextGesture: 'surveiller',
+      needsCapacityProtection: false,
+      summary: dominantConstraint === null
+        ? 'Robuste: aucun risque de robustesse notable après salvage.'
+        : `Robuste: surveiller ${dominantConstraint}, la marge reste positive après salvage.`,
+    };
+  }
+
+  const remainingCost = delayOpportunityCost.salvageAction?.remainingCost ?? 0;
+  const isVulnerable = postSalvageDecisionComparison.waitTurnsDurableLoss && remainingCost > 2;
+  const nextGestureByRecommendation = {
+    'abandon-sequence': 'basculer vers alternative',
+    'invert-durably': 'basculer vers alternative',
+    'secure-minimal-investment': 'protéger la capacité',
+  };
+  const status = isVulnerable ? 'vulnerable' : 'fragile-usable';
+  const nextGesture = nextGestureByRecommendation[postSalvageDecisionAlert.recommendation] ?? 'surveiller';
+
+  return {
+    status,
+    dominantConstraint,
+    nextGesture,
+    needsCapacityProtection: dominantConstraint === 'capacity' || nextGesture === 'protéger la capacité',
+    summary: status === 'vulnerable'
+      ? `Vulnérable: ${dominantConstraint} menace une perte durable; ${nextGesture}.`
+      : `Fragile mais utilisable: ${dominantConstraint} reste serré; ${nextGesture}.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -635,6 +674,12 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     postSalvageDecisionAlert,
     delayOpportunityCost,
   );
+  const postSalvageRobustness = buildPostSalvageRobustness(
+    postSalvageDecisionAlert,
+    postSalvageDecisionComparison,
+    delayOpportunityCost,
+    scenarios,
+  );
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -649,6 +694,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     delayOpportunityCost,
     postSalvageDecisionAlert,
     postSalvageDecisionComparison,
+    postSalvageRobustness,
   };
 }
 

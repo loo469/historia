@@ -553,6 +553,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         waitTurnsDurableLoss: false,
         summary: 'Neutre: aucun coût d’attente notable tant que la marge reste positive.',
       },
+      postSalvageRobustness: {
+        status: 'robust',
+        dominantConstraint: 'saturation',
+        nextGesture: 'surveiller',
+        needsCapacityProtection: false,
+        summary: 'Robuste: surveiller saturation, la marge reste positive après salvage.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -693,6 +700,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       waitTurnsDurableLoss: false,
       summary: 'Neutre: aucun coût d’attente notable tant que la marge reste positive.',
     },
+    postSalvageRobustness: {
+      status: 'robust',
+      dominantConstraint: 'saturation',
+      nextGesture: 'surveiller',
+      needsCapacityProtection: false,
+      summary: 'Robuste: surveiller saturation, la marge reste positive après salvage.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -783,6 +797,13 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     waitTurnsDurableLoss: true,
     summary: 'abandonner ou inverser immédiatement pour éviter une perte durable: temporiser transforme la décision en perte durable.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageRobustness, {
+    status: 'vulnerable',
+    dominantConstraint: 'alternative-plus-sure',
+    nextGesture: 'basculer vers alternative',
+    needsCapacityProtection: false,
+    summary: 'Vulnérable: alternative-plus-sure menace une perte durable; basculer vers alternative.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -839,6 +860,13 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     waitCost: 5,
     waitTurnsDurableLoss: true,
     summary: 'confirmer l’inversion vers grain:reserve-buffer: temporiser transforme la décision en perte durable.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postSalvageRobustness, {
+    status: 'fragile-usable',
+    dominantConstraint: 'alternative-plus-sure',
+    nextGesture: 'basculer vers alternative',
+    needsCapacityProtection: false,
+    summary: 'Fragile mais utilisable: alternative-plus-sure reste serré; basculer vers alternative.',
   });
 });
 
