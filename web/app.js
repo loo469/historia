@@ -11,6 +11,7 @@ import {
   buildMiniPlanConfidenceSignalCue,
   buildMiniPlanDecisionReversibilityCue,
   buildMiniPlanLastSafeCorrectionCue,
+  buildMiniPlanLateCorrectionExitCost,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -2014,6 +2015,9 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
         buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
       ),
       miniPlanLastSafeCorrectionCue: buildMiniPlanLastSafeCorrectionCue(buildMiniPlanDecisionReversibilityCue(null, null)),
+      miniPlanLateCorrectionExitCost: buildMiniPlanLateCorrectionExitCost(
+        buildMiniPlanLastSafeCorrectionCue(buildMiniPlanDecisionReversibilityCue(null, null)),
+      ),
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -2069,6 +2073,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanRivalResponseFallback,
   );
   const miniPlanLastSafeCorrectionCue = buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibilityCue);
+  const miniPlanLateCorrectionExitCost = buildMiniPlanLateCorrectionExitCost(miniPlanLastSafeCorrectionCue);
 
   return {
     fallback: {
@@ -2095,6 +2100,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanConfidenceSignalCue,
       miniPlanDecisionReversibilityCue,
       miniPlanLastSafeCorrectionCue,
+      miniPlanLateCorrectionExitCost,
     },
     safetyReason,
     crossDomainBlocker,
@@ -2116,7 +2122,8 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanConfidenceSignalCue,
     miniPlanDecisionReversibilityCue,
     miniPlanLastSafeCorrectionCue,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}; dernier sûr: ${miniPlanLastSafeCorrectionCue.empty ? 'aucun' : miniPlanLastSafeCorrectionCue.state}).`,
+    miniPlanLateCorrectionExitCost,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}; dernier sûr: ${miniPlanLastSafeCorrectionCue.empty ? 'aucun' : miniPlanLastSafeCorrectionCue.state}; coût sortie: ${miniPlanLateCorrectionExitCost.empty ? 'aucun' : miniPlanLateCorrectionExitCost.severity}).`,
     empty: false,
   };
 }
@@ -2187,9 +2194,13 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const lastSafeCorrectionLabel = lastSafeCorrection && !lastSafeCorrection.empty
     ? `dernier sûr: ${lastSafeCorrection.label} · ${lastSafeCorrection.constraint}${lastSafeCorrection.nextStep ? ` · ${lastSafeCorrection.nextStep}` : ''}`
     : 'dernier sûr: non évalué';
+  const exitCost = fallback.miniPlanLateCorrectionExitCost;
+  const exitCostLabel = exitCost && !exitCost.empty
+    ? `sortie tardive: ${exitCost.label} · perte ${exitCost.loss} · ${exitCost.decision}`
+    : 'sortie tardive: non évaluée';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="26.4" rx="1.2"></rect>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="27.6" rx="1.2"></rect>
       <text class="atlas-military-fallback-order__label" x="23.2" y="59.1">repli: ${fallback.order}</text>
       <text class="atlas-military-fallback-order__detail" x="23.2" y="60.2">${fallback.detail}</text>
       <text class="atlas-military-fallback-order__safety" x="23.2" y="61.3">${fallback.safetyReason.label}</text>
@@ -2212,6 +2223,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       <text class="atlas-military-fallback-order__confidence-signal atlas-military-fallback-order__confidence-signal--${confidenceSignal?.decision ?? 'none'}" x="23.2" y="80">${confidenceSignalLabel}</text>
       <text class="atlas-military-fallback-order__decision-reversibility atlas-military-fallback-order__decision-reversibility--${reversibility?.state ?? 'none'}" x="23.2" y="81.1">${reversibilityLabel}</text>
       <text class="atlas-military-fallback-order__last-safe-correction atlas-military-fallback-order__last-safe-correction--${lastSafeCorrection?.state ?? 'none'}" x="23.2" y="82.2">${lastSafeCorrectionLabel}</text>
+      <text class="atlas-military-fallback-order__late-correction-exit-cost atlas-military-fallback-order__late-correction-exit-cost--${exitCost?.severity ?? 'none'}" x="23.2" y="83.3">${exitCostLabel}</text>
     </g>
   `;
 }

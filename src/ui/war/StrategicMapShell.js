@@ -879,6 +879,49 @@ export function buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibility
   };
 }
 
+function describeLateCorrectionLoss(constraint) {
+  const normalized = String(constraint ?? '').toLowerCase();
+  if (normalized.includes('tempo')) return 'tempo';
+  if (normalized.includes('position')) return 'position';
+  if (normalized.includes('opportunité')) return 'opportunité rivale';
+  if (normalized.includes('ordre')) return 'ordre engagé';
+  return 'appui';
+}
+
+export function buildMiniPlanLateCorrectionExitCost(miniPlanLastSafeCorrectionCue = null) {
+  if (!miniPlanLastSafeCorrectionCue || miniPlanLastSafeCorrectionCue.empty) {
+    return {
+      empty: true,
+      severity: 'none',
+      label: 'coût de sortie inconnu',
+      loss: null,
+      decision: null,
+    };
+  }
+
+  const severity = miniPlanLastSafeCorrectionCue.state === 'safe-correction'
+    ? 'light'
+    : miniPlanLastSafeCorrectionCue.state === 'last-correction-turn'
+      ? 'costly'
+      : 'deterrent';
+
+  return {
+    empty: false,
+    severity,
+    label: severity === 'light'
+      ? 'coût léger'
+      : severity === 'costly'
+        ? 'coûteux mais possible'
+        : 'coût dissuasif',
+    loss: describeLateCorrectionLoss(miniPlanLastSafeCorrectionCue.constraint),
+    decision: severity === 'light'
+      ? 'corriger maintenant'
+      : severity === 'costly'
+        ? 'assumer le plan'
+        : 'attendre sans nouvelle correction',
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -983,6 +1026,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanRivalResponseFallback,
   );
   const miniPlanLastSafeCorrectionCue = buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibilityCue);
+  const miniPlanLateCorrectionExitCost = buildMiniPlanLateCorrectionExitCost(miniPlanLastSafeCorrectionCue);
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1037,6 +1081,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanConfidenceSignalCue,
     miniPlanDecisionReversibilityCue,
     miniPlanLastSafeCorrectionCue,
+    miniPlanLateCorrectionExitCost,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
