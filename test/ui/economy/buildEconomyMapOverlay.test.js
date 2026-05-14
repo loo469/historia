@@ -598,6 +598,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         nextGesture: 'absorber',
         summary: 'Aucun allègement utile: la marge absorbe le prochain pic visible.',
       },
+      guardedCorridorNormalizationCheckpoint: {
+        status: 'corridor-normalized',
+        remainingConstraint: 'aucune contrainte visible',
+        action: 'normaliser sans promotion automatique',
+        summary: 'Corridor normalisé: garder la lecture active sans promotion automatique.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -783,6 +789,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       nextGesture: 'absorber',
       summary: 'Aucun allègement utile: la marge absorbe le prochain pic visible.',
     },
+    guardedCorridorNormalizationCheckpoint: {
+      status: 'corridor-normalized',
+      remainingConstraint: 'aucune contrainte visible',
+      action: 'normaliser sans promotion automatique',
+      summary: 'Corridor normalisé: garder la lecture active sans promotion automatique.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -918,6 +930,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     nextGesture: 'revenir en secours',
     summary: 'Allègement urgent: alternative surcharge la route, garder une alternative active.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.guardedCorridorNormalizationCheckpoint, {
+    status: 'guard-still-required',
+    remainingConstraint: 'risque de rollback',
+    action: 'stabiliser avant de normaliser',
+    summary: 'Garde toujours nécessaire: stabiliser risque de rollback avant normalisation.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -1019,6 +1037,12 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     protectedMargin: 'alternative',
     nextGesture: 'plafonner le flux',
     summary: 'Allègement utile: déporter vers alternative de secours protège la marge sans promettre une sécurité totale.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.guardedCorridorNormalizationCheckpoint, {
+    status: 'monitored-normalization-possible',
+    remainingConstraint: 'alternative fragile',
+    action: 'appliquer l’allègement puis surveiller un tour',
+    summary: 'Normalisation surveillée possible: vérifier alternative fragile après allègement.',
   });
 });
 

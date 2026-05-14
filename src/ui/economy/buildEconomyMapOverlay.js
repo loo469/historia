@@ -663,6 +663,64 @@ function buildGuardedCorridorLoadRelief(rollbackGuardLoadMargin) {
   };
 }
 
+function describeNormalizationConstraint(guardedCorridorLoadRelief, rollbackGuardLoadMargin, monitoredCorridorRollbackGuard) {
+  if (guardedCorridorLoadRelief.status === 'no-relief-needed') {
+    return 'aucune contrainte visible';
+  }
+
+  if (monitoredCorridorRollbackGuard.status === 'rollback-ready-required') {
+    return 'risque de rollback';
+  }
+
+  const constraint = rollbackGuardLoadMargin.constraint ?? guardedCorridorLoadRelief.protectedMargin;
+  if (constraint === 'alternative' || constraint === 'alternative-plus-sure') {
+    return 'alternative fragile';
+  }
+
+  if (constraint === 'capacité tampon' || constraint === 'protection d’étape') {
+    return 'réserve logistique';
+  }
+
+  return 'pic de charge';
+}
+
+function buildGuardedCorridorNormalizationCheckpoint(
+  guardedCorridorLoadRelief,
+  rollbackGuardLoadMargin,
+  monitoredCorridorRollbackGuard,
+) {
+  const remainingConstraint = describeNormalizationConstraint(
+    guardedCorridorLoadRelief,
+    rollbackGuardLoadMargin,
+    monitoredCorridorRollbackGuard,
+  );
+
+  if (guardedCorridorLoadRelief.status === 'no-relief-needed') {
+    return {
+      status: 'corridor-normalized',
+      remainingConstraint,
+      action: 'normaliser sans promotion automatique',
+      summary: 'Corridor normalisé: garder la lecture active sans promotion automatique.',
+    };
+  }
+
+  if (guardedCorridorLoadRelief.status === 'relief-recommended') {
+    return {
+      status: 'monitored-normalization-possible',
+      remainingConstraint,
+      action: 'appliquer l’allègement puis surveiller un tour',
+      summary: `Normalisation surveillée possible: vérifier ${remainingConstraint} après allègement.`,
+    };
+  }
+
+  return {
+    status: 'guard-still-required',
+    remainingConstraint,
+    action: 'stabiliser avant de normaliser',
+    summary: `Garde toujours nécessaire: stabiliser ${remainingConstraint} avant normalisation.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -882,6 +940,11 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
   const monitoredCorridorRollbackGuard = buildMonitoredCorridorRollbackGuard(monitoredCorridorPromotionRisk);
   const rollbackGuardLoadMargin = buildRollbackGuardLoadMargin(monitoredCorridorRollbackGuard);
   const guardedCorridorLoadRelief = buildGuardedCorridorLoadRelief(rollbackGuardLoadMargin);
+  const guardedCorridorNormalizationCheckpoint = buildGuardedCorridorNormalizationCheckpoint(
+    guardedCorridorLoadRelief,
+    rollbackGuardLoadMargin,
+    monitoredCorridorRollbackGuard,
+  );
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -903,6 +966,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     monitoredCorridorRollbackGuard,
     rollbackGuardLoadMargin,
     guardedCorridorLoadRelief,
+    guardedCorridorNormalizationCheckpoint,
   };
 }
 
