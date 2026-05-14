@@ -472,12 +472,21 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
     },
     timingSensitivity: {
       id: 'timing-sensitivity:grain:shift-to-tools',
-      summary: 'Recommandation robuste aux hypothèses testées.',
-      status: 'robust',
+      summary: 'stable: recommandation robuste aux hypothèses testées.',
+      status: 'stable',
+      flipWarning: {
+        status: 'stable',
+        summary: 'stable',
+        cause: null,
+        scenarioId: null,
+        alternativeOptionId: null,
+        reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
+      },
       scenarios: [
         {
           id: 'delay-one-turn',
           assumption: 'retard d’un tour',
+          cause: 'delay',
           netValue: 9,
           recommendationStable: true,
           outcome: 'stable',
@@ -486,6 +495,7 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         {
           id: 'lower-capacity',
           assumption: 'capacité moindre',
+          cause: 'capacity',
           netValue: 13,
           recommendationStable: true,
           outcome: 'stable',
@@ -494,13 +504,23 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         {
           id: 'higher-effort-cost',
           assumption: 'coût légèrement plus élevé',
+          cause: 'cost',
           netValue: 13,
           recommendationStable: true,
           outcome: 'stable',
           alternativeOptionId: null,
         },
+        {
+          id: 'bottleneck-saturation',
+          assumption: 'saturation du goulot',
+          cause: 'saturation',
+          netValue: 8,
+          recommendationStable: true,
+          outcome: 'stable',
+          alternativeOptionId: null,
+        },
       ],
-      reason: 'La marge de break-even reste positive dans 3 scénarios dérivés.',
+      reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -560,12 +580,21 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity, {
     id: 'timing-sensitivity:grain:shift-to-tools',
-    summary: 'Recommandation robuste aux hypothèses testées.',
-    status: 'robust',
+    summary: 'stable: recommandation robuste aux hypothèses testées.',
+    status: 'stable',
+    flipWarning: {
+      status: 'stable',
+      summary: 'stable',
+      cause: null,
+      scenarioId: null,
+      alternativeOptionId: null,
+      reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
+    },
     scenarios: [
       {
         id: 'delay-one-turn',
         assumption: 'retard d’un tour',
+        cause: 'delay',
         netValue: 9,
         recommendationStable: true,
         outcome: 'stable',
@@ -574,6 +603,7 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       {
         id: 'lower-capacity',
         assumption: 'capacité moindre',
+        cause: 'capacity',
         netValue: 13,
         recommendationStable: true,
         outcome: 'stable',
@@ -582,17 +612,76 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       {
         id: 'higher-effort-cost',
         assumption: 'coût légèrement plus élevé',
+        cause: 'cost',
         netValue: 13,
         recommendationStable: true,
         outcome: 'stable',
         alternativeOptionId: null,
       },
+      {
+        id: 'bottleneck-saturation',
+        assumption: 'saturation du goulot',
+        cause: 'saturation',
+        netValue: 8,
+        recommendationStable: true,
+        outcome: 'stable',
+        alternativeOptionId: null,
+      },
     ],
-    reason: 'La marge de break-even reste positive dans 3 scénarios dérivés.',
+    reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
     overlay.routes[0].capacitySpendPreview.bestValuePreparation,
+  );
+});
+
+
+test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback sequence', () => {
+  const overlay = buildEconomyMapOverlay([], [
+    {
+      id: 'route-saturated',
+      name: 'Saturated Road',
+      stopCityIds: ['city-a', 'city-b'],
+      distance: 2,
+      capacityByResource: { grain: 2 },
+      transportMode: 'land',
+      riskLevel: 100,
+    },
+  ], {
+    recommendedUnlockByRouteId: {
+      'route-saturated': {
+        mobilizedByResource: { grain: 2 },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.flipWarning, {
+    status: 'switch',
+    summary: 'bascule vers grain:reserve-buffer',
+    cause: 'delay',
+    scenarioId: 'delay-one-turn',
+    alternativeOptionId: 'grain:reserve-buffer',
+    reason: 'La recommandation bascule vers grain:reserve-buffer si retard d’un tour.',
+  });
+  assert.equal(
+    overlay.routes[0].capacitySpendPreview.timingSensitivity.summary,
+    'bascule vers grain:reserve-buffer si retard d’un tour.',
+  );
+  assert.equal(overlay.routes[0].capacitySpendPreview.timingSensitivity.status, 'fragile');
+  assert.deepEqual(
+    overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
+      scenario.id,
+      scenario.cause,
+      scenario.outcome,
+      scenario.alternativeOptionId,
+    ]),
+    [
+      ['delay-one-turn', 'delay', 'switch-to-alternative', 'grain:reserve-buffer'],
+      ['lower-capacity', 'capacity', 'switch-to-alternative', 'grain:reserve-buffer'],
+      ['higher-effort-cost', 'cost', 'switch-to-alternative', 'grain:reserve-buffer'],
+      ['bottleneck-saturation', 'saturation', 'switch-to-alternative', 'grain:reserve-buffer'],
+    ],
   );
 });
 
