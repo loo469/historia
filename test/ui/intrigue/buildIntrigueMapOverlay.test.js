@@ -208,6 +208,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Cadence: attendre sans urgence.',
           reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
         },
+        monitoringMinimalResumeSignal: {
+          prerequisite: 'sufficient-margin',
+          visibleFactor: 'Données insuffisantes',
+          action: 'maintain-surveillance',
+          label: 'Signal minimal: marge suffisante.',
+          reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -255,6 +262,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               cadenceFactor: 'Données insuffisantes',
               label: 'Cadence: attendre sans urgence.',
               reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
+            },
+            monitoringMinimalResumeSignal: {
+              prerequisite: 'sufficient-margin',
+              visibleFactor: 'Données insuffisantes',
+              action: 'maintain-surveillance',
+              label: 'Signal minimal: marge suffisante.',
+              reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
             },
         monitoringChecklist: [
           {
@@ -408,6 +422,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Cadence: attendre sans urgence.',
           reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
         },
+        monitoringMinimalResumeSignal: {
+          prerequisite: 'sufficient-margin',
+          visibleFactor: 'Données insuffisantes',
+          action: 'maintain-surveillance',
+          label: 'Signal minimal: marge suffisante.',
+          reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -455,6 +476,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               cadenceFactor: 'Données insuffisantes',
               label: 'Cadence: attendre sans urgence.',
               reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
+            },
+            monitoringMinimalResumeSignal: {
+              prerequisite: 'sufficient-margin',
+              visibleFactor: 'Données insuffisantes',
+              action: 'maintain-surveillance',
+              label: 'Signal minimal: marge suffisante.',
+              reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
             },
         monitoringChecklist: [
           {
@@ -708,6 +736,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Cadence: attendre sans urgence.',
           reason: 'Aucune fenêtre sûre immédiate: maintenir la surveillance sans forcer le rythme.',
         },
+        monitoringMinimalResumeSignal: {
+          prerequisite: 'sufficient-margin',
+          visibleFactor: 'Données insuffisantes',
+          action: 'maintain-surveillance',
+          label: 'Signal minimal: marge suffisante.',
+          reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -834,6 +869,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         cadenceFactor: 'Gain confiance',
         label: 'Cadence: rafraîchir puis sweep.',
         reason: 'Qualité du signal pilote le tempo: confirmer, puis relancer court.',
+      },
+      monitoringMinimalResumeSignal: {
+        prerequisite: 'fresh-signal-required',
+        visibleFactor: 'Gain confiance',
+        action: 'wait-signal',
+        label: 'Signal minimal: donnée fraîche.',
+        reason: 'Attendre une confirmation fraîche avant de reprendre le sweep contraint.',
       },
       monitoringChecklist: [
         {
@@ -1028,6 +1070,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Cadence: sweep maintenant.',
         reason: 'Fenêtre visible encore ouverte: lancer avant le prochain tick de dérive.',
       },
+      monitoringMinimalResumeSignal: {
+        prerequisite: 'already-safe',
+        visibleFactor: 'Fenêtre sûre',
+        action: 'resume-sweep',
+        label: 'Signal minimal: reprise sûre.',
+        reason: 'La fenêtre visible suffit déjà: reprendre sans ajouter de révélation cachée.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1146,6 +1195,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       label: 'Cadence: rafraîchir puis sweep.',
       reason: 'Qualité du signal pilote le tempo: confirmer, puis relancer court.',
     },
+    monitoringMinimalResumeSignal: {
+      prerequisite: 'fresh-signal-required',
+      visibleFactor: 'Fraîcheur signal',
+      action: 'wait-signal',
+      label: 'Signal minimal: donnée fraîche.',
+      reason: 'Attendre une confirmation fraîche avant de reprendre le sweep contraint.',
+    },
     monitoringChecklist: [
       {
         signal: 'Fraîcheur signal',
@@ -1221,6 +1277,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     cadenceFactor: 'Heat',
     label: 'Cadence: espacer pour heat.',
     reason: 'Espacer les sweeps laisse la pression visible retomber avant reprise.',
+  });
+  assert.deepEqual(tooExposed.thirdSweepRecommendation.monitoringRationale.monitoringMinimalResumeSignal, {
+    prerequisite: 'heat-reduction-required',
+    visibleFactor: 'Heat',
+    action: 'reduce-heat',
+    label: 'Signal minimal: heat réduit.',
+    reason: 'Réduire le heat visible avant toute reprise de sweep.',
   });
 });
 

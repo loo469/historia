@@ -734,6 +734,47 @@ function buildMonitoringSafeCadence({ monitoringMarginResponsePriority }) {
   };
 }
 
+
+function buildMonitoringMinimalResumeSignal({ monitoringSafeCadence }) {
+  if (monitoringSafeCadence.cadence === 'sweep-now') {
+    return {
+      prerequisite: 'already-safe',
+      visibleFactor: monitoringSafeCadence.cadenceFactor,
+      action: 'resume-sweep',
+      label: 'Signal minimal: reprise sûre.',
+      reason: 'La fenêtre visible suffit déjà: reprendre sans ajouter de révélation cachée.',
+    };
+  }
+
+  if (monitoringSafeCadence.cadence === 'refresh-then-sweep') {
+    return {
+      prerequisite: 'fresh-signal-required',
+      visibleFactor: monitoringSafeCadence.cadenceFactor,
+      action: 'wait-signal',
+      label: 'Signal minimal: donnée fraîche.',
+      reason: 'Attendre une confirmation fraîche avant de reprendre le sweep contraint.',
+    };
+  }
+
+  if (monitoringSafeCadence.cadence === 'space-for-heat') {
+    return {
+      prerequisite: 'heat-reduction-required',
+      visibleFactor: 'Heat',
+      action: 'reduce-heat',
+      label: 'Signal minimal: heat réduit.',
+      reason: 'Réduire le heat visible avant toute reprise de sweep.',
+    };
+  }
+
+  return {
+    prerequisite: 'sufficient-margin',
+    visibleFactor: monitoringSafeCadence.cadenceFactor,
+    action: 'maintain-surveillance',
+    label: 'Signal minimal: marge suffisante.',
+    reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -1015,6 +1056,69 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
             state: rationale.state,
             marginalExposureAdded,
             expectedConfidenceGain,
+          }),
+        }),
+      }),
+    }),
+    monitoringMinimalResumeSignal: buildMonitoringMinimalResumeSignal({
+      monitoringSafeCadence: buildMonitoringSafeCadence({
+        monitoringMarginResponsePriority: buildMonitoringMarginResponsePriority({
+          postRecoveryMarginDecay: buildPostRecoveryMarginDecay({
+            postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+              preventiveRecoveryState: buildPreventiveRecoveryState({
+                preventiveAction: buildMonitoringPreventiveAction({
+                  state: rationale.state,
+                  driftForecast: buildMonitoringDriftForecast({
+                    state: rationale.state,
+                    marginalExposureAdded,
+                    expectedConfidenceGain,
+                  }),
+                }),
+              }),
+              preventiveAction: buildMonitoringPreventiveAction({
+                state: rationale.state,
+                driftForecast: buildMonitoringDriftForecast({
+                  state: rationale.state,
+                  marginalExposureAdded,
+                  expectedConfidenceGain,
+                }),
+              }),
+              driftForecast: buildMonitoringDriftForecast({
+                state: rationale.state,
+                marginalExposureAdded,
+                expectedConfidenceGain,
+              }),
+            }),
+            driftForecast: buildMonitoringDriftForecast({
+              state: rationale.state,
+              marginalExposureAdded,
+              expectedConfidenceGain,
+            }),
+          }),
+          postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+            preventiveRecoveryState: buildPreventiveRecoveryState({
+              preventiveAction: buildMonitoringPreventiveAction({
+                state: rationale.state,
+                driftForecast: buildMonitoringDriftForecast({
+                  state: rationale.state,
+                  marginalExposureAdded,
+                  expectedConfidenceGain,
+                }),
+              }),
+            }),
+            preventiveAction: buildMonitoringPreventiveAction({
+              state: rationale.state,
+              driftForecast: buildMonitoringDriftForecast({
+                state: rationale.state,
+                marginalExposureAdded,
+                expectedConfidenceGain,
+              }),
+            }),
+            driftForecast: buildMonitoringDriftForecast({
+              state: rationale.state,
+              marginalExposureAdded,
+              expectedConfidenceGain,
+            }),
           }),
         }),
       }),
