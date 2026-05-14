@@ -1030,6 +1030,38 @@ export function buildResidualCultureWindowClosureThreat(residualCultureFollowUpW
   };
 }
 
+export function buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk) {
+  const hasOtherVisibleFocus = postBundleCumulativeRisk.remainingPriority !== 'aucun'
+    && residualCultureWindowClosureThreat.status === 'none';
+
+  if (residualCultureWindowClosureThreat.status === 'manageable' || residualCultureWindowClosureThreat.status === 'likely-close') {
+    return {
+      recommendation: 'reinforce-now',
+      dominantConstraint: residualCultureWindowClosureThreat.visibleConstraint,
+      riskAvoided: residualCultureWindowClosureThreat.status === 'likely-close'
+        ? `évite que ${residualCultureWindowClosureThreat.visibleConstraint} ferme la fenêtre de suivi`
+        : `évite de perdre une fenêtre encore exploitable sous ${residualCultureWindowClosureThreat.visibleConstraint}`,
+      summary: 'renforcer maintenant: la fenêtre reste utile mais socialement coûteuse',
+    };
+  }
+
+  if (hasOtherVisibleFocus) {
+    return {
+      recommendation: 'keep-support',
+      dominantConstraint: 'autre foyer visible',
+      riskAvoided: `évite de détourner le support du risque ${postBundleCumulativeRisk.remainingPriority}`,
+      summary: 'garder le support: la fenêtre résiduelle ne subit pas de pression notable',
+    };
+  }
+
+  return {
+    recommendation: 'wait-neutral',
+    dominantConstraint: residualCultureWindowClosureThreat.visibleConstraint,
+    riskAvoided: 'aucun coût notable évité par un renfort immédiat',
+    summary: 'attendre sans coût notable: la fenêtre ne réclame pas de support dédié',
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1088,6 +1120,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureRiskNextAction = buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement);
   const residualCultureActionPayoff = buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction);
   const residualCultureFollowUpWindow = buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction);
+  const residualCultureWindowClosureThreat = buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1102,7 +1135,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureRiskNextAction,
     residualCultureActionPayoff,
     residualCultureFollowUpWindow,
-    residualCultureWindowClosureThreat: buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow),
+    residualCultureWindowClosureThreat,
+    residualCultureSupportAllocationChoice: buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk),
   };
 }
 
