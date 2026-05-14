@@ -171,6 +171,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           direction: 'no-change',
           reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
         },
+        preventiveAction: {
+          action: 'hold-monitoring',
+          targetSignal: null,
+          windowEffect: 'maintains-safe-window',
+          reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -181,6 +187,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               state: 'stable-for-now',
               direction: 'no-change',
               reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
+            },
+            preventiveAction: {
+              action: 'hold-monitoring',
+              targetSignal: null,
+              windowEffect: 'maintains-safe-window',
+              reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
             },
         monitoringChecklist: [
           {
@@ -297,6 +309,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           direction: 'no-change',
           reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
         },
+        preventiveAction: {
+          action: 'hold-monitoring',
+          targetSignal: null,
+          windowEffect: 'maintains-safe-window',
+          reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -307,6 +325,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               state: 'stable-for-now',
               direction: 'no-change',
               reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
+            },
+            preventiveAction: {
+              action: 'hold-monitoring',
+              targetSignal: null,
+              windowEffect: 'maintains-safe-window',
+              reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
             },
         monitoringChecklist: [
           {
@@ -523,6 +547,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           direction: 'no-change',
           reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
         },
+        preventiveAction: {
+          action: 'hold-monitoring',
+          targetSignal: null,
+          windowEffect: 'maintains-safe-window',
+          reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -612,6 +642,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         state: 'drift-risk',
         direction: 'advances-next-sweep',
         reason: 'Des signaux frais peuvent faire passer le gain attendu au-dessus de +3.',
+      },
+      preventiveAction: {
+        action: 'wait-fresh-signal',
+        targetSignal: 'Gain confiance',
+        windowEffect: 'advances-safe-window',
+        reason: 'Attendre des signaux frais peut transformer un gain marginal en reprise sûre.',
       },
       monitoringChecklist: [
         {
@@ -769,6 +805,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         direction: 'retards-next-sweep',
         reason: 'Si la fenêtre sûre se referme, le prochain sweep doit attendre un nouveau créneau low-risk.',
       },
+      preventiveAction: {
+        action: 'secure-exposure',
+        targetSignal: 'Fenêtre sûre',
+        windowEffect: 'maintains-safe-window',
+        reason: 'Sécuriser l’exposition maintenant garde la fenêtre sûre ouverte sans révéler de cible.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -849,6 +891,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       state: 'drift-risk',
       direction: 'retards-next-sweep',
       reason: 'Le signal risque de périmer avant confirmation, ce qui retarde la prochaine relance sûre.',
+    },
+    preventiveAction: {
+      action: 'wait-fresh-signal',
+      targetSignal: 'Fraîcheur signal',
+      windowEffect: 'delays-safe-window',
+      reason: 'Attendre un signal frais évite de relancer sur une information qui dérive.',
     },
     monitoringChecklist: [
       {

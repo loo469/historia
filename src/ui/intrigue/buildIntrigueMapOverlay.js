@@ -433,6 +433,70 @@ function buildMonitoringDriftForecast({ state, marginalExposureAdded, expectedCo
   };
 }
 
+
+function buildMonitoringPreventiveAction({ state, driftForecast }) {
+  if (driftForecast.state !== 'drift-risk') {
+    return {
+      action: 'hold-monitoring',
+      targetSignal: null,
+      windowEffect: 'maintains-safe-window',
+      reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
+    };
+  }
+
+  if (state === 'safe-action-available') {
+    return {
+      action: 'secure-exposure',
+      targetSignal: driftForecast.signal,
+      windowEffect: 'maintains-safe-window',
+      reason: 'Sécuriser l’exposition maintenant garde la fenêtre sûre ouverte sans révéler de cible.',
+    };
+  }
+
+  if (state === 'await-fresh-signal') {
+    return {
+      action: 'wait-fresh-signal',
+      targetSignal: driftForecast.signal,
+      windowEffect: 'delays-safe-window',
+      reason: 'Attendre un signal frais évite de relancer sur une information qui dérive.',
+    };
+  }
+
+  if (state === 'heat-too-high') {
+    return {
+      action: 'reduce-heat',
+      targetSignal: driftForecast.signal,
+      windowEffect: 'delays-safe-window',
+      reason: 'Réduire le heat avant reprise protège la fenêtre sûre contre une exposition trop haute.',
+    };
+  }
+
+  if (state === 'wait-for-cooldown') {
+    return {
+      action: 'secure-exposure',
+      targetSignal: driftForecast.signal,
+      windowEffect: 'advances-safe-window',
+      reason: 'Sécuriser le gap visible pendant le cooldown peut avancer la prochaine reprise sûre.',
+    };
+  }
+
+  if (state === 'low-confidence-gain') {
+    return {
+      action: 'wait-fresh-signal',
+      targetSignal: driftForecast.signal,
+      windowEffect: 'advances-safe-window',
+      reason: 'Attendre des signaux frais peut transformer un gain marginal en reprise sûre.',
+    };
+  }
+
+  return {
+    action: 'delay-sweep',
+    targetSignal: driftForecast.signal,
+    windowEffect: 'delays-safe-window',
+    reason: 'Retarder le sweep évite de casser la fenêtre sûre sur une dérive non stabilisée.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -522,6 +586,14 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
       state: rationale.state,
       marginalExposureAdded,
       expectedConfidenceGain,
+    }),
+    preventiveAction: buildMonitoringPreventiveAction({
+      state: rationale.state,
+      driftForecast: buildMonitoringDriftForecast({
+        state: rationale.state,
+        marginalExposureAdded,
+        expectedConfidenceGain,
+      }),
     }),
   };
 }
