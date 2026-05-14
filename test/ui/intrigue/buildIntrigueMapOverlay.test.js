@@ -148,6 +148,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           prepareThirdSweep: false,
           marginalExposureAdded: 0,
           expectedConfidenceGain: 0,
+          monitoringRationale: {
+            state: 'surveillance-active-sufficient',
+            monitoringPreferred: true,
+            signalFreshness: 'insufficient',
+            heatState: 'stable',
+            tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
+          },
           rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
         summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
@@ -205,6 +212,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           prepareThirdSweep: false,
           marginalExposureAdded: 0,
           expectedConfidenceGain: 0,
+          monitoringRationale: {
+            state: 'surveillance-active-sufficient',
+            monitoringPreferred: true,
+            signalFreshness: 'insufficient',
+            heatState: 'stable',
+            tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
+          },
           rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
         summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
@@ -362,6 +376,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
       prepareThirdSweep: false,
       marginalExposureAdded: 0,
       expectedConfidenceGain: 0,
+      monitoringRationale: {
+        state: 'surveillance-active-sufficient',
+        monitoringPreferred: true,
+        signalFreshness: 'insufficient',
+        heatState: 'stable',
+        tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
+      },
       rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
     },
     summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
@@ -411,6 +432,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     prepareThirdSweep: false,
     marginalExposureAdded: 9,
     expectedConfidenceGain: 3,
+    monitoringRationale: {
+      state: 'low-confidence-gain',
+      monitoringPreferred: true,
+      signalFreshness: 'weak',
+      heatState: 'contained',
+      tradeoff: 'Le gain de confiance restant est inférieur au coût d’exposition marginal.',
+    },
     rationale: 'Arrêter après la seconde passe: le gain restant serait trop faible par rapport à l’exposition marginale.',
   });
   assert.deepEqual(hot.lowExposureSweepConfidencePreview.secondSweepCandidates, [
@@ -526,6 +554,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
     prepareThirdSweep: true,
     marginalExposureAdded: 9,
     expectedConfidenceGain: 14,
+    monitoringRationale: {
+      state: 'safe-action-available',
+      monitoringPreferred: false,
+      signalFreshness: 'fresh-enough',
+      heatState: 'contained',
+      tradeoff: 'Le gain de confiance attendu dépasse l’exposition marginale; ne pas rester inactif.',
+    },
     rationale: 'Préparer une troisième passe prudente: 2 inconnues resteraient et le gain de confiance attendu dépasse l’exposition marginale.',
   });
 });
@@ -566,6 +601,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     explanation: 'La couverture utile est déjà lisible; attendre un signal frais évite une exposition gratuite.',
   });
   assert.equal(needsSignal.thirdSweepRecommendation.state, 'monitor-only');
+  assert.deepEqual(needsSignal.thirdSweepRecommendation.monitoringRationale, {
+    state: 'await-fresh-signal',
+    monitoringPreferred: true,
+    signalFreshness: 'needs-refresh',
+    heatState: 'contained',
+    tradeoff: 'Sans signal frais, une nouvelle sweep ajouterait de l’exposition sans gain fiable.',
+  });
 
   const tooExposed = buildIntrigueMapOverlay([
     ...Array.from({ length: 6 }, (_, index) => ({
@@ -598,6 +640,7 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
   assert.equal(tooExposed.secondSweepStopCondition.continueNow, false);
   assert.match(tooExposed.secondSweepStopCondition.stopSignal, /Stop si le second sweep ajoute/);
   assert.equal(tooExposed.thirdSweepRecommendation.state, 'stop-after-second');
+  assert.equal(tooExposed.thirdSweepRecommendation.monitoringRationale.state, 'heat-too-high');
 });
 
 test('buildIntrigueMapOverlay rejects invalid inputs', () => {
