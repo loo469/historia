@@ -9277,6 +9277,44 @@ function buildTopClimateDebtPaymentExplanation(decisionDebtRanking, decisionWind
   };
 }
 
+function buildTopClimateDebtNextWindowEffect(topClimateDebtPaymentExplanation, decisionDebtRanking, decisionWindow) {
+  const topChoice = decisionDebtRanking?.items?.[0] ?? null;
+
+  if (!topClimateDebtPaymentExplanation || !topChoice || !decisionWindow) {
+    return null;
+  }
+
+  const conflictCount = topChoice.signals?.conflicts?.length ?? decisionWindow.conflicts?.length ?? 0;
+  const nextWindowStatus = topChoice.key === 'act-now' && conflictCount === 0
+    ? 'plus sûre'
+    : topChoice.key === 'wait-one-turn'
+      ? 'inchangée'
+      : 'encore fragile';
+  const marginRecovered = topChoice.estimatedDownstreamDebt === 'basse'
+    ? 'marge récupérée pour le prochain arbitrage climat'
+    : topChoice.estimatedDownstreamDebt === 'modérée'
+      ? 'marge partielle récupérée avant le prochain arbitrage'
+      : 'marge limitée: dette aval encore haute';
+  const pressureEffect = topClimateDebtPaymentExplanation.pressureReduced;
+  const cascadeEffect = topClimateDebtPaymentExplanation.cascadeAvoided;
+  const statusReason = nextWindowStatus === 'plus sûre'
+    ? 'la pression principale baisse sans conflit externe visible'
+    : nextWindowStatus === 'inchangée'
+      ? 'le paiement garde surtout la flexibilité sans réduire toute la dette'
+      : 'des conflits ou une dette aval élevée restent à surveiller';
+
+  return {
+    choiceKey: topChoice.key,
+    status: nextWindowStatus,
+    pressureEffect,
+    cascadeEffect,
+    marginRecovered,
+    statusReason,
+    summary: `Fenêtre suivante ${nextWindowStatus}: ${pressureEffect}; ${cascadeEffect}; ${marginRecovered}.`,
+    oneSentence: `Après paiement #1, la fenêtre suivante est ${nextWindowStatus}: ${statusReason}.`,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9323,6 +9361,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       decisionWindow: null,
       decisionDebtRanking: { state: 'neutral', items: [], summary: 'Aucun classement de dette climat: aucune fenêtre de décision active.', uncertainty: 'données insuffisantes' },
       topClimateDebtPaymentExplanation: null,
+      topClimateDebtNextWindowEffect: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9363,6 +9402,11 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
   const decisionWindow = nextClimateCommitment?.decisionWindow ?? null;
   const decisionDebtRanking = buildClimateDecisionDebtRanking(decisionWindow);
   const topClimateDebtPaymentExplanation = buildTopClimateDebtPaymentExplanation(decisionDebtRanking, decisionWindow);
+  const topClimateDebtNextWindowEffect = buildTopClimateDebtNextWindowEffect(
+    topClimateDebtPaymentExplanation,
+    decisionDebtRanking,
+    decisionWindow,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -9372,6 +9416,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     decisionWindow,
     decisionDebtRanking,
     topClimateDebtPaymentExplanation,
+    topClimateDebtNextWindowEffect,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9402,6 +9447,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.decisionWindow ? `<small><b>Synergies/conflits</b> · ${[...view.decisionWindow.synergies, ...view.decisionWindow.conflicts].map((signal) => `${signal.domain}: ${signal.label}`).join(' | ')}</small>` : ''}
       ${view.decisionDebtRanking?.items?.length ? `<small><b>Dette aval classée</b> · ${view.decisionDebtRanking.items.map((item) => `${item.rank}. ${item.label}: dette ${item.estimatedDownstreamDebt}, ${item.mainRisk}`).join(' | ')} · ${view.decisionDebtRanking.uncertainty}</small>` : ''}
       ${view.topClimateDebtPaymentExplanation ? `<small><b>Pourquoi payer #1</b> · ${view.topClimateDebtPaymentExplanation.reason} ${view.topClimateDebtPaymentExplanation.riskIfDeferred}</small>` : ''}
+      ${view.topClimateDebtNextWindowEffect ? `<small><b>Effet fenêtre suivante</b> · ${view.topClimateDebtNextWindowEffect.summary} ${view.topClimateDebtNextWindowEffect.oneSentence}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
