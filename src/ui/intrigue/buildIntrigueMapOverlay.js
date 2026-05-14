@@ -375,6 +375,64 @@ function buildMonitoringChecklistFocus({ state }) {
   };
 }
 
+
+function buildMonitoringDriftForecast({ state, marginalExposureAdded, expectedConfidenceGain }) {
+  const exposure = clampPercent(marginalExposureAdded);
+  const confidenceGain = clampPercent(expectedConfidenceGain);
+
+  if (state === 'safe-action-available') {
+    return {
+      signal: 'Fenêtre sûre',
+      state: 'drift-risk',
+      direction: 'retards-next-sweep',
+      reason: 'Si la fenêtre sûre se referme, le prochain sweep doit attendre un nouveau créneau low-risk.',
+    };
+  }
+
+  if (state === 'await-fresh-signal') {
+    return {
+      signal: 'Fraîcheur signal',
+      state: 'drift-risk',
+      direction: 'retards-next-sweep',
+      reason: 'Le signal risque de périmer avant confirmation, ce qui retarde la prochaine relance sûre.',
+    };
+  }
+
+  if (state === 'heat-too-high') {
+    return {
+      signal: 'Heat',
+      state: 'drift-risk',
+      direction: 'retards-next-sweep',
+      reason: `Un heat encore haut maintient +${exposure} exposition marginale hors fenêtre sûre.`,
+    };
+  }
+
+  if (state === 'wait-for-cooldown') {
+    return {
+      signal: 'Gap visible',
+      state: 'drift-risk',
+      direction: 'advances-next-sweep',
+      reason: 'Si le gap reste visible pendant le cooldown, la prochaine fenêtre sûre arrive plus tôt.',
+    };
+  }
+
+  if (state === 'low-confidence-gain') {
+    return {
+      signal: 'Gain confiance',
+      state: 'drift-risk',
+      direction: 'advances-next-sweep',
+      reason: `Des signaux frais peuvent faire passer le gain attendu au-dessus de +${confidenceGain}.`,
+    };
+  }
+
+  return {
+    signal: null,
+    state: 'stable-for-now',
+    direction: 'no-change',
+    reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -460,6 +518,11 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
       expectedConfidenceGain,
     }),
     monitoringChecklistFocus: buildMonitoringChecklistFocus({ state: rationale.state }),
+    monitoringDriftForecast: buildMonitoringDriftForecast({
+      state: rationale.state,
+      marginalExposureAdded,
+      expectedConfidenceGain,
+    }),
   };
 }
 

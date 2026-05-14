@@ -165,10 +165,22 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           state: 'stable-for-now',
           reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
         },
+        monitoringDriftForecast: {
+          signal: null,
+          state: 'stable-for-now',
+          direction: 'no-change',
+          reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
               reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+            },
+            monitoringDriftForecast: {
+              signal: null,
+              state: 'stable-for-now',
+              direction: 'no-change',
+              reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
             },
         monitoringChecklist: [
           {
@@ -279,10 +291,22 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           state: 'stable-for-now',
           reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
         },
+        monitoringDriftForecast: {
+          signal: null,
+          state: 'stable-for-now',
+          direction: 'no-change',
+          reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
               reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+            },
+            monitoringDriftForecast: {
+              signal: null,
+              state: 'stable-for-now',
+              direction: 'no-change',
+              reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
             },
         monitoringChecklist: [
           {
@@ -493,6 +517,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           state: 'stable-for-now',
           reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
         },
+        monitoringDriftForecast: {
+          signal: null,
+          state: 'stable-for-now',
+          direction: 'no-change',
+          reason: 'Aucune dérive probable avant le prochain signal: le calendrier de sweep reste inchangé.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -576,6 +606,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         signal: 'Signaux frais',
         state: 'earliest-fragile',
         reason: 'Dépendance non sécurisée: sans signaux convergents, le gain reste marginal.',
+      },
+      monitoringDriftForecast: {
+        signal: 'Gain confiance',
+        state: 'drift-risk',
+        direction: 'advances-next-sweep',
+        reason: 'Des signaux frais peuvent faire passer le gain attendu au-dessus de +3.',
       },
       monitoringChecklist: [
         {
@@ -727,6 +763,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         state: 'earliest-fragile',
         reason: 'Seuil proche: si la fenêtre se ferme, la relance sûre disparaît en premier.',
       },
+      monitoringDriftForecast: {
+        signal: 'Fenêtre sûre',
+        state: 'drift-risk',
+        direction: 'retards-next-sweep',
+        reason: 'Si la fenêtre sûre se referme, le prochain sweep doit attendre un nouveau créneau low-risk.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -801,6 +843,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       signal: 'Fraîcheur signal',
       state: 'earliest-fragile',
       reason: 'Durée restante: le signal périme avant que la fenêtre low-risk soit confirmée.',
+    },
+    monitoringDriftForecast: {
+      signal: 'Fraîcheur signal',
+      state: 'drift-risk',
+      direction: 'retards-next-sweep',
+      reason: 'Le signal risque de périmer avant confirmation, ce qui retarde la prochaine relance sûre.',
     },
     monitoringChecklist: [
       {
