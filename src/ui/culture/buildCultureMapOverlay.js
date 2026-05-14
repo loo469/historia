@@ -1158,6 +1158,35 @@ export function buildResidualCultureReevaluationDelayCost(residualCultureReevalu
   };
 }
 
+export function buildResidualCultureMinimalDelayedSupport(residualCultureReevaluationDelayCost) {
+  const visibleConstraint = residualCultureReevaluationDelayCost.visibleConstraint;
+
+  if (residualCultureReevaluationDelayCost.status === 'neutral-wait') {
+    return {
+      status: 'none-needed',
+      visibleConstraint,
+      recommendedSupport: 'aucun support minimal requis',
+      microDecision: null,
+    };
+  }
+
+  if (residualCultureReevaluationDelayCost.status === 'manageable-cost') {
+    return {
+      status: 'light-support-enough',
+      visibleConstraint,
+      recommendedSupport: `support léger suffisant sur ${visibleConstraint}`,
+      microDecision: residualCultureReevaluationDelayCost.microDecision,
+    };
+  }
+
+  return {
+    status: 'immediate-support-required',
+    visibleConstraint,
+    recommendedSupport: `soutien immédiat requis pour stabiliser ${visibleConstraint}`,
+    microDecision: residualCultureReevaluationDelayCost.microDecision,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1220,6 +1249,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureSupportAllocationChoice = buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk);
   const residualCulturePostAllocationStability = buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat);
   const residualCultureReevaluationTrigger = buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability);
+  const residualCultureReevaluationDelayCost = buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1238,7 +1268,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureSupportAllocationChoice,
     residualCulturePostAllocationStability,
     residualCultureReevaluationTrigger,
-    residualCultureReevaluationDelayCost: buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger),
+    residualCultureReevaluationDelayCost,
+    residualCultureMinimalDelayedSupport: buildResidualCultureMinimalDelayedSupport(residualCultureReevaluationDelayCost),
   };
 }
 

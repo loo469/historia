@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -971,6 +971,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         delayConsequence: 'coût social gérable: fatigue de médiation peut réduire l’accalmie',
         microDecision: 'revoir le support si fatigue de médiation remonte',
       },
+      residualCultureMinimalDelayedSupport: {
+        status: 'light-support-enough',
+        visibleConstraint: 'fatigue de médiation',
+        recommendedSupport: 'support léger suffisant sur fatigue de médiation',
+        microDecision: 'revoir le support si fatigue de médiation remonte',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1094,6 +1100,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         status: 'neutral-wait',
         visibleConstraint: 'aucune contrainte visible',
         delayConsequence: 'attente neutre: aucun coût social visible à court terme',
+        microDecision: null,
+      },
+      residualCultureMinimalDelayedSupport: {
+        status: 'none-needed',
+        visibleConstraint: 'aucune contrainte visible',
+        recommendedSupport: 'aucun support minimal requis',
         microDecision: null,
       },
     },
@@ -1620,6 +1632,53 @@ test('buildResidualCultureReevaluationDelayCost covers neutral, manageable, and 
       status: 'worsening-fragility',
       visibleConstraint: 'support local',
       delayConsequence: 'fragilité qui s’aggrave: support local peut rouvrir la dette avant correction',
+      microDecision: 'sécuriser un support local avant tout suivi',
+    },
+  );
+});
+
+test('buildResidualCultureMinimalDelayedSupport covers none, light, and immediate support', () => {
+  assert.deepEqual(
+    buildResidualCultureMinimalDelayedSupport({
+      status: 'neutral-wait',
+      visibleConstraint: 'aucune contrainte visible',
+      delayConsequence: 'attente neutre: aucun coût social visible à court terme',
+      microDecision: null,
+    }),
+    {
+      status: 'none-needed',
+      visibleConstraint: 'aucune contrainte visible',
+      recommendedSupport: 'aucun support minimal requis',
+      microDecision: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureMinimalDelayedSupport({
+      status: 'manageable-cost',
+      visibleConstraint: 'fatigue de médiation',
+      delayConsequence: 'coût social gérable: fatigue de médiation peut réduire l’accalmie',
+      microDecision: 'revoir le support si fatigue de médiation remonte',
+    }),
+    {
+      status: 'light-support-enough',
+      visibleConstraint: 'fatigue de médiation',
+      recommendedSupport: 'support léger suffisant sur fatigue de médiation',
+      microDecision: 'revoir le support si fatigue de médiation remonte',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureMinimalDelayedSupport({
+      status: 'worsening-fragility',
+      visibleConstraint: 'support local',
+      delayConsequence: 'fragilité qui s’aggrave: support local peut rouvrir la dette avant correction',
+      microDecision: 'sécuriser un support local avant tout suivi',
+    }),
+    {
+      status: 'immediate-support-required',
+      visibleConstraint: 'support local',
+      recommendedSupport: 'soutien immédiat requis pour stabiliser support local',
       microDecision: 'sécuriser un support local avant tout suivi',
     },
   );
