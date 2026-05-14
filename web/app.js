@@ -9722,6 +9722,54 @@ function buildClimateSecureWindowVsReserveComparison(safestClimateFollowThroughA
   };
 }
 
+function buildClimateReserveNearTermWindowCostWarning(climateSecureWindowVsReserveComparison, decisionWindow, climateRiskReboundAfterTopPayoff) {
+  if (!climateSecureWindowVsReserveComparison) {
+    return null;
+  }
+
+  const constraintText = `${climateSecureWindowVsReserveComparison.dominantConstraint ?? ''} ${climateSecureWindowVsReserveComparison.summary ?? ''}`.toLowerCase();
+  const visibleConstraint = constraintText.includes('cascade')
+    ? 'cascade voisine'
+    : constraintText.includes('conflit') || constraintText.includes('timing')
+      ? 'conflit de timing'
+      : constraintText.includes('saison')
+        ? 'saison'
+        : constraintText.includes('pression régionale') || constraintText.includes('deadline')
+          ? 'pression régionale'
+          : constraintText.includes('fenêtre')
+            ? 'fenêtre restaurée'
+            : 'dette secondaire';
+  const keepingReserve = climateSecureWindowVsReserveComparison.state === 'garder réserve';
+  const shouldSecure = climateSecureWindowVsReserveComparison.state === 'sécuriser maintenant';
+  const windowThreatened = decisionWindow?.state === 'urgent-window' || climateRiskReboundAfterTopPayoff?.state === 'rebond fort';
+  const state = !keepingReserve && !shouldSecure
+    ? 'aucun coût proche'
+    : shouldSecure && windowThreatened
+      ? 'fenêtre proche menacée'
+      : shouldSecure
+        ? 'coût acceptable'
+        : windowThreatened
+          ? 'coût acceptable'
+          : 'aucun coût proche';
+  const recommendedGesture = state === 'fenêtre proche menacée'
+    ? 'sécuriser la fenêtre maintenant'
+    : state === 'coût acceptable'
+      ? 'réserver un paiement court au prochain tour'
+      : 'aucun geste immédiat';
+  const summary = state === 'aucun coût proche'
+    ? `Réserve neutre: aucun coût de fenêtre proche visible; contrainte ${visibleConstraint}.`
+    : `${state}: garder la réserve expose ${visibleConstraint}; geste: ${recommendedGesture}.`;
+
+  return {
+    state,
+    visibleConstraint,
+    recommendedGesture,
+    reserveChoice: climateSecureWindowVsReserveComparison.state,
+    windowState: decisionWindow?.state ?? null,
+    summary,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9776,6 +9824,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       restoredClimateDeadlineTradeoffWarning: null,
       safestClimateFollowThroughAfterDeadlineTradeoff: null,
       climateSecureWindowVsReserveComparison: null,
+      climateReserveNearTermWindowCostWarning: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9856,6 +9905,11 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     climateRiskReboundAfterTopPayoff,
     decisionWindow,
   );
+  const climateReserveNearTermWindowCostWarning = buildClimateReserveNearTermWindowCostWarning(
+    climateSecureWindowVsReserveComparison,
+    decisionWindow,
+    climateRiskReboundAfterTopPayoff,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -9873,6 +9927,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     restoredClimateDeadlineTradeoffWarning,
     safestClimateFollowThroughAfterDeadlineTradeoff,
     climateSecureWindowVsReserveComparison,
+    climateReserveNearTermWindowCostWarning,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9911,6 +9966,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.restoredClimateDeadlineTradeoffWarning ? `<small><b>Alerte tradeoff deadline</b> · ${view.restoredClimateDeadlineTradeoffWarning.summary}</small>` : ''}
       ${view.safestClimateFollowThroughAfterDeadlineTradeoff ? `<small><b>Follow-through sûr</b> · ${view.safestClimateFollowThroughAfterDeadlineTradeoff.summary} ${view.safestClimateFollowThroughAfterDeadlineTradeoff.reason}</small>` : ''}
       ${view.climateSecureWindowVsReserveComparison ? `<small><b>Sécuriser vs réserve</b> · ${view.climateSecureWindowVsReserveComparison.summary}</small>` : ''}
+      ${view.climateReserveNearTermWindowCostWarning ? `<small><b>Coût réserve court terme</b> · ${view.climateReserveNearTermWindowCostWarning.summary}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
