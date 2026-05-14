@@ -387,6 +387,47 @@ function buildFlipActionability(flipScenario, opportunityCostComparison, capacit
   };
 }
 
+function buildPostSalvageDecisionComparison(postSalvageDecisionAlert, delayOpportunityCost) {
+  if (postSalvageDecisionAlert.status === 'no-additional-decision') {
+    return {
+      status: 'neutral',
+      confirmNow: 'continuer sans coût d’attente notable',
+      wait: 'temporiser reste acceptable tant que la marge nette reste positive',
+      recommendation: 'continue',
+      dominantConstraint: postSalvageDecisionAlert.mainConstraint,
+      waitTurnsDurableLoss: false,
+      summary: 'Neutre: aucun coût d’attente notable tant que la marge reste positive.',
+    };
+  }
+
+  const remainingCost = delayOpportunityCost.salvageAction?.remainingCost ?? delayOpportunityCost.cost;
+  const waitCost = delayOpportunityCost.cost + remainingCost;
+  const waitTurnsDurableLoss = postSalvageDecisionAlert.recommendation !== 'secure-minimal-investment';
+  const confirmNowByRecommendation = {
+    'abandon-sequence': 'abandonner ou inverser immédiatement pour éviter une perte durable',
+    'invert-durably': `confirmer l’inversion vers ${delayOpportunityCost.salvageAction?.alternativeOptionId ?? 'l’alternative'}`,
+    'secure-minimal-investment': 'confirmer le complément minimal avant nouvelle dépense',
+  };
+  const waitByRecommendation = {
+    'abandon-sequence': `attendre ajoute ${waitCost} coût et fige la perte durable`,
+    'invert-durably': `attendre ajoute ${waitCost} coût et rend l’alternative plus sûre durablement`,
+    'secure-minimal-investment': `attendre ajoute ${waitCost} coût avant de retrouver une marge`,
+  };
+
+  return {
+    status: waitTurnsDurableLoss ? 'wait-dangerous' : 'confirm-beneficial',
+    confirmNow: confirmNowByRecommendation[postSalvageDecisionAlert.recommendation],
+    wait: waitByRecommendation[postSalvageDecisionAlert.recommendation],
+    recommendation: postSalvageDecisionAlert.recommendation,
+    dominantConstraint: postSalvageDecisionAlert.mainConstraint,
+    waitCost,
+    waitTurnsDurableLoss,
+    summary: waitTurnsDurableLoss
+      ? `${confirmNowByRecommendation[postSalvageDecisionAlert.recommendation]}: temporiser transforme la décision en perte durable.`
+      : `${confirmNowByRecommendation[postSalvageDecisionAlert.recommendation]}: temporiser augmente seulement le coût de reprise.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -590,6 +631,10 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     capacityCost,
   );
   const postSalvageDecisionAlert = buildPostSalvageDecisionAlert(delayOpportunityCost.salvageAction);
+  const postSalvageDecisionComparison = buildPostSalvageDecisionComparison(
+    postSalvageDecisionAlert,
+    delayOpportunityCost,
+  );
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -603,6 +648,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     actionableAdvice: actionability.advice,
     delayOpportunityCost,
     postSalvageDecisionAlert,
+    postSalvageDecisionComparison,
   };
 }
 
