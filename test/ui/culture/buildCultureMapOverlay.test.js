@@ -804,6 +804,33 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         mitigation: 'médiation ultérieure recommandée avant d’empiler un troisième soutien',
       },
     ],
+    stabilizationDebtSummary: {
+      status: 'open',
+      count: 3,
+      debts: [
+        {
+          debtId: 'shared-marsh:debt:dependency:shared-marsh:culture-marsh:bundle:guided-opening',
+          type: 'bundle-dependency',
+          cause: 'appliquer le second soutien seulement après stabilisation du premier bundle',
+          urgency: 'medium',
+          nextAction: 'séquencer les supports avant tout nouveau bundle',
+        },
+        {
+          debtId: 'shared-marsh:debt:incompatibility:shared-marsh:culture-marsh:bundle:guided-opening',
+          type: 'bundle-incompatibility',
+          cause: 'ouverture + / cohésion sous surveillance',
+          urgency: 'medium',
+          nextAction: 'médiation ultérieure recommandée avant d’empiler un troisième soutien',
+        },
+        {
+          debtId: 'shared-marsh:debt:mediation:isolement du support',
+          type: 'regional-mediation',
+          cause: 'risque restant: isolement du support',
+          urgency: 'medium',
+          nextAction: 'surveiller les relais savants et le rythme d’ouverture',
+        },
+      ],
+    },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
   assert.deepEqual(stable.supportBundles, undefined);
@@ -849,6 +876,11 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
     mediationRegionIds: [],
     dependencies: [],
     incompatibilities: [],
+    stabilizationDebtSummary: {
+      status: 'neutral',
+      count: 0,
+      debts: [],
+    },
     summary: 'stabilisation complète: aucun second soutien requis',
   });
 });
