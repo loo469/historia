@@ -9,6 +9,7 @@ import {
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanConfidenceSignalCue,
+  buildMiniPlanDecisionReversibilityCue,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -1993,6 +1994,24 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
         ),
         buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
       ),
+      miniPlanDecisionReversibilityCue: buildMiniPlanDecisionReversibilityCue(
+        buildMiniPlanConfidenceSignalCue(
+          buildMiniPlanReturnProtectionStatus(
+            buildMiniPlanFallbackReturnCue(
+              buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
+              buildMiniPlanRivalResponseComparison(null, []),
+            ),
+            buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
+            buildMiniPlanRivalResponseComparison(null, []),
+          ),
+          buildMiniPlanFallbackReturnCue(
+            buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
+            buildMiniPlanRivalResponseComparison(null, []),
+          ),
+          buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
+        ),
+        buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
+      ),
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -2043,6 +2062,10 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanFallbackReturnCue,
     miniPlanRivalResponseFallback,
   );
+  const miniPlanDecisionReversibilityCue = buildMiniPlanDecisionReversibilityCue(
+    miniPlanConfidenceSignalCue,
+    miniPlanRivalResponseFallback,
+  );
 
   return {
     fallback: {
@@ -2067,6 +2090,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanFallbackReturnCue,
       miniPlanReturnProtectionStatus,
       miniPlanConfidenceSignalCue,
+      miniPlanDecisionReversibilityCue,
     },
     safetyReason,
     crossDomainBlocker,
@@ -2086,7 +2110,8 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanFallbackReturnCue,
     miniPlanReturnProtectionStatus,
     miniPlanConfidenceSignalCue,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}).`,
+    miniPlanDecisionReversibilityCue,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}).`,
     empty: false,
   };
 }
@@ -2149,9 +2174,13 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const confidenceSignalLabel = confidenceSignal && !confidenceSignal.empty
     ? `${confidenceSignal.label}: ${confidenceSignal.signal} · ${confidenceSignal.waitCost}`
     : 'confiance: non évaluée';
+  const reversibility = fallback.miniPlanDecisionReversibilityCue;
+  const reversibilityLabel = reversibility && !reversibility.empty
+    ? `réversibilité: ${reversibility.label} · ${reversibility.constraint}${reversibility.nextStep ? ` · ${reversibility.nextStep}` : ''}`
+    : 'réversibilité: non évaluée';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="24" rx="1.2"></rect>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="25.2" rx="1.2"></rect>
       <text class="atlas-military-fallback-order__label" x="23.2" y="59.1">repli: ${fallback.order}</text>
       <text class="atlas-military-fallback-order__detail" x="23.2" y="60.2">${fallback.detail}</text>
       <text class="atlas-military-fallback-order__safety" x="23.2" y="61.3">${fallback.safetyReason.label}</text>
@@ -2172,6 +2201,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       <text class="atlas-military-fallback-order__fallback-return-cue" x="23.2" y="77.8">${fallbackReturnLabel}</text>
       <text class="atlas-military-fallback-order__return-protection atlas-military-fallback-order__return-protection--${returnProtection?.state ?? 'none'}" x="23.2" y="78.9">${returnProtectionLabel}</text>
       <text class="atlas-military-fallback-order__confidence-signal atlas-military-fallback-order__confidence-signal--${confidenceSignal?.decision ?? 'none'}" x="23.2" y="80">${confidenceSignalLabel}</text>
+      <text class="atlas-military-fallback-order__decision-reversibility atlas-military-fallback-order__decision-reversibility--${reversibility?.state ?? 'none'}" x="23.2" y="81.1">${reversibilityLabel}</text>
     </g>
   `;
 }
