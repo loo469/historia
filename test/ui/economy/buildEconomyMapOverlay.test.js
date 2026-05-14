@@ -724,6 +724,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
       alternativeOptionId: 'grain:reserve-buffer',
       remainingCost: 2,
       summary: 'Basculer vers grain:reserve-buffer: coût restant 2 après délai dangereux.',
+      restorationSummary: {
+        status: 'partially-stabilized',
+        mainConstraint: 'alternative-plus-sure',
+        nextDecision: 'switch-to-alternative',
+        summary: 'Salvage stabilise partiellement: Basculer vers grain:reserve-buffer; coût restant 2.',
+      },
     },
   });
   assert.equal(
