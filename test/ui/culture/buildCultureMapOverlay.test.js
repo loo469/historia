@@ -884,6 +884,13 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         ],
         nextSmallStep: 'stabiliser la pression locale avant retrait',
       },
+      topRetirementRecoveryPreview: {
+        status: 'preview',
+        recoveryType: 'stability',
+        expectedRecovery: 'stabilité récupérée: le tradeoff culturel cesse de nourrir la dette prioritaire',
+        immediacy: 'conditional',
+        closesLoop: 'stabiliser la pression locale avant retrait → retire un tradeoff de support qui entretient la dette de stabilisation',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -940,6 +947,13 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         status: 'ready',
         blockers: [],
         nextSmallStep: 'aucune dépendance prioritaire à retirer',
+      },
+      topRetirementRecoveryPreview: {
+        status: 'neutral',
+        recoveryType: 'none',
+        expectedRecovery: 'aucune récupération culturelle prioritaire',
+        immediacy: 'immediate',
+        closesLoop: 'aucune dépendance bloquante à lever',
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',

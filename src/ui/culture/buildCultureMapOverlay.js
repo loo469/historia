@@ -704,6 +704,46 @@ function buildTopRetirementReadiness(recommendedFirstRetirement, postBundleCumul
   };
 }
 
+function buildTopRetirementRecoveryPreview(recommendedFirstRetirement, topRetirementReadiness) {
+  if (!recommendedFirstRetirement) {
+    return {
+      status: 'neutral',
+      recoveryType: 'none',
+      expectedRecovery: 'aucune récupération culturelle prioritaire',
+      immediacy: 'immediate',
+      closesLoop: 'aucune dépendance bloquante à lever',
+    };
+  }
+
+  const recoveryType = recommendedFirstRetirement.type === 'bundle-incompatibility'
+    ? 'stability'
+    : recommendedFirstRetirement.type === 'missing-support'
+      ? 'support'
+      : recommendedFirstRetirement.type === 'bundle-dependency'
+        ? 'unlock'
+        : 'margin';
+  const immediacy = topRetirementReadiness.status === 'blocked'
+    ? 'conditional'
+    : recommendedFirstRetirement.type === 'regional-mediation' || recommendedFirstRetirement.type === 'fragile-culture'
+      ? 'partial'
+      : 'immediate';
+  const expectedRecovery = recoveryType === 'stability'
+    ? 'stabilité récupérée: le tradeoff culturel cesse de nourrir la dette prioritaire'
+    : recoveryType === 'support'
+      ? 'soutien récupéré: un second bundle sûr peut redevenir lisible'
+      : recoveryType === 'unlock'
+        ? 'verrou culturel levé: la séquence de soutien devient plus simple'
+        : 'marge récupérée: la pression régionale prioritaire diminue';
+
+  return {
+    status: 'preview',
+    recoveryType,
+    expectedRecovery,
+    immediacy,
+    closesLoop: `${topRetirementReadiness.nextSmallStep} → ${recommendedFirstRetirement.expectedGain}`,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -755,6 +795,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
 
   const dependencyRetirementRanking = rankStabilizationDependencyRetirements(uniqueDebts);
   const recommendedFirstRetirement = dependencyRetirementRanking[0] ? { ...dependencyRetirementRanking[0] } : null;
+  const topRetirementReadiness = buildTopRetirementReadiness(recommendedFirstRetirement, postBundleCumulativeRisk);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -762,7 +803,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     debts: uniqueDebts,
     dependencyRetirementRanking,
     recommendedFirstRetirement,
-    topRetirementReadiness: buildTopRetirementReadiness(recommendedFirstRetirement, postBundleCumulativeRisk),
+    topRetirementReadiness,
+    topRetirementRecoveryPreview: buildTopRetirementRecoveryPreview(recommendedFirstRetirement, topRetirementReadiness),
   };
 }
 
