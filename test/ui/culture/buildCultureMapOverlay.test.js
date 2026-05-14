@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition, buildResidualCultureStabilityWatchWindow } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -983,6 +983,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         guidance: 'fiabiliser: garder fatigue de médiation sous contrôle au prochain suivi',
         microDecision: 'revoir le support si fatigue de médiation remonte',
       },
+      residualCultureStabilityWatchWindow: {
+        status: 'short-watch',
+        watchFactor: 'tension locale',
+        watchWindow: 'surveillance courte recommandée: confirmer le prochain signal culturel',
+        followUpAction: 'revoir le support si fatigue de médiation remonte',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1119,6 +1125,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         firstCondition: 'aucune condition supplémentaire visible',
         guidance: 'stabilité déjà fiable après le soutien minimal',
         microDecision: null,
+      },
+      residualCultureStabilityWatchWindow: {
+        status: 'durable-now',
+        watchFactor: 'soutien restant',
+        watchWindow: 'stabilité déjà durable: surveillance passive suffisante',
+        followUpAction: null,
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1739,6 +1751,53 @@ test('buildResidualCultureReliabilityUpgradeCondition shows first reliability up
       firstCondition: 'appliquer le soutien immédiat sur support local',
       guidance: 'stabilité encore fragile tant que support local n’est pas stabilisé',
       microDecision: 'sécuriser un support local avant tout suivi',
+    },
+  );
+});
+
+test('buildResidualCultureStabilityWatchWindow covers durable, short, and extended watch', () => {
+  assert.deepEqual(
+    buildResidualCultureStabilityWatchWindow({
+      status: 'already-reliable',
+      firstCondition: 'aucune condition supplémentaire visible',
+      guidance: 'stabilité déjà fiable après le soutien minimal',
+      microDecision: null,
+    }),
+    {
+      status: 'durable-now',
+      watchFactor: 'soutien restant',
+      watchWindow: 'stabilité déjà durable: surveillance passive suffisante',
+      followUpAction: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureStabilityWatchWindow({
+      status: 'upgrade-available',
+      firstCondition: 'confirmer que fatigue de médiation reste borné après le support léger',
+      guidance: 'fiabiliser: garder fatigue de médiation sous contrôle au prochain suivi',
+      microDecision: 'revoir le support si fatigue de médiation remonte',
+    }),
+    {
+      status: 'short-watch',
+      watchFactor: 'tension locale',
+      watchWindow: 'surveillance courte recommandée: confirmer le prochain signal culturel',
+      followUpAction: 'revoir le support si fatigue de médiation remonte',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureStabilityWatchWindow({
+      status: 'blocked-until-support',
+      firstCondition: 'appliquer le soutien immédiat sur support local',
+      guidance: 'stabilité encore fragile tant que support local n’est pas stabilisé',
+      microDecision: 'sécuriser un support local avant tout suivi',
+    }),
+    {
+      status: 'extended-watch',
+      watchFactor: 'fragilité sociale résiduelle',
+      watchWindow: 'surveillance prolongée requise: la stabilité reste conditionnelle',
+      followUpAction: 'sécuriser un support local avant tout suivi',
     },
   );
 });
