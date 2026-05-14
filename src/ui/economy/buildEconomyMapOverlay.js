@@ -358,6 +358,49 @@ function buildPreparationBreakEven(opportunityCostComparison, capacityMobilized)
   };
 }
 
+function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven, capacityMobilized) {
+  if (opportunityCostComparison === null || preparationBreakEven === null) {
+    return null;
+  }
+
+  const capacityCost = Math.max(1, capacityMobilized);
+  const scenarios = [
+    {
+      id: 'delay-one-turn',
+      assumption: 'retard d’un tour',
+      netValue: preparationBreakEven.netValue - capacityCost,
+    },
+    {
+      id: 'lower-capacity',
+      assumption: 'capacité moindre',
+      netValue: preparationBreakEven.netValue - opportunityCostComparison.gained.margin,
+    },
+    {
+      id: 'higher-effort-cost',
+      assumption: 'coût légèrement plus élevé',
+      netValue: preparationBreakEven.netValue - 1,
+    },
+  ].map((scenario) => ({
+    ...scenario,
+    recommendationStable: scenario.netValue > 0,
+    outcome: scenario.netValue > 0 ? 'stable' : 'switch-to-alternative',
+    alternativeOptionId: scenario.netValue > 0 ? null : opportunityCostComparison.alternativeOptionId,
+  }));
+  const fragileScenario = scenarios.find((scenario) => !scenario.recommendationStable) ?? null;
+
+  return {
+    id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
+    summary: fragileScenario === null
+      ? 'Recommandation robuste aux hypothèses testées.'
+      : `Recommandation fragile si ${fragileScenario.assumption}.`,
+    status: fragileScenario === null ? 'robust' : 'fragile',
+    scenarios,
+    reason: fragileScenario === null
+      ? `La marge de break-even reste positive dans ${scenarios.length} scénarios dérivés.`
+      : `Basculer vers ${fragileScenario.alternativeOptionId} si cette contrainte se confirme.`,
+  };
+}
+
 function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel, capacityMobilized) {
   if (preparationOptions.length < 2) {
     return null;
@@ -397,6 +440,7 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
     alternativeValueProtected,
     routeRiskLevel,
   );
+  const preparationBreakEven = buildPreparationBreakEven(opportunityCostComparison, capacityMobilized);
 
   return {
     id: `best-value:${best.option.id}`,
@@ -409,7 +453,8 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
     cheaperAcceptable,
     sequence: buildPreparationSequence(best.option, cheaperAcceptable, best.estimatedValueProtected),
     opportunityCostComparison,
-    preparationBreakEven: buildPreparationBreakEven(opportunityCostComparison, capacityMobilized),
+    preparationBreakEven,
+    timingSensitivity: buildTimingSensitivity(opportunityCostComparison, preparationBreakEven, capacityMobilized),
   };
 }
 
@@ -482,6 +527,7 @@ function buildCapacitySpendPreview(route, spendPlan) {
     preparationSequence: bestValuePreparation?.sequence ?? [],
     opportunityCostComparison: bestValuePreparation?.opportunityCostComparison ?? null,
     preparationBreakEven: bestValuePreparation?.preparationBreakEven ?? null,
+    timingSensitivity: bestValuePreparation?.timingSensitivity ?? null,
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0

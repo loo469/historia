@@ -156,6 +156,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         preparationSequence: [],
         opportunityCostComparison: null,
         preparationBreakEven: null,
+        timingSensitivity: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -197,6 +198,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         preparationSequence: [],
         opportunityCostComparison: null,
         preparationBreakEven: null,
+        timingSensitivity: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -267,6 +269,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     preparationSequence: [],
     opportunityCostComparison: null,
     preparationBreakEven: null,
+    timingSensitivity: null,
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -356,6 +359,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
     preparationSequence: [],
     opportunityCostComparison: null,
     preparationBreakEven: null,
+    timingSensitivity: null,
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -466,6 +470,38 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       netValue: 14,
       reason: 'Rentable maintenant: 10 valeur protégée et 5 marge couvrent 1 effort différé.',
     },
+    timingSensitivity: {
+      id: 'timing-sensitivity:grain:shift-to-tools',
+      summary: 'Recommandation robuste aux hypothèses testées.',
+      status: 'robust',
+      scenarios: [
+        {
+          id: 'delay-one-turn',
+          assumption: 'retard d’un tour',
+          netValue: 9,
+          recommendationStable: true,
+          outcome: 'stable',
+          alternativeOptionId: null,
+        },
+        {
+          id: 'lower-capacity',
+          assumption: 'capacité moindre',
+          netValue: 13,
+          recommendationStable: true,
+          outcome: 'stable',
+          alternativeOptionId: null,
+        },
+        {
+          id: 'higher-effort-cost',
+          assumption: 'coût légèrement plus élevé',
+          netValue: 13,
+          recommendationStable: true,
+          outcome: 'stable',
+          alternativeOptionId: null,
+        },
+      ],
+      reason: 'La marge de break-even reste positive dans 3 scénarios dérivés.',
+    },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
     {
@@ -521,6 +557,38 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
     turnLimit: 0,
     netValue: 14,
     reason: 'Rentable maintenant: 10 valeur protégée et 5 marge couvrent 1 effort différé.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity, {
+    id: 'timing-sensitivity:grain:shift-to-tools',
+    summary: 'Recommandation robuste aux hypothèses testées.',
+    status: 'robust',
+    scenarios: [
+      {
+        id: 'delay-one-turn',
+        assumption: 'retard d’un tour',
+        netValue: 9,
+        recommendationStable: true,
+        outcome: 'stable',
+        alternativeOptionId: null,
+      },
+      {
+        id: 'lower-capacity',
+        assumption: 'capacité moindre',
+        netValue: 13,
+        recommendationStable: true,
+        outcome: 'stable',
+        alternativeOptionId: null,
+      },
+      {
+        id: 'higher-effort-cost',
+        assumption: 'coût légèrement plus élevé',
+        netValue: 13,
+        recommendationStable: true,
+        outcome: 'stable',
+        alternativeOptionId: null,
+      },
+    ],
+    reason: 'La marge de break-even reste positive dans 3 scénarios dérivés.',
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
