@@ -1129,6 +1129,35 @@ export function buildResidualCultureReevaluationTrigger(residualCulturePostAlloc
   };
 }
 
+export function buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger) {
+  const visibleConstraint = residualCultureReevaluationTrigger.visibleTrigger;
+
+  if (residualCultureReevaluationTrigger.status === 'none-soon') {
+    return {
+      status: 'neutral-wait',
+      visibleConstraint,
+      delayConsequence: 'attente neutre: aucun coût social visible à court terme',
+      microDecision: null,
+    };
+  }
+
+  if (residualCultureReevaluationTrigger.status === 'watch-signal') {
+    return {
+      status: 'manageable-cost',
+      visibleConstraint,
+      delayConsequence: `coût social gérable: ${visibleConstraint} peut réduire l’accalmie`,
+      microDecision: residualCultureReevaluationTrigger.microDecision,
+    };
+  }
+
+  return {
+    status: 'worsening-fragility',
+    visibleConstraint,
+    delayConsequence: `fragilité qui s’aggrave: ${visibleConstraint} peut rouvrir la dette avant correction`,
+    microDecision: residualCultureReevaluationTrigger.microDecision,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1190,6 +1219,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureWindowClosureThreat = buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow);
   const residualCultureSupportAllocationChoice = buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk);
   const residualCulturePostAllocationStability = buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat);
+  const residualCultureReevaluationTrigger = buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1207,7 +1237,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureWindowClosureThreat,
     residualCultureSupportAllocationChoice,
     residualCulturePostAllocationStability,
-    residualCultureReevaluationTrigger: buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability),
+    residualCultureReevaluationTrigger,
+    residualCultureReevaluationDelayCost: buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger),
   };
 }
 
