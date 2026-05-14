@@ -552,6 +552,52 @@ function buildPreventiveRecoveryState({ preventiveAction }) {
   };
 }
 
+
+function buildPostRecoverySafetyMargin({ preventiveRecoveryState, preventiveAction, driftForecast }) {
+  if (driftForecast.signal === null) {
+    return {
+      level: 'insufficient-data',
+      fastestConsumingSignal: null,
+      nextAction: 'reinforce-monitoring',
+      reason: 'Données de dérive insuffisantes: renforcer le monitoring avant de mesurer une vraie marge.',
+    };
+  }
+
+  if (preventiveRecoveryState.state === 'sweep-safe-again' && preventiveAction.windowEffect === 'maintains-safe-window') {
+    return {
+      level: 'comfortable',
+      fastestConsumingSignal: driftForecast.signal,
+      nextAction: 'launch-sweep',
+      reason: `${driftForecast.signal} consomme encore la marge, mais la fenêtre reste assez protégée pour lancer le sweep.`,
+    };
+  }
+
+  if (preventiveRecoveryState.state === 'sweep-safe-again') {
+    return {
+      level: 'narrow',
+      fastestConsumingSignal: driftForecast.signal,
+      nextAction: 'wait-confirmation',
+      reason: `${driftForecast.signal} consomme vite la marge: attendre une confirmation courte avant reprise.`,
+    };
+  }
+
+  if (preventiveRecoveryState.state === 'monitor-only') {
+    return {
+      level: 'narrow',
+      fastestConsumingSignal: driftForecast.signal,
+      nextAction: 'wait-confirmation',
+      reason: `${driftForecast.signal} laisse une marge surveillable mais pas suffisante pour lancer tout de suite.`,
+    };
+  }
+
+  return {
+    level: 'absent',
+    fastestConsumingSignal: driftForecast.signal,
+    nextAction: 'reinforce-monitoring',
+    reason: `${driftForecast.signal} consomme toute la marge: renforcer le monitoring avant tout sweep.`,
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -658,6 +704,31 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
           marginalExposureAdded,
           expectedConfidenceGain,
         }),
+      }),
+    }),
+    postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+      preventiveRecoveryState: buildPreventiveRecoveryState({
+        preventiveAction: buildMonitoringPreventiveAction({
+          state: rationale.state,
+          driftForecast: buildMonitoringDriftForecast({
+            state: rationale.state,
+            marginalExposureAdded,
+            expectedConfidenceGain,
+          }),
+        }),
+      }),
+      preventiveAction: buildMonitoringPreventiveAction({
+        state: rationale.state,
+        driftForecast: buildMonitoringDriftForecast({
+          state: rationale.state,
+          marginalExposureAdded,
+          expectedConfidenceGain,
+        }),
+      }),
+      driftForecast: buildMonitoringDriftForecast({
+        state: rationale.state,
+        marginalExposureAdded,
+        expectedConfidenceGain,
       }),
     }),
   };
