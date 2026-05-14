@@ -800,6 +800,51 @@ export function buildMiniPlanConfidenceSignalCue(
   };
 }
 
+function extractReversibilityConstraint(miniPlanRivalResponseFallback) {
+  const cost = String(miniPlanRivalResponseFallback?.cost ?? '').trim();
+  if (cost.includes('cible moins prioritaire')) return 'position moins prioritaire';
+  if (cost.includes('délai')) return 'tempo rival';
+  if (cost.includes('bénéfice moindre')) return 'coût d’opportunité';
+  return 'fenêtre d’ordre';
+}
+
+export function buildMiniPlanDecisionReversibilityCue(
+  miniPlanConfidenceSignalCue = null,
+  miniPlanRivalResponseFallback = null,
+) {
+  if (!miniPlanConfidenceSignalCue || miniPlanConfidenceSignalCue.empty) {
+    return {
+      empty: true,
+      state: 'none',
+      label: 'réversibilité non évaluée',
+      constraint: null,
+      nextStep: null,
+    };
+  }
+
+  const state = miniPlanConfidenceSignalCue.decision === 'wait-confidence'
+    ? 'reversible'
+    : miniPlanConfidenceSignalCue.decision === 'return-confirmed'
+      ? 'costly'
+      : 'locked';
+
+  return {
+    empty: false,
+    state,
+    label: state === 'reversible'
+      ? 'réversible'
+      : state === 'costly'
+        ? 'correction coûteuse'
+        : 'quasi verrouillée',
+    constraint: extractReversibilityConstraint(miniPlanRivalResponseFallback),
+    nextStep: state === 'reversible'
+      ? 'garder un ordre court en réserve'
+      : state === 'costly'
+        ? 'préserver un tempo de correction'
+        : null,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -899,6 +944,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanFallbackReturnCue,
     miniPlanRivalResponseFallback,
   );
+  const miniPlanDecisionReversibilityCue = buildMiniPlanDecisionReversibilityCue(
+    miniPlanConfidenceSignalCue,
+    miniPlanRivalResponseFallback,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -951,6 +1000,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanFallbackReturnCue,
     miniPlanReturnProtectionStatus,
     miniPlanConfidenceSignalCue,
+    miniPlanDecisionReversibilityCue,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,

@@ -8,6 +8,7 @@ import {
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanConfidenceSignalCue,
+  buildMiniPlanDecisionReversibilityCue,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -350,6 +351,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     label: 'confiance non évaluée',
     signal: null,
     waitCost: null,
+  });
+  assert.deepEqual(shell.miniPlanDecisionReversibilityCue, {
+    empty: true,
+    state: 'none',
+    label: 'réversibilité non évaluée',
+    constraint: null,
+    nextStep: null,
   });
 });
 
@@ -699,12 +707,20 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     nextDecision: 'confirm-fallback',
     reason: 'confirmer le fallback: contre-poussée du front voisin reste plus dangereux',
   });
-  assert.deepEqual(buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback), {
+  const confidence = buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback);
+  assert.deepEqual(confidence, {
     empty: false,
     decision: 'hold-fallback',
     label: 'tenir fallback',
     signal: 'contre-poussée du front voisin encore actif',
     waitCost: 'attendre trop longtemps coûte cible moins prioritaire: front-a',
+  });
+  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(confidence, fallback), {
+    empty: false,
+    state: 'locked',
+    label: 'quasi verrouillée',
+    constraint: 'position moins prioritaire',
+    nextStep: null,
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -755,12 +771,20 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     nextDecision: 'wait-signal',
     reason: 'attendre un signal: revenir quand la réponse rivale se dissipe',
   });
-  assert.deepEqual(buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback), {
+  const confidence = buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback);
+  assert.deepEqual(confidence, {
     empty: false,
     decision: 'wait-confidence',
     label: 'attendre signal confiance',
     signal: 'revenir quand la réponse rivale se dissipe',
     waitCost: 'attendre trop longtemps coûte bénéfice moindre mais risque équivalent',
+  });
+  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(confidence, fallback), {
+    empty: false,
+    state: 'reversible',
+    label: 'réversible',
+    constraint: 'coût d’opportunité',
+    nextStep: 'garder un ordre court en réserve',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -802,12 +826,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     nextDecision: 'return-now',
     reason: 'revenir maintenant: le risque initial ne dépasse plus le fallback',
   });
-  assert.deepEqual(buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback), {
+  const confidence = buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback);
+  assert.deepEqual(confidence, {
     empty: false,
     decision: 'return-confirmed',
     label: 'retour confirmé',
     signal: 'risque initial revenu sous le fallback',
     waitCost: 'attendre trop longtemps coûte délai avant branche initiale',
+  });
+  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(confidence, fallback), {
+    empty: false,
+    state: 'costly',
+    label: 'correction coûteuse',
+    constraint: 'tempo rival',
+    nextStep: 'préserver un tempo de correction',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -823,6 +855,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     label: 'confiance non évaluée',
     signal: null,
     waitCost: null,
+  });
+  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(null, fallback), {
+    empty: true,
+    state: 'none',
+    label: 'réversibilité non évaluée',
+    constraint: null,
+    nextStep: null,
   });
 });
 
