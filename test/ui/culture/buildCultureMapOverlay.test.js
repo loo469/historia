@@ -919,6 +919,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         nextActionAfterRetirement: 'surveiller les relais savants et le rythme d’ouverture',
         reason: 'stabilisation partielle: surveiller risque restant: isolement du support',
       },
+      residualCultureRiskNextAction: {
+        status: 'optional',
+        actionType: 'mediation',
+        recommendedAction: 'ouvrir une médiation locale courte après le retrait suivant',
+        reason: 'bon second pas: risque restant: isolement du support reste medium',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -994,6 +1000,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         status: 'complete',
         principalResidualFragility: null,
         nextActionAfterRetirement: 'aucune action culturelle supplémentaire prioritaire',
+        reason: 'aucune dette résiduelle après stabilisation',
+      },
+      residualCultureRiskNextAction: {
+        status: 'none-safe',
+        actionType: 'none',
+        recommendedAction: 'aucune action secondaire sûre requise',
         reason: 'aucune dette résiduelle après stabilisation',
       },
     },
