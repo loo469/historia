@@ -1243,6 +1243,33 @@ export function buildResidualCultureStabilityWatchWindow(residualCultureReliabil
   };
 }
 
+export function buildResidualCultureSupportRedeploymentCue(residualCultureStabilityWatchWindow) {
+  if (residualCultureStabilityWatchWindow.status === 'durable-now') {
+    return {
+      status: 'safe-redeploy',
+      blockingFactor: 'soutien résiduel faible',
+      redeploymentCue: 'redéploiement sûr: la stabilité tient sans soutien dédié',
+      microAction: null,
+    };
+  }
+
+  if (residualCultureStabilityWatchWindow.status === 'short-watch') {
+    return {
+      status: 'careful-reduction',
+      blockingFactor: 'tension locale',
+      redeploymentCue: 'réduction prudente possible après le prochain signal confirmé',
+      microAction: residualCultureStabilityWatchWindow.followUpAction,
+    };
+  }
+
+  return {
+    status: 'keep-support',
+    blockingFactor: 'fragilité sociale voisine',
+    redeploymentCue: 'soutien à maintenir: la stabilité retomberait sans consolidation',
+    microAction: residualCultureStabilityWatchWindow.followUpAction,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1308,6 +1335,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureReevaluationDelayCost = buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger);
   const residualCultureMinimalDelayedSupport = buildResidualCultureMinimalDelayedSupport(residualCultureReevaluationDelayCost);
   const residualCultureReliabilityUpgradeCondition = buildResidualCultureReliabilityUpgradeCondition(residualCultureMinimalDelayedSupport);
+  const residualCultureStabilityWatchWindow = buildResidualCultureStabilityWatchWindow(residualCultureReliabilityUpgradeCondition);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1329,7 +1357,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureReevaluationDelayCost,
     residualCultureMinimalDelayedSupport,
     residualCultureReliabilityUpgradeCondition,
-    residualCultureStabilityWatchWindow: buildResidualCultureStabilityWatchWindow(residualCultureReliabilityUpgradeCondition),
+    residualCultureStabilityWatchWindow,
+    residualCultureSupportRedeploymentCue: buildResidualCultureSupportRedeploymentCue(residualCultureStabilityWatchWindow),
   };
 }
 
