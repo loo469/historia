@@ -61,6 +61,7 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /buildFirstCleanupPayoff\(cleanupOrders, residualRisks\)/);
   assert.match(webAppSource, /buildFollowUpCleanupChoices\(cleanupOrders, residualRisks, firstCleanupPayoff\)/);
   assert.match(webAppSource, /buildTopFollowUpReadiness\(followUpCleanupChoices, residualRisks\)/);
+  assert.match(webAppSource, /buildFollowUpCleanupMiniPlan\(followUpCleanupChoices, residualRisks, topFollowUpReadiness\)/);
   assert.match(webAppSource, /firstCleanupPayoff/);
   assert.match(webAppSource, /followUpCleanupChoices/);
   assert.match(webAppSource, /topFollowUpReadiness/);
@@ -88,12 +89,15 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /payoff: aucun nettoyage utile/);
   assert.match(webAppSource, /suivi: aucun cleanup utile/);
   assert.match(webAppSource, /readiness: aucun suivi sûr/);
+  assert.match(webAppSource, /plan: aucun suivi sûr/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
+  assert.match(webAppSource, /atlas-military-fallback-order__mini-plan/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
+  assert.match(webAppSource, /plan: \$\{miniPlan\.steps\.map\(\(step\) => `\$\{step\.order\}\.\$\{step\.label\} › \$\{step\.riskReduced\}; reste \$\{step\.untreatedRisk\}`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
@@ -107,4 +111,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__cleanup-payoff/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__cleanup-followups/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__followup-readiness/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__mini-plan/);
 });

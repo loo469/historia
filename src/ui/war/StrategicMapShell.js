@@ -227,6 +227,71 @@ export function buildTopFollowUpReadiness(followUpCleanupChoices = [], residualR
   };
 }
 
+function summarizeUntreatedRisk(residualRisks, treatedRiskKey) {
+  const untreatedRisk = residualRisks.find((risk) => String(risk.key ?? '').trim() !== treatedRiskKey) ?? null;
+
+  return untreatedRisk
+    ? String(untreatedRisk.label ?? 'risque restant').trim() || 'risque restant'
+    : 'aucun risque visible';
+}
+
+export function buildFollowUpCleanupMiniPlan(followUpCleanupChoices = [], residualRisks = [], topFollowUpReadiness = null) {
+  const normalizedChoices = normalizeCleanupInput(followUpCleanupChoices, 'StrategicMapShell followUpCleanupChoices');
+  const normalizedRisks = normalizeCleanupInput(residualRisks, 'StrategicMapShell residualRisks');
+  const topChoice = normalizedChoices[0] ?? null;
+
+  if (!topChoice || topFollowUpReadiness?.state === 'no-safe-followup') {
+    return {
+      empty: true,
+      reason: 'aucun cleanup suivi sûr',
+      targetId: null,
+      steps: [],
+    };
+  }
+
+  const treatedRiskKey = String(topChoice.residualRiskKey ?? '').trim();
+  const readinessStep = topFollowUpReadiness?.state !== 'ready-now'
+    ? {
+      stepId: `followup-readiness:${treatedRiskKey || 'unknown'}`,
+      order: 1,
+      label: topFollowUpReadiness?.action ?? 'Lever bloqueur visible',
+      prerequisite: topFollowUpReadiness?.blocker ?? 'donnée manquante',
+      riskReduced: 'bloqueur readiness',
+      untreatedRisk: String(topChoice.riskCovered ?? 'risque ciblé').trim() || 'risque ciblé',
+      state: topFollowUpReadiness?.state ?? 'unknown',
+    }
+    : null;
+  const cleanupStepOrder = readinessStep ? 2 : 1;
+  const cleanupStep = {
+    stepId: `followup-cleanup:${treatedRiskKey || 'unknown'}`,
+    order: cleanupStepOrder,
+    label: topChoice.cleanupOrderLabel ?? 'Exécuter cleanup suivi',
+    prerequisite: topChoice.prerequisite ?? topFollowUpReadiness?.blocker ?? 'aucun prérequis visible',
+    riskReduced: topChoice.riskCovered ?? 'risque ciblé',
+    untreatedRisk: summarizeUntreatedRisk(normalizedRisks, treatedRiskKey),
+    state: 'execute-cleanup',
+  };
+  const remainingStep = normalizedChoices[1]
+    ? {
+      stepId: `followup-next:${normalizedChoices[1].residualRiskKey || 'unknown'}`,
+      order: cleanupStepOrder + 1,
+      label: normalizedChoices[1].cleanupOrderLabel ?? 'Préparer suivi restant',
+      prerequisite: normalizedChoices[1].prerequisite ?? 'donnée manquante',
+      riskReduced: normalizedChoices[1].riskCovered ?? 'risque suivant',
+      untreatedRisk: summarizeUntreatedRisk(normalizedRisks, String(normalizedChoices[1].residualRiskKey ?? '').trim()),
+      state: 'next-followup',
+    }
+    : null;
+
+  return {
+    empty: false,
+    reason: topFollowUpReadiness?.label ?? 'suivi prêt',
+    targetId: topChoice.targetId ?? null,
+    steps: [readinessStep, cleanupStep, remainingStep].filter(Boolean).slice(0, 3)
+      .map((step, index) => ({ ...step, order: index + 1 })),
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -285,6 +350,11 @@ export function buildStrategicMapShell(provinces, options = {}) {
     firstCleanupPayoff,
   );
   const topFollowUpReadiness = buildTopFollowUpReadiness(followUpCleanupChoices, normalizedOptions.residualRisks);
+  const followUpCleanupMiniPlan = buildFollowUpCleanupMiniPlan(
+    followUpCleanupChoices,
+    normalizedOptions.residualRisks,
+    topFollowUpReadiness,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -327,6 +397,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     firstCleanupPayoff,
     followUpCleanupChoices,
     topFollowUpReadiness,
+    followUpCleanupMiniPlan,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
