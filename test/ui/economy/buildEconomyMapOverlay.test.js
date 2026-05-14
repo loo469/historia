@@ -536,6 +536,7 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         dangerThreshold: 'danger si la marge nette tombe à 0; marge actuelle après délai: 9',
         practicalConsequence: 'suivre la séquence recommandée avant de dépenser davantage',
         reason: 'Le délai retire 5 marge au bénéfice de grain:shift-to-tools, dérivé de la comparaison actuelle.',
+        salvageAction: null,
       },
     },
   });
@@ -660,6 +661,7 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       dangerThreshold: 'danger si la marge nette tombe à 0; marge actuelle après délai: 9',
       practicalConsequence: 'suivre la séquence recommandée avant de dépenser davantage',
       reason: 'Le délai retire 5 marge au bénéfice de grain:shift-to-tools, dérivé de la comparaison actuelle.',
+      salvageAction: null,
     },
   });
   assert.deepEqual(
@@ -714,6 +716,15 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     dangerThreshold: 'dès 1 tour de retard',
     practicalConsequence: 'inverser la priorité avant d’attendre',
     reason: 'Le délai retire 2 marge au bénéfice de grain:priority-window, dérivé de la comparaison actuelle.',
+    salvageAction: {
+      id: 'salvage:grain:priority-window:delay-one-turn',
+      trigger: 'delay-one-turn',
+      action: 'invert-priority-to-alternative',
+      label: 'Basculer vers grain:reserve-buffer',
+      alternativeOptionId: 'grain:reserve-buffer',
+      remainingCost: 2,
+      summary: 'Basculer vers grain:reserve-buffer: coût restant 2 après délai dangereux.',
+    },
   });
   assert.equal(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.summary,
