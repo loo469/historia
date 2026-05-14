@@ -11200,6 +11200,9 @@ button { font: inherit; }
 .atlas-military-fallback-order__first-safe-reengagement { fill: #bbf7d0; font-size: 0.39px; font-weight: 900; }
 .atlas-military-fallback-order__first-safe-reengagement--limited-reengagement { fill: #fde68a; }
 .atlas-military-fallback-order__first-safe-reengagement--defensive-stance { fill: #fecaca; }
+.atlas-military-fallback-order__premature-reengagement-risk { fill: #bbf7d0; font-size: 0.39px; font-weight: 900; }
+.atlas-military-fallback-order__premature-reengagement-risk--partial-window { fill: #fde68a; }
+.atlas-military-fallback-order__premature-reengagement-risk--too-early { fill: #fecaca; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

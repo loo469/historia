@@ -17,6 +17,7 @@ import {
   buildMiniPlanNextTurnHoldPlan,
   buildMiniPlanHoldReleaseCue,
   buildMiniPlanFirstSafeReengagement,
+  buildMiniPlanPrematureReengagementRisk,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -422,6 +423,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     label: 'réengagement principal sûr',
     constraint: null,
     action: null,
+  });
+  assert.deepEqual(shell.miniPlanPrematureReengagementRisk, {
+    empty: true,
+    state: 'ready',
+    label: 'fenêtre prête',
+    risk: null,
+    nextSafe: null,
   });
 });
 
@@ -843,12 +851,20 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     constraint: 'front exposé',
     action: 'tenir écran',
   });
-  assert.deepEqual(buildMiniPlanFirstSafeReengagement(releaseCue), {
+  const reengagement = buildMiniPlanFirstSafeReengagement(releaseCue);
+  assert.deepEqual(reengagement, {
     empty: false,
     state: 'defensive-stance',
     label: 'rester en posture défensive',
     constraint: 'front voisin instable',
     action: 'garder écran',
+  });
+  assert.deepEqual(buildMiniPlanPrematureReengagementRisk(reengagement), {
+    empty: false,
+    state: 'too-early',
+    label: 'réengagement prématuré',
+    risk: 'front repris à revers',
+    nextSafe: 'attendre test limité',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -971,12 +987,20 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     constraint: 'opportunité encore fragile',
     action: null,
   });
-  assert.deepEqual(buildMiniPlanFirstSafeReengagement(releaseCue), {
+  const reengagement = buildMiniPlanFirstSafeReengagement(releaseCue);
+  assert.deepEqual(reengagement, {
     empty: false,
     state: 'main-safe',
     label: 'réengagement principal sûr',
     constraint: 'opportunité trop fragile',
     action: null,
+  });
+  assert.deepEqual(buildMiniPlanPrematureReengagementRisk(reengagement), {
+    empty: false,
+    state: 'ready',
+    label: 'fenêtre prête',
+    risk: 'risque contenu',
+    nextSafe: 'pousser maintenant',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -1090,12 +1114,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     constraint: 'menace voisine',
     action: 'surveiller voisin',
   });
-  assert.deepEqual(buildMiniPlanFirstSafeReengagement(releaseCue), {
+  const reengagement = buildMiniPlanFirstSafeReengagement(releaseCue);
+  assert.deepEqual(reengagement, {
     empty: false,
     state: 'limited-reengagement',
     label: 'réengagement limité possible',
     constraint: 'menace non résolue',
     action: 'tester avancée',
+  });
+  assert.deepEqual(buildMiniPlanPrematureReengagementRisk(reengagement), {
+    empty: false,
+    state: 'partial-window',
+    label: 'risque si poussée totale',
+    risk: 'menace convertie en blocage',
+    nextSafe: 'attendre fenêtre principale',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -1174,6 +1206,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     label: 'réengagement principal sûr',
     constraint: null,
     action: null,
+  });
+  assert.deepEqual(buildMiniPlanPrematureReengagementRisk(null), {
+    empty: true,
+    state: 'ready',
+    label: 'fenêtre prête',
+    risk: null,
+    nextSafe: null,
   });
 });
 

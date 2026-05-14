@@ -1174,6 +1174,49 @@ export function buildMiniPlanFirstSafeReengagement(miniPlanHoldReleaseCue = null
   };
 }
 
+function prematureReengagementRiskForConstraint(constraint) {
+  if (constraint === 'front voisin instable') return 'front repris à revers';
+  if (constraint === 'support incomplet') return 'avance sans appui';
+  if (constraint === 'menace non résolue') return 'menace convertie en blocage';
+  return 'fenêtre cassée par précipitation';
+}
+
+export function buildMiniPlanPrematureReengagementRisk(miniPlanFirstSafeReengagement = null) {
+  if (!miniPlanFirstSafeReengagement || miniPlanFirstSafeReengagement.empty) {
+    return {
+      empty: true,
+      state: 'ready',
+      label: 'fenêtre prête',
+      risk: null,
+      nextSafe: null,
+    };
+  }
+
+  const state = miniPlanFirstSafeReengagement.state === 'main-safe'
+    ? 'ready'
+    : miniPlanFirstSafeReengagement.state === 'limited-reengagement'
+      ? 'partial-window'
+      : 'too-early';
+
+  return {
+    empty: false,
+    state,
+    label: state === 'ready'
+      ? 'fenêtre prête'
+      : state === 'partial-window'
+        ? 'risque si poussée totale'
+        : 'réengagement prématuré',
+    risk: state === 'ready'
+      ? 'risque contenu'
+      : prematureReengagementRiskForConstraint(miniPlanFirstSafeReengagement.constraint),
+    nextSafe: state === 'too-early'
+      ? 'attendre test limité'
+      : state === 'partial-window'
+        ? 'attendre fenêtre principale'
+        : 'pousser maintenant',
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -1295,6 +1338,9 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const miniPlanFirstSafeReengagement = buildMiniPlanFirstSafeReengagement(
     miniPlanHoldReleaseCue,
   );
+  const miniPlanPrematureReengagementRisk = buildMiniPlanPrematureReengagementRisk(
+    miniPlanFirstSafeReengagement,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1356,6 +1402,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanNextTurnHoldPlan,
     miniPlanHoldReleaseCue,
     miniPlanFirstSafeReengagement,
+    miniPlanPrematureReengagementRisk,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
