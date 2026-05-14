@@ -514,6 +514,66 @@ export function buildMiniPlanRivalResponseRisk(miniPlanTradeoffActionPreview = n
   };
 }
 
+function compareRivalRiskLevel(level) {
+  return ({ low: 1, medium: 2, high: 3 }[level] ?? 1);
+}
+
+export function buildMiniPlanRivalResponseComparison(followUpCleanupMiniPlan = null, miniPlanConflictTradeoffs = []) {
+  const normalizedTradeoffs = normalizeCleanupInput(
+    miniPlanConflictTradeoffs,
+    'StrategicMapShell miniPlanConflictTradeoffs',
+  );
+
+  if (!followUpCleanupMiniPlan || followUpCleanupMiniPlan.empty || normalizedTradeoffs.length === 0) {
+    return {
+      empty: true,
+      recommendedTradeoffId: null,
+      recommendationChanged: false,
+      reason: 'aucune branche à comparer',
+      branches: [],
+    };
+  }
+
+  const branches = normalizedTradeoffs.slice(0, 3).map((tradeoff, index) => {
+    const preview = buildMiniPlanTradeoffActionPreview(followUpCleanupMiniPlan, [tradeoff]);
+    const risk = buildMiniPlanRivalResponseRisk(preview, [tradeoff]);
+
+    return {
+      branchId: `mini-plan-branch:${index + 1}:${tradeoff.tradeoffId ?? 'unknown'}`,
+      tradeoffId: tradeoff.tradeoffId ?? null,
+      recommended: index === 0,
+      action: preview.action,
+      rivalResponse: risk.response,
+      riskLevel: risk.level,
+      reason: risk.watch ?? tradeoff.reason ?? 'donnée incertaine',
+      targetId: preview.targetId ?? tradeoff.targetId ?? null,
+    };
+  });
+  const initialBranch = branches[0];
+  const saferBranch = branches
+    .slice()
+    .sort((left, right) => compareRivalRiskLevel(left.riskLevel) - compareRivalRiskLevel(right.riskLevel)
+      || left.branchId.localeCompare(right.branchId))[0] ?? initialBranch;
+  const recommendationChanged = Boolean(
+    initialBranch && saferBranch && compareRivalRiskLevel(saferBranch.riskLevel) < compareRivalRiskLevel(initialBranch.riskLevel),
+  );
+
+  return {
+    empty: false,
+    recommendedTradeoffId: recommendationChanged ? saferBranch.tradeoffId : initialBranch?.tradeoffId ?? null,
+    recommendationChanged,
+    reason: recommendationChanged
+      ? `${initialBranch.rivalResponse} rend la branche initiale trop risquée`
+      : 'branche recommandée robuste face aux réponses listées',
+    branches: branches.map((branch) => ({
+      ...branch,
+      recommended: recommendationChanged
+        ? branch.tradeoffId === saferBranch.tradeoffId
+        : branch.tradeoffId === initialBranch?.tradeoffId,
+    })),
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -594,6 +654,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanTradeoffActionPreview,
     miniPlanConflictTradeoffs,
   );
+  const miniPlanRivalResponseComparison = buildMiniPlanRivalResponseComparison(
+    followUpCleanupMiniPlan,
+    miniPlanConflictTradeoffs,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -641,6 +705,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanConflictTradeoffs,
     miniPlanTradeoffActionPreview,
     miniPlanRivalResponseRisk,
+    miniPlanRivalResponseComparison,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
