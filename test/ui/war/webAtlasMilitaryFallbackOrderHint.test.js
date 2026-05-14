@@ -64,6 +64,7 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /buildFollowUpCleanupMiniPlan\(followUpCleanupChoices, residualRisks, topFollowUpReadiness\)/);
   assert.match(webAppSource, /buildMiniPlanDependencyConflicts\(/);
   assert.match(webAppSource, /buildMiniPlanConflictTradeoffs\(/);
+  assert.match(webAppSource, /buildMiniPlanTradeoffActionPreview\(/);
   assert.match(webAppSource, /firstCleanupPayoff/);
   assert.match(webAppSource, /followUpCleanupChoices/);
   assert.match(webAppSource, /topFollowUpReadiness/);
@@ -96,18 +97,22 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /miniPlanDependencyConflicts: \[\]/);
   assert.match(webAppSource, /miniPlanConflictTradeoffs: \[\]/);
   assert.match(webAppSource, /choix: aucun arbitrage/);
+  assert.match(webAppSource, /action: aucun arbitrage prêt/);
+  assert.match(webAppSource, /miniPlanTradeoffActionPreview: buildMiniPlanTradeoffActionPreview\(null, \[\]\)/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
   assert.match(webAppSource, /atlas-military-fallback-order__mini-plan/);
   assert.match(webAppSource, /atlas-military-fallback-order__mini-plan-conflicts/);
   assert.match(webAppSource, /atlas-military-fallback-order__mini-plan-tradeoffs/);
+  assert.match(webAppSource, /atlas-military-fallback-order__tradeoff-action/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
   assert.match(webAppSource, /plan: \$\{miniPlan\.steps\.map\(\(step\) => `\$\{step\.order\}\.\$\{step\.label\} › \$\{step\.riskReduced\}; reste \$\{step\.untreatedRisk\}`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /conflits: \$\{dependencyConflicts\.map\(\(conflict\) => `\$\{conflict\.severity === 'blocking' \? 'bloquant' : 'surv\.'\} \$\{conflict\.label\} › \$\{conflict\.mitigation\}`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /choix: \$\{tradeoffs\.map\(\(tradeoff\) => `\$\{tradeoff\.severity === 'blocking' \? '★' : '○'\} \$\{tradeoff\.recommendedChoice\} \/ coût: \$\{tradeoff\.rejectedCost\}`\)\.join\(' · '\)\}/);
+  assert.match(webAppSource, /action: \$\{actionPreview\.action\} @ \$\{actionPreview\.targetId \?\? 'front'\} · préreq \$\{actionPreview\.prerequisite\} · gain \$\{actionPreview\.expectedBenefit\}/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
@@ -124,4 +129,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__mini-plan/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__mini-plan-conflicts/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__mini-plan-tradeoffs/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__tradeoff-action/);
 });
