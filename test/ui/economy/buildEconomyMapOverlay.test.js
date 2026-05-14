@@ -527,6 +527,16 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       ],
       reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
       actionableAdvice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
+      delayOpportunityCost: {
+        id: 'delay-cost:grain:shift-to-tools',
+        recommendedOptionId: 'grain:shift-to-tools',
+        cost: 5,
+        delayedNetValue: 9,
+        summary: 'Attendre coûte 5 valeur mais garde 9 marge nette.',
+        dangerThreshold: 'danger si la marge nette tombe à 0; marge actuelle après délai: 9',
+        practicalConsequence: 'suivre la séquence recommandée avant de dépenser davantage',
+        reason: 'Le délai retire 5 marge au bénéfice de grain:shift-to-tools, dérivé de la comparaison actuelle.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -641,6 +651,16 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
     ],
     reason: 'La marge de break-even reste positive dans 4 scénarios dérivés.',
     actionableAdvice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
+    delayOpportunityCost: {
+      id: 'delay-cost:grain:shift-to-tools',
+      recommendedOptionId: 'grain:shift-to-tools',
+      cost: 5,
+      delayedNetValue: 9,
+      summary: 'Attendre coûte 5 valeur mais garde 9 marge nette.',
+      dangerThreshold: 'danger si la marge nette tombe à 0; marge actuelle après délai: 9',
+      practicalConsequence: 'suivre la séquence recommandée avant de dépenser davantage',
+      reason: 'Le délai retire 5 marge au bénéfice de grain:shift-to-tools, dérivé de la comparaison actuelle.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -685,6 +705,16 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     overlay.routes[0].capacitySpendPreview.timingSensitivity.actionableAdvice,
     'inverser la priorité avant d’attendre: basculer vers grain:reserve-buffer dès 1 tour de retard.',
   );
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.delayOpportunityCost, {
+    id: 'delay-cost:grain:priority-window',
+    recommendedOptionId: 'grain:priority-window',
+    cost: 2,
+    delayedNetValue: -2,
+    summary: 'Attendre coûte 2 valeur et rend le délai dangereux.',
+    dangerThreshold: 'dès 1 tour de retard',
+    practicalConsequence: 'inverser la priorité avant d’attendre',
+    reason: 'Le délai retire 2 marge au bénéfice de grain:priority-window, dérivé de la comparaison actuelle.',
+  });
   assert.equal(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.summary,
     'bascule vers grain:reserve-buffer si retard d’un tour.',

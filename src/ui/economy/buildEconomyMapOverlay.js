@@ -387,6 +387,29 @@ function buildFlipActionability(flipScenario, opportunityCostComparison, capacit
   };
 }
 
+function buildDelayOpportunityCost(opportunityCostComparison, preparationBreakEven, delayScenario, flipWarning, capacityCost) {
+  const delayedNetValue = delayScenario?.netValue ?? preparationBreakEven.netValue - capacityCost;
+  const delayCost = Math.max(0, preparationBreakEven.netValue - delayedNetValue);
+  const isDangerous = delayedNetValue <= 0;
+
+  return {
+    id: `delay-cost:${opportunityCostComparison.recommendedOptionId}`,
+    recommendedOptionId: opportunityCostComparison.recommendedOptionId,
+    cost: delayCost,
+    delayedNetValue,
+    summary: isDangerous
+      ? `Attendre coûte ${delayCost} valeur et rend le délai dangereux.`
+      : `Attendre coûte ${delayCost} valeur mais garde ${delayedNetValue} marge nette.`,
+    dangerThreshold: isDangerous
+      ? (flipWarning.actionability.threshold ?? 'dès le prochain retard')
+      : `danger si la marge nette tombe à 0; marge actuelle après délai: ${delayedNetValue}`,
+    practicalConsequence: isDangerous
+      ? flipWarning.actionability.consequence
+      : 'suivre la séquence recommandée avant de dépenser davantage',
+    reason: `Le délai retire ${delayCost} marge au bénéfice de ${opportunityCostComparison.recommendedOptionId}, dérivé de la comparaison actuelle.`,
+  };
+}
+
 function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven, capacityMobilized) {
   if (opportunityCostComparison === null || preparationBreakEven === null) {
     return null;
@@ -445,6 +468,13 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
       reason: `La recommandation bascule vers ${flipScenario.alternativeOptionId} si ${flipScenario.assumption}.`,
       actionability,
     };
+  const delayOpportunityCost = buildDelayOpportunityCost(
+    opportunityCostComparison,
+    preparationBreakEven,
+    scenarios.find((scenario) => scenario.id === 'delay-one-turn') ?? null,
+    flipWarning,
+    capacityCost,
+  );
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -456,6 +486,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     scenarios,
     reason: flipWarning.reason,
     actionableAdvice: actionability.advice,
+    delayOpportunityCost,
   };
 }
 
