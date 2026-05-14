@@ -142,6 +142,14 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
           explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
         },
+        thirdSweepRecommendation: {
+          state: 'do-nothing',
+          action: 'none',
+          prepareThirdSweep: false,
+          marginalExposureAdded: 0,
+          expectedConfidenceGain: 0,
+          rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
+        },
         summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
       },
       style: {
@@ -190,6 +198,14 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           continueNow: false,
           stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
           explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
+        },
+        thirdSweepRecommendation: {
+          state: 'do-nothing',
+          action: 'none',
+          prepareThirdSweep: false,
+          marginalExposureAdded: 0,
+          expectedConfidenceGain: 0,
+          rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
         summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
       },
@@ -340,6 +356,14 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
       stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
       explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
     },
+    thirdSweepRecommendation: {
+      state: 'do-nothing',
+      action: 'none',
+      prepareThirdSweep: false,
+      marginalExposureAdded: 0,
+      expectedConfidenceGain: 0,
+      rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
+    },
     summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
   });
   assert.equal(hot.lowExposureSweepConfidencePreview.state, 'watch-exposure');
@@ -380,6 +404,14 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     continueNow: true,
     stopSignal: 'Continuer tant que l’exposition ajoutée reste ≤ 8 et le heat ≤ 12.',
     explanation: 'Le second sweep recommandé couvre le gap prioritaire avec une exposition contenue.',
+  });
+  assert.deepEqual(hot.lowExposureSweepConfidencePreview.thirdSweepRecommendation, {
+    state: 'stop-after-second',
+    action: 'stop',
+    prepareThirdSweep: false,
+    marginalExposureAdded: 9,
+    expectedConfidenceGain: 3,
+    rationale: 'Arrêter après la seconde passe: le gain restant serait trop faible par rapport à l’exposition marginale.',
   });
   assert.deepEqual(hot.lowExposureSweepConfidencePreview.secondSweepCandidates, [
     {
@@ -456,7 +488,46 @@ test('buildIntrigueMapOverlay keeps post-sweep gap explanations stable and neutr
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.nextSafeSweep, null);
   assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.secondSweepCandidates, []);
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.secondSweepStopCondition.state, 'no-safe-sweep');
+  assert.equal(overlay[0].lowExposureSweepConfidencePreview.thirdSweepRecommendation.state, 'do-nothing');
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.unknownsRemaining, 0);
+});
+
+test('buildIntrigueMapOverlay recommends preparing a third sweep only when residual value beats marginal exposure', () => {
+  const preview = buildIntrigueMapOverlay([
+    ...Array.from({ length: 4 }, (_, index) => ({
+      id: `cell-wide-${index}`,
+      factionId: 'shadow-league',
+      codename: `Wide ${index}`,
+      locationId: 'wide',
+      memberIds: [`ag-${index}`],
+      assetIds: [`asset-${index}`],
+      exposure: 10,
+    })),
+  ], [
+    {
+      id: 'op-wide',
+      celluleId: 'cell-wide-0',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe wide residuals',
+      theaterId: 'wide',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 20,
+      progress: 80,
+      heat: 80,
+    },
+  ])[0].lowExposureSweepConfidencePreview;
+
+  assert.equal(preview.secondSweepStopCondition.state, 'continue-now');
+  assert.deepEqual(preview.thirdSweepRecommendation, {
+    state: 'prepare-third-safe-sweep',
+    action: 'prepare',
+    prepareThirdSweep: true,
+    marginalExposureAdded: 9,
+    expectedConfidenceGain: 14,
+    rationale: 'Préparer une troisième passe prudente: 2 inconnues resteraient et le gain de confiance attendu dépasse l’exposition marginale.',
+  });
 });
 
 test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and exposure limits', () => {
@@ -494,6 +565,7 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     stopSignal: 'Stop tant qu’aucun nouveau signal bas-risque ne justifie de rouvrir la pression sabotage.',
     explanation: 'La couverture utile est déjà lisible; attendre un signal frais évite une exposition gratuite.',
   });
+  assert.equal(needsSignal.thirdSweepRecommendation.state, 'monitor-only');
 
   const tooExposed = buildIntrigueMapOverlay([
     ...Array.from({ length: 6 }, (_, index) => ({
@@ -525,6 +597,7 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
   assert.equal(tooExposed.secondSweepStopCondition.state, 'exposure-too-high');
   assert.equal(tooExposed.secondSweepStopCondition.continueNow, false);
   assert.match(tooExposed.secondSweepStopCondition.stopSignal, /Stop si le second sweep ajoute/);
+  assert.equal(tooExposed.thirdSweepRecommendation.state, 'stop-after-second');
 });
 
 test('buildIntrigueMapOverlay rejects invalid inputs', () => {

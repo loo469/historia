@@ -273,6 +273,75 @@ function buildSecondSweepStopCondition({ nextSafeSweep, unknownsRemaining, sabot
   };
 }
 
+function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep, unknownsRemaining, sabotageRiskScore }) {
+  if (nextSafeSweep === null || secondSweepStopCondition.state === 'no-safe-sweep') {
+    return {
+      state: 'do-nothing',
+      action: 'none',
+      prepareThirdSweep: false,
+      marginalExposureAdded: 0,
+      expectedConfidenceGain: 0,
+      rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
+    };
+  }
+
+  if (secondSweepStopCondition.state === 'exposure-too-high') {
+    return {
+      state: 'stop-after-second',
+      action: 'stop',
+      prepareThirdSweep: false,
+      marginalExposureAdded: clampPercent(nextSafeSweep.estimatedExposureAdded + 3),
+      expectedConfidenceGain: 0,
+      rationale: 'Arrêter: une troisième passe ajouterait trop d’exposition marginale après une seconde déjà chaude.',
+    };
+  }
+
+  if (secondSweepStopCondition.state === 'needs-fresh-signal') {
+    return {
+      state: 'monitor-only',
+      action: 'monitor',
+      prepareThirdSweep: false,
+      marginalExposureAdded: clampPercent(Math.max(3, nextSafeSweep.estimatedExposureAdded - 1)),
+      expectedConfidenceGain: 0,
+      rationale: 'Surveiller seulement: attendre un signal frais avant de préparer une troisième passe.',
+    };
+  }
+
+  if (secondSweepStopCondition.state === 'wait-cooler-window') {
+    return {
+      state: 'monitor-cooldown',
+      action: 'monitor',
+      prepareThirdSweep: false,
+      marginalExposureAdded: clampPercent(nextSafeSweep.estimatedExposureAdded),
+      expectedConfidenceGain: clampPercent(Math.min(8, unknownsRemaining * 3)),
+      rationale: 'Surveiller: le gain attendu ne justifie pas encore le coût tant que la fenêtre ne refroidit pas.',
+    };
+  }
+
+  if (unknownsRemaining >= 2 && nextSafeSweep.estimatedExposureAdded <= 8 && sabotageRiskScore < 90) {
+    const marginalExposureAdded = clampPercent(nextSafeSweep.estimatedExposureAdded + 2);
+    const expectedConfidenceGain = clampPercent(Math.min(18, 6 + unknownsRemaining * 4));
+
+    return {
+      state: 'prepare-third-safe-sweep',
+      action: 'prepare',
+      prepareThirdSweep: true,
+      marginalExposureAdded,
+      expectedConfidenceGain,
+      rationale: `Préparer une troisième passe prudente: ${unknownsRemaining} inconnues resteraient et le gain de confiance attendu dépasse l’exposition marginale.`,
+    };
+  }
+
+  return {
+    state: 'stop-after-second',
+    action: 'stop',
+    prepareThirdSweep: false,
+    marginalExposureAdded: clampPercent(nextSafeSweep.estimatedExposureAdded + 1),
+    expectedConfidenceGain: clampPercent(Math.min(5, unknownsRemaining * 3)),
+    rationale: 'Arrêter après la seconde passe: le gain restant serait trop faible par rapport à l’exposition marginale.',
+  };
+}
+
 function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount, sleeperCellCount, sabotageRiskScore }) {
   if (celluleCount <= 0 || sabotageRiskScore <= 0 || exposedCellCount >= celluleCount) {
     return {
@@ -287,6 +356,16 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
       nextSafeSweep: null,
       secondSweepCandidates: [],
       secondSweepStopCondition: buildSecondSweepStopCondition({
+        nextSafeSweep: null,
+        unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
+        sabotageRiskScore,
+      }),
+      thirdSweepRecommendation: buildThirdSweepRecommendation({
+        secondSweepStopCondition: buildSecondSweepStopCondition({
+          nextSafeSweep: null,
+          unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
+          sabotageRiskScore,
+        }),
         nextSafeSweep: null,
         unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
         sabotageRiskScore,
@@ -323,6 +402,12 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     unknownsRemaining,
     sabotageRiskScore,
   });
+  const thirdSweepRecommendation = buildThirdSweepRecommendation({
+    secondSweepStopCondition,
+    nextSafeSweep,
+    unknownsRemaining,
+    sabotageRiskScore,
+  });
   const state = exposureAdded <= 8
     ? 'low-exposure-positive'
     : exposureAdded < 12
@@ -341,6 +426,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     nextSafeSweep,
     secondSweepCandidates,
     secondSweepStopCondition,
+    thirdSweepRecommendation,
     summary: `Confiance +${confidenceDelta} pts pour +${exposureAdded} exposition; ${unknownsRemaining} inconnue${unknownsRemaining > 1 ? 's' : ''} restante${unknownsRemaining > 1 ? 's' : ''}.`,
   };
 }
