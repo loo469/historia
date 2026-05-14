@@ -9584,6 +9584,47 @@ function buildRestoredClimateDeadlineTradeoffWarning(followUpClimateWindowChange
   };
 }
 
+function buildSafestClimateFollowThroughAfterDeadlineTradeoff(restoredClimateDeadlineTradeoffWarning, followUpClimateWindowChangeSummary) {
+  if (!restoredClimateDeadlineTradeoffWarning) {
+    return null;
+  }
+
+  const constraintText = `${restoredClimateDeadlineTradeoffWarning.remainingConstraint ?? ''} ${restoredClimateDeadlineTradeoffWarning.summary ?? ''}`.toLowerCase();
+  const dominantConstraint = constraintText.includes('cascade')
+    ? 'cascade'
+    : constraintText.includes('conflit') || constraintText.includes('timing')
+      ? 'conflit de timing'
+      : constraintText.includes('saison')
+        ? 'saison'
+        : constraintText.includes('pression régionale') || constraintText.includes('deadline')
+          ? 'pression régionale'
+          : 'dette secondaire';
+  const actionByTradeoff = {
+    'tradeoff critique': 'payer encore',
+    'tradeoff modéré': dominantConstraint === 'conflit de timing' ? 'déplacer la décision' : 'accepter un risque court',
+    'aucun tradeoff restant': 'attendre',
+  };
+  const action = actionByTradeoff[restoredClimateDeadlineTradeoffWarning.state] ?? 'verrouiller la fenêtre';
+  const label = restoredClimateDeadlineTradeoffWarning.state === 'tradeoff critique'
+    ? 'follow-through critique'
+    : restoredClimateDeadlineTradeoffWarning.state === 'tradeoff modéré'
+      ? 'follow-through modéré'
+      : 'follow-through absent';
+  const reason = restoredClimateDeadlineTradeoffWarning.state === 'aucun tradeoff restant'
+    ? 'aucune suite immédiate nécessaire: la fenêtre restaurée ne laisse pas de deadline concurrente visible'
+    : `${action} limite ${dominantConstraint} sans rouvrir le détail du payoff climat.`;
+
+  return {
+    state: label,
+    action,
+    dominantConstraint,
+    sourceTradeoff: restoredClimateDeadlineTradeoffWarning.state,
+    windowState: followUpClimateWindowChangeSummary?.state ?? null,
+    reason,
+    summary: `${label}: ${action}; contrainte dominante ${dominantConstraint}.`,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9636,6 +9677,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       followUpClimatePayoffRecommendation: null,
       followUpClimateWindowChangeSummary: null,
       restoredClimateDeadlineTradeoffWarning: null,
+      safestClimateFollowThroughAfterDeadlineTradeoff: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9707,6 +9749,10 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     remainingDeadlinePressure,
     decisionWindow,
   );
+  const safestClimateFollowThroughAfterDeadlineTradeoff = buildSafestClimateFollowThroughAfterDeadlineTradeoff(
+    restoredClimateDeadlineTradeoffWarning,
+    followUpClimateWindowChangeSummary,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -9722,6 +9768,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     followUpClimatePayoffRecommendation,
     followUpClimateWindowChangeSummary,
     restoredClimateDeadlineTradeoffWarning,
+    safestClimateFollowThroughAfterDeadlineTradeoff,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9758,6 +9805,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.followUpClimatePayoffRecommendation ? `<small><b>Paiement de suivi</b> · ${view.followUpClimatePayoffRecommendation.summary} ${view.followUpClimatePayoffRecommendation.reason} Prochaine action: ${view.followUpClimatePayoffRecommendation.nextAction}</small>` : ''}
       ${view.followUpClimateWindowChangeSummary ? `<small><b>Fenêtre après suivi</b> · ${view.followUpClimateWindowChangeSummary.summary} ${view.followUpClimateWindowChangeSummary.oneSentence}</small>` : ''}
       ${view.restoredClimateDeadlineTradeoffWarning ? `<small><b>Alerte tradeoff deadline</b> · ${view.restoredClimateDeadlineTradeoffWarning.summary}</small>` : ''}
+      ${view.safestClimateFollowThroughAfterDeadlineTradeoff ? `<small><b>Follow-through sûr</b> · ${view.safestClimateFollowThroughAfterDeadlineTradeoff.summary} ${view.safestClimateFollowThroughAfterDeadlineTradeoff.reason}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
