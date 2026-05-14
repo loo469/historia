@@ -10,6 +10,7 @@ import {
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
+  buildMiniPlanFallbackReturnCue,
   buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
@@ -323,6 +324,15 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     reason: 'branche recommandée encore sûre',
     cost: null,
     targetId: null,
+  });
+  assert.deepEqual(shell.miniPlanFallbackReturnCue, {
+    empty: true,
+    decision: 'none',
+    condition: 'aucun retour à arbitrer',
+    switchCost: null,
+    reason: null,
+    initialBranchId: null,
+    fallbackBranchId: null,
   });
 });
 
@@ -644,13 +654,23 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     ],
   };
 
-  assert.deepEqual(buildMiniPlanRivalResponseFallback(comparison), {
+  const fallback = buildMiniPlanRivalResponseFallback(comparison);
+  assert.deepEqual(fallback, {
     empty: false,
     fallbackBranchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
     action: 'Scanner axe détour',
     reason: 'agitation locale avant liaison reste medium, contre contre-poussée du front voisin',
     cost: 'cible moins prioritaire: front-a',
     targetId: 'front-a',
+  });
+  assert.deepEqual(buildMiniPlanFallbackReturnCue(fallback, comparison), {
+    empty: false,
+    decision: 'keep-fallback',
+    condition: 'revenir quand front-b devient moins exposée',
+    switchCost: 'changer encore consomme cible moins prioritaire: front-a',
+    reason: 'garder le fallback tant que contre-poussée du front voisin reste high',
+    initialBranchId: 'mini-plan-branch:1:mini-plan-tradeoff:neighbor-front:front-b',
+    fallbackBranchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -662,6 +682,43 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     reason: 'branche recommandée encore sûre',
     cost: null,
     targetId: null,
+  });
+});
+
+test('StrategicMapShell distinguishes keeping fallback from returning to original branch', () => {
+  const fallback = {
+    empty: false,
+    fallbackBranchId: 'fallback',
+    action: 'retour initial surveillé',
+    reason: 'risque abaissé',
+    cost: 'bénéfice moindre mais risque équivalent',
+    targetId: 'front-a',
+  };
+  const comparison = {
+    empty: false,
+    branches: [
+      { branchId: 'initial', action: 'branche initiale', rivalResponse: 'agitation locale avant liaison', riskLevel: 'medium', targetId: 'front-a' },
+      { branchId: 'fallback', action: 'fallback', rivalResponse: 'veille adverse', riskLevel: 'medium', targetId: 'front-a' },
+    ],
+  };
+
+  assert.deepEqual(buildMiniPlanFallbackReturnCue(fallback, comparison), {
+    empty: false,
+    decision: 'return-initial',
+    condition: 'revenir quand la réponse rivale se dissipe',
+    switchCost: 'changer encore consomme bénéfice moindre mais risque équivalent',
+    reason: 'revenir à la branche initiale si son risque retombe au niveau medium',
+    initialBranchId: 'initial',
+    fallbackBranchId: 'fallback',
+  });
+  assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
+    empty: true,
+    decision: 'none',
+    condition: 'aucun retour à arbitrer',
+    switchCost: null,
+    reason: null,
+    initialBranchId: null,
+    fallbackBranchId: null,
   });
 });
 

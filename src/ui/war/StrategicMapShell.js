@@ -628,6 +628,68 @@ export function buildMiniPlanRivalResponseFallback(miniPlanRivalResponseComparis
   };
 }
 
+function describeFallbackReturnCondition(initialBranch, fallbackBranch, fallback) {
+  const rivalResponse = initialBranch?.rivalResponse ?? 'réponse rivale';
+  const cost = fallback?.cost ?? '';
+  if (String(cost).startsWith('cible moins prioritaire')) return `revenir quand ${initialBranch?.targetId ?? 'la cible initiale'} devient moins exposée`;
+  if (String(cost).startsWith('délai')) return 'revenir quand le délai rival est absorbé';
+  if (String(rivalResponse).includes('convoi') || String(rivalResponse).includes('coupure')) return 'revenir quand le prérequis logistique est sécurisé';
+  if (String(rivalResponse).includes('agitation')) return 'revenir quand la réponse rivale se dissipe';
+  return 'revenir quand la réponse rivale baisse';
+}
+
+export function buildMiniPlanFallbackReturnCue(
+  miniPlanRivalResponseFallback = null,
+  miniPlanRivalResponseComparison = null,
+) {
+  if (!miniPlanRivalResponseFallback || miniPlanRivalResponseFallback.empty
+    || !miniPlanRivalResponseComparison || miniPlanRivalResponseComparison.empty) {
+    return {
+      empty: true,
+      decision: 'none',
+      condition: 'aucun retour à arbitrer',
+      switchCost: null,
+      reason: null,
+      initialBranchId: null,
+      fallbackBranchId: null,
+    };
+  }
+
+  const branches = normalizeCleanupInput(
+    miniPlanRivalResponseComparison.branches ?? [],
+    'StrategicMapShell miniPlanRivalResponseComparison.branches',
+  );
+  const initialBranch = branches[0] ?? null;
+  const fallbackBranch = branches.find((branch) => branch.branchId === miniPlanRivalResponseFallback.fallbackBranchId) ?? null;
+  if (!initialBranch || !fallbackBranch) {
+    return {
+      empty: true,
+      decision: 'none',
+      condition: 'fallback incomplet',
+      switchCost: null,
+      reason: null,
+      initialBranchId: null,
+      fallbackBranchId: miniPlanRivalResponseFallback.fallbackBranchId ?? null,
+    };
+  }
+
+  const initialRisk = compareRivalRiskLevel(initialBranch.riskLevel);
+  const fallbackRisk = compareRivalRiskLevel(fallbackBranch.riskLevel);
+  const shouldKeepFallback = initialRisk > fallbackRisk;
+
+  return {
+    empty: false,
+    decision: shouldKeepFallback ? 'keep-fallback' : 'return-initial',
+    condition: describeFallbackReturnCondition(initialBranch, fallbackBranch, miniPlanRivalResponseFallback),
+    switchCost: `changer encore consomme ${miniPlanRivalResponseFallback.cost ?? 'un tempo de coordination'}`,
+    reason: shouldKeepFallback
+      ? `garder le fallback tant que ${initialBranch.rivalResponse} reste ${initialBranch.riskLevel}`
+      : `revenir à la branche initiale si son risque retombe au niveau ${fallbackBranch.riskLevel}`,
+    initialBranchId: initialBranch.branchId,
+    fallbackBranchId: fallbackBranch.branchId,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -713,6 +775,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanConflictTradeoffs,
   );
   const miniPlanRivalResponseFallback = buildMiniPlanRivalResponseFallback(miniPlanRivalResponseComparison);
+  const miniPlanFallbackReturnCue = buildMiniPlanFallbackReturnCue(
+    miniPlanRivalResponseFallback,
+    miniPlanRivalResponseComparison,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -762,6 +828,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanRivalResponseRisk,
     miniPlanRivalResponseComparison,
     miniPlanRivalResponseFallback,
+    miniPlanFallbackReturnCue,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
