@@ -744,6 +744,38 @@ function buildTopRetirementRecoveryPreview(recommendedFirstRetirement, topRetire
   };
 }
 
+function buildNextDependencyRetirementPath(dependencyRetirementRanking, topRetirementReadiness, topRetirementRecoveryPreview) {
+  const nextRetirement = dependencyRetirementRanking[1] ?? null;
+
+  if (!nextRetirement) {
+    return {
+      status: 'none-safe',
+      nextRetirement: null,
+      recommendedRecoveryPath: topRetirementRecoveryPreview.expectedRecovery,
+      mainRemainingBlocker: topRetirementReadiness.blockers[0] ? { ...topRetirementReadiness.blockers[0] } : null,
+      reason: dependencyRetirementRanking.length === 0
+        ? 'aucune dette culturelle restante à convertir en retrait suivant'
+        : 'aucun retrait suivant sûr avant de confirmer la récupération prioritaire',
+    };
+  }
+
+  return {
+    status: topRetirementReadiness.status === 'blocked' ? 'conditional' : 'ready-after-recovery',
+    nextRetirement: {
+      debtId: nextRetirement.debtId,
+      type: nextRetirement.type,
+      rank: nextRetirement.rank,
+      cause: nextRetirement.cause,
+      expectedGain: nextRetirement.expectedGain,
+    },
+    recommendedRecoveryPath: topRetirementRecoveryPreview.expectedRecovery,
+    mainRemainingBlocker: topRetirementReadiness.blockers[0] ? { ...topRetirementReadiness.blockers[0] } : null,
+    reason: topRetirementReadiness.status === 'blocked'
+      ? `lever ${topRetirementReadiness.blockers[0].type} pour rendre le retrait #${nextRetirement.rank} lisible`
+      : `après récupération prioritaire, viser ${nextRetirement.cause}`,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -796,6 +828,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const dependencyRetirementRanking = rankStabilizationDependencyRetirements(uniqueDebts);
   const recommendedFirstRetirement = dependencyRetirementRanking[0] ? { ...dependencyRetirementRanking[0] } : null;
   const topRetirementReadiness = buildTopRetirementReadiness(recommendedFirstRetirement, postBundleCumulativeRisk);
+  const topRetirementRecoveryPreview = buildTopRetirementRecoveryPreview(recommendedFirstRetirement, topRetirementReadiness);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -804,7 +837,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     dependencyRetirementRanking,
     recommendedFirstRetirement,
     topRetirementReadiness,
-    topRetirementRecoveryPreview: buildTopRetirementRecoveryPreview(recommendedFirstRetirement, topRetirementReadiness),
+    topRetirementRecoveryPreview,
+    nextDependencyRetirementPath: buildNextDependencyRetirementPath(dependencyRetirementRanking, topRetirementReadiness, topRetirementRecoveryPreview),
   };
 }
 

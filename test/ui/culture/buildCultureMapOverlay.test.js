@@ -891,6 +891,24 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         immediacy: 'conditional',
         closesLoop: 'stabiliser la pression locale avant retrait → retire un tradeoff de support qui entretient la dette de stabilisation',
       },
+      nextDependencyRetirementPath: {
+        status: 'conditional',
+        nextRetirement: {
+          debtId: 'shared-marsh:debt:dependency:shared-marsh:culture-marsh:bundle:guided-opening',
+          type: 'bundle-dependency',
+          rank: 2,
+          cause: 'appliquer le second soutien seulement après stabilisation du premier bundle',
+          expectedGain: 'simplifie la séquence de soutien et clarifie la prochaine action culturelle',
+        },
+        recommendedRecoveryPath: 'stabilité récupérée: le tradeoff culturel cesse de nourrir la dette prioritaire',
+        mainRemainingBlocker: {
+          blockerId: 'shared-marsh:debt:incompatibility:shared-marsh:culture-marsh:bundle:guided-opening:timing',
+          type: 'timing-local-pressure',
+          reason: 'surveiller les relais savants et le rythme d’ouverture',
+          nextSmallStep: 'stabiliser la pression locale avant retrait',
+        },
+        reason: 'lever timing-local-pressure pour rendre le retrait #2 lisible',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -954,6 +972,13 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         expectedRecovery: 'aucune récupération culturelle prioritaire',
         immediacy: 'immediate',
         closesLoop: 'aucune dépendance bloquante à lever',
+      },
+      nextDependencyRetirementPath: {
+        status: 'none-safe',
+        nextRetirement: null,
+        recommendedRecoveryPath: 'aucune récupération culturelle prioritaire',
+        mainRemainingBlocker: null,
+        reason: 'aucune dette culturelle restante à convertir en retrait suivant',
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
