@@ -1004,6 +1004,49 @@ export function buildMiniPlanFollowThroughOpportunityTradeoff(miniPlanMinimalFol
   };
 }
 
+function normalizeTacticalFallbackConstraint(constraint) {
+  return constraint === 'opportunité rivale'
+    ? 'fenêtre d’opportunité'
+    : constraint;
+}
+
+export function buildMiniPlanSafestTacticalFallback(miniPlanFollowThroughOpportunityTradeoff = null) {
+  if (!miniPlanFollowThroughOpportunityTradeoff || miniPlanFollowThroughOpportunityTradeoff.empty) {
+    return {
+      empty: true,
+      state: 'unneeded',
+      label: 'repli inutile',
+      constraint: null,
+      action: null,
+    };
+  }
+
+  const constraint = normalizeTacticalFallbackConstraint(
+    miniPlanFollowThroughOpportunityTradeoff.constraint ?? 'fenêtre d’opportunité',
+  );
+  const state = miniPlanFollowThroughOpportunityTradeoff.state === 'opportunity-threatened'
+    ? 'urgent-save-opportunity'
+    : miniPlanFollowThroughOpportunityTradeoff.state === 'manageable-conflict'
+      ? 'value-advised'
+      : 'unneeded';
+
+  return {
+    empty: false,
+    state,
+    label: state === 'urgent-save-opportunity'
+      ? 'repli urgent pour sauver l’opportunité'
+      : state === 'value-advised'
+        ? 'repli de valeur conseillé'
+        : 'repli inutile',
+    constraint,
+    action: state === 'urgent-save-opportunity'
+      ? (constraint === 'ordre engagé' ? 'abandonner l’ouverture' : 'exploiter maintenant')
+      : state === 'value-advised'
+        ? (constraint === 'position' ? 'préserver position' : 'sécuriser puis exploiter')
+        : 'exploiter maintenant',
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -1113,6 +1156,9 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const miniPlanFollowThroughOpportunityTradeoff = buildMiniPlanFollowThroughOpportunityTradeoff(
     miniPlanMinimalFollowThrough,
   );
+  const miniPlanSafestTacticalFallback = buildMiniPlanSafestTacticalFallback(
+    miniPlanFollowThroughOpportunityTradeoff,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1170,6 +1216,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanLateCorrectionExitCost,
     miniPlanMinimalFollowThrough,
     miniPlanFollowThroughOpportunityTradeoff,
+    miniPlanSafestTacticalFallback,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
