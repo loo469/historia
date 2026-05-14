@@ -387,10 +387,41 @@ function buildFlipActionability(flipScenario, opportunityCostComparison, capacit
   };
 }
 
+function buildDangerousDelaySalvage(opportunityCostComparison, delayScenario, flipWarning) {
+  if (delayScenario === null || delayScenario.netValue > 0) {
+    return null;
+  }
+
+  const actionByCause = {
+    delay: 'invert-priority-to-alternative',
+    capacity: 'secure-capacity-margin',
+    cost: 'reduce-preparation-cost',
+    saturation: 'secure-bottleneck-capacity',
+  };
+  const labelByCause = {
+    delay: `Basculer vers ${flipWarning.alternativeOptionId}`,
+    capacity: 'Sécuriser une capacité tampon avant reprise',
+    cost: 'Réduire le coût avant de relancer la séquence',
+    saturation: 'Sécuriser le goulot avant toute dépense',
+  };
+  const remainingCost = Math.abs(delayScenario.netValue);
+
+  return {
+    id: `salvage:${opportunityCostComparison.recommendedOptionId}:${delayScenario.id}`,
+    trigger: delayScenario.id,
+    action: actionByCause[delayScenario.cause] ?? 'switch-to-alternative',
+    label: labelByCause[delayScenario.cause] ?? `Basculer vers ${flipWarning.alternativeOptionId}`,
+    alternativeOptionId: flipWarning.alternativeOptionId,
+    remainingCost,
+    summary: `${labelByCause[delayScenario.cause] ?? `Basculer vers ${flipWarning.alternativeOptionId}`}: coût restant ${remainingCost} après délai dangereux.`,
+  };
+}
+
 function buildDelayOpportunityCost(opportunityCostComparison, preparationBreakEven, delayScenario, flipWarning, capacityCost) {
   const delayedNetValue = delayScenario?.netValue ?? preparationBreakEven.netValue - capacityCost;
   const delayCost = Math.max(0, preparationBreakEven.netValue - delayedNetValue);
   const isDangerous = delayedNetValue <= 0;
+  const salvageAction = buildDangerousDelaySalvage(opportunityCostComparison, delayScenario, flipWarning);
 
   return {
     id: `delay-cost:${opportunityCostComparison.recommendedOptionId}`,
@@ -407,6 +438,7 @@ function buildDelayOpportunityCost(opportunityCostComparison, preparationBreakEv
       ? flipWarning.actionability.consequence
       : 'suivre la séquence recommandée avant de dépenser davantage',
     reason: `Le délai retire ${delayCost} marge au bénéfice de ${opportunityCostComparison.recommendedOptionId}, dérivé de la comparaison actuelle.`,
+    salvageAction,
   };
 }
 
