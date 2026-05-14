@@ -9856,6 +9856,55 @@ function buildSecondaryClimateDebtWhenReserveCostsWindow(climateReserveNearTermW
   };
 }
 
+function buildSecondaryClimateDebtNearWindowReopenEffect(secondaryClimateDebtWhenReserveCostsWindow, climateReserveNearTermWindowCostWarning, climateRiskReboundAfterTopPayoff, decisionWindow) {
+  if (!secondaryClimateDebtWhenReserveCostsWindow) {
+    return null;
+  }
+
+  const constraintText = `${secondaryClimateDebtWhenReserveCostsWindow.visibleConstraint ?? ''} ${climateReserveNearTermWindowCostWarning?.visibleConstraint ?? ''} ${secondaryClimateDebtWhenReserveCostsWindow.summary ?? ''}`.toLowerCase();
+  const visibleConstraint = secondaryClimateDebtWhenReserveCostsWindow.reserveStillBest
+    ? 'réserve restante'
+    : constraintText.includes('cascade')
+      ? 'cascade voisine'
+      : constraintText.includes('conflit') || constraintText.includes('timing')
+        ? 'conflit de timing'
+        : constraintText.includes('saison')
+          ? 'saison'
+          : constraintText.includes('pression régionale') || constraintText.includes('deadline')
+            ? 'pression régionale'
+            : constraintText.includes('fenêtre')
+              ? 'fenêtre restaurée'
+              : 'dette secondaire';
+  const hasTimingConflict = (decisionWindow?.conflicts?.length ?? 0) > 0;
+  const urgentDebt = secondaryClimateDebtWhenReserveCostsWindow.state === 'dette secondaire urgente';
+  const watchedDebt = secondaryClimateDebtWhenReserveCostsWindow.state === 'dette à surveiller';
+  const reboundContained = climateRiskReboundAfterTopPayoff?.state !== 'rebond fort';
+  const state = urgentDebt && reboundContained && !hasTimingConflict
+    ? 'fenêtre rouverte'
+    : (urgentDebt || watchedDebt) && !secondaryClimateDebtWhenReserveCostsWindow.reserveStillBest
+      ? 'fenêtre stabilisée mais fragile'
+      : 'paiement insuffisant';
+  const immediateGesture = state === 'fenêtre rouverte'
+    ? `payer ${secondaryClimateDebtWhenReserveCostsWindow.secondaryDebtLabel} maintenant`
+    : state === 'fenêtre stabilisée mais fragile'
+      ? `payer ${secondaryClimateDebtWhenReserveCostsWindow.secondaryDebtLabel} puis garder une réserve courte`
+      : 'aucun geste immédiat';
+  const summary = state === 'paiement insuffisant'
+    ? `Paiement insuffisant: la décision reste neutre; contrainte ${visibleConstraint}.`
+    : `${state}: ${secondaryClimateDebtWhenReserveCostsWindow.secondaryDebtLabel} agit sur ${visibleConstraint}; geste: ${immediateGesture}.`;
+
+  return {
+    state,
+    secondaryDebtKey: secondaryClimateDebtWhenReserveCostsWindow.secondaryDebtKey,
+    secondaryDebtLabel: secondaryClimateDebtWhenReserveCostsWindow.secondaryDebtLabel,
+    visibleConstraint,
+    immediateGesture,
+    changesDecision: state !== 'paiement insuffisant',
+    reserveStillNeeded: state === 'fenêtre stabilisée mais fragile' || visibleConstraint === 'réserve restante',
+    summary,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9912,6 +9961,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       climateSecureWindowVsReserveComparison: null,
       climateReserveNearTermWindowCostWarning: null,
       secondaryClimateDebtWhenReserveCostsWindow: null,
+      secondaryClimateDebtNearWindowReopenEffect: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -10002,6 +10052,12 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     climateRiskReboundAfterTopPayoff,
     decisionDebtRanking,
   );
+  const secondaryClimateDebtNearWindowReopenEffect = buildSecondaryClimateDebtNearWindowReopenEffect(
+    secondaryClimateDebtWhenReserveCostsWindow,
+    climateReserveNearTermWindowCostWarning,
+    climateRiskReboundAfterTopPayoff,
+    decisionWindow,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -10021,6 +10077,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     climateSecureWindowVsReserveComparison,
     climateReserveNearTermWindowCostWarning,
     secondaryClimateDebtWhenReserveCostsWindow,
+    secondaryClimateDebtNearWindowReopenEffect,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -10061,6 +10118,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.climateSecureWindowVsReserveComparison ? `<small><b>Sécuriser vs réserve</b> · ${view.climateSecureWindowVsReserveComparison.summary}</small>` : ''}
       ${view.climateReserveNearTermWindowCostWarning ? `<small><b>Coût réserve court terme</b> · ${view.climateReserveNearTermWindowCostWarning.summary}</small>` : ''}
       ${view.secondaryClimateDebtWhenReserveCostsWindow ? `<small><b>Dette secondaire réserve</b> · ${view.secondaryClimateDebtWhenReserveCostsWindow.summary}</small>` : ''}
+      ${view.secondaryClimateDebtNearWindowReopenEffect ? `<small><b>Effet paiement dette secondaire</b> · ${view.secondaryClimateDebtNearWindowReopenEffect.summary}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
