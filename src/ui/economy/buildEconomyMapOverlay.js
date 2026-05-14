@@ -368,17 +368,26 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     {
       id: 'delay-one-turn',
       assumption: 'retard d’un tour',
+      cause: 'delay',
       netValue: preparationBreakEven.netValue - capacityCost,
     },
     {
       id: 'lower-capacity',
       assumption: 'capacité moindre',
+      cause: 'capacity',
       netValue: preparationBreakEven.netValue - opportunityCostComparison.gained.margin,
     },
     {
       id: 'higher-effort-cost',
       assumption: 'coût légèrement plus élevé',
+      cause: 'cost',
       netValue: preparationBreakEven.netValue - 1,
+    },
+    {
+      id: 'bottleneck-saturation',
+      assumption: 'saturation du goulot',
+      cause: 'saturation',
+      netValue: preparationBreakEven.netValue - capacityCost - Math.max(1, opportunityCostComparison.deferred.effort),
     },
   ].map((scenario) => ({
     ...scenario,
@@ -386,18 +395,34 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     outcome: scenario.netValue > 0 ? 'stable' : 'switch-to-alternative',
     alternativeOptionId: scenario.netValue > 0 ? null : opportunityCostComparison.alternativeOptionId,
   }));
-  const fragileScenario = scenarios.find((scenario) => !scenario.recommendationStable) ?? null;
+  const flipScenario = scenarios.find((scenario) => !scenario.recommendationStable) ?? null;
+  const flipWarning = flipScenario === null
+    ? {
+      status: 'stable',
+      summary: 'stable',
+      cause: null,
+      scenarioId: null,
+      alternativeOptionId: null,
+      reason: `La marge de break-even reste positive dans ${scenarios.length} scénarios dérivés.`,
+    }
+    : {
+      status: 'switch',
+      summary: `bascule vers ${flipScenario.alternativeOptionId}`,
+      cause: flipScenario.cause,
+      scenarioId: flipScenario.id,
+      alternativeOptionId: flipScenario.alternativeOptionId,
+      reason: `La recommandation bascule vers ${flipScenario.alternativeOptionId} si ${flipScenario.assumption}.`,
+    };
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
-    summary: fragileScenario === null
-      ? 'Recommandation robuste aux hypothèses testées.'
-      : `Recommandation fragile si ${fragileScenario.assumption}.`,
-    status: fragileScenario === null ? 'robust' : 'fragile',
+    summary: flipScenario === null
+      ? 'stable: recommandation robuste aux hypothèses testées.'
+      : `bascule vers ${flipScenario.alternativeOptionId} si ${flipScenario.assumption}.`,
+    status: flipScenario === null ? 'stable' : 'fragile',
+    flipWarning,
     scenarios,
-    reason: fragileScenario === null
-      ? `La marge de break-even reste positive dans ${scenarios.length} scénarios dérivés.`
-      : `Basculer vers ${fragileScenario.alternativeOptionId} si cette contrainte se confirme.`,
+    reason: flipWarning.reason,
   };
 }
 
