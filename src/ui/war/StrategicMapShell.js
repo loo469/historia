@@ -292,6 +292,97 @@ export function buildFollowUpCleanupMiniPlan(followUpCleanupChoices = [], residu
   };
 }
 
+function getMiniPlanConflictProfile(risk) {
+  const riskKey = String(risk.key ?? '').trim();
+  const riskType = riskKey.split(':')[0];
+  const reason = String(risk.reason ?? risk.label ?? '').trim();
+
+  if (riskType === 'supply-pressure' || /ravitaillement|approvisionnement|convoi/i.test(reason)) {
+    return {
+      severity: 'blocking',
+      label: 'Convoi partagé',
+      mitigation: 'réserver le convoi court avant le mini-plan',
+    };
+  }
+
+  if (riskType === 'neighbor-front' || /front voisin|priorité|ordre/i.test(reason)) {
+    return {
+      severity: 'blocking',
+      label: 'Priorité voisine',
+      mitigation: 'caler une couverture voisine minimale',
+    };
+  }
+
+  if (riskType === 'contested-occupation' || /occupation|disput/i.test(reason)) {
+    return {
+      severity: 'watchable',
+      label: 'Occupation fragile',
+      mitigation: 'garder patrouille locale en réserve',
+    };
+  }
+
+  if (riskType === 'low-loyalty' || /loyaut|émissaire/i.test(reason)) {
+    return {
+      severity: 'watchable',
+      label: 'Loyauté à suivre',
+      mitigation: 'envoyer liaison si le plan dure',
+    };
+  }
+
+  if (riskType === 'route-exposure' || /route|axe|détour|corridor/i.test(reason)) {
+    return {
+      severity: 'watchable',
+      label: 'Axe partagé',
+      mitigation: 'surveiller le détour pendant exécution',
+    };
+  }
+
+  return {
+    severity: 'watchable',
+    label: 'Dépendance visible',
+    mitigation: 'surveiller avant confirmation',
+  };
+}
+
+export function buildMiniPlanDependencyConflicts(followUpCleanupMiniPlan = null, residualRisks = [], topFollowUpReadiness = null) {
+  const normalizedRisks = normalizeCleanupInput(residualRisks, 'StrategicMapShell residualRisks');
+
+  if (!followUpCleanupMiniPlan || followUpCleanupMiniPlan.empty) return [];
+
+  const plannedRiskLabels = new Set((followUpCleanupMiniPlan.steps ?? [])
+    .map((step) => String(step.riskReduced ?? '').trim())
+    .filter(Boolean));
+  const readinessRiskKey = String(topFollowUpReadiness?.residualRiskKey ?? '').trim();
+
+  return normalizedRisks
+    .filter((risk) => {
+      const riskKey = String(risk.key ?? '').trim();
+      const label = String(risk.label ?? '').trim();
+
+      return riskKey !== readinessRiskKey && !plannedRiskLabels.has(label);
+    })
+    .map((risk) => {
+      const riskKey = String(risk.key ?? '').trim();
+      const profile = getMiniPlanConflictProfile(risk);
+
+      return {
+        conflictId: `mini-plan-conflict:${riskKey || 'unknown'}`,
+        severity: profile.severity,
+        label: profile.label,
+        reason: String(risk.reason ?? risk.label ?? 'donnée incertaine').trim() || 'donnée incertaine',
+        mitigation: profile.mitigation,
+        residualRiskKey: riskKey,
+        targetId: getRiskLocationId(riskKey),
+      };
+    })
+    .sort((left, right) => {
+      const severityRank = { blocking: 0, watchable: 1 };
+      return (severityRank[left.severity] ?? 2) - (severityRank[right.severity] ?? 2)
+        || left.residualRiskKey.localeCompare(right.residualRiskKey);
+    })
+    .slice(0, 3);
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -355,6 +446,11 @@ export function buildStrategicMapShell(provinces, options = {}) {
     normalizedOptions.residualRisks,
     topFollowUpReadiness,
   );
+  const miniPlanDependencyConflicts = buildMiniPlanDependencyConflicts(
+    followUpCleanupMiniPlan,
+    normalizedOptions.residualRisks,
+    topFollowUpReadiness,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -398,6 +494,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     followUpCleanupChoices,
     topFollowUpReadiness,
     followUpCleanupMiniPlan,
+    miniPlanDependencyConflicts,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,

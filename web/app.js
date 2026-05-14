@@ -7,6 +7,7 @@ import {
   buildFirstCleanupPayoff,
   buildFollowUpCleanupChoices,
   buildFollowUpCleanupMiniPlan,
+  buildMiniPlanDependencyConflicts,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
 } from '../src/ui/war/StrategicMapShell.js';
@@ -1951,6 +1952,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       followUpCleanupChoices: [],
       topFollowUpReadiness: buildTopFollowUpReadiness([], []),
       followUpCleanupMiniPlan: buildFollowUpCleanupMiniPlan([], [], buildTopFollowUpReadiness([], [])),
+      miniPlanDependencyConflicts: [],
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -1965,6 +1967,11 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
   const followUpCleanupChoices = buildFollowUpCleanupChoices(cleanupOrders, residualRisks, firstCleanupPayoff);
   const topFollowUpReadiness = buildTopFollowUpReadiness(followUpCleanupChoices, residualRisks);
   const followUpCleanupMiniPlan = buildFollowUpCleanupMiniPlan(followUpCleanupChoices, residualRisks, topFollowUpReadiness);
+  const miniPlanDependencyConflicts = buildMiniPlanDependencyConflicts(
+    followUpCleanupMiniPlan,
+    residualRisks,
+    topFollowUpReadiness,
+  );
 
   return {
     fallback: {
@@ -1980,6 +1987,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       followUpCleanupChoices,
       topFollowUpReadiness,
       followUpCleanupMiniPlan,
+      miniPlanDependencyConflicts,
     },
     safetyReason,
     crossDomainBlocker,
@@ -1990,7 +1998,8 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     followUpCleanupChoices,
     topFollowUpReadiness,
     followUpCleanupMiniPlan,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes).`,
+    miniPlanDependencyConflicts,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}).`,
     empty: false,
   };
 }
@@ -2017,9 +2026,13 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const miniPlanLabel = miniPlan && !miniPlan.empty
     ? `plan: ${miniPlan.steps.map((step) => `${step.order}.${step.label} › ${step.riskReduced}; reste ${step.untreatedRisk}`).join(' · ')}`
     : 'plan: aucun suivi sûr';
+  const dependencyConflicts = fallback.miniPlanDependencyConflicts ?? [];
+  const dependencyConflictLabel = dependencyConflicts.length
+    ? `conflits: ${dependencyConflicts.map((conflict) => `${conflict.severity === 'blocking' ? 'bloquant' : 'surv.'} ${conflict.label} › ${conflict.mitigation}`).join(' · ')}`
+    : 'conflits: aucun visible';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="13.2" rx="1.2"></rect>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="14.4" rx="1.2"></rect>
       <text class="atlas-military-fallback-order__label" x="23.2" y="59.1">repli: ${fallback.order}</text>
       <text class="atlas-military-fallback-order__detail" x="23.2" y="60.2">${fallback.detail}</text>
       <text class="atlas-military-fallback-order__safety" x="23.2" y="61.3">${fallback.safetyReason.label}</text>
@@ -2031,6 +2044,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       <text class="atlas-military-fallback-order__cleanup-followups" x="23.2" y="67.9">${followUpCleanupLabel}</text>
       <text class="atlas-military-fallback-order__followup-readiness atlas-military-fallback-order__followup-readiness--${fallback.topFollowUpReadiness?.tone ?? 'neutral'}" x="23.2" y="69">${followUpReadinessLabel}</text>
       <text class="atlas-military-fallback-order__mini-plan" x="23.2" y="70.1">${miniPlanLabel}</text>
+      <text class="atlas-military-fallback-order__mini-plan-conflicts" x="23.2" y="71.2">${dependencyConflictLabel}</text>
     </g>
   `;
 }

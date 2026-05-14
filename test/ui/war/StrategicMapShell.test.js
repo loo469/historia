@@ -6,6 +6,7 @@ import {
   buildFirstCleanupPayoff,
   buildFollowUpCleanupChoices,
   buildFollowUpCleanupMiniPlan,
+  buildMiniPlanDependencyConflicts,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
 } from '../../../src/ui/war/StrategicMapShell.js';
@@ -250,6 +251,17 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
       },
     ],
   });
+  assert.deepEqual(shell.miniPlanDependencyConflicts, [
+    {
+      conflictId: 'mini-plan-conflict:supply-pressure:front-a',
+      severity: 'blocking',
+      label: 'Convoi partagé',
+      reason: 'approvisionnement tendu',
+      mitigation: 'réserver le convoi court avant le mini-plan',
+      residualRiskKey: 'supply-pressure:front-a',
+      targetId: 'front-a',
+    },
+  ]);
 });
 
 test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
@@ -291,6 +303,44 @@ test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan'
     targetId: null,
     steps: [],
   });
+});
+
+test('StrategicMapShell surfaces dependency conflicts around the follow-up mini-plan', () => {
+  const miniPlan = {
+    empty: false,
+    steps: [
+      { riskReduced: 'axe encore exposé' },
+    ],
+  };
+  const readiness = { state: 'ready-now', residualRiskKey: 'route-exposure:front-a' };
+
+  assert.deepEqual(buildMiniPlanDependencyConflicts(miniPlan, [
+    { key: 'route-exposure:front-a', label: 'axe encore exposé', reason: 'exposition route 21' },
+    { key: 'neighbor-front:front-b', label: 'front voisin fragile', reason: 'ordre prioritaire reste à 88' },
+    { key: 'low-loyalty:front-a', label: 'loyauté basse', reason: 'loyauté 42' },
+  ], readiness), [
+    {
+      conflictId: 'mini-plan-conflict:neighbor-front:front-b',
+      severity: 'blocking',
+      label: 'Priorité voisine',
+      reason: 'ordre prioritaire reste à 88',
+      mitigation: 'caler une couverture voisine minimale',
+      residualRiskKey: 'neighbor-front:front-b',
+      targetId: 'front-b',
+    },
+    {
+      conflictId: 'mini-plan-conflict:low-loyalty:front-a',
+      severity: 'watchable',
+      label: 'Loyauté à suivre',
+      reason: 'loyauté 42',
+      mitigation: 'envoyer liaison si le plan dure',
+      residualRiskKey: 'low-loyalty:front-a',
+      targetId: 'front-a',
+    },
+  ]);
+  assert.deepEqual(buildMiniPlanDependencyConflicts({ empty: true }, [
+    { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+  ], readiness), []);
 });
 
 test('StrategicMapShell explains deterministic readiness blockers for the top follow-up', () => {
