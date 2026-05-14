@@ -8977,12 +8977,39 @@ function buildRemainingDeadlinePressureAfterCommitment(projection, remainingRisk
   };
 }
 
+function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
+  if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
+    return null;
+  }
+
+  const remainingRisks = remainingDeadlinePressure.unresolvedAfterCommitment ?? [];
+  const riskIfDeferred = remainingRisks.length > 0
+    ? `${remainingRisks[0]} peut rester prioritaire et repousser la stabilisation de ${remainingDeadlinePressure.deadlineStillThreatened}.`
+    : `La confirmation de ${remainingDeadlinePressure.deadlineStillThreatened} peut manquer malgré l’engagement minimal.`;
+  const remainsAfter = remainingRisks
+    .filter((risk) => risk !== 'deadline à surveiller')
+    .slice(0, 2);
+
+  return {
+    deadlineTargeted: remainingDeadlinePressure.deadlineStillThreatened,
+    action: `Second engagement climat: ${remainingDeadlinePressure.nextAction}`,
+    avoidsRepeating: cheapestSafeCommitment.action,
+    cost: cheapestSafeCommitment.cost === 'faible' ? 'modéré' : 'ciblé',
+    effortScore: cheapestSafeCommitment.effortScore + 1,
+    pressureReduced: 'deadline confirmée',
+    riskIfDeferred,
+    remainsAfterCommitment: remainsAfter,
+    reason: `Après l’engagement minimal, cibler ${remainingDeadlinePressure.deadlineStillThreatened} réduit la pression deadline restante sans répéter ${cheapestSafeCommitment.pressureReduced}.`,
+  };
+}
+
 function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView) {
   if (!recoveryProjectionView || recoveryProjectionView.state === 'neutral' || !recoveryProjectionView.projection) {
     return {
       state: 'neutral',
       cheapestSafeCommitment: null,
       remainingDeadlinePressure: null,
+      nextClimateCommitment: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9003,22 +9030,29 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     projection.firstPressureRelieved,
   );
 
+  const cheapestSafeCommitment = {
+    provinceId: projection.provinceId,
+    provinceLabel: projection.provinceLabel,
+    action: projection.proposedActions[0] ?? 'Démarrer le plan recovery minimal.',
+    cost: selected.cost,
+    effortScore: selected.effortScore,
+    deadlineCovered: projection.deadline,
+    pressureReduced: projection.firstPressureRelieved,
+    stillActiveRisk: unresolvedRisk,
+    safeBecause: selected.safeBecause,
+    doesNotSolve: `Ne résout pas encore: ${unresolvedRisk}.`,
+    remainingDeadlinePressure,
+  };
+  const nextClimateCommitment = buildNextClimateCommitmentAfterResidualPressure(
+    cheapestSafeCommitment,
+    remainingDeadlinePressure,
+  );
+
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
-    cheapestSafeCommitment: {
-      provinceId: projection.provinceId,
-      provinceLabel: projection.provinceLabel,
-      action: projection.proposedActions[0] ?? 'Démarrer le plan recovery minimal.',
-      cost: selected.cost,
-      effortScore: selected.effortScore,
-      deadlineCovered: projection.deadline,
-      pressureReduced: projection.firstPressureRelieved,
-      stillActiveRisk: unresolvedRisk,
-      safeBecause: selected.safeBecause,
-      doesNotSolve: `Ne résout pas encore: ${unresolvedRisk}.`,
-      remainingDeadlinePressure,
-    },
+    cheapestSafeCommitment,
     remainingDeadlinePressure,
+    nextClimateCommitment,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9041,6 +9075,9 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       <small><b>Pression réduite</b> · ${commitment.pressureReduced}</small>
       <small><b>Pression deadline restante</b> · ${view.remainingDeadlinePressure.reason}</small>
       <small><b>Prochaine action</b> · ${view.remainingDeadlinePressure.nextAction}</small>
+      ${view.nextClimateCommitment ? `<small><b>Prochain engagement</b> · ${view.nextClimateCommitment.action} · ${view.nextClimateCommitment.cost}, effort ${view.nextClimateCommitment.effortScore}</small>` : ''}
+      ${view.nextClimateCommitment ? `<small><b>Si différé</b> · ${view.nextClimateCommitment.riskIfDeferred}</small>` : ''}
+      ${view.nextClimateCommitment ? `<small><b>Après lui</b> · ${view.nextClimateCommitment.remainsAfterCommitment.length > 0 ? view.nextClimateCommitment.remainsAfterCommitment.join(' → ') : 'aucune pression deadline visible'}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
