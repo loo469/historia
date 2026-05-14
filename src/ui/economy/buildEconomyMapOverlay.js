@@ -751,6 +751,36 @@ function buildPostNormalizationSurplusUse(guardedCorridorNormalizationCheckpoint
   };
 }
 
+function buildSurplusStabilizationDecision(postNormalizationSurplusUse) {
+  if (postNormalizationSurplusUse.status === 'invest-next-corridor') {
+    return {
+      status: 'fund-expansion',
+      recommendation: 'financer l’expansion',
+      corridorState: 'stable',
+      decidingConstraint: postNormalizationSurplusUse.guidingConstraint,
+      summary: 'Surplus libre: financer l’expansion après stabilité du corridor.',
+    };
+  }
+
+  if (postNormalizationSurplusUse.status === 'reinforce-fragile-alternative') {
+    return {
+      status: 'stabilize-routes',
+      recommendation: 'stabiliser les routes',
+      corridorState: 'fragile',
+      decidingConstraint: postNormalizationSurplusUse.guidingConstraint,
+      summary: 'Surplus à stabiliser: sécuriser les routes avant expansion.',
+    };
+  }
+
+  return {
+    status: 'stabilize-routes',
+    recommendation: 'stabiliser les routes',
+    corridorState: 'chargé',
+    decidingConstraint: postNormalizationSurplusUse.guidingConstraint,
+    summary: 'Surplus à retenir: stabiliser le corridor chargé avant expansion.',
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -976,6 +1006,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     monitoredCorridorRollbackGuard,
   );
   const postNormalizationSurplusUse = buildPostNormalizationSurplusUse(guardedCorridorNormalizationCheckpoint);
+  const surplusStabilizationDecision = buildSurplusStabilizationDecision(postNormalizationSurplusUse);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -999,6 +1030,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     guardedCorridorLoadRelief,
     guardedCorridorNormalizationCheckpoint,
     postNormalizationSurplusUse,
+    surplusStabilizationDecision,
   };
 }
 
