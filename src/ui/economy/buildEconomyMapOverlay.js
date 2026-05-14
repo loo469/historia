@@ -506,6 +506,43 @@ function buildPostSalvageStabilizer(postSalvageRobustness) {
   };
 }
 
+function buildPostStabilizerReliability(postSalvageStabilizer) {
+  if (postSalvageStabilizer.status === 'none-required') {
+    return {
+      status: 'reliable-route',
+      remainingConstraint: null,
+      nextGesture: 'promouvoir',
+      summary: 'Route fiable: promouvoir le corridor après stabilisateur neutre.',
+    };
+  }
+
+  const remainingConstraintByStabilizer = {
+    'capacité tampon': 'capacité tampon',
+    'détour sécurisé': 'détour',
+    'lissage de charge': 'charge',
+    'protection d’étape': 'protection d’étape',
+    'réserve transportée': 'saturation',
+    'alternative de secours': 'alternative',
+  };
+  const remainingConstraint = remainingConstraintByStabilizer[postSalvageStabilizer.stabilizer] ?? 'détour';
+
+  if (postSalvageStabilizer.status === 'urgent-stabilization') {
+    return {
+      status: 'reserve-corridor',
+      remainingConstraint,
+      nextGesture: remainingConstraint === 'alternative' ? 'garder comme secours' : 'renforcer encore',
+      summary: `Corridor à garder en secours: ${remainingConstraint} reste trop fragile après stabilisateur.`,
+    };
+  }
+
+  return {
+    status: 'monitored-route',
+    remainingConstraint,
+    nextGesture: 'surveiller un tour',
+    summary: `Route utilisable sous surveillance: contrôler ${remainingConstraint} après stabilisateur.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -720,6 +757,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     scenarios,
   );
   const postSalvageStabilizer = buildPostSalvageStabilizer(postSalvageRobustness);
+  const postStabilizerReliability = buildPostStabilizerReliability(postSalvageStabilizer);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -736,6 +774,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     postSalvageDecisionComparison,
     postSalvageRobustness,
     postSalvageStabilizer,
+    postStabilizerReliability,
   };
 }
 
