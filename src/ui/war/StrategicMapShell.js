@@ -395,7 +395,6 @@ export function buildMiniPlanConflictTradeoffs(followUpCleanupMiniPlan = null, m
     ?? followUpCleanupMiniPlan.steps?.[0]
     ?? null;
   const miniPlanAction = String(firstPlanStep?.label ?? 'exécuter mini-plan').trim() || 'exécuter mini-plan';
-  const miniPlanCost = String(firstPlanStep?.untreatedRisk ?? 'dépendance non traitée').trim() || 'dépendance non traitée';
 
   return normalizedConflicts
     .map((conflict, index) => {
@@ -417,6 +416,46 @@ export function buildMiniPlanConflictTradeoffs(followUpCleanupMiniPlan = null, m
       };
     })
     .slice(0, 3);
+}
+
+export function buildMiniPlanTradeoffActionPreview(followUpCleanupMiniPlan = null, miniPlanConflictTradeoffs = []) {
+  const normalizedTradeoffs = normalizeCleanupInput(
+    miniPlanConflictTradeoffs,
+    'StrategicMapShell miniPlanConflictTradeoffs',
+  );
+  const chosenTradeoff = normalizedTradeoffs[0] ?? null;
+
+  if (!chosenTradeoff || !followUpCleanupMiniPlan || followUpCleanupMiniPlan.empty) {
+    return {
+      empty: true,
+      reason: 'aucun arbitrage actionnable',
+      tradeoffId: null,
+      targetId: null,
+      action: null,
+      prerequisite: null,
+      expectedBenefit: null,
+    };
+  }
+
+  const firstPlanStep = (followUpCleanupMiniPlan.steps ?? []).find((step) => step?.state === 'execute-cleanup')
+    ?? followUpCleanupMiniPlan.steps?.[0]
+    ?? null;
+  const action = String(chosenTradeoff.recommendedChoice ?? firstPlanStep?.label ?? 'confirmer arbitrage').trim()
+    || 'confirmer arbitrage';
+  const riskReduced = String(firstPlanStep?.riskReduced ?? '').trim();
+  const expectedBenefit = chosenTradeoff.severity === 'blocking'
+    ? `débloque ${chosenTradeoff.rejectedChoice ?? 'le mini-plan'}`
+    : (riskReduced ? `réduit ${riskReduced}` : `confirme ${action}`);
+
+  return {
+    empty: false,
+    reason: chosenTradeoff.reason ?? 'donnée incertaine',
+    tradeoffId: chosenTradeoff.tradeoffId ?? null,
+    targetId: chosenTradeoff.targetId ?? followUpCleanupMiniPlan.targetId ?? null,
+    action,
+    prerequisite: chosenTradeoff.reason ?? firstPlanStep?.prerequisite ?? 'donnée incertaine',
+    expectedBenefit,
+  };
 }
 
 function buildLegend(renderedProvinces, options) {
@@ -491,6 +530,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     followUpCleanupMiniPlan,
     miniPlanDependencyConflicts,
   );
+  const miniPlanTradeoffActionPreview = buildMiniPlanTradeoffActionPreview(
+    followUpCleanupMiniPlan,
+    miniPlanConflictTradeoffs,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -536,6 +579,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     followUpCleanupMiniPlan,
     miniPlanDependencyConflicts,
     miniPlanConflictTradeoffs,
+    miniPlanTradeoffActionPreview,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,

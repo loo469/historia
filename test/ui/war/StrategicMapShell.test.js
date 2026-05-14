@@ -8,6 +8,7 @@ import {
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanDependencyConflicts,
+  buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
 } from '../../../src/ui/war/StrategicMapShell.js';
@@ -276,6 +277,15 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
       targetId: 'front-a',
     },
   ]);
+  assert.deepEqual(shell.miniPlanTradeoffActionPreview, {
+    empty: false,
+    reason: 'approvisionnement tendu',
+    tradeoffId: 'mini-plan-tradeoff:supply-pressure:front-a',
+    targetId: 'front-a',
+    action: 'réserver le convoi court avant le mini-plan',
+    prerequisite: 'approvisionnement tendu',
+    expectedBenefit: 'débloque Scanner axe détour',
+  });
 });
 
 test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
@@ -411,6 +421,59 @@ test('StrategicMapShell turns mini-plan conflicts into explicit choose-one trade
   assert.deepEqual(buildMiniPlanConflictTradeoffs({ empty: true }, [
     { severity: 'blocking', residualRiskKey: 'supply-pressure:front-a' },
   ]), []);
+});
+
+test('StrategicMapShell previews the action unlocked by the recommended mini-plan tradeoff', () => {
+  const miniPlan = {
+    empty: false,
+    targetId: 'front-a',
+    steps: [
+      {
+        state: 'execute-cleanup',
+        label: 'Scanner axe détour',
+        prerequisite: 'éclaireurs disponibles',
+        riskReduced: 'axe encore exposé',
+      },
+    ],
+  };
+
+  assert.deepEqual(buildMiniPlanTradeoffActionPreview(miniPlan, [
+    {
+      tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+      severity: 'blocking',
+      reason: 'ordre prioritaire reste à 88',
+      recommendedChoice: 'caler une couverture voisine minimale',
+      rejectedChoice: 'Scanner axe détour',
+      targetId: 'front-b',
+    },
+  ]), {
+    empty: false,
+    reason: 'ordre prioritaire reste à 88',
+    tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+    targetId: 'front-b',
+    action: 'caler une couverture voisine minimale',
+    prerequisite: 'ordre prioritaire reste à 88',
+    expectedBenefit: 'débloque Scanner axe détour',
+  });
+  assert.deepEqual(buildMiniPlanTradeoffActionPreview(miniPlan, [
+    {
+      tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+      severity: 'watchable',
+      reason: 'loyauté 42',
+      recommendedChoice: 'Scanner axe détour',
+      rejectedChoice: 'envoyer liaison si le plan dure',
+      targetId: 'front-a',
+    },
+  ]).expectedBenefit, 'réduit axe encore exposé');
+  assert.deepEqual(buildMiniPlanTradeoffActionPreview({ empty: true }, []), {
+    empty: true,
+    reason: 'aucun arbitrage actionnable',
+    tradeoffId: null,
+    targetId: null,
+    action: null,
+    prerequisite: null,
+    expectedBenefit: null,
+  });
 });
 
 test('StrategicMapShell explains deterministic readiness blockers for the top follow-up', () => {
