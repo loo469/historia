@@ -8998,6 +8998,56 @@ function buildRemainingDeadlinePressureAfterCommitment(projection, remainingRisk
   };
 }
 
+function buildNextClimateCommitmentDeferralRisk(nextClimateCommitment, remainingDeadlinePressure) {
+  if (!nextClimateCommitment) {
+    return null;
+  }
+
+  const remainingRisks = nextClimateCommitment.remainsAfterCommitment ?? [];
+  const exposureWorsens = remainingRisks.some((risk) => risk.includes('exposition'));
+  const capacityInsufficient = nextClimateCommitment.effortScore >= 4 || nextClimateCommitment.cost === 'ciblé';
+  const deadlineThreatened = Boolean(nextClimateCommitment.deadlineTargeted);
+  const state = capacityInsufficient
+    ? 'regional-capacity-insufficient'
+    : exposureWorsens
+      ? 'exposure-worsens'
+      : deadlineThreatened
+        ? 'deadline-threatened'
+        : remainingDeadlinePressure?.state === 'residual-watch'
+          ? 'tolerable-deferral'
+          : 'no-next-commitment';
+  const pressureMaintained = deadlineThreatened
+    ? nextClimateCommitment.pressureReduced
+    : remainingDeadlinePressure?.pressureReduced ?? 'aucune pression deadline';
+  const riskByState = {
+    'tolerable-deferral': 'report tolérable',
+    'deadline-threatened': 'deadline menacée',
+    'regional-capacity-insufficient': 'capacité régionale insuffisante',
+    'exposure-worsens': 'exposition qui empire',
+    'no-next-commitment': 'aucun engagement suivant',
+  };
+
+  return {
+    state,
+    deadlineTouched: nextClimateCommitment.deadlineTargeted ?? null,
+    pressureMaintained,
+    pressureAdded: state === 'tolerable-deferral' || state === 'no-next-commitment' ? 'aucune pression ajoutée' : 'pression de report +1 tour',
+    mainRisk: riskByState[state],
+    decideNowHint: state === 'tolerable-deferral'
+      ? 'Attendre un tour reste lisible si aucune autre alerte ne monte.'
+      : `Agir maintenant évite: ${riskByState[state]}.`,
+    reason: state === 'regional-capacity-insufficient'
+      ? `${nextClimateCommitment.action} demande déjà ${nextClimateCommitment.effortScore} effort; différer risque de manquer la capacité locale.`
+      : state === 'exposure-worsens'
+        ? `Différer laisse ${remainingRisks.join(' → ')} après le prochain engagement.`
+        : state === 'deadline-threatened'
+          ? `${nextClimateCommitment.deadlineTargeted} reste touchée si le second engagement est repoussé.`
+          : state === 'tolerable-deferral'
+            ? 'Le report ne crée pas de menace deadline immédiate dans cette preview.'
+            : 'Aucun engagement suivant à reporter dans cette preview.',
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9010,8 +9060,7 @@ function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment,
   const remainsAfter = remainingRisks
     .filter((risk) => risk !== 'deadline à surveiller')
     .slice(0, 2);
-
-  return {
+  const nextClimateCommitment = {
     deadlineTargeted: remainingDeadlinePressure.deadlineStillThreatened,
     action: `Second engagement climat: ${remainingDeadlinePressure.nextAction}`,
     avoidsRepeating: cheapestSafeCommitment.action,
@@ -9021,6 +9070,11 @@ function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment,
     riskIfDeferred,
     remainsAfterCommitment: remainsAfter,
     reason: `Après l’engagement minimal, cibler ${remainingDeadlinePressure.deadlineStillThreatened} réduit la pression deadline restante sans répéter ${cheapestSafeCommitment.pressureReduced}.`,
+  };
+
+  return {
+    ...nextClimateCommitment,
+    deferralRiskPreview: buildNextClimateCommitmentDeferralRisk(nextClimateCommitment, remainingDeadlinePressure),
   };
 }
 
@@ -9097,7 +9151,8 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       <small><b>Pression deadline restante</b> · ${view.remainingDeadlinePressure.reason}</small>
       <small><b>Prochaine action</b> · ${view.remainingDeadlinePressure.nextAction}</small>
       ${view.nextClimateCommitment ? `<small><b>Prochain engagement</b> · ${view.nextClimateCommitment.action} · ${view.nextClimateCommitment.cost}, effort ${view.nextClimateCommitment.effortScore}</small>` : ''}
-      ${view.nextClimateCommitment ? `<small><b>Si différé</b> · ${view.nextClimateCommitment.riskIfDeferred}</small>` : ''}
+      ${view.nextClimateCommitment ? `<small><b>Si différé</b> · ${view.nextClimateCommitment.deferralRiskPreview.decideNowHint} ${view.nextClimateCommitment.deferralRiskPreview.reason}</small>` : ''}
+      ${view.nextClimateCommitment ? `<small><b>Risque de report</b> · ${view.nextClimateCommitment.deferralRiskPreview.mainRisk}; ${view.nextClimateCommitment.deferralRiskPreview.pressureAdded}</small>` : ''}
       ${view.nextClimateCommitment ? `<small><b>Après lui</b> · ${view.nextClimateCommitment.remainsAfterCommitment.length > 0 ? view.nextClimateCommitment.remainsAfterCommitment.join(' → ') : 'aucune pression deadline visible'}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
