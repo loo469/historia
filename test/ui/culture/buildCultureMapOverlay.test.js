@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition, buildResidualCultureStabilityWatchWindow, buildResidualCultureSupportRedeploymentCue } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition, buildResidualCultureStabilityWatchWindow, buildResidualCultureSupportRedeploymentCue, buildResidualCulturePrematureRedeploymentRisk } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -995,6 +995,11 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         redeploymentCue: 'réduction prudente possible après le prochain signal confirmé',
         microAction: 'revoir le support si fatigue de médiation remonte',
       },
+      residualCulturePrematureRedeploymentRisk: {
+        status: 'watch-before-redeploy',
+        culturalCost: 'coût possible: tension locale peut réduire la stabilité culturelle',
+        alternative: 'attendre le signal de stabilité avant redéploiement complet',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1143,6 +1148,11 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         blockingFactor: 'soutien résiduel faible',
         redeploymentCue: 'redéploiement sûr: la stabilité tient sans soutien dédié',
         microAction: null,
+      },
+      residualCulturePrematureRedeploymentRisk: {
+        status: 'safe',
+        culturalCost: 'aucun coût culturel attendu: redéploiement acceptable',
+        alternative: 'redéployer si la stabilité reste confirmée',
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1857,6 +1867,50 @@ test('buildResidualCultureSupportRedeploymentCue covers maintain, reduce, and re
       blockingFactor: 'soutien résiduel faible',
       redeploymentCue: 'redéploiement sûr: la stabilité tient sans soutien dédié',
       microAction: null,
+    },
+  );
+});
+
+test('buildResidualCulturePrematureRedeploymentRisk covers premature and safe redeployment', () => {
+  assert.deepEqual(
+    buildResidualCulturePrematureRedeploymentRisk({
+      status: 'keep-support',
+      blockingFactor: 'fragilité sociale voisine',
+      redeploymentCue: 'soutien à maintenir: la stabilité retomberait sans consolidation',
+      microAction: 'sécuriser un support local avant tout suivi',
+    }),
+    {
+      status: 'premature',
+      culturalCost: 'coût culturel probable: fragilité sociale voisine peut faire retomber la stabilité',
+      alternative: 'attendre la stabilité avant de redéployer le soutien',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCulturePrematureRedeploymentRisk({
+      status: 'careful-reduction',
+      blockingFactor: 'tension locale',
+      redeploymentCue: 'réduction prudente possible après le prochain signal confirmé',
+      microAction: 'revoir le support si fatigue de médiation remonte',
+    }),
+    {
+      status: 'watch-before-redeploy',
+      culturalCost: 'coût possible: tension locale peut réduire la stabilité culturelle',
+      alternative: 'attendre le signal de stabilité avant redéploiement complet',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCulturePrematureRedeploymentRisk({
+      status: 'safe-redeploy',
+      blockingFactor: 'soutien résiduel faible',
+      redeploymentCue: 'redéploiement sûr: la stabilité tient sans soutien dédié',
+      microAction: null,
+    }),
+    {
+      status: 'safe',
+      culturalCost: 'aucun coût culturel attendu: redéploiement acceptable',
+      alternative: 'redéployer si la stabilité reste confirmée',
     },
   );
 });
