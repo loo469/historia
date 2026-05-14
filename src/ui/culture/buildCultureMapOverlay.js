@@ -394,6 +394,69 @@ function buildCultureSupportBundleSafetyReason(bundle, safetyScore) {
   return `engagement sûr: actions compatibles · score ${safetyScore}`;
 }
 
+function buildCultureSupportRiskCurrentScore(culture, bundle, regionPresence, cultureState) {
+  const rivalPressure = Math.max(
+    0,
+    ...regionPresence
+      .filter((entry) => entry.cultureId !== culture.id)
+      .map((entry) => entry.influenceScore - cultureState.influenceScore),
+  );
+
+  if (bundle.riskReduced === 'fragmentation culturelle') {
+    return clampScore((100 - culture.cohesion) + (rivalPressure > 0 ? 8 : 0));
+  }
+
+  if (bundle.riskReduced === 'isolement du support') {
+    return clampScore((100 - culture.openness) + (cultureState.signals.activeResearchCount * 5));
+  }
+
+  if (bundle.riskReduced === 'pression frontalière') {
+    return clampScore(45 + rivalPressure + (regionPresence.length * 3));
+  }
+
+  return clampScore(50 - Math.min(culture.cohesion, culture.openness));
+}
+
+function buildCultureSupportRiskChangePreview(culture, bundle, regionPresence, cultureState) {
+  if (!bundle) {
+    return {
+      status: 'neutral',
+      currentRisk: 0,
+      expectedRisk: 0,
+      delta: 0,
+      monitoredRisk: 'aucun support recommandé',
+      tradeoffToWatch: 'aucun',
+      reason: 'aucun bundle recommandé: stabilité suffisante',
+    };
+  }
+
+  const currentRisk = buildCultureSupportRiskCurrentScore(culture, bundle, regionPresence, cultureState);
+  const actionRelief = bundle.actionKeys.reduce((total, actionKey) => {
+    const reliefByAction = {
+      'protect-identity': 16,
+      'mediate-event-memory': 10,
+      'local-assembly': 8,
+      'limit-border-pressure': 12,
+      'shared-mediation': 8,
+      'share-discovery': 7,
+      'pace-research': 6,
+    };
+
+    return total + (reliefByAction[actionKey] ?? 4);
+  }, 0);
+  const expectedRisk = clampScore(currentRisk - actionRelief);
+
+  return {
+    status: expectedRisk < currentRisk ? 'improves' : 'steady',
+    currentRisk,
+    expectedRisk,
+    delta: expectedRisk - currentRisk,
+    monitoredRisk: bundle.riskReduced,
+    tradeoffToWatch: bundle.tradeoff,
+    reason: bundle.expectedBenefit,
+  };
+}
+
 function rankCultureSupportBundles(bundles) {
   return bundles
     .map((bundle) => {
@@ -413,7 +476,7 @@ function rankCultureSupportBundles(bundles) {
     }));
 }
 
-function buildRecommendedFirstCultureSupportBundle(supportBundles) {
+function buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview) {
   const firstBundle = supportBundles[0] ?? null;
 
   if (!firstBundle) {
@@ -426,6 +489,7 @@ function buildRecommendedFirstCultureSupportBundle(supportBundles) {
     safetyScore: firstBundle.safetyScore,
     reason: firstBundle.safetyReason,
     monitoredRisk: firstBundle.monitoredRisk,
+    riskChangePreview,
   };
 }
 
@@ -539,7 +603,8 @@ export function buildCultureMapOverlay(payload, options = {}) {
           ? buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById)
           : null;
         const supportBundles = buildCultureSupportBundles(culture, regionId, regionPresence, cultureState);
-        const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles);
+        const riskChangePreview = buildCultureSupportRiskChangePreview(culture, supportBundles[0] ?? null, regionPresence, cultureState);
+        const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview);
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -605,6 +670,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           zoneBand,
           dominantInRegion: dominantCulture?.cultureId === culture.id,
           competingCultureIds: regionPresence.filter((entry) => entry.cultureId !== culture.id).map((entry) => entry.cultureId),
+          riskChangePreview,
           ...(supportBundles.length > 0 ? { supportBundles, recommendedFirstBundle } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),

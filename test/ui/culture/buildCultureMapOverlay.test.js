@@ -6,6 +6,22 @@ import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js'
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
 import { buildCultureMapOverlay } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
+function withoutRiskChangePreview(value) {
+  if (Array.isArray(value)) {
+    return value.map(withoutRiskChangePreview);
+  }
+
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== 'riskChangePreview')
+      .map(([key, nestedValue]) => [key, withoutRiskChangePreview(nestedValue)]),
+  );
+}
+
 test('buildCultureMapOverlay expands cultures into stable regional markers with discoveries', () => {
   const overlay = buildCultureMapOverlay(
     {
@@ -74,7 +90,7 @@ test('buildCultureMapOverlay expands cultures into stable regional markers with 
     },
   );
 
-  assert.deepEqual(overlay, [
+  assert.deepEqual(withoutRiskChangePreview(overlay), [
     {
       overlayId: 'archipelago:culture-north',
       regionId: 'archipelago',
@@ -416,7 +432,7 @@ test('buildCultureMapOverlay distinguishes overlapping cultural influences in th
     },
   );
 
-  assert.deepEqual(overlay, [
+  assert.deepEqual(withoutRiskChangePreview(overlay), [
     {
       overlayId: 'shared-bay:culture-delta',
       regionId: 'shared-bay',
@@ -724,9 +740,28 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
     safetyScore: 12,
     reason: 'engagement sûr: ancre identitaire d’abord · score 12',
     monitoredRisk: 'fragmentation culturelle',
+    riskChangePreview: {
+      status: 'improves',
+      currentRisk: 66,
+      expectedRisk: 40,
+      delta: -26,
+      monitoredRisk: 'fragmentation culturelle',
+      tradeoffToWatch: 'cohésion + / ouverture -',
+      reason: 'réduit la fragmentation visible avant soutien externe',
+    },
   });
+  assert.deepEqual(marsh.riskChangePreview, marsh.recommendedFirstBundle.riskChangePreview);
   assert.deepEqual(stable.supportBundles, undefined);
   assert.deepEqual(stable.recommendedFirstBundle, undefined);
+  assert.deepEqual(stable.riskChangePreview, {
+    status: 'neutral',
+    currentRisk: 0,
+    expectedRisk: 0,
+    delta: 0,
+    monitoredRisk: 'aucun support recommandé',
+    tradeoffToWatch: 'aucun',
+    reason: 'aucun bundle recommandé: stabilité suffisante',
+  });
 });
 
 test('buildCultureMapOverlay can summarize overlapping culture clusters with discovery and event pins', () => {
