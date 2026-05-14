@@ -3,7 +3,7 @@ import { Province } from '../src/domain/war/Province.js';
 import { City } from '../src/domain/economy/City.js';
 import { TradeRoute } from '../src/domain/economy/TradeRoute.js';
 import { buildEconomySeedFromStrategicMap } from '../src/application/economy/BuildEconomySeedFromStrategicMap.js';
-import { buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
+import { buildFirstCleanupPayoff, buildStrategicMapShell } from '../src/ui/war/StrategicMapShell.js';
 import { buildLauncherMapSelection } from '../src/ui/launcher/buildLauncherMapSelection.js';
 import { buildEconomyMapOverlay } from '../src/ui/economy/buildEconomyMapOverlay.js';
 import { buildCityStockPanel } from '../src/ui/economy/buildCityStockPanel.js';
@@ -1941,6 +1941,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       selectionPreview: null,
       residualRisks: [],
       cleanupOrders: [],
+      firstCleanupPayoff: null,
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -1951,6 +1952,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
   const selectionPreview = buildAtlasMilitaryFallbackSelectionPreview(fallback, topWarning, reliefPreview);
   const residualRisks = buildAtlasMilitaryFallbackResidualRisks(fallback, topWarning, shell, priorityStack);
   const cleanupOrders = buildAtlasMilitaryFallbackCleanupOrders(residualRisks, fallback);
+  const firstCleanupPayoff = buildFirstCleanupPayoff(cleanupOrders, residualRisks);
 
   return {
     fallback: {
@@ -1962,13 +1964,15 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       selectionPreview,
       residualRisks,
       cleanupOrders,
+      firstCleanupPayoff,
     },
     safetyReason,
     crossDomainBlocker,
     selectionPreview,
     residualRisks,
     cleanupOrders,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}).`,
+    firstCleanupPayoff,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}).`,
     empty: false,
   };
 }
@@ -1982,6 +1986,9 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const cleanupOrderLabel = fallback.cleanupOrders?.length
     ? `nettoyer: ${fallback.cleanupOrders.map((order) => order.label).join(' · ')}`
     : 'nettoyer: aucun ordre requis';
+  const firstCleanupPayoffLabel = fallback.firstCleanupPayoff
+    ? `payoff: ${fallback.firstCleanupPayoff.riskReduced} ↓ · reste ${fallback.firstCleanupPayoff.remainingRiskCount}`
+    : 'payoff: aucun nettoyage utile';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
       <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="11" rx="1.2"></rect>
@@ -1992,6 +1999,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       ${fallback.selectionPreview ? `<text class="atlas-military-fallback-order__preview atlas-military-fallback-order__preview--${fallback.selectionPreview.type}" x="23.2" y="63.5">${fallback.selectionPreview.label}</text>` : ''}
       <text class="atlas-military-fallback-order__residual-risks" x="23.2" y="64.6">${residualRiskLabel}</text>
       <text class="atlas-military-fallback-order__cleanup-orders" x="23.2" y="65.7">${cleanupOrderLabel}</text>
+      <text class="atlas-military-fallback-order__cleanup-payoff" x="23.2" y="66.8">${firstCleanupPayoffLabel}</text>
     </g>
   `;
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { Province } from '../../../src/domain/war/Province.js';
-import { buildStrategicMapShell } from '../../../src/ui/war/StrategicMapShell.js';
+import { buildFirstCleanupPayoff, buildStrategicMapShell } from '../../../src/ui/war/StrategicMapShell.js';
 
 function createProvince(overrides = {}) {
   return new Province({
@@ -101,6 +101,47 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     'intrigue-overlay',
   ]);
   assert.equal(shell.activeProvince.provinceId, 'prov-a');
+});
+
+test('StrategicMapShell exposes the first cleanup payoff from cleanup orders and residual risks', () => {
+  const shell = buildStrategicMapShell([createProvince({ id: 'front-a', name: 'Front A' })], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement', reason: 'approvisionnement tendu' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse', reason: 'loyauté 42' },
+    ],
+    cleanupOrders: [
+      {
+        id: 'cleanup:route-blocked:supply-pressure:front-a',
+        label: 'Prioriser convoi court',
+        residualRiskKey: 'supply-pressure:front-a',
+        riskReduced: 'pression ravitaillement',
+        reason: 'ravitaillement visible à faible détour',
+      },
+    ],
+  });
+
+  assert.deepEqual(shell.firstCleanupPayoff, {
+    cleanupOrderId: 'cleanup:route-blocked:supply-pressure:front-a',
+    cleanupOrderLabel: 'Prioriser convoi court',
+    residualRiskKey: 'supply-pressure:front-a',
+    targetId: 'front-a',
+    riskReduced: 'pression ravitaillement',
+    priorityReason: 'ravitaillement visible à faible détour',
+    currentRiskReason: 'approvisionnement tendu',
+    expectedEffect: 'réduit pression ravitaillement',
+    remainingRiskState: 'residual-risk-remains',
+    remainingRiskCount: 1,
+    remainingRisks: [
+      { key: 'low-loyalty:front-a', label: 'loyauté basse', reason: 'loyauté 42' },
+    ],
+  });
+});
+
+test('StrategicMapShell returns a neutral cleanup payoff when no cleanup order is useful', () => {
+  assert.equal(buildFirstCleanupPayoff([], [{ key: 'low-loyalty:front-a', label: 'loyauté basse' }]), null);
+  assert.equal(buildStrategicMapShell([], {}).firstCleanupPayoff, null);
+  assert.throws(() => buildStrategicMapShell([], { cleanupOrders: {} }), /cleanupOrders must be an array/);
+  assert.throws(() => buildStrategicMapShell([], { residualRisks: {} }), /residualRisks must be an array/);
 });
 
 test('StrategicMapShell falls back to default title and validates inputs', () => {

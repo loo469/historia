@@ -11153,6 +11153,7 @@ button { font: inherit; }
 .atlas-military-fallback-order__preview { fill: #bbf7d0; font-size: 0.56px; font-weight: 800; }
 .atlas-military-fallback-order__residual-risks { fill: #fecaca; font-size: 0.54px; font-weight: 800; }
 .atlas-military-fallback-order__cleanup-orders { fill: #bfdbfe; font-size: 0.53px; font-weight: 800; }
+.atlas-military-fallback-order__cleanup-payoff { fill: #bbf7d0; font-size: 0.52px; font-weight: 900; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

@@ -66,6 +66,59 @@ function normalizeOverlaySlots(overlaySlots) {
   return [...new Set(overlaySlots.map((slot) => String(slot).trim()).filter(Boolean))];
 }
 
+function normalizeCleanupInput(value, label) {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${label} must be an array.`);
+  }
+
+  return value.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry));
+}
+
+function getRiskLocationId(riskKey) {
+  const [, locationId = null] = String(riskKey ?? '').split(':');
+
+  return locationId && locationId.trim() ? locationId.trim() : null;
+}
+
+export function buildFirstCleanupPayoff(cleanupOrders = [], residualRisks = []) {
+  const normalizedOrders = normalizeCleanupInput(cleanupOrders, 'StrategicMapShell cleanupOrders');
+  const normalizedRisks = normalizeCleanupInput(residualRisks, 'StrategicMapShell residualRisks');
+  const firstOrder = normalizedOrders[0] ?? null;
+
+  if (!firstOrder) {
+    return null;
+  }
+
+  const residualRiskKey = String(firstOrder.residualRiskKey ?? '').trim();
+  const targetedRisk = normalizedRisks.find((risk) => String(risk.key ?? '').trim() === residualRiskKey) ?? null;
+  const remainingRisks = normalizedRisks
+    .filter((risk) => String(risk.key ?? '').trim() !== residualRiskKey)
+    .map((risk) => ({
+      key: String(risk.key ?? '').trim(),
+      label: String(risk.label ?? 'risque restant').trim() || 'risque restant',
+      reason: String(risk.reason ?? '').trim() || null,
+    }));
+
+  return {
+    cleanupOrderId: String(firstOrder.id ?? '').trim() || null,
+    cleanupOrderLabel: String(firstOrder.label ?? 'Ordre de nettoyage').trim() || 'Ordre de nettoyage',
+    residualRiskKey,
+    targetId: getRiskLocationId(residualRiskKey),
+    riskReduced: String(firstOrder.riskReduced ?? targetedRisk?.label ?? 'risque résiduel').trim() || 'risque résiduel',
+    priorityReason: String(firstOrder.reason ?? targetedRisk?.reason ?? 'premier ordre recommandé').trim()
+      || 'premier ordre recommandé',
+    currentRiskReason: String(targetedRisk?.reason ?? '').trim() || null,
+    expectedEffect: String(firstOrder.expectedEffect ?? `réduit ${firstOrder.riskReduced ?? targetedRisk?.label ?? 'le risque ciblé'}`).trim(),
+    remainingRiskState: remainingRisks.length === 0 ? 'no-visible-risk' : 'residual-risk-remains',
+    remainingRiskCount: remainingRisks.length,
+    remainingRisks,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -117,6 +170,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     || 'Vue d’ensemble des provinces et lignes de front';
   const overlaySlots = normalizeOverlaySlots(normalizedOptions.overlaySlots);
   const provinceGeometryById = normalizeGeometryMap(normalizedOptions.provinceGeometryById);
+  const firstCleanupPayoff = buildFirstCleanupPayoff(normalizedOptions.cleanupOrders, normalizedOptions.residualRisks);
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -156,6 +210,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
         enabled: true,
       })),
     },
+    firstCleanupPayoff,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
