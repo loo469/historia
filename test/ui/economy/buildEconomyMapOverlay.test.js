@@ -585,6 +585,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         nextGesture: 'promouvoir sans garde',
         summary: 'Rollback inutile: la promotion peut avancer sans garde dédiée.',
       },
+      rollbackGuardLoadMargin: {
+        status: 'peak-absorbable',
+        constraint: null,
+        nextGesture: 'absorber',
+        summary: 'Pic absorbable: la route principale garde assez de marge après garde.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -757,6 +763,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       nextGesture: 'promouvoir sans garde',
       summary: 'Rollback inutile: la promotion peut avancer sans garde dédiée.',
     },
+    rollbackGuardLoadMargin: {
+      status: 'peak-absorbable',
+      constraint: null,
+      nextGesture: 'absorber',
+      summary: 'Pic absorbable: la route principale garde assez de marge après garde.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -879,6 +891,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     nextGesture: 'revenir en secours',
     summary: 'Rollback prêt requis: alternative impose une alternative avant promotion.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.rollbackGuardLoadMargin, {
+    status: 'overload-likely',
+    constraint: 'alternative',
+    nextGesture: 'revenir en secours',
+    summary: 'Surcharge probable: alternative demande une alternative active.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -967,6 +985,12 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     constraint: 'alternative',
     nextGesture: 'plafonner avec garde',
     summary: 'Garde conseillée: plafonner le flux et surveiller alternative.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.rollbackGuardLoadMargin, {
+    status: 'peak-capped',
+    constraint: 'alternative',
+    nextGesture: 'plafonner le flux',
+    summary: 'Pic à plafonner: alternative exige de garder la marge sous contrôle.',
   });
 });
 
