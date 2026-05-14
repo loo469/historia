@@ -146,6 +146,7 @@ export function buildFollowUpCleanupChoices(cleanupOrders = [], residualRisks = 
         riskCovered,
         expectedBenefit: String(order.expectedBenefit ?? order.expectedEffect ?? `réduit ${riskCovered}`).trim(),
         rankReason: String(order.reason ?? matchingRisk?.reason ?? 'meilleur suivi restant').trim() || 'meilleur suivi restant',
+        prerequisite: String(order.prerequisite ?? '').trim() || null,
         safetyScore: Number.isFinite(order.safetyScore) ? order.safetyScore : 0,
       };
     })
@@ -154,6 +155,76 @@ export function buildFollowUpCleanupChoices(cleanupOrders = [], residualRisks = 
       || String(left.cleanupOrderId ?? '').localeCompare(String(right.cleanupOrderId ?? '')))
     .slice(0, 3)
     .map((choice, index) => ({ ...choice, rank: index + 1 }));
+}
+
+export function buildTopFollowUpReadiness(followUpCleanupChoices = [], residualRisks = []) {
+  const normalizedChoices = normalizeCleanupInput(followUpCleanupChoices, 'StrategicMapShell followUpCleanupChoices');
+  const normalizedRisks = normalizeCleanupInput(residualRisks, 'StrategicMapShell residualRisks');
+  const topChoice = normalizedChoices[0] ?? null;
+
+  if (!topChoice) {
+    return {
+      state: 'no-safe-followup',
+      tone: 'neutral',
+      label: 'Aucun suivi sûr',
+      blocker: 'aucun cleanup de suivi exploitable',
+      action: null,
+      targetId: null,
+      residualRiskKey: null,
+    };
+  }
+
+  const riskKey = String(topChoice.residualRiskKey ?? '').trim();
+  const riskType = riskKey.split(':')[0];
+  const matchingRisk = normalizedRisks.find((risk) => String(risk.key ?? '').trim() === riskKey) ?? null;
+  const prerequisite = String(topChoice.prerequisite ?? '').trim();
+  const riskReason = String(matchingRisk?.reason ?? topChoice.rankReason ?? '').trim();
+
+  if (riskType === 'route-exposure' || /éclaireur|détour|route|axe|corridor/i.test(`${prerequisite} ${riskReason}`)) {
+    return {
+      state: 'needs-logistics',
+      tone: 'warning',
+      label: 'Logistique à vérifier',
+      blocker: prerequisite || 'axe ou détour encore exposé',
+      action: 'sécuriser le corridor court avant exécution',
+      targetId: topChoice.targetId,
+      residualRiskKey: riskKey,
+    };
+  }
+
+  if (riskType === 'low-loyalty' || riskType === 'contested-occupation' || /loyauté|occupation|patrouille|émissaire|disputée/i.test(`${prerequisite} ${riskReason}`)) {
+    return {
+      state: 'stabilize-control',
+      tone: 'warning',
+      label: 'Contrôle local à stabiliser',
+      blocker: prerequisite || 'loyauté ou occupation encore fragile',
+      action: 'stabiliser la province avant le suivi',
+      targetId: topChoice.targetId,
+      residualRiskKey: riskKey,
+    };
+  }
+
+  if (riskType === 'supply-pressure' || /ravitaillement|convoi|approvisionnement/i.test(`${prerequisite} ${riskReason}`)) {
+    return {
+      state: 'supply-pressure',
+      tone: 'danger',
+      label: 'Ravitaillement sous pression',
+      blocker: prerequisite || 'pression ravitaillement visible',
+      action: 'ouvrir le convoi court avant de confirmer',
+      targetId: topChoice.targetId,
+      residualRiskKey: riskKey,
+    };
+  }
+
+  return {
+    state: 'ready-now',
+    tone: 'ready',
+    label: 'Prêt maintenant',
+    blocker: prerequisite || 'aucun bloqueur visible',
+    action: topChoice.cleanupOrderLabel,
+    targetId: topChoice.targetId,
+    residualRiskKey: riskKey,
+  };
 }
 
 function buildLegend(renderedProvinces, options) {
@@ -213,6 +284,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     normalizedOptions.residualRisks,
     firstCleanupPayoff,
   );
+  const topFollowUpReadiness = buildTopFollowUpReadiness(followUpCleanupChoices, normalizedOptions.residualRisks);
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -254,6 +326,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     },
     firstCleanupPayoff,
     followUpCleanupChoices,
+    topFollowUpReadiness,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,

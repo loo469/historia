@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { Province } from '../../../src/domain/war/Province.js';
-import { buildFirstCleanupPayoff, buildFollowUpCleanupChoices, buildStrategicMapShell } from '../../../src/ui/war/StrategicMapShell.js';
+import {
+  buildFirstCleanupPayoff,
+  buildFollowUpCleanupChoices,
+  buildStrategicMapShell,
+  buildTopFollowUpReadiness,
+} from '../../../src/ui/war/StrategicMapShell.js';
 
 function createProvince(overrides = {}) {
   return new Province({
@@ -159,6 +164,7 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
         residualRiskKey: 'low-loyalty:front-a',
         riskReduced: 'loyauté basse',
         reason: 'faible coût et peu d’effet secondaire',
+        prerequisite: 'émissaire disponible',
         safetyScore: 42,
       },
       {
@@ -167,6 +173,7 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
         residualRiskKey: 'route-exposure:front-b',
         riskReduced: 'axe encore exposé',
         reason: 'réduit l’exposition sans combat',
+        prerequisite: 'éclaireurs disponibles',
         safetyScore: 45,
       },
     ],
@@ -182,6 +189,7 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
       riskCovered: 'axe encore exposé',
       expectedBenefit: 'réduit axe encore exposé',
       rankReason: 'réduit l’exposition sans combat',
+      prerequisite: 'éclaireurs disponibles',
       safetyScore: 45,
     },
     {
@@ -193,9 +201,41 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
       riskCovered: 'loyauté basse',
       expectedBenefit: 'réduit loyauté basse',
       rankReason: 'faible coût et peu d’effet secondaire',
+      prerequisite: 'émissaire disponible',
       safetyScore: 42,
     },
   ]);
+
+  assert.deepEqual(shell.topFollowUpReadiness, {
+    state: 'needs-logistics',
+    tone: 'warning',
+    label: 'Logistique à vérifier',
+    blocker: 'éclaireurs disponibles',
+    action: 'sécuriser le corridor court avant exécution',
+    targetId: 'front-b',
+    residualRiskKey: 'route-exposure:front-b',
+  });
+});
+
+test('StrategicMapShell explains deterministic readiness blockers for the top follow-up', () => {
+  assert.deepEqual(buildTopFollowUpReadiness([], []), {
+    state: 'no-safe-followup',
+    tone: 'neutral',
+    label: 'Aucun suivi sûr',
+    blocker: 'aucun cleanup de suivi exploitable',
+    action: null,
+    targetId: null,
+    residualRiskKey: null,
+  });
+  assert.deepEqual(buildTopFollowUpReadiness([
+    { residualRiskKey: 'supply-pressure:front-a', targetId: 'front-a', rankReason: 'approvisionnement tendu' },
+  ], [{ key: 'supply-pressure:front-a', reason: 'approvisionnement tendu' }]).state, 'supply-pressure');
+  assert.deepEqual(buildTopFollowUpReadiness([
+    { residualRiskKey: 'low-loyalty:front-a', targetId: 'front-a', prerequisite: 'émissaire disponible' },
+  ]).state, 'stabilize-control');
+  assert.deepEqual(buildTopFollowUpReadiness([
+    { residualRiskKey: 'watch:front-a', targetId: 'front-a', cleanupOrderLabel: 'Surveiller risque restant' },
+  ]).state, 'ready-now');
 });
 
 test('StrategicMapShell returns empty follow-up cleanup choices when no follow-up is useful', () => {
