@@ -17,7 +17,7 @@ function withoutSupportRiskPreviews(value) {
 
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => !['riskChangePreview', 'postBundleCumulativeRisk', 'nextSafeSupportBundle'].includes(key))
+      .filter(([key]) => !['riskChangePreview', 'postBundleCumulativeRisk', 'nextSafeSupportBundle', 'cultureStabilizationSummary'].includes(key))
       .map(([key, nestedValue]) => [key, withoutSupportRiskPreviews(nestedValue)]),
   );
 }
@@ -777,6 +777,35 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
     tradeoffToWatch: 'ouverture + / cohésion sous surveillance',
     followsBundleId: 'shared-marsh:culture-marsh:bundle:cohesion-anchor',
   });
+  assert.deepEqual(marsh.cultureStabilizationSummary, {
+    status: 'partial',
+    beforeSecondBundle: {
+      score: 67,
+      level: 'elevated',
+    },
+    afterSecondBundle: {
+      score: 43,
+      level: 'guarded',
+    },
+    stableRegionIds: [],
+    fragileRegionIds: [],
+    mediationRegionIds: ['shared-marsh'],
+    dependencies: [
+      {
+        fromBundleId: 'shared-marsh:culture-marsh:bundle:cohesion-anchor',
+        toBundleId: 'shared-marsh:culture-marsh:bundle:guided-opening',
+        reason: 'appliquer le second soutien seulement après stabilisation du premier bundle',
+      },
+    ],
+    incompatibilities: [
+      {
+        bundleId: 'shared-marsh:culture-marsh:bundle:guided-opening',
+        tradeoff: 'ouverture + / cohésion sous surveillance',
+        mitigation: 'médiation ultérieure recommandée avant d’empiler un troisième soutien',
+      },
+    ],
+    summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
+  });
   assert.deepEqual(stable.supportBundles, undefined);
   assert.deepEqual(stable.recommendedFirstBundle, undefined);
   assert.deepEqual(stable.riskChangePreview, {
@@ -805,6 +834,23 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
     nextAttention: 'aucune attention supplémentaire recommandée',
   });
   assert.equal(stable.nextSafeSupportBundle, null);
+  assert.deepEqual(stable.cultureStabilizationSummary, {
+    status: 'complete',
+    beforeSecondBundle: {
+      score: 0,
+      level: 'low',
+    },
+    afterSecondBundle: {
+      score: 0,
+      level: 'low',
+    },
+    stableRegionIds: ['stable-market'],
+    fragileRegionIds: [],
+    mediationRegionIds: [],
+    dependencies: [],
+    incompatibilities: [],
+    summary: 'stabilisation complète: aucun second soutien requis',
+  });
 });
 
 test('buildCultureMapOverlay can summarize overlapping culture clusters with discovery and event pins', () => {

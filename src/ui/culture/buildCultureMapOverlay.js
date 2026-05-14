@@ -623,6 +623,78 @@ function buildNextSafeSupportBundle(supportBundles, recommendedFirstBundle, post
   };
 }
 
+function buildCultureStabilizationSummary(regionId, recommendedFirstBundle, nextSafeSupportBundle, postBundleCumulativeRisk) {
+  if (postBundleCumulativeRisk.status === 'neutral') {
+    return {
+      status: 'complete',
+      beforeSecondBundle: { score: 0, level: 'low' },
+      afterSecondBundle: { score: 0, level: 'low' },
+      stableRegionIds: [regionId],
+      fragileRegionIds: [],
+      mediationRegionIds: [],
+      dependencies: [],
+      incompatibilities: [],
+      summary: 'stabilisation complète: aucun second soutien requis',
+    };
+  }
+
+  if (!nextSafeSupportBundle) {
+    return {
+      status: 'future-debt',
+      beforeSecondBundle: postBundleCumulativeRisk.after,
+      afterSecondBundle: postBundleCumulativeRisk.after,
+      stableRegionIds: [],
+      fragileRegionIds: [regionId],
+      mediationRegionIds: [],
+      dependencies: recommendedFirstBundle ? [{
+        fromBundleId: recommendedFirstBundle.bundleId,
+        toBundleId: null,
+        reason: 'aucun second soutien sûr disponible après le premier bundle',
+      }] : [],
+      incompatibilities: [],
+      summary: `dette future: ${postBundleCumulativeRisk.remainingPriority} reste prioritaire`,
+    };
+  }
+
+  const afterSecondScore = clampScore(postBundleCumulativeRisk.after.score - (nextSafeSupportBundle.residualReliefScore * 2));
+  const afterSecondBundle = {
+    score: afterSecondScore,
+    level: buildCumulativeRiskLevel(afterSecondScore),
+  };
+  const status = afterSecondScore < 30
+    ? 'complete'
+    : afterSecondScore < postBundleCumulativeRisk.after.score
+      ? 'partial'
+      : 'future-debt';
+  const tradeoffNeedsMediation = nextSafeSupportBundle.tradeoffToWatch.includes('sous surveillance')
+    || nextSafeSupportBundle.tradeoffToWatch.includes('ouverture -')
+    || nextSafeSupportBundle.tradeoffToWatch.includes('recherche ralentie');
+
+  return {
+    status,
+    beforeSecondBundle: postBundleCumulativeRisk.after,
+    afterSecondBundle,
+    stableRegionIds: status === 'complete' ? [regionId] : [],
+    fragileRegionIds: afterSecondScore >= 55 ? [regionId] : [],
+    mediationRegionIds: afterSecondScore >= 30 && afterSecondScore < 55 ? [regionId] : [],
+    dependencies: [{
+      fromBundleId: recommendedFirstBundle.bundleId,
+      toBundleId: nextSafeSupportBundle.bundleId,
+      reason: 'appliquer le second soutien seulement après stabilisation du premier bundle',
+    }],
+    incompatibilities: tradeoffNeedsMediation ? [{
+      bundleId: nextSafeSupportBundle.bundleId,
+      tradeoff: nextSafeSupportBundle.tradeoffToWatch,
+      mitigation: 'médiation ultérieure recommandée avant d’empiler un troisième soutien',
+    }] : [],
+    summary: status === 'complete'
+      ? 'stabilisation complète après le second soutien'
+      : status === 'partial'
+        ? `amélioration partielle: ${nextSafeSupportBundle.monitoredRisk} baisse, médiation à prévoir`
+        : `dette future: ${postBundleCumulativeRisk.remainingPriority} reste prioritaire`,
+  };
+}
+
 function buildRegionClusterSummary(regionId, regionPresence, cultureSignalsById) {
   const cultureIds = regionPresence.map((entry) => entry.cultureId).sort();
   const cultureNames = regionPresence.map((entry) => entry.cultureName).sort();
@@ -737,6 +809,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
         const postBundleCumulativeRisk = buildCultureSupportCumulativeRisk(culture, regionId, riskChangePreview, regionPresence, cultureState);
         const recommendedFirstBundle = buildRecommendedFirstCultureSupportBundle(supportBundles, riskChangePreview, postBundleCumulativeRisk);
         const nextSafeSupportBundle = buildNextSafeSupportBundle(supportBundles, recommendedFirstBundle, postBundleCumulativeRisk);
+        const cultureStabilizationSummary = buildCultureStabilizationSummary(regionId, recommendedFirstBundle, nextSafeSupportBundle, postBundleCumulativeRisk);
 
         const regionalDiscoveryLinks = cultureState.signals.highlightedDiscoveries.map((discoveryId) => {
           const linkedEvents = cultureState.signals.orderedHistoricalEvents.filter((historicalEvent) => historicalEvent.discoveryIds.includes(discoveryId));
@@ -805,6 +878,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           riskChangePreview,
           postBundleCumulativeRisk,
           nextSafeSupportBundle,
+          cultureStabilizationSummary,
           ...(supportBundles.length > 0 ? { supportBundles, recommendedFirstBundle } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
