@@ -623,6 +623,62 @@ function buildNextSafeSupportBundle(supportBundles, recommendedFirstBundle, post
   };
 }
 
+function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
+  const debts = [];
+
+  dependencies.forEach((dependency) => {
+    debts.push({
+      debtId: `${regionId}:debt:dependency:${dependency.toBundleId ?? 'missing-support'}`,
+      type: dependency.toBundleId ? 'bundle-dependency' : 'missing-support',
+      cause: dependency.reason,
+      urgency: dependency.toBundleId ? 'medium' : 'high',
+      nextAction: dependency.toBundleId
+        ? 'séquencer les supports avant tout nouveau bundle'
+        : 'identifier un support culturel compatible avant relance',
+    });
+  });
+
+  incompatibilities.forEach((incompatibility) => {
+    debts.push({
+      debtId: `${regionId}:debt:incompatibility:${incompatibility.bundleId}`,
+      type: 'bundle-incompatibility',
+      cause: incompatibility.tradeoff,
+      urgency: status === 'future-debt' ? 'high' : 'medium',
+      nextAction: incompatibility.mitigation,
+    });
+  });
+
+  mediationRegionIds.forEach((mediationRegionId) => {
+    debts.push({
+      debtId: `${mediationRegionId}:debt:mediation:${postBundleCumulativeRisk.remainingPriority}`,
+      type: 'regional-mediation',
+      cause: `risque restant: ${postBundleCumulativeRisk.remainingPriority}`,
+      urgency: 'medium',
+      nextAction: postBundleCumulativeRisk.nextAttention,
+    });
+  });
+
+  fragileRegionIds.forEach((fragileRegionId) => {
+    debts.push({
+      debtId: `${fragileRegionId}:debt:fragile:${postBundleCumulativeRisk.remainingPriority}`,
+      type: 'fragile-culture',
+      cause: `culture encore fragile: ${postBundleCumulativeRisk.remainingPriority}`,
+      urgency: 'high',
+      nextAction: postBundleCumulativeRisk.nextAttention,
+    });
+  });
+
+  const uniqueDebts = debts
+    .filter((debt, index, list) => list.findIndex((candidate) => candidate.debtId === debt.debtId) === index)
+    .slice(0, 3);
+
+  return {
+    status: uniqueDebts.length > 0 ? 'open' : 'neutral',
+    count: uniqueDebts.length,
+    debts: uniqueDebts,
+  };
+}
+
 function buildCultureStabilizationSummary(regionId, recommendedFirstBundle, nextSafeSupportBundle, postBundleCumulativeRisk) {
   if (postBundleCumulativeRisk.status === 'neutral') {
     return {
@@ -634,24 +690,29 @@ function buildCultureStabilizationSummary(regionId, recommendedFirstBundle, next
       mediationRegionIds: [],
       dependencies: [],
       incompatibilities: [],
+      stabilizationDebtSummary: buildStabilizationDebtSummary('complete', regionId, [], [], [], [], postBundleCumulativeRisk),
       summary: 'stabilisation complète: aucun second soutien requis',
     };
   }
 
   if (!nextSafeSupportBundle) {
+    const dependencies = recommendedFirstBundle ? [{
+      fromBundleId: recommendedFirstBundle.bundleId,
+      toBundleId: null,
+      reason: 'aucun second soutien sûr disponible après le premier bundle',
+    }] : [];
+    const fragileRegionIds = [regionId];
+
     return {
       status: 'future-debt',
       beforeSecondBundle: postBundleCumulativeRisk.after,
       afterSecondBundle: postBundleCumulativeRisk.after,
       stableRegionIds: [],
-      fragileRegionIds: [regionId],
+      fragileRegionIds,
       mediationRegionIds: [],
-      dependencies: recommendedFirstBundle ? [{
-        fromBundleId: recommendedFirstBundle.bundleId,
-        toBundleId: null,
-        reason: 'aucun second soutien sûr disponible après le premier bundle',
-      }] : [],
+      dependencies,
       incompatibilities: [],
+      stabilizationDebtSummary: buildStabilizationDebtSummary('future-debt', regionId, dependencies, [], [], fragileRegionIds, postBundleCumulativeRisk),
       summary: `dette future: ${postBundleCumulativeRisk.remainingPriority} reste prioritaire`,
     };
   }
@@ -669,24 +730,30 @@ function buildCultureStabilizationSummary(regionId, recommendedFirstBundle, next
   const tradeoffNeedsMediation = nextSafeSupportBundle.tradeoffToWatch.includes('sous surveillance')
     || nextSafeSupportBundle.tradeoffToWatch.includes('ouverture -')
     || nextSafeSupportBundle.tradeoffToWatch.includes('recherche ralentie');
+  const stableRegionIds = status === 'complete' ? [regionId] : [];
+  const fragileRegionIds = afterSecondScore >= 55 ? [regionId] : [];
+  const mediationRegionIds = afterSecondScore >= 30 && afterSecondScore < 55 ? [regionId] : [];
+  const dependencies = [{
+    fromBundleId: recommendedFirstBundle.bundleId,
+    toBundleId: nextSafeSupportBundle.bundleId,
+    reason: 'appliquer le second soutien seulement après stabilisation du premier bundle',
+  }];
+  const incompatibilities = tradeoffNeedsMediation ? [{
+    bundleId: nextSafeSupportBundle.bundleId,
+    tradeoff: nextSafeSupportBundle.tradeoffToWatch,
+    mitigation: 'médiation ultérieure recommandée avant d’empiler un troisième soutien',
+  }] : [];
 
   return {
     status,
     beforeSecondBundle: postBundleCumulativeRisk.after,
     afterSecondBundle,
-    stableRegionIds: status === 'complete' ? [regionId] : [],
-    fragileRegionIds: afterSecondScore >= 55 ? [regionId] : [],
-    mediationRegionIds: afterSecondScore >= 30 && afterSecondScore < 55 ? [regionId] : [],
-    dependencies: [{
-      fromBundleId: recommendedFirstBundle.bundleId,
-      toBundleId: nextSafeSupportBundle.bundleId,
-      reason: 'appliquer le second soutien seulement après stabilisation du premier bundle',
-    }],
-    incompatibilities: tradeoffNeedsMediation ? [{
-      bundleId: nextSafeSupportBundle.bundleId,
-      tradeoff: nextSafeSupportBundle.tradeoffToWatch,
-      mitigation: 'médiation ultérieure recommandée avant d’empiler un troisième soutien',
-    }] : [],
+    stableRegionIds,
+    fragileRegionIds,
+    mediationRegionIds,
+    dependencies,
+    incompatibilities,
+    stabilizationDebtSummary: buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk),
     summary: status === 'complete'
       ? 'stabilisation complète après le second soutien'
       : status === 'partial'
