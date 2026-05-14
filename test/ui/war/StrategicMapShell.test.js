@@ -7,6 +7,7 @@ import {
   buildFollowUpCleanupChoices,
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
+  buildMiniPlanConfidenceSignalCue,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -342,6 +343,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     constraint: null,
     nextDecision: null,
     reason: null,
+  });
+  assert.deepEqual(shell.miniPlanConfidenceSignalCue, {
+    empty: true,
+    decision: 'none',
+    label: 'confiance non évaluée',
+    signal: null,
+    waitCost: null,
   });
 });
 
@@ -682,13 +690,21 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     initialBranchId: 'mini-plan-branch:1:mini-plan-tradeoff:neighbor-front:front-b',
     fallbackBranchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
   });
-  assert.deepEqual(buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison), {
+  const protection = buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison);
+  assert.deepEqual(protection, {
     empty: false,
     state: 'lost',
     label: 'protection perdue',
     constraint: 'contre-poussée du front voisin',
     nextDecision: 'confirm-fallback',
     reason: 'confirmer le fallback: contre-poussée du front voisin reste plus dangereux',
+  });
+  assert.deepEqual(buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback), {
+    empty: false,
+    decision: 'hold-fallback',
+    label: 'tenir fallback',
+    signal: 'contre-poussée du front voisin encore actif',
+    waitCost: 'attendre trop longtemps coûte cible moins prioritaire: front-a',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -730,13 +746,21 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     initialBranchId: 'initial',
     fallbackBranchId: 'fallback',
   });
-  assert.deepEqual(buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison), {
+  const protection = buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison);
+  assert.deepEqual(protection, {
     empty: false,
     state: 'partial',
     label: 'protection partielle',
     constraint: 'agitation locale avant liaison',
     nextDecision: 'wait-signal',
     reason: 'attendre un signal: revenir quand la réponse rivale se dissipe',
+  });
+  assert.deepEqual(buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback), {
+    empty: false,
+    decision: 'wait-confidence',
+    label: 'attendre signal confiance',
+    signal: 'revenir quand la réponse rivale se dissipe',
+    waitCost: 'attendre trop longtemps coûte bénéfice moindre mais risque équivalent',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -769,13 +793,21 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     ],
   };
 
-  assert.deepEqual(buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison), {
+  const protection = buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison);
+  assert.deepEqual(protection, {
     empty: false,
     state: 'kept',
     label: 'protection conservée',
     constraint: 'coupure du convoi partagé',
     nextDecision: 'return-now',
     reason: 'revenir maintenant: le risque initial ne dépasse plus le fallback',
+  });
+  assert.deepEqual(buildMiniPlanConfidenceSignalCue(protection, returnCue, fallback), {
+    empty: false,
+    decision: 'return-confirmed',
+    label: 'retour confirmé',
+    signal: 'risque initial revenu sous le fallback',
+    waitCost: 'attendre trop longtemps coûte délai avant branche initiale',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -784,6 +816,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     constraint: null,
     nextDecision: null,
     reason: null,
+  });
+  assert.deepEqual(buildMiniPlanConfidenceSignalCue(null, returnCue, fallback), {
+    empty: true,
+    decision: 'none',
+    label: 'confiance non évaluée',
+    signal: null,
+    waitCost: null,
   });
 });
 
