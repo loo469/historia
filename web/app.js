@@ -9524,6 +9524,45 @@ function buildFollowUpClimateWindowChangeSummary(followUpClimatePayoffRecommenda
   };
 }
 
+function buildRestoredClimateDeadlineTradeoffWarning(followUpClimateWindowChangeSummary, remainingDeadlinePressure, decisionWindow) {
+  if (!followUpClimateWindowChangeSummary) {
+    return null;
+  }
+
+  const improvedWindow = ['fenêtre sûre restaurée', 'rebond réduit seulement'].includes(followUpClimateWindowChangeSummary.state);
+  const deadline = remainingDeadlinePressure?.deadlineStillThreatened ?? decisionWindow?.sourceDeadline ?? null;
+  const unresolvedCount = remainingDeadlinePressure?.unresolvedAfterCommitment?.length ?? 0;
+
+  if (!improvedWindow || !deadline) {
+    return {
+      state: 'aucun tradeoff restant',
+      deadline: null,
+      tradeoffName: 'aucun tradeoff restant',
+      remainingConstraint: followUpClimateWindowChangeSummary.remainingConstraint,
+      action: 'continuer la fenêtre restaurée sans arbitrage deadline supplémentaire',
+      summary: 'Aucun tradeoff deadline restant après le paiement de suivi.',
+    };
+  }
+
+  const critical = followUpClimateWindowChangeSummary.state === 'rebond réduit seulement'
+    || decisionWindow?.state === 'urgent-window'
+    || unresolvedCount > 1;
+  const state = critical ? 'tradeoff critique' : 'tradeoff modéré';
+  const tradeoffName = critical ? 'payer encore' : 'accepter un risque court';
+  const action = critical
+    ? `payer encore ${deadline} avant de déplacer la décision`
+    : `accepter un risque court sur ${deadline} ou déplacer la décision d’un tour`;
+
+  return {
+    state,
+    deadline,
+    tradeoffName,
+    remainingConstraint: followUpClimateWindowChangeSummary.remainingConstraint,
+    action,
+    summary: `${state}: ${deadline} reste menaçante; arbitrage ${tradeoffName}. Action: ${action}.`,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9575,6 +9614,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       climateRiskReboundAfterTopPayoff: null,
       followUpClimatePayoffRecommendation: null,
       followUpClimateWindowChangeSummary: null,
+      restoredClimateDeadlineTradeoffWarning: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9641,6 +9681,11 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     climateRiskReboundAfterTopPayoff,
     decisionWindow,
   );
+  const restoredClimateDeadlineTradeoffWarning = buildRestoredClimateDeadlineTradeoffWarning(
+    followUpClimateWindowChangeSummary,
+    remainingDeadlinePressure,
+    decisionWindow,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -9655,6 +9700,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     climateRiskReboundAfterTopPayoff,
     followUpClimatePayoffRecommendation,
     followUpClimateWindowChangeSummary,
+    restoredClimateDeadlineTradeoffWarning,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9690,6 +9736,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.climateRiskReboundAfterTopPayoff ? `<small><b>Rebond après payoff</b> · ${view.climateRiskReboundAfterTopPayoff.summary} ${view.climateRiskReboundAfterTopPayoff.secondaryDebtCause} ${view.climateRiskReboundAfterTopPayoff.reason}</small>` : ''}
       ${view.followUpClimatePayoffRecommendation ? `<small><b>Paiement de suivi</b> · ${view.followUpClimatePayoffRecommendation.summary} ${view.followUpClimatePayoffRecommendation.reason} Prochaine action: ${view.followUpClimatePayoffRecommendation.nextAction}</small>` : ''}
       ${view.followUpClimateWindowChangeSummary ? `<small><b>Fenêtre après suivi</b> · ${view.followUpClimateWindowChangeSummary.summary} ${view.followUpClimateWindowChangeSummary.oneSentence}</small>` : ''}
+      ${view.restoredClimateDeadlineTradeoffWarning ? `<small><b>Alerte tradeoff deadline</b> · ${view.restoredClimateDeadlineTradeoffWarning.summary}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
