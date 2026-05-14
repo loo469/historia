@@ -690,6 +690,77 @@ export function buildMiniPlanFallbackReturnCue(
   };
 }
 
+function protectionDecisionForRisk(initialRisk, fallbackRisk) {
+  if (initialRisk <= Math.max(1, fallbackRisk - 1)) return 'return-now';
+  if (initialRisk <= fallbackRisk) return 'wait-signal';
+  return 'confirm-fallback';
+}
+
+export function buildMiniPlanReturnProtectionStatus(
+  miniPlanFallbackReturnCue = null,
+  miniPlanRivalResponseFallback = null,
+  miniPlanRivalResponseComparison = null,
+) {
+  if (!miniPlanFallbackReturnCue || miniPlanFallbackReturnCue.empty
+    || !miniPlanRivalResponseFallback || miniPlanRivalResponseFallback.empty
+    || !miniPlanRivalResponseComparison || miniPlanRivalResponseComparison.empty) {
+    return {
+      empty: true,
+      state: 'none',
+      label: 'protection non évaluée',
+      constraint: null,
+      nextDecision: null,
+      reason: null,
+    };
+  }
+
+  const branches = normalizeCleanupInput(
+    miniPlanRivalResponseComparison.branches ?? [],
+    'StrategicMapShell miniPlanRivalResponseComparison.branches',
+  );
+  const initialBranch = branches.find((branch) => branch.branchId === miniPlanFallbackReturnCue.initialBranchId)
+    ?? branches[0]
+    ?? null;
+  const fallbackBranch = branches.find((branch) => branch.branchId === miniPlanRivalResponseFallback.fallbackBranchId)
+    ?? null;
+  if (!initialBranch || !fallbackBranch) {
+    return {
+      empty: true,
+      state: 'none',
+      label: 'protection non évaluée',
+      constraint: null,
+      nextDecision: null,
+      reason: null,
+    };
+  }
+
+  const initialRisk = compareRivalRiskLevel(initialBranch.riskLevel);
+  const fallbackRisk = compareRivalRiskLevel(fallbackBranch.riskLevel);
+  const nextDecision = protectionDecisionForRisk(initialRisk, fallbackRisk);
+  const state = nextDecision === 'return-now'
+    ? 'kept'
+    : nextDecision === 'wait-signal'
+      ? 'partial'
+      : 'lost';
+
+  return {
+    empty: false,
+    state,
+    label: state === 'kept'
+      ? 'protection conservée'
+      : state === 'partial'
+        ? 'protection partielle'
+        : 'protection perdue',
+    constraint: initialBranch.rivalResponse ?? fallbackBranch.rivalResponse ?? 'réponse rivale',
+    nextDecision,
+    reason: nextDecision === 'return-now'
+      ? 'revenir maintenant: le risque initial ne dépasse plus le fallback'
+      : nextDecision === 'wait-signal'
+        ? `attendre un signal: ${miniPlanFallbackReturnCue.condition}`
+        : `confirmer le fallback: ${initialBranch.rivalResponse} reste plus dangereux`,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -779,6 +850,11 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanRivalResponseFallback,
     miniPlanRivalResponseComparison,
   );
+  const miniPlanReturnProtectionStatus = buildMiniPlanReturnProtectionStatus(
+    miniPlanFallbackReturnCue,
+    miniPlanRivalResponseFallback,
+    miniPlanRivalResponseComparison,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -829,6 +905,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanRivalResponseComparison,
     miniPlanRivalResponseFallback,
     miniPlanFallbackReturnCue,
+    miniPlanReturnProtectionStatus,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
