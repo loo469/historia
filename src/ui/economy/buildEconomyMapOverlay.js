@@ -312,7 +312,53 @@ function buildOpportunityCostComparison(bestOption, alternativeOption, estimated
   };
 }
 
-function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel) {
+function buildPreparationBreakEven(opportunityCostComparison, capacityMobilized) {
+  if (opportunityCostComparison === null) {
+    return null;
+  }
+
+  const capacityCost = Math.max(1, capacityMobilized);
+  const protectedValue = opportunityCostComparison.gained.protectedValue;
+  const marginValue = opportunityCostComparison.gained.margin * capacityCost;
+  const deferredCost = opportunityCostComparison.deferred.effort;
+  const riskPenalty = opportunityCostComparison.aggravated.risk === 'higher-sequence-risk' ? capacityCost : 0;
+  const netValue = protectedValue + marginValue - deferredCost - riskPenalty;
+
+  if (netValue <= 0) {
+    return {
+      id: `break-even:${opportunityCostComparison.recommendedOptionId}`,
+      status: 'not-profitable-current-data',
+      window: 'not-now',
+      turnLimit: null,
+      netValue,
+      reason: 'La valeur protégée ne couvre pas le coût différé et le risque estimé.',
+    };
+  }
+
+  if (riskPenalty === 0 && netValue >= capacityCost) {
+    return {
+      id: `break-even:${opportunityCostComparison.recommendedOptionId}`,
+      status: 'profitable-now',
+      window: 'now',
+      turnLimit: 0,
+      netValue,
+      reason: `Rentable maintenant: ${protectedValue} valeur protégée et ${marginValue} marge couvrent ${deferredCost} effort différé.`,
+    };
+  }
+
+  const turnLimit = Math.max(1, Math.ceil(netValue / capacityCost));
+
+  return {
+    id: `break-even:${opportunityCostComparison.recommendedOptionId}`,
+    status: 'profitable-before-window-closes',
+    window: `before-${turnLimit}-turns`,
+    turnLimit,
+    netValue,
+    reason: `Rentable si exécuté avant ${turnLimit} tour(s), avant que le risque différé absorbe la valeur protégée.`,
+  };
+}
+
+function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel, capacityMobilized) {
   if (preparationOptions.length < 2) {
     return null;
   }
@@ -344,6 +390,14 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
         : 'acceptable seulement si le coût immédiat prime sur la valeur protégée',
     };
 
+  const opportunityCostComparison = buildOpportunityCostComparison(
+    best.option,
+    alternativeOption,
+    best.estimatedValueProtected,
+    alternativeValueProtected,
+    routeRiskLevel,
+  );
+
   return {
     id: `best-value:${best.option.id}`,
     optionId: best.option.id,
@@ -354,13 +408,8 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
     reason: `Protège ${best.estimatedValueProtected} valeur corridor avec +${best.option.expectedEffect.marginGain} marge pour ${best.option.effort.amount} ${best.option.effort.unit}.`,
     cheaperAcceptable,
     sequence: buildPreparationSequence(best.option, cheaperAcceptable, best.estimatedValueProtected),
-    opportunityCostComparison: buildOpportunityCostComparison(
-      best.option,
-      alternativeOption,
-      best.estimatedValueProtected,
-      alternativeValueProtected,
-      routeRiskLevel,
-    ),
+    opportunityCostComparison,
+    preparationBreakEven: buildPreparationBreakEven(opportunityCostComparison, capacityMobilized),
   };
 }
 
@@ -386,7 +435,7 @@ function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId
     marginRemaining: nextResource.capacityRemaining,
     preparationAction: nextResource.capacityRemaining === 0 ? 'free-route-capacity' : 'reserve-capacity-buffer',
     preparationOptions,
-    bestValuePreparation: buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel),
+    bestValuePreparation: buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel, capacityMobilized),
   };
 }
 
@@ -432,6 +481,7 @@ function buildCapacitySpendPreview(route, spendPlan) {
     bestValuePreparation,
     preparationSequence: bestValuePreparation?.sequence ?? [],
     opportunityCostComparison: bestValuePreparation?.opportunityCostComparison ?? null,
+    preparationBreakEven: bestValuePreparation?.preparationBreakEven ?? null,
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0
