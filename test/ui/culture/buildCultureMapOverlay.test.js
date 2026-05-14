@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -977,6 +977,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         recommendedSupport: 'support léger suffisant sur fatigue de médiation',
         microDecision: 'revoir le support si fatigue de médiation remonte',
       },
+      residualCultureReliabilityUpgradeCondition: {
+        status: 'upgrade-available',
+        firstCondition: 'confirmer que fatigue de médiation reste borné après le support léger',
+        guidance: 'fiabiliser: garder fatigue de médiation sous contrôle au prochain suivi',
+        microDecision: 'revoir le support si fatigue de médiation remonte',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1106,6 +1112,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         status: 'none-needed',
         visibleConstraint: 'aucune contrainte visible',
         recommendedSupport: 'aucun support minimal requis',
+        microDecision: null,
+      },
+      residualCultureReliabilityUpgradeCondition: {
+        status: 'already-reliable',
+        firstCondition: 'aucune condition supplémentaire visible',
+        guidance: 'stabilité déjà fiable après le soutien minimal',
         microDecision: null,
       },
     },
@@ -1679,6 +1691,53 @@ test('buildResidualCultureMinimalDelayedSupport covers none, light, and immediat
       status: 'immediate-support-required',
       visibleConstraint: 'support local',
       recommendedSupport: 'soutien immédiat requis pour stabiliser support local',
+      microDecision: 'sécuriser un support local avant tout suivi',
+    },
+  );
+});
+
+test('buildResidualCultureReliabilityUpgradeCondition shows first reliability upgrade condition', () => {
+  assert.deepEqual(
+    buildResidualCultureReliabilityUpgradeCondition({
+      status: 'none-needed',
+      visibleConstraint: 'aucune contrainte visible',
+      recommendedSupport: 'aucun support minimal requis',
+      microDecision: null,
+    }),
+    {
+      status: 'already-reliable',
+      firstCondition: 'aucune condition supplémentaire visible',
+      guidance: 'stabilité déjà fiable après le soutien minimal',
+      microDecision: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureReliabilityUpgradeCondition({
+      status: 'light-support-enough',
+      visibleConstraint: 'fatigue de médiation',
+      recommendedSupport: 'support léger suffisant sur fatigue de médiation',
+      microDecision: 'revoir le support si fatigue de médiation remonte',
+    }),
+    {
+      status: 'upgrade-available',
+      firstCondition: 'confirmer que fatigue de médiation reste borné après le support léger',
+      guidance: 'fiabiliser: garder fatigue de médiation sous contrôle au prochain suivi',
+      microDecision: 'revoir le support si fatigue de médiation remonte',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureReliabilityUpgradeCondition({
+      status: 'immediate-support-required',
+      visibleConstraint: 'support local',
+      recommendedSupport: 'soutien immédiat requis pour stabiliser support local',
+      microDecision: 'sécuriser un support local avant tout suivi',
+    }),
+    {
+      status: 'blocked-until-support',
+      firstCondition: 'appliquer le soutien immédiat sur support local',
+      guidance: 'stabilité encore fragile tant que support local n’est pas stabilisé',
       microDecision: 'sécuriser un support local avant tout suivi',
     },
   );
