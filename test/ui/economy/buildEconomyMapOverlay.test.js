@@ -591,6 +591,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         nextGesture: 'absorber',
         summary: 'Pic absorbable: la route principale garde assez de marge après garde.',
       },
+      guardedCorridorLoadRelief: {
+        status: 'no-relief-needed',
+        relief: null,
+        protectedMargin: 'marge actuelle suffisante',
+        nextGesture: 'absorber',
+        summary: 'Aucun allègement utile: la marge absorbe le prochain pic visible.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -769,6 +776,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       nextGesture: 'absorber',
       summary: 'Pic absorbable: la route principale garde assez de marge après garde.',
     },
+    guardedCorridorLoadRelief: {
+      status: 'no-relief-needed',
+      relief: null,
+      protectedMargin: 'marge actuelle suffisante',
+      nextGesture: 'absorber',
+      summary: 'Aucun allègement utile: la marge absorbe le prochain pic visible.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -897,6 +911,13 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     nextGesture: 'revenir en secours',
     summary: 'Surcharge probable: alternative demande une alternative active.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.guardedCorridorLoadRelief, {
+    status: 'urgent-relief',
+    relief: 'activer alternative de secours',
+    protectedMargin: 'alternative',
+    nextGesture: 'revenir en secours',
+    summary: 'Allègement urgent: alternative surcharge la route, garder une alternative active.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -991,6 +1012,13 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     constraint: 'alternative',
     nextGesture: 'plafonner le flux',
     summary: 'Pic à plafonner: alternative exige de garder la marge sous contrôle.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.guardedCorridorLoadRelief, {
+    status: 'relief-recommended',
+    relief: 'déporter vers alternative de secours',
+    protectedMargin: 'alternative',
+    nextGesture: 'plafonner le flux',
+    summary: 'Allègement utile: déporter vers alternative de secours protège la marge sans promettre une sécurité totale.',
   });
 });
 

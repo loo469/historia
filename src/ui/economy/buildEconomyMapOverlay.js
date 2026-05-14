@@ -624,6 +624,45 @@ function buildRollbackGuardLoadMargin(monitoredCorridorRollbackGuard) {
   };
 }
 
+function buildGuardedCorridorLoadRelief(rollbackGuardLoadMargin) {
+  if (rollbackGuardLoadMargin.status === 'peak-absorbable') {
+    return {
+      status: 'no-relief-needed',
+      relief: null,
+      protectedMargin: 'marge actuelle suffisante',
+      nextGesture: 'absorber',
+      summary: 'Aucun allègement utile: la marge absorbe le prochain pic visible.',
+    };
+  }
+
+  if (rollbackGuardLoadMargin.status === 'peak-capped') {
+    const reliefByConstraint = {
+      'capacité tampon': 'réduire le pic de charge',
+      saturation: 'lisser la saturation',
+      détour: 'redistribuer par détour court',
+      charge: 'lisser la charge',
+      'protection d’étape': 'décaler une étape non critique',
+      alternative: 'déporter vers alternative de secours',
+    };
+    const relief = reliefByConstraint[rollbackGuardLoadMargin.constraint] ?? 'redistribuer la charge';
+    return {
+      status: 'relief-recommended',
+      relief,
+      protectedMargin: rollbackGuardLoadMargin.constraint,
+      nextGesture: 'plafonner le flux',
+      summary: `Allègement utile: ${relief} protège la marge sans promettre une sécurité totale.`,
+    };
+  }
+
+  return {
+    status: 'urgent-relief',
+    relief: 'activer alternative de secours',
+    protectedMargin: rollbackGuardLoadMargin.constraint,
+    nextGesture: rollbackGuardLoadMargin.nextGesture,
+    summary: `Allègement urgent: ${rollbackGuardLoadMargin.constraint} surcharge la route, garder une alternative active.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -842,6 +881,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
   const monitoredCorridorPromotionRisk = buildMonitoredCorridorPromotionRisk(postStabilizerReliability);
   const monitoredCorridorRollbackGuard = buildMonitoredCorridorRollbackGuard(monitoredCorridorPromotionRisk);
   const rollbackGuardLoadMargin = buildRollbackGuardLoadMargin(monitoredCorridorRollbackGuard);
+  const guardedCorridorLoadRelief = buildGuardedCorridorLoadRelief(rollbackGuardLoadMargin);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -862,6 +902,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     monitoredCorridorPromotionRisk,
     monitoredCorridorRollbackGuard,
     rollbackGuardLoadMargin,
+    guardedCorridorLoadRelief,
   };
 }
 
