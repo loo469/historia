@@ -160,6 +160,16 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               'Continuer à surveiller sans nouveau gap lisible.',
             ],
             sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+        monitoringChecklistFocus: {
+          signal: null,
+          state: 'stable-for-now',
+          reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+        },
+            monitoringChecklistFocus: {
+              signal: null,
+              state: 'stable-for-now',
+              reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+            },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -264,6 +274,16 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               'Continuer à surveiller sans nouveau gap lisible.',
             ],
             sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+        monitoringChecklistFocus: {
+          signal: null,
+          state: 'stable-for-now',
+          reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+        },
+            monitoringChecklistFocus: {
+              signal: null,
+              state: 'stable-for-now',
+              reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+            },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -468,6 +488,11 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           'Continuer à surveiller sans nouveau gap lisible.',
         ],
         sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+        monitoringChecklistFocus: {
+          signal: null,
+          state: 'stable-for-now',
+          reason: 'Checklist stable pour l’instant: aucun item ne menace de tomber avant un nouveau signal.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -547,6 +572,11 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         'Continuer à surveiller tant que le gain reste marginal.',
       ],
       sweepRestartComparison: 'Surveiller bat la relance: +3 confiance attendue reste trop faible pour +9 exposition.',
+      monitoringChecklistFocus: {
+        signal: 'Signaux frais',
+        state: 'earliest-fragile',
+        reason: 'Dépendance non sécurisée: sans signaux convergents, le gain reste marginal.',
+      },
       monitoringChecklist: [
         {
           signal: 'Gain confiance',
@@ -692,6 +722,11 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         'Basculer en surveillance si le heat remonte avant l’ordre.',
       ],
       sweepRestartComparison: 'Relancer bat la surveillance: +14 confiance attendue pour +9 exposition.',
+      monitoringChecklistFocus: {
+        signal: 'Fenêtre sûre',
+        state: 'earliest-fragile',
+        reason: 'Seuil proche: si la fenêtre se ferme, la relance sûre disparaît en premier.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -762,6 +797,11 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       'Continuer à surveiller si la fraîcheur reste insuffisante.',
     ],
     sweepRestartComparison: 'Surveiller bat la relance: le signal est trop ancien pour justifier une nouvelle exposition.',
+    monitoringChecklistFocus: {
+      signal: 'Fraîcheur signal',
+      state: 'earliest-fragile',
+      reason: 'Durée restante: le signal périme avant que la fenêtre low-risk soit confirmée.',
+    },
     monitoringChecklist: [
       {
         signal: 'Fraîcheur signal',
