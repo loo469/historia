@@ -761,6 +761,45 @@ export function buildMiniPlanReturnProtectionStatus(
   };
 }
 
+export function buildMiniPlanConfidenceSignalCue(
+  miniPlanReturnProtectionStatus = null,
+  miniPlanFallbackReturnCue = null,
+  miniPlanRivalResponseFallback = null,
+) {
+  if (!miniPlanReturnProtectionStatus || miniPlanReturnProtectionStatus.empty) {
+    return {
+      empty: true,
+      decision: 'none',
+      label: 'confiance non évaluée',
+      signal: null,
+      waitCost: null,
+    };
+  }
+
+  const decision = miniPlanReturnProtectionStatus.nextDecision === 'return-now'
+    ? 'return-confirmed'
+    : miniPlanReturnProtectionStatus.nextDecision === 'confirm-fallback'
+      ? 'hold-fallback'
+      : 'wait-confidence';
+  const signal = decision === 'return-confirmed'
+    ? 'risque initial revenu sous le fallback'
+    : decision === 'hold-fallback'
+      ? `${miniPlanReturnProtectionStatus.constraint} encore actif`
+      : miniPlanFallbackReturnCue?.condition ?? `signal sur ${miniPlanReturnProtectionStatus.constraint}`;
+
+  return {
+    empty: false,
+    decision,
+    label: decision === 'return-confirmed'
+      ? 'retour confirmé'
+      : decision === 'hold-fallback'
+        ? 'tenir fallback'
+        : 'attendre signal confiance',
+    signal,
+    waitCost: `attendre trop longtemps coûte ${miniPlanRivalResponseFallback?.cost ?? 'un tempo de coordination'}`,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -855,6 +894,11 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanRivalResponseFallback,
     miniPlanRivalResponseComparison,
   );
+  const miniPlanConfidenceSignalCue = buildMiniPlanConfidenceSignalCue(
+    miniPlanReturnProtectionStatus,
+    miniPlanFallbackReturnCue,
+    miniPlanRivalResponseFallback,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -906,6 +950,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanRivalResponseFallback,
     miniPlanFallbackReturnCue,
     miniPlanReturnProtectionStatus,
+    miniPlanConfidenceSignalCue,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
