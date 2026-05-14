@@ -9413,6 +9413,47 @@ function buildClimateRiskReboundAfterTopPayoff(decisionDebtRanking, topClimateDe
   };
 }
 
+function buildFollowUpClimatePayoffRecommendation(climateRiskReboundAfterTopPayoff, decisionDebtRanking, nextClimateCommitment) {
+  if (!climateRiskReboundAfterTopPayoff) {
+    return null;
+  }
+
+  const followUpDebt = decisionDebtRanking?.items?.find((item) => item.key === climateRiskReboundAfterTopPayoff.secondaryDebtKey) ?? null;
+
+  if (!climateRiskReboundAfterTopPayoff.thresholdExceeded || !followUpDebt) {
+    return {
+      state: 'no-safe-follow-up',
+      followUpDebtKey: null,
+      followUpDebtLabel: null,
+      reboundState: climateRiskReboundAfterTopPayoff.state,
+      nextAction: 'Aucun paiement de suivi sûr ou utile avec les données actuelles.',
+      reason: 'Le rebond reste sous le seuil ou la dette secondaire n’est pas assez fiable pour engager un paiement.',
+      summary: 'Aucun paiement de suivi recommandé: surveiller la prochaine fenêtre.',
+    };
+  }
+
+  const safeToPay = followUpDebt.key !== 'replace-commitment' && followUpDebt.estimatedDownstreamDebt !== 'haute';
+  const state = safeToPay ? 'recommended' : 'no-safe-follow-up';
+  const nextAction = safeToPay
+    ? (nextClimateCommitment?.action ?? `Payer ensuite ${followUpDebt.label}.`)
+    : 'Aucun paiement de suivi sûr ou utile avec les données actuelles.';
+  const reason = safeToPay
+    ? `${followUpDebt.label} réduit le rebond ${climateRiskReboundAfterTopPayoff.state} en traitant ${climateRiskReboundAfterTopPayoff.secondaryDebtCause}.`
+    : `${followUpDebt.label} explique le rebond, mais le paiement reste trop fragile avec les signaux actuels.`;
+
+  return {
+    state,
+    followUpDebtKey: followUpDebt.key,
+    followUpDebtLabel: followUpDebt.label,
+    reboundState: climateRiskReboundAfterTopPayoff.state,
+    nextAction,
+    reason,
+    summary: state === 'recommended'
+      ? `Paiement de suivi recommandé: ${followUpDebt.label} pour limiter ${climateRiskReboundAfterTopPayoff.state}.`
+      : 'Aucun paiement de suivi sûr ou utile avec les données actuelles.',
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9462,6 +9503,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       topClimateDebtNextWindowEffect: null,
       climateDebtPayoffRiskComparison: null,
       climateRiskReboundAfterTopPayoff: null,
+      followUpClimatePayoffRecommendation: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9518,6 +9560,11 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     topClimateDebtNextWindowEffect,
     nextClimateCommitment,
   );
+  const followUpClimatePayoffRecommendation = buildFollowUpClimatePayoffRecommendation(
+    climateRiskReboundAfterTopPayoff,
+    decisionDebtRanking,
+    nextClimateCommitment,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -9530,6 +9577,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     topClimateDebtNextWindowEffect,
     climateDebtPayoffRiskComparison,
     climateRiskReboundAfterTopPayoff,
+    followUpClimatePayoffRecommendation,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9563,6 +9611,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.topClimateDebtNextWindowEffect ? `<small><b>Effet fenêtre suivante</b> · ${view.topClimateDebtNextWindowEffect.summary} ${view.topClimateDebtNextWindowEffect.oneSentence}</small>` : ''}
       ${view.climateDebtPayoffRiskComparison ? `<small><b>Payoff risque/coût</b> · ${view.climateDebtPayoffRiskComparison.summary} ${view.climateDebtPayoffRiskComparison.reason} ${view.climateDebtPayoffRiskComparison.necessaryDespiteLimitedReduction}</small>` : ''}
       ${view.climateRiskReboundAfterTopPayoff ? `<small><b>Rebond après payoff</b> · ${view.climateRiskReboundAfterTopPayoff.summary} ${view.climateRiskReboundAfterTopPayoff.secondaryDebtCause} ${view.climateRiskReboundAfterTopPayoff.reason}</small>` : ''}
+      ${view.followUpClimatePayoffRecommendation ? `<small><b>Paiement de suivi</b> · ${view.followUpClimatePayoffRecommendation.summary} ${view.followUpClimatePayoffRecommendation.reason} Prochaine action: ${view.followUpClimatePayoffRecommendation.nextAction}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
