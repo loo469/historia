@@ -155,6 +155,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         bestValuePreparation: null,
         preparationSequence: [],
         opportunityCostComparison: null,
+        preparationBreakEven: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -195,6 +196,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         bestValuePreparation: null,
         preparationSequence: [],
         opportunityCostComparison: null,
+        preparationBreakEven: null,
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -264,6 +266,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     bestValuePreparation: null,
     preparationSequence: [],
     opportunityCostComparison: null,
+    preparationBreakEven: null,
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -352,6 +355,7 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
     bestValuePreparation: null,
     preparationSequence: [],
     opportunityCostComparison: null,
+    preparationBreakEven: null,
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -454,6 +458,14 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       },
       reconsiderWhen: 'Reconsidérer si le risque corridor augmente encore ou si la capacité opérationnelle manque.',
     },
+    preparationBreakEven: {
+      id: 'break-even:grain:shift-to-tools',
+      status: 'profitable-now',
+      window: 'now',
+      turnLimit: 0,
+      netValue: 14,
+      reason: 'Rentable maintenant: 10 valeur protégée et 5 marge couvrent 1 effort différé.',
+    },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
     {
@@ -501,6 +513,14 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       reason: 'Aucune aggravation nette détectée par rapport à l’alternative comparée.',
     },
     reconsiderWhen: 'Reconsidérer si le risque corridor augmente encore ou si la capacité opérationnelle manque.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationBreakEven, {
+    id: 'break-even:grain:shift-to-tools',
+    status: 'profitable-now',
+    window: 'now',
+    turnLimit: 0,
+    netValue: 14,
+    reason: 'Rentable maintenant: 10 valeur protégée et 5 marge couvrent 1 effort différé.',
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
