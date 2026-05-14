@@ -80,6 +80,7 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /buildMiniPlanNextTurnHoldPlan\(/);
   assert.match(webAppSource, /buildMiniPlanHoldReleaseCue\(/);
   assert.match(webAppSource, /buildMiniPlanFirstSafeReengagement\(/);
+  assert.match(webAppSource, /buildMiniPlanPrematureReengagementRisk\(/);
   assert.match(webAppSource, /firstCleanupPayoff/);
   assert.match(webAppSource, /followUpCleanupChoices/);
   assert.match(webAppSource, /topFollowUpReadiness/);
@@ -129,6 +130,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /miniPlanNextTurnHoldPlan: buildMiniPlanNextTurnHoldPlan\(/);
   assert.match(webAppSource, /miniPlanHoldReleaseCue: buildMiniPlanHoldReleaseCue\(/);
   assert.match(webAppSource, /miniPlanFirstSafeReengagement: buildMiniPlanFirstSafeReengagement\(/);
+  assert.match(webAppSource, /miniPlanPrematureReengagementRisk: buildMiniPlanPrematureReengagementRisk\(/);
   assert.match(webAppSource, /Risque si: aucun rival lisible/);
   assert.match(webAppSource, /branches: aucune comparaison/);
   assert.match(webAppSource, /fallback: aucun repli requis/);
@@ -144,6 +146,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /tour\+1: aucun maintien requis/);
   assert.match(webAppSource, /relâche: sûr/);
   assert.match(webAppSource, /réengage: principal sûr/);
+  assert.match(webAppSource, /trop tôt: fenêtre prête/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
@@ -166,6 +169,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__next-turn-hold-plan/);
   assert.match(webAppSource, /atlas-military-fallback-order__hold-release-cue/);
   assert.match(webAppSource, /atlas-military-fallback-order__first-safe-reengagement/);
+  assert.match(webAppSource, /atlas-military-fallback-order__premature-reengagement-risk/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
@@ -188,6 +192,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /tour\+1: \$\{nextTurnHoldPlan\.action\} · risque \$\{nextTurnHoldPlan\.riskIfIgnored\}/);
   assert.match(webAppSource, /relâche: \$\{holdReleaseCue\.label\} · \$\{holdReleaseCue\.constraint\}\$\{holdReleaseCue\.action \? ` · \$\{holdReleaseCue\.action\}` : ''\}/);
   assert.match(webAppSource, /réengage: \$\{firstSafeReengagement\.label\} · \$\{firstSafeReengagement\.constraint\}\$\{firstSafeReengagement\.action \? ` · \$\{firstSafeReengagement\.action\}` : ''\}/);
+  assert.match(webAppSource, /trop tôt: \$\{prematureReengagementRisk\.label\} · \$\{prematureReengagementRisk\.risk\} › \$\{prematureReengagementRisk\.nextSafe\}/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
@@ -220,4 +225,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__next-turn-hold-plan/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__hold-release-cue/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__first-safe-reengagement/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__premature-reengagement-risk/);
 });
