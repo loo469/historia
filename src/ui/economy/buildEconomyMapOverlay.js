@@ -272,6 +272,46 @@ function buildPreparationSequence(bestOption, cheaperAcceptable, estimatedValueP
   return sequence;
 }
 
+function buildOpportunityCostComparison(bestOption, alternativeOption, estimatedValueProtected, alternativeValueProtected, routeRiskLevel) {
+  if (alternativeOption === null) {
+    return null;
+  }
+
+  const marginDelta = bestOption.expectedEffect.marginGain - alternativeOption.expectedEffect.marginGain;
+  const effortDelta = bestOption.effort.amount - alternativeOption.effort.amount;
+  const valueDelta = estimatedValueProtected - alternativeValueProtected;
+
+  return {
+    id: `opportunity-cost:${bestOption.id}:vs:${alternativeOption.id}`,
+    recommendedOptionId: bestOption.id,
+    alternativeOptionId: alternativeOption.id,
+    summary: valueDelta >= 0
+      ? `Meilleure maintenant: +${valueDelta} valeur protégée contre ${alternativeOption.label}.`
+      : `Option prudente: protège moins de valeur mais réduit le coût immédiat face à ${alternativeOption.label}.`,
+    gained: {
+      protectedValue: Math.max(0, valueDelta),
+      margin: Math.max(0, marginDelta),
+      reason: `${bestOption.label} protège davantage le corridor avant la dépense.`,
+    },
+    deferred: {
+      effort: Math.max(0, effortDelta),
+      unit: bestOption.effort.unit,
+      reason: effortDelta > 0
+        ? `${alternativeOption.label} reste moins coûteuse si le coût immédiat devient prioritaire.`
+        : 'Aucun effort additionnel net par rapport à l’alternative.',
+    },
+    aggravated: {
+      risk: bestOption.safety === 'risky' && alternativeOption.safety !== 'risky' ? 'higher-sequence-risk' : 'none',
+      reason: bestOption.safety === 'risky' && alternativeOption.safety !== 'risky'
+        ? 'La séquence recommandée protège plus de valeur mais expose davantage le corridor.'
+        : 'Aucune aggravation nette détectée par rapport à l’alternative comparée.',
+    },
+    reconsiderWhen: routeRiskLevel >= 50
+      ? 'Reconsidérer si le risque corridor augmente encore ou si la capacité opérationnelle manque.'
+      : 'Reconsidérer si la marge disponible, le risque corridor ou le coût immédiat change.',
+  };
+}
+
 function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel) {
   if (preparationOptions.length < 2) {
     return null;
@@ -291,6 +331,10 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
   const cheapest = preparationOptions
     .slice()
     .sort((left, right) => left.effort.amount - right.effort.amount || left.id.localeCompare(right.id))[0];
+  const alternativeOption = cheapest.id === best.option.id
+    ? (scoredOptions.find((entry) => entry.option.id !== best.option.id)?.option ?? null)
+    : cheapest;
+  const alternativeValueProtected = alternativeOption === null ? 0 : alternativeOption.expectedEffect.marginGain * routeValue;
   const cheaperAcceptable = cheapest.id === best.option.id
     ? null
     : {
@@ -310,6 +354,13 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
     reason: `Protège ${best.estimatedValueProtected} valeur corridor avec +${best.option.expectedEffect.marginGain} marge pour ${best.option.effort.amount} ${best.option.effort.unit}.`,
     cheaperAcceptable,
     sequence: buildPreparationSequence(best.option, cheaperAcceptable, best.estimatedValueProtected),
+    opportunityCostComparison: buildOpportunityCostComparison(
+      best.option,
+      alternativeOption,
+      best.estimatedValueProtected,
+      alternativeValueProtected,
+      routeRiskLevel,
+    ),
   };
 }
 
@@ -380,6 +431,7 @@ function buildCapacitySpendPreview(route, spendPlan) {
     preparationOptions: nextBottleneck?.preparationOptions ?? [],
     bestValuePreparation,
     preparationSequence: bestValuePreparation?.sequence ?? [],
+    opportunityCostComparison: bestValuePreparation?.opportunityCostComparison ?? null,
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0
