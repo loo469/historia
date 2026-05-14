@@ -238,6 +238,40 @@ function scorePreparationOption(option, routeValue, routeRiskLevel) {
     - option.effort.amount;
 }
 
+function buildPreparationSequence(bestOption, cheaperAcceptable, estimatedValueProtected) {
+  const sequence = [
+    {
+      id: `${bestOption.id}:now`,
+      timing: 'now',
+      optionId: bestOption.id,
+      action: bestOption.action,
+      label: bestOption.label,
+      reason: `Sécurise ${estimatedValueProtected} valeur corridor avant dépense.`,
+    },
+    {
+      id: `${bestOption.id}:next`,
+      timing: 'next',
+      optionId: bestOption.id,
+      action: 'spend-capacity-after-preparation',
+      label: 'Dépenser la capacité après marge confirmée',
+      reason: `Engage la dépense seulement après +${bestOption.expectedEffect.marginGain} marge préparée.`,
+    },
+  ];
+
+  if (cheaperAcceptable !== null) {
+    sequence.push({
+      id: `${cheaperAcceptable.optionId}:defer`,
+      timing: 'defer',
+      optionId: cheaperAcceptable.optionId,
+      action: 'keep-cheaper-fallback',
+      label: 'Garder l’option moins chère en repli',
+      reason: cheaperAcceptable.condition,
+    });
+  }
+
+  return sequence;
+}
+
 function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLevel) {
   if (preparationOptions.length < 2) {
     return null;
@@ -275,6 +309,7 @@ function buildBestValuePreparation(preparationOptions, routeValue, routeRiskLeve
     effort: { ...best.option.effort },
     reason: `Protège ${best.estimatedValueProtected} valeur corridor avec +${best.option.expectedEffect.marginGain} marge pour ${best.option.effort.amount} ${best.option.effort.unit}.`,
     cheaperAcceptable,
+    sequence: buildPreparationSequence(best.option, cheaperAcceptable, best.estimatedValueProtected),
   };
 }
 
@@ -333,6 +368,7 @@ function buildCapacitySpendPreview(route, spendPlan) {
     route.riskLevel,
     currentCapacity,
   );
+  const bestValuePreparation = nextBottleneck?.bestValuePreparation ?? null;
 
   return {
     routeId: route.id,
@@ -342,7 +378,8 @@ function buildCapacitySpendPreview(route, spendPlan) {
     limitingResourceId: computedLimitingResourceId,
     nextBottleneck,
     preparationOptions: nextBottleneck?.preparationOptions ?? [],
-    bestValuePreparation: nextBottleneck?.bestValuePreparation ?? null,
+    bestValuePreparation,
+    preparationSequence: bestValuePreparation?.sequence ?? [],
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0
