@@ -135,6 +135,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         postSweepGaps: [],
         nextSafeSweep: null,
         secondSweepCandidates: [],
+        secondSweepStopCondition: {
+          state: 'no-safe-sweep',
+          action: 'stop',
+          continueNow: false,
+          stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
+          explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
+        },
         summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
       },
       style: {
@@ -177,6 +184,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         postSweepGaps: [],
         nextSafeSweep: null,
         secondSweepCandidates: [],
+        secondSweepStopCondition: {
+          state: 'no-safe-sweep',
+          action: 'stop',
+          continueNow: false,
+          stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
+          explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
+        },
         summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
       },
       style: {
@@ -319,6 +333,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     postSweepGaps: [],
     nextSafeSweep: null,
     secondSweepCandidates: [],
+    secondSweepStopCondition: {
+      state: 'no-safe-sweep',
+      action: 'stop',
+      continueNow: false,
+      stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
+      explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
+    },
     summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
   });
   assert.equal(hot.lowExposureSweepConfidencePreview.state, 'watch-exposure');
@@ -352,6 +373,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     estimatedExposureAdded: 8,
     estimatedHeat: 12,
     safetyReason: 'Passe courte centrée sur la dormance: couverture limitée mais exposition minimale.',
+  });
+  assert.deepEqual(hot.lowExposureSweepConfidencePreview.secondSweepStopCondition, {
+    state: 'continue-now',
+    action: 'continue',
+    continueNow: true,
+    stopSignal: 'Continuer tant que l’exposition ajoutée reste ≤ 8 et le heat ≤ 12.',
+    explanation: 'Le second sweep recommandé couvre le gap prioritaire avec une exposition contenue.',
   });
   assert.deepEqual(hot.lowExposureSweepConfidencePreview.secondSweepCandidates, [
     {
@@ -427,7 +455,76 @@ test('buildIntrigueMapOverlay keeps post-sweep gap explanations stable and neutr
   assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.postSweepGaps, []);
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.nextSafeSweep, null);
   assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.secondSweepCandidates, []);
+  assert.equal(overlay[0].lowExposureSweepConfidencePreview.secondSweepStopCondition.state, 'no-safe-sweep');
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.unknownsRemaining, 0);
+});
+
+test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and exposure limits', () => {
+  const needsSignal = buildIntrigueMapOverlay([
+    {
+      id: 'cell-pressure-1',
+      factionId: 'shadow-league',
+      codename: 'Pressure',
+      locationId: 'pressure',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 10,
+    },
+  ], [
+    {
+      id: 'op-pressure',
+      celluleId: 'cell-pressure-1',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe pressure',
+      theaterId: 'pressure',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 5,
+      progress: 100,
+      heat: 100,
+    },
+  ])[0].lowExposureSweepConfidencePreview;
+
+  assert.equal(needsSignal.nextSafeSweep.targetGapKey, 'residual-sabotage-pressure');
+  assert.deepEqual(needsSignal.secondSweepStopCondition, {
+    state: 'needs-fresh-signal',
+    action: 'wait-for-signal',
+    continueNow: false,
+    stopSignal: 'Stop tant qu’aucun nouveau signal bas-risque ne justifie de rouvrir la pression sabotage.',
+    explanation: 'La couverture utile est déjà lisible; attendre un signal frais évite une exposition gratuite.',
+  });
+
+  const tooExposed = buildIntrigueMapOverlay([
+    ...Array.from({ length: 6 }, (_, index) => ({
+      id: `cell-burn-${index}`,
+      factionId: 'shadow-league',
+      codename: `Burn ${index}`,
+      locationId: 'burn',
+      memberIds: [`ag-${index}`],
+      assetIds: [`asset-${index}`],
+      sleeper: index < 4,
+      exposure: 10,
+    })),
+  ], [
+    {
+      id: 'op-burn',
+      celluleId: 'cell-burn-0',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe burn limit',
+      theaterId: 'burn',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 5,
+      progress: 100,
+      heat: 100,
+    },
+  ])[0].lowExposureSweepConfidencePreview;
+
+  assert.equal(tooExposed.secondSweepStopCondition.state, 'exposure-too-high');
+  assert.equal(tooExposed.secondSweepStopCondition.continueNow, false);
+  assert.match(tooExposed.secondSweepStopCondition.stopSignal, /Stop si le second sweep ajoute/);
 });
 
 test('buildIntrigueMapOverlay rejects invalid inputs', () => {

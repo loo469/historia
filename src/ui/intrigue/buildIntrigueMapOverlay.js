@@ -210,6 +210,69 @@ function buildSecondSweepCandidates({ postSweepGaps, unknownsRemaining, sleeperC
     .slice(0, 3);
 }
 
+function buildSecondSweepStopCondition({ nextSafeSweep, unknownsRemaining, sabotageRiskScore }) {
+  if (nextSafeSweep === null) {
+    return {
+      state: 'no-safe-sweep',
+      action: 'stop',
+      continueNow: false,
+      stopSignal: 'Aucun second sweep sûr n’est disponible dans la fenêtre actuelle.',
+      explanation: 'Ne pas enchaîner: attendre un signal lisible avant de rouvrir la zone.',
+    };
+  }
+
+  const exposure = nextSafeSweep.estimatedExposureAdded;
+  const heat = nextSafeSweep.estimatedHeat;
+
+  if (exposure >= 14 || heat >= 21) {
+    return {
+      state: 'exposure-too-high',
+      action: 'stop',
+      continueNow: false,
+      stopSignal: `Stop si le second sweep ajoute ${exposure} exposition ou ${heat} heat.`,
+      explanation: 'La limite de sécurité serait dépassée; garder la zone froide avant toute nouvelle passe.',
+    };
+  }
+
+  if (unknownsRemaining <= 0 && nextSafeSweep.targetGapKey === 'residual-sabotage-pressure') {
+    return {
+      state: 'needs-fresh-signal',
+      action: 'wait-for-signal',
+      continueNow: false,
+      stopSignal: 'Stop tant qu’aucun nouveau signal bas-risque ne justifie de rouvrir la pression sabotage.',
+      explanation: 'La couverture utile est déjà lisible; attendre un signal frais évite une exposition gratuite.',
+    };
+  }
+
+  if (sabotageRiskScore >= 90 && heat >= 18) {
+    return {
+      state: 'wait-cooler-window',
+      action: 'wait',
+      continueNow: false,
+      stopSignal: `Attendre si le heat estimé reste à ${heat} dans une zone déjà chaude.`,
+      explanation: 'La prochaine passe reste plausible, mais une fenêtre plus froide protège mieux le réseau.',
+    };
+  }
+
+  if (exposure <= 8 && heat <= 12) {
+    return {
+      state: 'continue-now',
+      action: 'continue',
+      continueNow: true,
+      stopSignal: `Continuer tant que l’exposition ajoutée reste ≤ 8 et le heat ≤ 12.`,
+      explanation: 'Le second sweep recommandé couvre le gap prioritaire avec une exposition contenue.',
+    };
+  }
+
+  return {
+    state: 'wait-cooler-window',
+    action: 'wait',
+    continueNow: false,
+    stopSignal: `Attendre une fenêtre plus froide si l’exposition reste à ${exposure} ou le heat à ${heat}.`,
+    explanation: 'La recommandation reste valable, mais le coût d’exposition mérite une pause avant enchaînement.',
+  };
+}
+
 function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount, sleeperCellCount, sabotageRiskScore }) {
   if (celluleCount <= 0 || sabotageRiskScore <= 0 || exposedCellCount >= celluleCount) {
     return {
@@ -223,6 +286,11 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
       postSweepGaps: [],
       nextSafeSweep: null,
       secondSweepCandidates: [],
+      secondSweepStopCondition: buildSecondSweepStopCondition({
+        nextSafeSweep: null,
+        unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
+        sabotageRiskScore,
+      }),
       summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
     };
   }
@@ -250,6 +318,11 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     exposureAdded,
     nextSafeSweep,
   });
+  const secondSweepStopCondition = buildSecondSweepStopCondition({
+    nextSafeSweep,
+    unknownsRemaining,
+    sabotageRiskScore,
+  });
   const state = exposureAdded <= 8
     ? 'low-exposure-positive'
     : exposureAdded < 12
@@ -267,6 +340,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     postSweepGaps,
     nextSafeSweep,
     secondSweepCandidates,
+    secondSweepStopCondition,
     summary: `Confiance +${confidenceDelta} pts pour +${exposureAdded} exposition; ${unknownsRemaining} inconnue${unknownsRemaining > 1 ? 's' : ''} restante${unknownsRemaining > 1 ? 's' : ''}.`,
   };
 }
