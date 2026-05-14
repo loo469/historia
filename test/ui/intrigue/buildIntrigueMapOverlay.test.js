@@ -134,6 +134,7 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         unknownsRemaining: 0,
         postSweepGaps: [],
         nextSafeSweep: null,
+        secondSweepCandidates: [],
         summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
       },
       style: {
@@ -175,6 +176,7 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         unknownsRemaining: 0,
         postSweepGaps: [],
         nextSafeSweep: null,
+        secondSweepCandidates: [],
         summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
       },
       style: {
@@ -316,6 +318,7 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     unknownsRemaining: 0,
     postSweepGaps: [],
     nextSafeSweep: null,
+    secondSweepCandidates: [],
     summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
   });
   assert.equal(hot.lowExposureSweepConfidencePreview.state, 'watch-exposure');
@@ -350,6 +353,38 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     estimatedHeat: 12,
     safetyReason: 'Passe courte centrée sur la dormance: couverture limitée mais exposition minimale.',
   });
+  assert.deepEqual(hot.lowExposureSweepConfidencePreview.secondSweepCandidates, [
+    {
+      targetGapKey: 'residual-sabotage-pressure',
+      targetGapLabel: 'Pression sabotage résiduelle',
+      coverageValue: 2,
+      estimatedExposureAdded: 12,
+      estimatedHeat: 18,
+      coveragePerExposureScore: 6.7,
+      recommended: false,
+      reason: 'Vérifie la pression sabotage visible sans attribuer de cible cachée.',
+    },
+    {
+      targetGapKey: 'sleeper-uncertainty',
+      targetGapLabel: 'Dormance encore possible',
+      coverageValue: 1,
+      estimatedExposureAdded: 8,
+      estimatedHeat: 12,
+      coveragePerExposureScore: 5,
+      recommended: true,
+      reason: 'Passe courte centrée sur la dormance: couverture limitée mais exposition minimale.',
+    },
+    {
+      targetGapKey: 'unconfirmed-presence',
+      targetGapLabel: 'Présence non confirmée',
+      coverageValue: 1,
+      estimatedExposureAdded: 10,
+      estimatedHeat: 15,
+      coveragePerExposureScore: 4,
+      recommended: false,
+      reason: "Qualifie 1 signal restant sans élargir la fenêtre d'exposition.",
+    },
+  ]);
   assert.match(hot.lowExposureSweepConfidencePreview.summary, /Confiance \+26 pts pour \+12 exposition/);
 });
 
@@ -391,6 +426,7 @@ test('buildIntrigueMapOverlay keeps post-sweep gap explanations stable and neutr
 
   assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.postSweepGaps, []);
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.nextSafeSweep, null);
+  assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.secondSweepCandidates, []);
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.unknownsRemaining, 0);
 });
 

@@ -115,13 +115,10 @@ function buildPostSweepGaps({ sleeperCellCount, sabotageRiskScore, unknownsRemai
   ].filter(Boolean);
 }
 
-function buildNextSafeSweep({ postSweepGaps, unknownsRemaining, sleeperCellCount, sabotageRiskScore, exposureAdded }) {
-  if (postSweepGaps.length === 0) {
-    return null;
-  }
-
+function buildSecondSweepCandidateInputs({ postSweepGaps, unknownsRemaining, sleeperCellCount, sabotageRiskScore, exposureAdded }) {
   const gapByKey = new Map(postSweepGaps.map((gap) => [gap.key, gap]));
-  const candidates = [
+
+  return [
     gapByKey.has('unconfirmed-presence') ? {
       gapKey: 'unconfirmed-presence',
       coverageValue: Math.max(1, unknownsRemaining),
@@ -141,8 +138,21 @@ function buildNextSafeSweep({ postSweepGaps, unknownsRemaining, sleeperCellCount
       reason: 'Vérifie la pression sabotage visible sans attribuer de cible cachée.',
     } : null,
   ].filter(Boolean);
+}
 
-  const safest = candidates
+function buildNextSafeSweep({ postSweepGaps, unknownsRemaining, sleeperCellCount, sabotageRiskScore, exposureAdded }) {
+  if (postSweepGaps.length === 0) {
+    return null;
+  }
+
+  const gapByKey = new Map(postSweepGaps.map((gap) => [gap.key, gap]));
+  const safest = buildSecondSweepCandidateInputs({
+    postSweepGaps,
+    unknownsRemaining,
+    sleeperCellCount,
+    sabotageRiskScore,
+    exposureAdded,
+  })
     .sort((left, right) => (
       left.estimatedExposureAdded - right.estimatedExposureAdded
       || right.coverageValue - left.coverageValue
@@ -160,6 +170,46 @@ function buildNextSafeSweep({ postSweepGaps, unknownsRemaining, sleeperCellCount
   };
 }
 
+function buildSecondSweepCandidates({ postSweepGaps, unknownsRemaining, sleeperCellCount, sabotageRiskScore, exposureAdded, nextSafeSweep }) {
+  if (postSweepGaps.length < 2 || nextSafeSweep === null) {
+    return [];
+  }
+
+  const gapByKey = new Map(postSweepGaps.map((gap) => [gap.key, gap]));
+
+  return buildSecondSweepCandidateInputs({
+    postSweepGaps,
+    unknownsRemaining,
+    sleeperCellCount,
+    sabotageRiskScore,
+    exposureAdded,
+  })
+    .map((candidate) => {
+      const gap = gapByKey.get(candidate.gapKey);
+      const estimatedExposureAdded = clampPercent(candidate.estimatedExposureAdded);
+      const estimatedHeat = clampPercent(Math.ceil(candidate.estimatedExposureAdded * 1.5));
+      const exposureCost = Math.max(1, estimatedExposureAdded + estimatedHeat);
+      const coveragePerExposureScore = Number(((candidate.coverageValue * 100) / exposureCost).toFixed(1));
+
+      return {
+        targetGapKey: gap.key,
+        targetGapLabel: gap.label,
+        coverageValue: candidate.coverageValue,
+        estimatedExposureAdded,
+        estimatedHeat,
+        coveragePerExposureScore,
+        recommended: gap.key === nextSafeSweep.targetGapKey,
+        reason: candidate.reason,
+      };
+    })
+    .sort((left, right) => (
+      right.coveragePerExposureScore - left.coveragePerExposureScore
+      || left.estimatedExposureAdded - right.estimatedExposureAdded
+      || left.targetGapKey.localeCompare(right.targetGapKey)
+    ))
+    .slice(0, 3);
+}
+
 function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount, sleeperCellCount, sabotageRiskScore }) {
   if (celluleCount <= 0 || sabotageRiskScore <= 0 || exposedCellCount >= celluleCount) {
     return {
@@ -172,6 +222,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
       unknownsRemaining: Math.max(0, celluleCount - exposedCellCount),
       postSweepGaps: [],
       nextSafeSweep: null,
+      secondSweepCandidates: [],
       summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
     };
   }
@@ -191,6 +242,14 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     sabotageRiskScore,
     exposureAdded,
   });
+  const secondSweepCandidates = buildSecondSweepCandidates({
+    postSweepGaps,
+    unknownsRemaining,
+    sleeperCellCount,
+    sabotageRiskScore,
+    exposureAdded,
+    nextSafeSweep,
+  });
   const state = exposureAdded <= 8
     ? 'low-exposure-positive'
     : exposureAdded < 12
@@ -207,6 +266,7 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
     unknownsRemaining,
     postSweepGaps,
     nextSafeSweep,
+    secondSweepCandidates,
     summary: `Confiance +${confidenceDelta} pts pour +${exposureAdded} exposition; ${unknownsRemaining} inconnue${unknownsRemaining > 1 ? 's' : ''} restante${unknownsRemaining > 1 ? 's' : ''}.`,
   };
 }
