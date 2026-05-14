@@ -867,6 +867,44 @@ function buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement) {
   };
 }
 
+export function buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction) {
+  if (residualCultureRiskNextAction.actionType === 'none') {
+    return {
+      status: 'complete',
+      expectedEffect: 'stabilisation complète: aucune fragilité résiduelle à traiter',
+      remainingFragility: null,
+      nextDecision: null,
+    };
+  }
+
+  const fragility = residualRiskAfterNextRetirement.principalResidualFragility;
+  const status = residualCultureRiskNextAction.status === 'recommended'
+    ? 'insufficient'
+    : residualRiskAfterNextRetirement.status === 'partial'
+      ? 'partial'
+      : 'complete';
+  const expectedEffect = status === 'complete'
+    ? 'stabilisation complète attendue après le petit pas résiduel'
+    : status === 'partial'
+      ? `réduction partielle attendue: ${fragility.cause}`
+      : `achat de temps: ${fragility.cause} reste trop urgente`;
+
+  return {
+    status,
+    expectedEffect,
+    remainingFragility: status === 'complete' ? null : {
+      type: fragility.type,
+      cause: fragility.cause,
+      urgency: fragility.urgency,
+    },
+    nextDecision: status === 'complete'
+      ? null
+      : status === 'partial'
+        ? 'réévaluer la médiation ou le support local au prochain tour'
+        : 'choisir entre support local immédiat ou pause de timing prolongée',
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -922,6 +960,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const topRetirementRecoveryPreview = buildTopRetirementRecoveryPreview(recommendedFirstRetirement, topRetirementReadiness);
   const nextDependencyRetirementPath = buildNextDependencyRetirementPath(dependencyRetirementRanking, topRetirementReadiness, topRetirementRecoveryPreview);
   const residualRiskAfterNextRetirement = buildResidualRiskAfterNextRetirement(dependencyRetirementRanking, nextDependencyRetirementPath, postBundleCumulativeRisk);
+  const residualCultureRiskNextAction = buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -933,7 +972,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     topRetirementRecoveryPreview,
     nextDependencyRetirementPath,
     residualRiskAfterNextRetirement,
-    residualCultureRiskNextAction: buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement),
+    residualCultureRiskNextAction,
+    residualCultureActionPayoff: buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction),
   };
 }
 

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -925,6 +925,16 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         recommendedAction: 'ouvrir une médiation locale courte après le retrait suivant',
         reason: 'bon second pas: risque restant: isolement du support reste medium',
       },
+      residualCultureActionPayoff: {
+        status: 'partial',
+        expectedEffect: 'réduction partielle attendue: risque restant: isolement du support',
+        remainingFragility: {
+          type: 'regional-mediation',
+          cause: 'risque restant: isolement du support',
+          urgency: 'medium',
+        },
+        nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1007,6 +1017,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         actionType: 'none',
         recommendedAction: 'aucune action secondaire sûre requise',
         reason: 'aucune dette résiduelle après stabilisation',
+      },
+      residualCultureActionPayoff: {
+        status: 'complete',
+        expectedEffect: 'stabilisation complète: aucune fragilité résiduelle à traiter',
+        remainingFragility: null,
+        nextDecision: null,
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1131,6 +1147,90 @@ test('buildCultureMapOverlay can summarize overlapping culture clusters with dis
     label: '2 cultures · 2 découvertes',
     summary: 'Delta Scribes, Harbor Compact',
   });
+});
+
+test('buildResidualCultureActionPayoff covers complete, partial, and insufficient outcomes', () => {
+  assert.deepEqual(
+    buildResidualCultureActionPayoff(
+      {
+        status: 'complete',
+        principalResidualFragility: null,
+        reason: 'le retrait suivant absorbe la dernière dette culturelle visible',
+      },
+      {
+        status: 'none-safe',
+        actionType: 'none',
+        recommendedAction: 'aucune action secondaire sûre requise',
+        reason: 'le retrait suivant absorbe la dernière dette culturelle visible',
+      },
+    ),
+    {
+      status: 'complete',
+      expectedEffect: 'stabilisation complète: aucune fragilité résiduelle à traiter',
+      remainingFragility: null,
+      nextDecision: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureActionPayoff(
+      {
+        status: 'partial',
+        principalResidualFragility: {
+          type: 'regional-mediation',
+          cause: 'risque restant: isolement du support',
+          urgency: 'medium',
+        },
+        reason: 'stabilisation partielle: surveiller risque restant: isolement du support',
+      },
+      {
+        status: 'optional',
+        actionType: 'mediation',
+        recommendedAction: 'ouvrir une médiation locale courte après le retrait suivant',
+        reason: 'bon second pas: risque restant: isolement du support reste medium',
+      },
+    ),
+    {
+      status: 'partial',
+      expectedEffect: 'réduction partielle attendue: risque restant: isolement du support',
+      remainingFragility: {
+        type: 'regional-mediation',
+        cause: 'risque restant: isolement du support',
+        urgency: 'medium',
+      },
+      nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureActionPayoff(
+      {
+        status: 'important-fragility',
+        principalResidualFragility: {
+          type: 'missing-support',
+          cause: 'aucun second soutien sûr disponible après le premier bundle',
+          urgency: 'high',
+        },
+        reason: 'aucun retrait suivant sûr avant de confirmer la récupération prioritaire',
+      },
+      {
+        status: 'recommended',
+        actionType: 'local-support',
+        recommendedAction: 'préparer un support local compatible avant nouvelle réduction de dette',
+        reason: 'bon second pas: aucun second soutien sûr disponible après le premier bundle reste high',
+      },
+    ),
+    {
+      status: 'insufficient',
+      expectedEffect: 'achat de temps: aucun second soutien sûr disponible après le premier bundle reste trop urgente',
+      remainingFragility: {
+        type: 'missing-support',
+        cause: 'aucun second soutien sûr disponible après le premier bundle',
+        urgency: 'high',
+      },
+      nextDecision: 'choisir entre support local immédiat ou pause de timing prolongée',
+    },
+  );
 });
 
 test('buildCultureMapOverlay rejects invalid inputs', () => {
