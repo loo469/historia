@@ -845,6 +845,40 @@ export function buildMiniPlanDecisionReversibilityCue(
   };
 }
 
+export function buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibilityCue = null) {
+  if (!miniPlanDecisionReversibilityCue || miniPlanDecisionReversibilityCue.empty) {
+    return {
+      empty: true,
+      state: 'none',
+      label: 'fenêtre correction inconnue',
+      constraint: null,
+      nextStep: null,
+    };
+  }
+
+  const state = miniPlanDecisionReversibilityCue.state === 'reversible'
+    ? 'safe-correction'
+    : miniPlanDecisionReversibilityCue.state === 'costly'
+      ? 'last-correction-turn'
+      : 'locked-commitment';
+
+  return {
+    empty: false,
+    state,
+    label: state === 'safe-correction'
+      ? 'correction encore sûre'
+      : state === 'last-correction-turn'
+        ? 'dernier tour de correction'
+        : 'engagement verrouillé',
+    constraint: miniPlanDecisionReversibilityCue.constraint ?? 'fenêtre d’ordre',
+    nextStep: state === 'safe-correction'
+      ? 'préparer correction courte'
+      : state === 'last-correction-turn'
+        ? 'corriger maintenant ou assumer'
+        : null,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -948,6 +982,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanConfidenceSignalCue,
     miniPlanRivalResponseFallback,
   );
+  const miniPlanLastSafeCorrectionCue = buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibilityCue);
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1001,6 +1036,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanReturnProtectionStatus,
     miniPlanConfidenceSignalCue,
     miniPlanDecisionReversibilityCue,
+    miniPlanLastSafeCorrectionCue,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,

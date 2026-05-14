@@ -9,6 +9,7 @@ import {
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanConfidenceSignalCue,
   buildMiniPlanDecisionReversibilityCue,
+  buildMiniPlanLastSafeCorrectionCue,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -356,6 +357,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     empty: true,
     state: 'none',
     label: 'réversibilité non évaluée',
+    constraint: null,
+    nextStep: null,
+  });
+  assert.deepEqual(shell.miniPlanLastSafeCorrectionCue, {
+    empty: true,
+    state: 'none',
+    label: 'fenêtre correction inconnue',
     constraint: null,
     nextStep: null,
   });
@@ -715,10 +723,18 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     signal: 'contre-poussée du front voisin encore actif',
     waitCost: 'attendre trop longtemps coûte cible moins prioritaire: front-a',
   });
-  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(confidence, fallback), {
+  const reversibility = buildMiniPlanDecisionReversibilityCue(confidence, fallback);
+  assert.deepEqual(reversibility, {
     empty: false,
     state: 'locked',
     label: 'quasi verrouillée',
+    constraint: 'position moins prioritaire',
+    nextStep: null,
+  });
+  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(reversibility), {
+    empty: false,
+    state: 'locked-commitment',
+    label: 'engagement verrouillé',
     constraint: 'position moins prioritaire',
     nextStep: null,
   });
@@ -779,12 +795,20 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     signal: 'revenir quand la réponse rivale se dissipe',
     waitCost: 'attendre trop longtemps coûte bénéfice moindre mais risque équivalent',
   });
-  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(confidence, fallback), {
+  const reversibility = buildMiniPlanDecisionReversibilityCue(confidence, fallback);
+  assert.deepEqual(reversibility, {
     empty: false,
     state: 'reversible',
     label: 'réversible',
     constraint: 'coût d’opportunité',
     nextStep: 'garder un ordre court en réserve',
+  });
+  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(reversibility), {
+    empty: false,
+    state: 'safe-correction',
+    label: 'correction encore sûre',
+    constraint: 'coût d’opportunité',
+    nextStep: 'préparer correction courte',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -834,12 +858,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     signal: 'risque initial revenu sous le fallback',
     waitCost: 'attendre trop longtemps coûte délai avant branche initiale',
   });
-  assert.deepEqual(buildMiniPlanDecisionReversibilityCue(confidence, fallback), {
+  const reversibility = buildMiniPlanDecisionReversibilityCue(confidence, fallback);
+  assert.deepEqual(reversibility, {
     empty: false,
     state: 'costly',
     label: 'correction coûteuse',
     constraint: 'tempo rival',
     nextStep: 'préserver un tempo de correction',
+  });
+  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(reversibility), {
+    empty: false,
+    state: 'last-correction-turn',
+    label: 'dernier tour de correction',
+    constraint: 'tempo rival',
+    nextStep: 'corriger maintenant ou assumer',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -860,6 +892,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     empty: true,
     state: 'none',
     label: 'réversibilité non évaluée',
+    constraint: null,
+    nextStep: null,
+  });
+  assert.deepEqual(buildMiniPlanLastSafeCorrectionCue(null), {
+    empty: true,
+    state: 'none',
+    label: 'fenêtre correction inconnue',
     constraint: null,
     nextStep: null,
   });
