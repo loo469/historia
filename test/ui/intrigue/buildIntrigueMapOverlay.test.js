@@ -250,6 +250,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Cible observation: aucune sûre.',
           reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
         },
+        observationBroadeningSignal: {
+          broadening: 'stay-limited-target',
+          visibleConstraint: 'Zone brouillée',
+          action: 'refresh-signal',
+          label: 'Élargissement: rester limité.',
+          reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -339,6 +346,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Cible observation: aucune sûre.',
               reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
+            },
+            observationBroadeningSignal: {
+              broadening: 'stay-limited-target',
+              visibleConstraint: 'Zone brouillée',
+              action: 'refresh-signal',
+              label: 'Élargissement: rester limité.',
+              reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
             },
         monitoringChecklist: [
           {
@@ -534,6 +548,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Cible observation: aucune sûre.',
           reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
         },
+        observationBroadeningSignal: {
+          broadening: 'stay-limited-target',
+          visibleConstraint: 'Zone brouillée',
+          action: 'refresh-signal',
+          label: 'Élargissement: rester limité.',
+          reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -623,6 +644,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Cible observation: aucune sûre.',
               reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
+            },
+            observationBroadeningSignal: {
+              broadening: 'stay-limited-target',
+              visibleConstraint: 'Zone brouillée',
+              action: 'refresh-signal',
+              label: 'Élargissement: rester limité.',
+              reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
             },
         monitoringChecklist: [
           {
@@ -918,6 +946,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Cible observation: aucune sûre.',
           reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
         },
+        observationBroadeningSignal: {
+          broadening: 'stay-limited-target',
+          visibleConstraint: 'Zone brouillée',
+          action: 'refresh-signal',
+          label: 'Élargissement: rester limité.',
+          reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -1086,6 +1121,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'observe-limited',
         label: 'Cible observation: limitée recommandée.',
         reason: 'Commencer par une cible limitée évite de rouvrir trop large pendant la stabilisation visible.',
+      },
+      observationBroadeningSignal: {
+        broadening: 'cautious-broadening-possible',
+        visibleConstraint: 'Dette d’observation',
+        action: 'broaden-one-step',
+        label: 'Élargissement: prudent possible.',
+        reason: 'La cible limitée absorbe la dette d’observation: élargir d’un cran seulement tant que la couverture partielle tient.',
       },
       monitoringChecklist: [
         {
@@ -1322,6 +1364,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Cible observation: principale sûre.',
         reason: 'La reprise active peut viser la cible principale sans élargir le sweep au-delà de la couverture lisible.',
       },
+      observationBroadeningSignal: {
+        broadening: 'primary-coverage-safe',
+        visibleConstraint: 'Menace confirmée',
+        action: 'broaden-main-coverage',
+        label: 'Élargissement: couverture principale sûre.',
+        reason: 'La première cible confirme une menace lisible: élargir vers la couverture principale sans ouvrir de zone brouillée.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1481,6 +1530,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'observe-limited',
       label: 'Cible observation: limitée recommandée.',
       reason: 'Commencer par une cible limitée évite de rouvrir trop large pendant la stabilisation visible.',
+    },
+    observationBroadeningSignal: {
+      broadening: 'cautious-broadening-possible',
+      visibleConstraint: 'Dette d’observation',
+      action: 'broaden-one-step',
+      label: 'Élargissement: prudent possible.',
+      reason: 'La cible limitée absorbe la dette d’observation: élargir d’un cran seulement tant que la couverture partielle tient.',
     },
     monitoringChecklist: [
       {
