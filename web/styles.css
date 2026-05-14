@@ -11166,6 +11166,7 @@ button { font: inherit; }
 .atlas-military-fallback-order__rival-response-risk--high { fill: #fecaca; }
 .atlas-military-fallback-order__rival-response-risk--medium { fill: #fed7aa; }
 .atlas-military-fallback-order__rival-response-risk--low { fill: #bbf7d0; }
+.atlas-military-fallback-order__rival-branch-comparison { fill: #c4b5fd; font-size: 0.42px; font-weight: 900; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

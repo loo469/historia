@@ -8,6 +8,7 @@ import {
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanDependencyConflicts,
+  buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
@@ -296,6 +297,24 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     tradeoffId: 'mini-plan-tradeoff:supply-pressure:front-a',
     targetId: 'front-a',
   });
+  assert.deepEqual(shell.miniPlanRivalResponseComparison, {
+    empty: false,
+    recommendedTradeoffId: 'mini-plan-tradeoff:supply-pressure:front-a',
+    recommendationChanged: false,
+    reason: 'branche recommandée robuste face aux réponses listées',
+    branches: [
+      {
+        branchId: 'mini-plan-branch:1:mini-plan-tradeoff:supply-pressure:front-a',
+        tradeoffId: 'mini-plan-tradeoff:supply-pressure:front-a',
+        recommended: true,
+        action: 'réserver le convoi court avant le mini-plan',
+        rivalResponse: 'coupure du convoi partagé',
+        riskLevel: 'high',
+        reason: 'À surveiller: approvisionnement tendu',
+        targetId: 'front-a',
+      },
+    ],
+  });
 });
 
 test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
@@ -526,6 +545,67 @@ test('StrategicMapShell shows the rival response risk that can invalidate a chos
     watch: null,
     tradeoffId: null,
     targetId: null,
+  });
+});
+
+test('StrategicMapShell compares rival responses across mini-plan branches before commitment', () => {
+  const miniPlan = {
+    empty: false,
+    targetId: 'front-a',
+    steps: [
+      { state: 'execute-cleanup', label: 'Scanner axe détour', riskReduced: 'axe encore exposé' },
+    ],
+  };
+  const comparison = buildMiniPlanRivalResponseComparison(miniPlan, [
+    {
+      tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+      severity: 'blocking',
+      reason: 'ordre prioritaire reste à 88',
+      recommendedChoice: 'caler une couverture voisine minimale',
+      rejectedChoice: 'Scanner axe détour',
+      targetId: 'front-b',
+    },
+    {
+      tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+      severity: 'watchable',
+      reason: 'loyauté 42',
+      recommendedChoice: 'Scanner axe détour',
+      rejectedChoice: 'envoyer liaison si le plan dure',
+      targetId: 'front-a',
+    },
+  ]);
+
+  assert.equal(comparison.recommendationChanged, true);
+  assert.equal(comparison.recommendedTradeoffId, 'mini-plan-tradeoff:low-loyalty:front-a');
+  assert.equal(comparison.reason, 'contre-poussée du front voisin rend la branche initiale trop risquée');
+  assert.deepEqual(comparison.branches, [
+    {
+      branchId: 'mini-plan-branch:1:mini-plan-tradeoff:neighbor-front:front-b',
+      tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+      recommended: false,
+      action: 'caler une couverture voisine minimale',
+      rivalResponse: 'contre-poussée du front voisin',
+      riskLevel: 'high',
+      reason: 'À surveiller: ordre prioritaire reste à 88',
+      targetId: 'front-b',
+    },
+    {
+      branchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
+      tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+      recommended: true,
+      action: 'Scanner axe détour',
+      rivalResponse: 'agitation locale avant liaison',
+      riskLevel: 'medium',
+      reason: 'À surveiller: loyauté 42',
+      targetId: 'front-a',
+    },
+  ]);
+  assert.deepEqual(buildMiniPlanRivalResponseComparison({ empty: true }, []), {
+    empty: true,
+    recommendedTradeoffId: null,
+    recommendationChanged: false,
+    reason: 'aucune branche à comparer',
+    branches: [],
   });
 });
 
