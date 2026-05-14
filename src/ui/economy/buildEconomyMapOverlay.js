@@ -543,6 +543,33 @@ function buildPostStabilizerReliability(postSalvageStabilizer) {
   };
 }
 
+function buildMonitoredCorridorPromotionRisk(postStabilizerReliability) {
+  if (postStabilizerReliability.status === 'reliable-route') {
+    return {
+      status: 'safe-promotion',
+      remainingConstraint: postStabilizerReliability.remainingConstraint,
+      nextGesture: 'promouvoir',
+      summary: 'Promotion sûre: le corridor peut devenir route principale.',
+    };
+  }
+
+  if (postStabilizerReliability.status === 'reserve-corridor') {
+    return {
+      status: 'premature-promotion',
+      remainingConstraint: postStabilizerReliability.remainingConstraint,
+      nextGesture: postStabilizerReliability.nextGesture === 'garder comme secours' ? 'garder en secours' : 'renforcer d’abord',
+      summary: `Promotion prématurée: ${postStabilizerReliability.remainingConstraint} expose encore le corridor principal.`,
+    };
+  }
+
+  return {
+    status: 'limited-promotion',
+    remainingConstraint: postStabilizerReliability.remainingConstraint,
+    nextGesture: 'plafonner le flux',
+    summary: `Promotion sous limite: plafonner le flux tant que ${postStabilizerReliability.remainingConstraint} reste surveillé.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -758,6 +785,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
   );
   const postSalvageStabilizer = buildPostSalvageStabilizer(postSalvageRobustness);
   const postStabilizerReliability = buildPostStabilizerReliability(postSalvageStabilizer);
+  const monitoredCorridorPromotionRisk = buildMonitoredCorridorPromotionRisk(postStabilizerReliability);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -775,6 +803,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     postSalvageRobustness,
     postSalvageStabilizer,
     postStabilizerReliability,
+    monitoredCorridorPromotionRisk,
   };
 }
 

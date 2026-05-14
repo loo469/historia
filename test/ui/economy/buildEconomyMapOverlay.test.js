@@ -573,6 +573,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         nextGesture: 'promouvoir',
         summary: 'Route fiable: promouvoir le corridor après stabilisateur neutre.',
       },
+      monitoredCorridorPromotionRisk: {
+        status: 'safe-promotion',
+        remainingConstraint: null,
+        nextGesture: 'promouvoir',
+        summary: 'Promotion sûre: le corridor peut devenir route principale.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -733,6 +739,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       nextGesture: 'promouvoir',
       summary: 'Route fiable: promouvoir le corridor après stabilisateur neutre.',
     },
+    monitoredCorridorPromotionRisk: {
+      status: 'safe-promotion',
+      remainingConstraint: null,
+      nextGesture: 'promouvoir',
+      summary: 'Promotion sûre: le corridor peut devenir route principale.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -843,6 +855,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     nextGesture: 'garder comme secours',
     summary: 'Corridor à garder en secours: alternative reste trop fragile après stabilisateur.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.monitoredCorridorPromotionRisk, {
+    status: 'premature-promotion',
+    remainingConstraint: 'alternative',
+    nextGesture: 'garder en secours',
+    summary: 'Promotion prématurée: alternative expose encore le corridor principal.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -919,6 +937,12 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     remainingConstraint: 'alternative',
     nextGesture: 'surveiller un tour',
     summary: 'Route utilisable sous surveillance: contrôler alternative après stabilisateur.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.monitoredCorridorPromotionRisk, {
+    status: 'limited-promotion',
+    remainingConstraint: 'alternative',
+    nextGesture: 'plafonner le flux',
+    summary: 'Promotion sous limite: plafonner le flux tant que alternative reste surveillé.',
   });
 });
 
