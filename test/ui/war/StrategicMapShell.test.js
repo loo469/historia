@@ -11,6 +11,7 @@ import {
   buildMiniPlanDecisionReversibilityCue,
   buildMiniPlanLastSafeCorrectionCue,
   buildMiniPlanLateCorrectionExitCost,
+  buildMiniPlanMinimalFollowThrough,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
@@ -374,6 +375,13 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     label: 'coût de sortie inconnu',
     loss: null,
     decision: null,
+  });
+  assert.deepEqual(shell.miniPlanMinimalFollowThrough, {
+    empty: true,
+    level: 'none',
+    label: 'aucun suivi critique',
+    support: null,
+    action: null,
   });
 });
 
@@ -747,12 +755,20 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     constraint: 'position moins prioritaire',
     nextStep: null,
   });
-  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(lastSafe), {
+  const exitCost = buildMiniPlanLateCorrectionExitCost(lastSafe);
+  assert.deepEqual(exitCost, {
     empty: false,
     severity: 'deterrent',
     label: 'coût dissuasif',
     loss: 'position',
     decision: 'attendre sans nouvelle correction',
+  });
+  assert.deepEqual(buildMiniPlanMinimalFollowThrough(exitCost), {
+    empty: false,
+    level: 'urgent',
+    label: 'suivi urgent',
+    support: 'position',
+    action: 'protéger position',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -827,12 +843,20 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     constraint: 'coût d’opportunité',
     nextStep: 'préparer correction courte',
   });
-  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(lastSafe), {
+  const exitCost = buildMiniPlanLateCorrectionExitCost(lastSafe);
+  assert.deepEqual(exitCost, {
     empty: false,
     severity: 'light',
     label: 'coût léger',
     loss: 'opportunité rivale',
     decision: 'corriger maintenant',
+  });
+  assert.deepEqual(buildMiniPlanMinimalFollowThrough(exitCost), {
+    empty: false,
+    level: 'none',
+    label: 'aucun suivi critique',
+    support: 'opportunité rivale',
+    action: 'surveiller',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -898,12 +922,20 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     constraint: 'tempo rival',
     nextStep: 'corriger maintenant ou assumer',
   });
-  assert.deepEqual(buildMiniPlanLateCorrectionExitCost(lastSafe), {
+  const exitCost = buildMiniPlanLateCorrectionExitCost(lastSafe);
+  assert.deepEqual(exitCost, {
     empty: false,
     severity: 'costly',
     label: 'coûteux mais possible',
     loss: 'tempo',
     decision: 'assumer le plan',
+  });
+  assert.deepEqual(buildMiniPlanMinimalFollowThrough(exitCost), {
+    empty: false,
+    level: 'advised',
+    label: 'suivi conseillé',
+    support: 'tempo',
+    action: 'consolider',
   });
   assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
     empty: true,
@@ -940,6 +972,13 @@ test('StrategicMapShell reports whether returning keeps rival-response protectio
     label: 'coût de sortie inconnu',
     loss: null,
     decision: null,
+  });
+  assert.deepEqual(buildMiniPlanMinimalFollowThrough(null), {
+    empty: true,
+    level: 'none',
+    label: 'aucun suivi critique',
+    support: null,
+    action: null,
   });
 });
 

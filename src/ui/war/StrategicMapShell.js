@@ -922,6 +922,53 @@ export function buildMiniPlanLateCorrectionExitCost(miniPlanLastSafeCorrectionCu
   };
 }
 
+function followThroughSupportForLoss(loss) {
+  if (loss === 'tempo') return 'tempo';
+  if (loss === 'position') return 'position';
+  if (loss === 'opportunité rivale') return 'opportunité rivale';
+  if (loss === 'ordre engagé') return 'ordre engagé';
+  return 'appui allié';
+}
+
+export function buildMiniPlanMinimalFollowThrough(miniPlanLateCorrectionExitCost = null) {
+  if (!miniPlanLateCorrectionExitCost || miniPlanLateCorrectionExitCost.empty) {
+    return {
+      empty: true,
+      level: 'none',
+      label: 'aucun suivi critique',
+      support: null,
+      action: null,
+    };
+  }
+
+  const level = miniPlanLateCorrectionExitCost.severity === 'deterrent'
+    ? 'urgent'
+    : miniPlanLateCorrectionExitCost.severity === 'costly'
+      ? 'advised'
+      : 'none';
+  const support = followThroughSupportForLoss(miniPlanLateCorrectionExitCost.loss);
+
+  return {
+    empty: false,
+    level,
+    label: level === 'urgent'
+      ? 'suivi urgent'
+      : level === 'advised'
+        ? 'suivi conseillé'
+        : 'aucun suivi critique',
+    support,
+    action: support === 'tempo'
+      ? 'consolider'
+      : support === 'position'
+        ? 'protéger position'
+        : support === 'ordre engagé'
+          ? 'confirmer ordre'
+          : support === 'opportunité rivale'
+            ? 'surveiller'
+            : 'économiser fatigue',
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -1027,6 +1074,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
   );
   const miniPlanLastSafeCorrectionCue = buildMiniPlanLastSafeCorrectionCue(miniPlanDecisionReversibilityCue);
   const miniPlanLateCorrectionExitCost = buildMiniPlanLateCorrectionExitCost(miniPlanLastSafeCorrectionCue);
+  const miniPlanMinimalFollowThrough = buildMiniPlanMinimalFollowThrough(miniPlanLateCorrectionExitCost);
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -1082,6 +1130,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanDecisionReversibilityCue,
     miniPlanLastSafeCorrectionCue,
     miniPlanLateCorrectionExitCost,
+    miniPlanMinimalFollowThrough,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
