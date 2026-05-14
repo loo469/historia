@@ -570,6 +570,33 @@ function buildMonitoredCorridorPromotionRisk(postStabilizerReliability) {
   };
 }
 
+function buildMonitoredCorridorRollbackGuard(monitoredCorridorPromotionRisk) {
+  if (monitoredCorridorPromotionRisk.status === 'safe-promotion') {
+    return {
+      status: 'rollback-unneeded',
+      constraint: monitoredCorridorPromotionRisk.remainingConstraint,
+      nextGesture: 'promouvoir sans garde',
+      summary: 'Rollback inutile: la promotion peut avancer sans garde dédiée.',
+    };
+  }
+
+  if (monitoredCorridorPromotionRisk.status === 'limited-promotion') {
+    return {
+      status: 'guard-recommended',
+      constraint: monitoredCorridorPromotionRisk.remainingConstraint,
+      nextGesture: 'plafonner avec garde',
+      summary: `Garde conseillée: plafonner le flux et surveiller ${monitoredCorridorPromotionRisk.remainingConstraint}.`,
+    };
+  }
+
+  return {
+    status: 'rollback-ready-required',
+    constraint: monitoredCorridorPromotionRisk.remainingConstraint,
+    nextGesture: monitoredCorridorPromotionRisk.nextGesture === 'garder en secours' ? 'revenir en secours' : 'préparer alternative',
+    summary: `Rollback prêt requis: ${monitoredCorridorPromotionRisk.remainingConstraint} impose une alternative avant promotion.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -786,6 +813,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
   const postSalvageStabilizer = buildPostSalvageStabilizer(postSalvageRobustness);
   const postStabilizerReliability = buildPostStabilizerReliability(postSalvageStabilizer);
   const monitoredCorridorPromotionRisk = buildMonitoredCorridorPromotionRisk(postStabilizerReliability);
+  const monitoredCorridorRollbackGuard = buildMonitoredCorridorRollbackGuard(monitoredCorridorPromotionRisk);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -804,6 +832,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     postSalvageStabilizer,
     postStabilizerReliability,
     monitoredCorridorPromotionRisk,
+    monitoredCorridorRollbackGuard,
   };
 }
 
