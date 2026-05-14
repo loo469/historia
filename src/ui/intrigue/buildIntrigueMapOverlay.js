@@ -497,6 +497,61 @@ function buildMonitoringPreventiveAction({ state, driftForecast }) {
   };
 }
 
+
+function buildPreventiveRecoveryState({ preventiveAction }) {
+  if (preventiveAction.action === 'secure-exposure' && preventiveAction.windowEffect === 'maintains-safe-window') {
+    return {
+      state: 'sweep-safe-again',
+      targetSignal: preventiveAction.targetSignal,
+      nextDecision: 'resume-sweep',
+      reason: 'L’exposition sécurisée maintient la fenêtre sûre: le sweep peut reprendre si le signal reste lisible.',
+    };
+  }
+
+  if (preventiveAction.action === 'secure-exposure' && preventiveAction.windowEffect === 'advances-safe-window') {
+    return {
+      state: 'sweep-safe-again',
+      targetSignal: preventiveAction.targetSignal,
+      nextDecision: 'resume-sweep',
+      reason: 'Le gap sécurisé pendant le cooldown avance assez la fenêtre pour reprendre prudemment.',
+    };
+  }
+
+  if (preventiveAction.action === 'wait-fresh-signal') {
+    return {
+      state: 'monitor-only',
+      targetSignal: preventiveAction.targetSignal,
+      nextDecision: 'wait-fresh-signal',
+      reason: 'La reprise reste surveillable seulement: attendre un signal frais avant tout sweep.',
+    };
+  }
+
+  if (preventiveAction.action === 'reduce-heat') {
+    return {
+      state: 'still-too-risky',
+      targetSignal: preventiveAction.targetSignal,
+      nextDecision: 'reduce-heat',
+      reason: 'Le heat reste le point bloquant: réduire la pression avant de rouvrir le sweep.',
+    };
+  }
+
+  if (preventiveAction.action === 'delay-sweep') {
+    return {
+      state: 'still-too-risky',
+      targetSignal: preventiveAction.targetSignal,
+      nextDecision: 'continue-monitoring',
+      reason: 'La fenêtre n’est pas assez protégée: retarder le sweep et surveiller encore.',
+    };
+  }
+
+  return {
+    state: 'monitor-only',
+    targetSignal: preventiveAction.targetSignal,
+    nextDecision: 'continue-monitoring',
+    reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -593,6 +648,16 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
         state: rationale.state,
         marginalExposureAdded,
         expectedConfidenceGain,
+      }),
+    }),
+    preventiveRecoveryState: buildPreventiveRecoveryState({
+      preventiveAction: buildMonitoringPreventiveAction({
+        state: rationale.state,
+        driftForecast: buildMonitoringDriftForecast({
+          state: rationale.state,
+          marginalExposureAdded,
+          expectedConfidenceGain,
+        }),
       }),
     }),
   };
