@@ -775,6 +775,47 @@ function buildMonitoringMinimalResumeSignal({ monitoringSafeCadence }) {
   };
 }
 
+
+function buildResumedConstrainedSweepResult({ monitoringMinimalResumeSignal }) {
+  if (monitoringMinimalResumeSignal.prerequisite === 'already-safe') {
+    return {
+      result: 'margin-restored',
+      visibleFactor: monitoringMinimalResumeSignal.visibleFactor,
+      action: 'chain-sweep',
+      label: 'Résultat: marge restaurée.',
+      reason: 'La reprise laisse une marge lisible: enchaîner seulement si la fenêtre reste visible.',
+    };
+  }
+
+  if (monitoringMinimalResumeSignal.prerequisite === 'heat-reduction-required') {
+    return {
+      result: 'threat-confirmed',
+      visibleFactor: 'Heat',
+      action: 'reduce-heat',
+      label: 'Résultat: menace confirmée.',
+      reason: 'Le heat visible confirme une pression à traiter avant tout enchaînement.',
+    };
+  }
+
+  if (monitoringMinimalResumeSignal.prerequisite === 'fresh-signal-required') {
+    return {
+      result: 'fragile-resume',
+      visibleFactor: monitoringMinimalResumeSignal.visibleFactor,
+      action: 'maintain-surveillance',
+      label: 'Résultat: reprise fragile.',
+      reason: 'La qualité du signal suffit à reprendre, mais pas à enchaîner sans surveillance.',
+    };
+  }
+
+  return {
+    result: 'fragile-resume',
+    visibleFactor: monitoringMinimalResumeSignal.visibleFactor,
+    action: 'maintain-surveillance',
+    label: 'Résultat: reprise fragile.',
+    reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -1118,6 +1159,71 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
               state: rationale.state,
               marginalExposureAdded,
               expectedConfidenceGain,
+            }),
+          }),
+        }),
+      }),
+    }),
+    resumedConstrainedSweepResult: buildResumedConstrainedSweepResult({
+      monitoringMinimalResumeSignal: buildMonitoringMinimalResumeSignal({
+        monitoringSafeCadence: buildMonitoringSafeCadence({
+          monitoringMarginResponsePriority: buildMonitoringMarginResponsePriority({
+            postRecoveryMarginDecay: buildPostRecoveryMarginDecay({
+              postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+                preventiveRecoveryState: buildPreventiveRecoveryState({
+                  preventiveAction: buildMonitoringPreventiveAction({
+                    state: rationale.state,
+                    driftForecast: buildMonitoringDriftForecast({
+                      state: rationale.state,
+                      marginalExposureAdded,
+                      expectedConfidenceGain,
+                    }),
+                  }),
+                }),
+                preventiveAction: buildMonitoringPreventiveAction({
+                  state: rationale.state,
+                  driftForecast: buildMonitoringDriftForecast({
+                    state: rationale.state,
+                    marginalExposureAdded,
+                    expectedConfidenceGain,
+                  }),
+                }),
+                driftForecast: buildMonitoringDriftForecast({
+                  state: rationale.state,
+                  marginalExposureAdded,
+                  expectedConfidenceGain,
+                }),
+              }),
+              driftForecast: buildMonitoringDriftForecast({
+                state: rationale.state,
+                marginalExposureAdded,
+                expectedConfidenceGain,
+              }),
+            }),
+            postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+              preventiveRecoveryState: buildPreventiveRecoveryState({
+                preventiveAction: buildMonitoringPreventiveAction({
+                  state: rationale.state,
+                  driftForecast: buildMonitoringDriftForecast({
+                    state: rationale.state,
+                    marginalExposureAdded,
+                    expectedConfidenceGain,
+                  }),
+                }),
+              }),
+              preventiveAction: buildMonitoringPreventiveAction({
+                state: rationale.state,
+                driftForecast: buildMonitoringDriftForecast({
+                  state: rationale.state,
+                  marginalExposureAdded,
+                  expectedConfidenceGain,
+                }),
+              }),
+              driftForecast: buildMonitoringDriftForecast({
+                state: rationale.state,
+                marginalExposureAdded,
+                expectedConfidenceGain,
+              }),
             }),
           }),
         }),

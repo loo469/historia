@@ -215,6 +215,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Signal minimal: marge suffisante.',
           reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
         },
+        resumedConstrainedSweepResult: {
+          result: 'fragile-resume',
+          visibleFactor: 'Données insuffisantes',
+          action: 'maintain-surveillance',
+          label: 'Résultat: reprise fragile.',
+          reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -269,6 +276,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'maintain-surveillance',
               label: 'Signal minimal: marge suffisante.',
               reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
+            },
+            resumedConstrainedSweepResult: {
+              result: 'fragile-resume',
+              visibleFactor: 'Données insuffisantes',
+              action: 'maintain-surveillance',
+              label: 'Résultat: reprise fragile.',
+              reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
             },
         monitoringChecklist: [
           {
@@ -429,6 +443,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Signal minimal: marge suffisante.',
           reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
         },
+        resumedConstrainedSweepResult: {
+          result: 'fragile-resume',
+          visibleFactor: 'Données insuffisantes',
+          action: 'maintain-surveillance',
+          label: 'Résultat: reprise fragile.',
+          reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -483,6 +504,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'maintain-surveillance',
               label: 'Signal minimal: marge suffisante.',
               reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
+            },
+            resumedConstrainedSweepResult: {
+              result: 'fragile-resume',
+              visibleFactor: 'Données insuffisantes',
+              action: 'maintain-surveillance',
+              label: 'Résultat: reprise fragile.',
+              reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
             },
         monitoringChecklist: [
           {
@@ -743,6 +771,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Signal minimal: marge suffisante.',
           reason: 'Maintenir la surveillance jusqu’à une marge lisible, sans forcer la reprise.',
         },
+        resumedConstrainedSweepResult: {
+          result: 'fragile-resume',
+          visibleFactor: 'Données insuffisantes',
+          action: 'maintain-surveillance',
+          label: 'Résultat: reprise fragile.',
+          reason: 'La marge reste trop peu lisible: maintenir la surveillance avant une nouvelle passe.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -876,6 +911,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'wait-signal',
         label: 'Signal minimal: donnée fraîche.',
         reason: 'Attendre une confirmation fraîche avant de reprendre le sweep contraint.',
+      },
+      resumedConstrainedSweepResult: {
+        result: 'fragile-resume',
+        visibleFactor: 'Gain confiance',
+        action: 'maintain-surveillance',
+        label: 'Résultat: reprise fragile.',
+        reason: 'La qualité du signal suffit à reprendre, mais pas à enchaîner sans surveillance.',
       },
       monitoringChecklist: [
         {
@@ -1077,6 +1119,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Signal minimal: reprise sûre.',
         reason: 'La fenêtre visible suffit déjà: reprendre sans ajouter de révélation cachée.',
       },
+      resumedConstrainedSweepResult: {
+        result: 'margin-restored',
+        visibleFactor: 'Fenêtre sûre',
+        action: 'chain-sweep',
+        label: 'Résultat: marge restaurée.',
+        reason: 'La reprise laisse une marge lisible: enchaîner seulement si la fenêtre reste visible.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1201,6 +1250,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'wait-signal',
       label: 'Signal minimal: donnée fraîche.',
       reason: 'Attendre une confirmation fraîche avant de reprendre le sweep contraint.',
+    },
+    resumedConstrainedSweepResult: {
+      result: 'fragile-resume',
+      visibleFactor: 'Fraîcheur signal',
+      action: 'maintain-surveillance',
+      label: 'Résultat: reprise fragile.',
+      reason: 'La qualité du signal suffit à reprendre, mais pas à enchaîner sans surveillance.',
     },
     monitoringChecklist: [
       {
