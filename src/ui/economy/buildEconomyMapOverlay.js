@@ -137,7 +137,94 @@ function normalizeCapacitySpendPlan(plan, routeId) {
   };
 }
 
-function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId) {
+function buildPreparationOptions(nextResource, resourceRows, routeRiskLevel) {
+  if (nextResource === null || nextResource.capacityRemaining > 1) {
+    return [];
+  }
+
+  const bottleneckResourceId = nextResource.resourceId;
+  const missingMargin = nextResource.capacityRemaining === 0 ? 2 : 1;
+  const spareResource = resourceRows
+    .filter((row) => row.resourceId !== bottleneckResourceId && row.capacityRemaining > missingMargin)
+    .sort((left, right) => right.capacityRemaining - left.capacityRemaining || left.resourceId.localeCompare(right.resourceId))[0] ?? null;
+  const options = [
+    {
+      id: `${bottleneckResourceId}:reserve-buffer`,
+      action: nextResource.capacityRemaining === 0 ? 'free-route-capacity' : 'reserve-capacity-buffer',
+      label: nextResource.capacityRemaining === 0
+        ? `Libérer 1 capacité ${bottleneckResourceId}`
+        : `Réserver 1 capacité tampon ${bottleneckResourceId}`,
+      effort: {
+        type: 'capacity',
+        amount: 1,
+        unit: bottleneckResourceId,
+      },
+      expectedEffect: {
+        marginGain: 1,
+        description: nextResource.capacityRemaining === 0
+          ? 'Rouvre une marge minimale sur le goulot principal.'
+          : 'Transforme la marge critique en tampon exploitable.',
+      },
+      riskIfIgnored: nextResource.capacityRemaining === 0
+        ? 'Blocage probable dès la prochaine dépense sur ce corridor.'
+        : 'La prochaine dépense peut épuiser la marge restante.',
+      safety: 'safe',
+    },
+  ];
+
+  if (spareResource !== null) {
+    const marginGain = Math.min(2, spareResource.capacityRemaining - 1);
+
+    options.push({
+      id: `${bottleneckResourceId}:shift-to-${spareResource.resourceId}`,
+      action: 'shift-load-to-spare-resource',
+      label: `Reporter une partie du flux vers ${spareResource.resourceId}`,
+      effort: {
+        type: 'coordination',
+        amount: 2,
+        unit: 'turns',
+      },
+      expectedEffect: {
+        marginGain,
+        description: `Préserve ${bottleneckResourceId} en utilisant la marge ${spareResource.resourceId}.`,
+      },
+      riskIfIgnored: `La ressource ${bottleneckResourceId} reste le point de rupture malgré la marge ${spareResource.resourceId}.`,
+      safety: 'safe',
+    });
+  }
+
+  if (routeRiskLevel >= 35 || nextResource.capacityRemaining === 0) {
+    options.push({
+      id: `${bottleneckResourceId}:priority-window`,
+      action: 'open-priority-window',
+      label: `Ouvrir une fenêtre prioritaire ${bottleneckResourceId}`,
+      effort: {
+        type: 'operations',
+        amount: 3,
+        unit: 'orders',
+      },
+      expectedEffect: {
+        marginGain: 2,
+        description: 'Gagne une marge temporaire mais expose le corridor à un report de risque.',
+      },
+      riskIfIgnored: 'Le risque de corridor peut transformer le goulot en rupture opérationnelle.',
+      safety: routeRiskLevel >= 50 ? 'risky' : 'conditional',
+    });
+  }
+
+  return options
+    .sort((left, right) => {
+      const safetyRank = { safe: 0, conditional: 1, risky: 2 };
+
+      return left.effort.amount - right.effort.amount
+        || safetyRank[left.safety] - safetyRank[right.safety]
+        || right.expectedEffect.marginGain - left.expectedEffect.marginGain
+        || left.id.localeCompare(right.id);
+    })
+    .slice(0, 3);
+}
+
+function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId, routeRiskLevel) {
   if (capacityMobilized === 0) {
     return null;
   }
@@ -156,6 +243,7 @@ function buildNextBottleneck(resourceRows, capacityMobilized, limitingResourceId
     resourceId: limitingResourceId ?? nextResource.resourceId,
     marginRemaining: nextResource.capacityRemaining,
     preparationAction: nextResource.capacityRemaining === 0 ? 'free-route-capacity' : 'reserve-capacity-buffer',
+    preparationOptions: buildPreparationOptions(nextResource, resourceRows, routeRiskLevel),
   };
 }
 
@@ -181,13 +269,16 @@ function buildCapacitySpendPreview(route, spendPlan) {
       .sort((left, right) => left.capacityRemaining - right.capacityRemaining || left.resourceId.localeCompare(right.resourceId))[0]?.resourceId
     ?? null;
 
+  const nextBottleneck = buildNextBottleneck(resourceRows, capacityMobilized, computedLimitingResourceId, route.riskLevel);
+
   return {
     routeId: route.id,
     currentCapacity,
     capacityMobilized,
     capacityRemaining,
     limitingResourceId: computedLimitingResourceId,
-    nextBottleneck: buildNextBottleneck(resourceRows, capacityMobilized, computedLimitingResourceId),
+    nextBottleneck,
+    preparationOptions: nextBottleneck?.preparationOptions ?? [],
     state: capacityMobilized === 0
       ? 'no-spend'
       : capacityRemaining === 0

@@ -151,6 +151,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         capacityRemaining: 3,
         limitingResourceId: null,
         nextBottleneck: null,
+        preparationOptions: [],
         state: 'no-spend',
         resources: [
           { resourceId: 'wood', currentCapacity: 3, capacityMobilized: 0, capacityRemaining: 3 },
@@ -187,6 +188,7 @@ test('buildEconomyMapOverlay builds stable city and route overlays', () => {
         capacityRemaining: 11,
         limitingResourceId: null,
         nextBottleneck: null,
+        preparationOptions: [],
         state: 'no-spend',
         resources: [
           { resourceId: 'fish', currentCapacity: 4, capacityMobilized: 0, capacityRemaining: 4 },
@@ -252,6 +254,7 @@ test('buildEconomyMapOverlay supports plain payloads and style overrides', () =>
     capacityRemaining: 9,
     limitingResourceId: null,
     nextBottleneck: null,
+    preparationOptions: [],
     state: 'no-spend',
     resources: [
       { resourceId: 'salt', currentCapacity: 9, capacityMobilized: 0, capacityRemaining: 9 },
@@ -299,7 +302,43 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
       resourceId: 'grain',
       marginRemaining: 1,
       preparationAction: 'reserve-capacity-buffer',
+      preparationOptions: [
+        {
+          id: 'grain:reserve-buffer',
+          action: 'reserve-capacity-buffer',
+          label: 'Réserver 1 capacité tampon grain',
+          effort: {
+            type: 'capacity',
+            amount: 1,
+            unit: 'grain',
+          },
+          expectedEffect: {
+            marginGain: 1,
+            description: 'Transforme la marge critique en tampon exploitable.',
+          },
+          riskIfIgnored: 'La prochaine dépense peut épuiser la marge restante.',
+          safety: 'safe',
+        },
+      ],
     },
+    preparationOptions: [
+      {
+        id: 'grain:reserve-buffer',
+        action: 'reserve-capacity-buffer',
+        label: 'Réserver 1 capacité tampon grain',
+        effort: {
+          type: 'capacity',
+          amount: 1,
+          unit: 'grain',
+        },
+        expectedEffect: {
+          marginGain: 1,
+          description: 'Transforme la marge critique en tampon exploitable.',
+        },
+        riskIfIgnored: 'La prochaine dépense peut épuiser la marge restante.',
+        safety: 'safe',
+      },
+    ],
     state: 'remaining-margin',
     resources: [
       { resourceId: 'grain', currentCapacity: 5, capacityMobilized: 4, capacityRemaining: 1 },
@@ -308,7 +347,37 @@ test('buildEconomyMapOverlay previews capacity spent by recommended unlocks', ()
   });
   assert.equal(overlay.routes[1].capacitySpendPreview.limitingResourceId, null);
   assert.equal(overlay.routes[1].capacitySpendPreview.nextBottleneck, null);
+  assert.deepEqual(overlay.routes[1].capacitySpendPreview.preparationOptions, []);
   assert.equal(overlay.routes[1].capacitySpendPreview.state, 'no-spend');
+});
+
+test('buildEconomyMapOverlay compares deterministic bottleneck preparation options', () => {
+  const overlay = buildEconomyMapOverlay([], [
+    {
+      id: 'route-risky',
+      name: 'Risky Road',
+      stopCityIds: ['city-a', 'city-b'],
+      distance: 7,
+      capacityByResource: { grain: 4, tools: 6 },
+      transportMode: 'land',
+      riskLevel: 52,
+    },
+  ], {
+    recommendedUnlockByRouteId: {
+      'route-risky': {
+        mobilizedByResource: { grain: 4, tools: 1 },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationOptions.map((option) => option.id), [
+    'grain:reserve-buffer',
+    'grain:shift-to-tools',
+    'grain:priority-window',
+  ]);
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationOptions.map((option) => option.effort.amount), [1, 2, 3]);
+  assert.equal(overlay.routes[0].capacitySpendPreview.preparationOptions[0].expectedEffect.marginGain, 1);
+  assert.equal(overlay.routes[0].capacitySpendPreview.preparationOptions[2].safety, 'risky');
 });
 
 test('buildEconomyMapOverlay rejects invalid inputs', () => {
