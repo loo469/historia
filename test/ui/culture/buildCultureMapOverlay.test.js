@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -935,6 +935,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         },
         nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
       },
+      residualCultureFollowUpWindow: {
+        status: 'fragile-exploitable',
+        limitingConstraint: 'médiation',
+        windowSummary: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
+        nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1023,6 +1029,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         expectedEffect: 'stabilisation complète: aucune fragilité résiduelle à traiter',
         remainingFragility: null,
         nextDecision: null,
+      },
+      residualCultureFollowUpWindow: {
+        status: 'stable',
+        limitingConstraint: 'aucune contrainte résiduelle',
+        windowSummary: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
+        nextDecision: 'enchaîner le suivi culturel léger au prochain tour',
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1229,6 +1241,70 @@ test('buildResidualCultureActionPayoff covers complete, partial, and insufficien
         urgency: 'high',
       },
       nextDecision: 'choisir entre support local immédiat ou pause de timing prolongée',
+    },
+  );
+});
+
+test('buildResidualCultureFollowUpWindow covers stable, fragile exploitable, and too-short windows', () => {
+  assert.deepEqual(
+    buildResidualCultureFollowUpWindow(
+      {
+        status: 'complete',
+        expectedEffect: 'stabilisation complète: aucune fragilité résiduelle à traiter',
+        remainingFragility: null,
+        nextDecision: null,
+      },
+      { status: 'none-safe', actionType: 'none' },
+    ),
+    {
+      status: 'stable',
+      limitingConstraint: 'aucune contrainte résiduelle',
+      windowSummary: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
+      nextDecision: 'enchaîner le suivi culturel léger au prochain tour',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureFollowUpWindow(
+      {
+        status: 'partial',
+        expectedEffect: 'réduction partielle attendue: risque restant: isolement du support',
+        remainingFragility: {
+          type: 'regional-mediation',
+          cause: 'risque restant: isolement du support',
+          urgency: 'medium',
+        },
+        nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
+      },
+      { status: 'optional', actionType: 'mediation' },
+    ),
+    {
+      status: 'fragile-exploitable',
+      limitingConstraint: 'médiation',
+      windowSummary: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
+      nextDecision: 'réévaluer la médiation ou le support local au prochain tour',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureFollowUpWindow(
+      {
+        status: 'insufficient',
+        expectedEffect: 'achat de temps: aucun second soutien sûr disponible après le premier bundle reste trop urgente',
+        remainingFragility: {
+          type: 'missing-support',
+          cause: 'aucun second soutien sûr disponible après le premier bundle',
+          urgency: 'high',
+        },
+        nextDecision: 'choisir entre support local immédiat ou pause de timing prolongée',
+      },
+      { status: 'recommended', actionType: 'local-support' },
+    ),
+    {
+      status: 'too-short',
+      limitingConstraint: 'support local',
+      windowSummary: 'fenêtre trop courte: support local bloque un enchaînement sûr',
+      nextDecision: null,
     },
   );
 });
