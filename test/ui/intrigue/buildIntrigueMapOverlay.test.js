@@ -133,6 +133,7 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         exposureAdded: 10,
         unknownsRemaining: 0,
         postSweepGaps: [],
+        nextSafeSweep: null,
         summary: 'Confiance +23 pts pour +10 exposition; 0 inconnue restante.',
       },
       style: {
@@ -173,6 +174,7 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
         exposureAdded: 5,
         unknownsRemaining: 0,
         postSweepGaps: [],
+        nextSafeSweep: null,
         summary: 'Confiance +31 pts pour +5 exposition; 0 inconnue restante.',
       },
       style: {
@@ -313,6 +315,7 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
     exposureAdded: 0,
     unknownsRemaining: 0,
     postSweepGaps: [],
+    nextSafeSweep: null,
     summary: 'Aucun sweep low-exposure recommandé: signal insuffisant ou couverture déjà lisible.',
   });
   assert.equal(hot.lowExposureSweepConfidencePreview.state, 'watch-exposure');
@@ -339,6 +342,14 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
       reason: 'Le risque visible reste élevé; éviter toute attribution ou cible cachée après la passe.',
     },
   ]);
+  assert.deepEqual(hot.lowExposureSweepConfidencePreview.nextSafeSweep, {
+    targetGapKey: 'sleeper-uncertainty',
+    targetGapLabel: 'Dormance encore possible',
+    coverageValue: 1,
+    estimatedExposureAdded: 8,
+    estimatedHeat: 12,
+    safetyReason: 'Passe courte centrée sur la dormance: couverture limitée mais exposition minimale.',
+  });
   assert.match(hot.lowExposureSweepConfidencePreview.summary, /Confiance \+26 pts pour \+12 exposition/);
 });
 
@@ -379,6 +390,7 @@ test('buildIntrigueMapOverlay keeps post-sweep gap explanations stable and neutr
   ]);
 
   assert.deepEqual(overlay[0].lowExposureSweepConfidencePreview.postSweepGaps, []);
+  assert.equal(overlay[0].lowExposureSweepConfidencePreview.nextSafeSweep, null);
   assert.equal(overlay[0].lowExposureSweepConfidencePreview.unknownsRemaining, 0);
 });
 
