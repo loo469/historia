@@ -666,6 +666,44 @@ function rankStabilizationDependencyRetirements(debts) {
     }));
 }
 
+function buildTopRetirementReadiness(recommendedFirstRetirement, postBundleCumulativeRisk) {
+  if (!recommendedFirstRetirement) {
+    return {
+      status: 'ready',
+      blockers: [],
+      nextSmallStep: 'aucune dépendance prioritaire à retirer',
+    };
+  }
+
+  const blockers = [];
+
+  if (recommendedFirstRetirement.blockedUntilSupport || recommendedFirstRetirement.type === 'missing-support') {
+    blockers.push({
+      blockerId: `${recommendedFirstRetirement.debtId}:support`,
+      type: 'support-prerequisite',
+      reason: 'support culturel préalable manquant',
+      nextSmallStep: 'identifier un support compatible avant retrait',
+    });
+  }
+
+  if (recommendedFirstRetirement.type === 'bundle-incompatibility' || recommendedFirstRetirement.type === 'regional-mediation') {
+    blockers.push({
+      blockerId: `${recommendedFirstRetirement.debtId}:timing`,
+      type: 'timing-local-pressure',
+      reason: postBundleCumulativeRisk.nextAttention,
+      nextSmallStep: 'stabiliser la pression locale avant retrait',
+    });
+  }
+
+  const limitedBlockers = blockers.slice(0, 2);
+
+  return {
+    status: limitedBlockers.length > 0 ? 'blocked' : 'ready',
+    blockers: limitedBlockers,
+    nextSmallStep: limitedBlockers[0]?.nextSmallStep ?? recommendedFirstRetirement.nextAction,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -716,13 +754,15 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     .slice(0, 3);
 
   const dependencyRetirementRanking = rankStabilizationDependencyRetirements(uniqueDebts);
+  const recommendedFirstRetirement = dependencyRetirementRanking[0] ? { ...dependencyRetirementRanking[0] } : null;
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
     count: uniqueDebts.length,
     debts: uniqueDebts,
     dependencyRetirementRanking,
-    recommendedFirstRetirement: dependencyRetirementRanking[0] ? { ...dependencyRetirementRanking[0] } : null,
+    recommendedFirstRetirement,
+    topRetirementReadiness: buildTopRetirementReadiness(recommendedFirstRetirement, postBundleCumulativeRisk),
   };
 }
 
