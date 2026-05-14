@@ -9142,6 +9142,70 @@ function buildClimateNextTurnDecisionWindow(nextClimateCommitment, remainingDead
   };
 }
 
+function buildClimateDecisionDebtRanking(decisionWindow) {
+  if (!decisionWindow?.choices?.length) {
+    return {
+      state: 'neutral',
+      items: [],
+      summary: 'Aucun classement de dette climat: aucune fenêtre de décision active.',
+      uncertainty: 'données insuffisantes',
+    };
+  }
+
+  const conflictCount = decisionWindow.conflicts?.length ?? 0;
+  const synergyCount = decisionWindow.synergies?.length ?? 0;
+  const scoreChoice = (choice) => {
+    const text = `${choice.deadlineEffect} ${choice.regionalPressureEffect} ${choice.climateDebtAfter}`.toLowerCase();
+    let score = 0;
+    if (text.includes('stabilisée')) score -= 2;
+    if (text.includes('réduit') || text.includes('confirmée')) score -= 1;
+    if (text.includes('tolérable')) score += 1;
+    if (text.includes('pression de report') || text.includes('non confirmé')) score += 3;
+    if (text.includes('accrue') || text.includes('risqué')) score += 4;
+    if (text.includes('deadline menacée') || text.includes('capacité régionale insuffisante') || text.includes('exposition qui empire')) score += 2;
+    if (choice.key === 'replace-commitment') score += 2;
+    if (choice.key === 'act-now' && decisionWindow.state === 'urgent-window') score -= 1;
+    return score;
+  };
+  const bestUseByChoice = {
+    'act-now': 'minimiser la dette future quand la deadline ou la pression régionale est déjà visible',
+    'wait-one-turn': 'garder de la flexibilité si le report reste tolérable et réversible',
+    'replace-commitment': 'remplacer seulement si un conflit externe bloque l’engagement climat',
+  };
+  const ranked = decisionWindow.choices
+    .map((choice) => {
+      const debtScore = scoreChoice(choice);
+      return {
+        key: choice.key,
+        label: choice.label,
+        rank: 0,
+        estimatedDownstreamDebt: debtScore <= 0 ? 'basse' : debtScore <= 3 ? 'modérée' : 'haute',
+        debtScore,
+        mainRisk: choice.recommendation,
+        bestUse: bestUseByChoice[choice.key] ?? 'choix contextuel si les signaux restent incomplets',
+        reason: `${choice.deadlineEffect}; ${choice.regionalPressureEffect}; dette: ${choice.climateDebtAfter}.`,
+        signals: {
+          synergies: decisionWindow.synergies ?? [],
+          conflicts: decisionWindow.conflicts ?? [],
+        },
+      };
+    })
+    .sort((left, right) => left.debtScore - right.debtScore || left.label.localeCompare(right.label))
+    .map((item, index) => ({ ...item, rank: index + 1 }));
+  const topChoice = ranked[0];
+
+  return {
+    state: ranked.length > 0 ? 'ranked' : 'neutral',
+    items: ranked,
+    summary: topChoice
+      ? `${topChoice.label} minimise la dette aval estimée (${topChoice.estimatedDownstreamDebt}); ${conflictCount} conflit${conflictCount > 1 ? 's' : ''}, ${synergyCount} synergie${synergyCount > 1 ? 's' : ''} signalé${synergyCount > 1 ? 's' : ''}.`
+      : 'Aucun classement de dette climat disponible.',
+    uncertainty: conflictCount > 0
+      ? 'classement à confirmer avec les conflits externes détectés'
+      : 'classement déterministe depuis deadline, pression régionale et dette affichée',
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -9186,6 +9250,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       remainingDeadlinePressure: null,
       nextClimateCommitment: null,
       decisionWindow: null,
+      decisionDebtRanking: { state: 'neutral', items: [], summary: 'Aucun classement de dette climat: aucune fenêtre de décision active.', uncertainty: 'données insuffisantes' },
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -9229,7 +9294,8 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     cheapestSafeCommitment,
     remainingDeadlinePressure,
     nextClimateCommitment,
-    decisionWindow: nextClimateCommitment?.decisionWindow ?? null,
+    decisionWindow,
+    decisionDebtRanking,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -9258,6 +9324,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.nextClimateCommitment ? `<small><b>Après lui</b> · ${view.nextClimateCommitment.remainsAfterCommitment.length > 0 ? view.nextClimateCommitment.remainsAfterCommitment.join(' → ') : 'aucune pression deadline visible'}</small>` : ''}
       ${view.decisionWindow ? `<small><b>${view.decisionWindow.title}</b> · ${view.decisionWindow.choices.map((choice) => `${choice.label}: ${choice.recommendation}, ${choice.deadlineEffect}, dette ${choice.climateDebtAfter}`).join(' | ')}</small>` : ''}
       ${view.decisionWindow ? `<small><b>Synergies/conflits</b> · ${[...view.decisionWindow.synergies, ...view.decisionWindow.conflicts].map((signal) => `${signal.domain}: ${signal.label}`).join(' | ')}</small>` : ''}
+      ${view.decisionDebtRanking?.items?.length ? `<small><b>Dette aval classée</b> · ${view.decisionDebtRanking.items.map((item) => `${item.rank}. ${item.label}: dette ${item.estimatedDownstreamDebt}, ${item.mainRisk}`).join(' | ')} · ${view.decisionDebtRanking.uncertainty}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
