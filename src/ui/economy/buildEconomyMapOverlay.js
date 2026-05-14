@@ -358,6 +358,35 @@ function buildPreparationBreakEven(opportunityCostComparison, capacityMobilized)
   };
 }
 
+function buildFlipActionability(flipScenario, opportunityCostComparison, capacityCost) {
+  if (flipScenario === null) {
+    return {
+      threshold: null,
+      consequence: 'continuer la séquence recommandée',
+      advice: 'Action stable: continuer la séquence recommandée tant que la marge de break-even reste positive.',
+    };
+  }
+
+  const thresholdByCause = {
+    delay: 'dès 1 tour de retard',
+    capacity: `si la marge disponible perd ${Math.max(1, opportunityCostComparison.gained.margin)} capacité`,
+    cost: 'si le coût augmente d’au moins 1 ordre',
+    saturation: `si le goulot consomme ${capacityCost} capacité avant préparation`,
+  };
+  const consequenceByCause = {
+    delay: 'inverser la priorité avant d’attendre',
+    capacity: 'sécuriser une marge avant d’agir',
+    cost: 'attendre une option moins coûteuse',
+    saturation: 'sécuriser le goulot avant toute nouvelle dépense',
+  };
+
+  return {
+    threshold: thresholdByCause[flipScenario.cause] ?? `si ${flipScenario.assumption}`,
+    consequence: consequenceByCause[flipScenario.cause] ?? 'inverser la priorité',
+    advice: `${consequenceByCause[flipScenario.cause] ?? 'Inverser la priorité'}: basculer vers ${flipScenario.alternativeOptionId} ${thresholdByCause[flipScenario.cause] ?? `si ${flipScenario.assumption}`}.`,
+  };
+}
+
 function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven, capacityMobilized) {
   if (opportunityCostComparison === null || preparationBreakEven === null) {
     return null;
@@ -396,6 +425,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     alternativeOptionId: scenario.netValue > 0 ? null : opportunityCostComparison.alternativeOptionId,
   }));
   const flipScenario = scenarios.find((scenario) => !scenario.recommendationStable) ?? null;
+  const actionability = buildFlipActionability(flipScenario, opportunityCostComparison, capacityCost);
   const flipWarning = flipScenario === null
     ? {
       status: 'stable',
@@ -404,6 +434,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
       scenarioId: null,
       alternativeOptionId: null,
       reason: `La marge de break-even reste positive dans ${scenarios.length} scénarios dérivés.`,
+      actionability,
     }
     : {
       status: 'switch',
@@ -412,6 +443,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
       scenarioId: flipScenario.id,
       alternativeOptionId: flipScenario.alternativeOptionId,
       reason: `La recommandation bascule vers ${flipScenario.alternativeOptionId} si ${flipScenario.assumption}.`,
+      actionability,
     };
 
   return {
@@ -423,6 +455,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     flipWarning,
     scenarios,
     reason: flipWarning.reason,
+    actionableAdvice: actionability.advice,
   };
 }
 
