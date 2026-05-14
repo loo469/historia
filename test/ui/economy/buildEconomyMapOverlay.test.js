@@ -567,6 +567,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         benefit: 'Aucun stabilisateur requis: le corridor reste robuste après salvage.',
         summary: 'Stabilisateur neutre: surveiller sans action supplémentaire.',
       },
+      postStabilizerReliability: {
+        status: 'reliable-route',
+        remainingConstraint: null,
+        nextGesture: 'promouvoir',
+        summary: 'Route fiable: promouvoir le corridor après stabilisateur neutre.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -721,6 +727,12 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       benefit: 'Aucun stabilisateur requis: le corridor reste robuste après salvage.',
       summary: 'Stabilisateur neutre: surveiller sans action supplémentaire.',
     },
+    postStabilizerReliability: {
+      status: 'reliable-route',
+      remainingConstraint: null,
+      nextGesture: 'promouvoir',
+      summary: 'Route fiable: promouvoir le corridor après stabilisateur neutre.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -825,6 +837,12 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     benefit: 'transforme l’inversion possible en flux fiable.',
     summary: 'Stabilisation urgente: alternative de secours pour éviter une perte durable.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postStabilizerReliability, {
+    status: 'reserve-corridor',
+    remainingConstraint: 'alternative',
+    nextGesture: 'garder comme secours',
+    summary: 'Corridor à garder en secours: alternative reste trop fragile après stabilisateur.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -895,6 +913,12 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     nextGesture: 'basculer vers alternative',
     benefit: 'transforme l’inversion possible en flux fiable.',
     summary: 'Stabilisateur recommandé: alternative de secours pour fiabiliser le corridor fragile.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.postStabilizerReliability, {
+    status: 'monitored-route',
+    remainingConstraint: 'alternative',
+    nextGesture: 'surveiller un tour',
+    summary: 'Route utilisable sous surveillance: contrôler alternative après stabilisateur.',
   });
 });
 
