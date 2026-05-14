@@ -243,6 +243,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Observation: reprendre plus tard.',
           reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
         },
+        firstSafeObservationTarget: {
+          target: 'no-safe-target',
+          visibleFactor: 'Zone brouillée',
+          action: 'refresh-signal',
+          label: 'Cible observation: aucune sûre.',
+          reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -325,6 +332,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Observation: reprendre plus tard.',
               reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
+            },
+            firstSafeObservationTarget: {
+              target: 'no-safe-target',
+              visibleFactor: 'Zone brouillée',
+              action: 'refresh-signal',
+              label: 'Cible observation: aucune sûre.',
+              reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
             },
         monitoringChecklist: [
           {
@@ -513,6 +527,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Observation: reprendre plus tard.',
           reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
         },
+        firstSafeObservationTarget: {
+          target: 'no-safe-target',
+          visibleFactor: 'Zone brouillée',
+          action: 'refresh-signal',
+          label: 'Cible observation: aucune sûre.',
+          reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -595,6 +616,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Observation: reprendre plus tard.',
               reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
+            },
+            firstSafeObservationTarget: {
+              target: 'no-safe-target',
+              visibleFactor: 'Zone brouillée',
+              action: 'refresh-signal',
+              label: 'Cible observation: aucune sûre.',
+              reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
             },
         monitoringChecklist: [
           {
@@ -883,6 +911,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Observation: reprendre plus tard.',
           reason: 'Attendre protège la fenêtre, mais le signal peut perdre en fraîcheur: rafraîchir avant reprise.',
         },
+        firstSafeObservationTarget: {
+          target: 'no-safe-target',
+          visibleFactor: 'Zone brouillée',
+          action: 'refresh-signal',
+          label: 'Cible observation: aucune sûre.',
+          reason: 'La zone reste brouillée: rafraîchir le signal avant de choisir une première cible active.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -1044,6 +1079,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'wait-one-turn',
         label: 'Observation: attendre un tour.',
         reason: 'La pause courte stabilise le signal visible avant de rouvrir l’observation active.',
+      },
+      firstSafeObservationTarget: {
+        target: 'limited-recommended',
+        visibleFactor: 'Couverture partielle',
+        action: 'observe-limited',
+        label: 'Cible observation: limitée recommandée.',
+        reason: 'Commencer par une cible limitée évite de rouvrir trop large pendant la stabilisation visible.',
       },
       monitoringChecklist: [
         {
@@ -1273,6 +1315,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Observation: reprendre maintenant.',
         reason: 'La fenêtre visible reste ouverte: reprendre l’observation active sans attendre un refroidissement caché.',
       },
+      firstSafeObservationTarget: {
+        target: 'primary-safe',
+        visibleFactor: 'Couverture partielle',
+        action: 'observe-primary',
+        label: 'Cible observation: principale sûre.',
+        reason: 'La reprise active peut viser la cible principale sans élargir le sweep au-delà de la couverture lisible.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1425,6 +1474,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'wait-one-turn',
       label: 'Observation: attendre un tour.',
       reason: 'La pause courte stabilise le signal visible avant de rouvrir l’observation active.',
+    },
+    firstSafeObservationTarget: {
+      target: 'limited-recommended',
+      visibleFactor: 'Couverture partielle',
+      action: 'observe-limited',
+      label: 'Cible observation: limitée recommandée.',
+      reason: 'Commencer par une cible limitée évite de rouvrir trop large pendant la stabilisation visible.',
     },
     monitoringChecklist: [
       {
