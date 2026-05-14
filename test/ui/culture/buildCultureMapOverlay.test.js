@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition, buildResidualCultureStabilityWatchWindow } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability, buildResidualCultureReevaluationTrigger, buildResidualCultureReevaluationDelayCost, buildResidualCultureMinimalDelayedSupport, buildResidualCultureReliabilityUpgradeCondition, buildResidualCultureStabilityWatchWindow, buildResidualCultureSupportRedeploymentCue } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -989,6 +989,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         watchWindow: 'surveillance courte recommandée: confirmer le prochain signal culturel',
         followUpAction: 'revoir le support si fatigue de médiation remonte',
       },
+      residualCultureSupportRedeploymentCue: {
+        status: 'careful-reduction',
+        blockingFactor: 'tension locale',
+        redeploymentCue: 'réduction prudente possible après le prochain signal confirmé',
+        microAction: 'revoir le support si fatigue de médiation remonte',
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1131,6 +1137,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         watchFactor: 'soutien restant',
         watchWindow: 'stabilité déjà durable: surveillance passive suffisante',
         followUpAction: null,
+      },
+      residualCultureSupportRedeploymentCue: {
+        status: 'safe-redeploy',
+        blockingFactor: 'soutien résiduel faible',
+        redeploymentCue: 'redéploiement sûr: la stabilité tient sans soutien dédié',
+        microAction: null,
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1798,6 +1810,53 @@ test('buildResidualCultureStabilityWatchWindow covers durable, short, and extend
       watchFactor: 'fragilité sociale résiduelle',
       watchWindow: 'surveillance prolongée requise: la stabilité reste conditionnelle',
       followUpAction: 'sécuriser un support local avant tout suivi',
+    },
+  );
+});
+
+test('buildResidualCultureSupportRedeploymentCue covers maintain, reduce, and redeploy states', () => {
+  assert.deepEqual(
+    buildResidualCultureSupportRedeploymentCue({
+      status: 'extended-watch',
+      watchFactor: 'fragilité sociale résiduelle',
+      watchWindow: 'surveillance prolongée requise: la stabilité reste conditionnelle',
+      followUpAction: 'sécuriser un support local avant tout suivi',
+    }),
+    {
+      status: 'keep-support',
+      blockingFactor: 'fragilité sociale voisine',
+      redeploymentCue: 'soutien à maintenir: la stabilité retomberait sans consolidation',
+      microAction: 'sécuriser un support local avant tout suivi',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureSupportRedeploymentCue({
+      status: 'short-watch',
+      watchFactor: 'tension locale',
+      watchWindow: 'surveillance courte recommandée: confirmer le prochain signal culturel',
+      followUpAction: 'revoir le support si fatigue de médiation remonte',
+    }),
+    {
+      status: 'careful-reduction',
+      blockingFactor: 'tension locale',
+      redeploymentCue: 'réduction prudente possible après le prochain signal confirmé',
+      microAction: 'revoir le support si fatigue de médiation remonte',
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCultureSupportRedeploymentCue({
+      status: 'durable-now',
+      watchFactor: 'soutien restant',
+      watchWindow: 'stabilité déjà durable: surveillance passive suffisante',
+      followUpAction: null,
+    }),
+    {
+      status: 'safe-redeploy',
+      blockingFactor: 'soutien résiduel faible',
+      redeploymentCue: 'redéploiement sûr: la stabilité tient sans soutien dédié',
+      microAction: null,
     },
   );
 });
