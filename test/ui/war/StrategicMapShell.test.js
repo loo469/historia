@@ -11,6 +11,7 @@ import {
   buildMiniPlanRivalResponseComparison,
   buildMiniPlanRivalResponseFallback,
   buildMiniPlanFallbackReturnCue,
+  buildMiniPlanReturnProtectionStatus,
   buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
@@ -333,6 +334,14 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     reason: null,
     initialBranchId: null,
     fallbackBranchId: null,
+  });
+  assert.deepEqual(shell.miniPlanReturnProtectionStatus, {
+    empty: true,
+    state: 'none',
+    label: 'protection non évaluée',
+    constraint: null,
+    nextDecision: null,
+    reason: null,
   });
 });
 
@@ -663,7 +672,8 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     cost: 'cible moins prioritaire: front-a',
     targetId: 'front-a',
   });
-  assert.deepEqual(buildMiniPlanFallbackReturnCue(fallback, comparison), {
+  const returnCue = buildMiniPlanFallbackReturnCue(fallback, comparison);
+  assert.deepEqual(returnCue, {
     empty: false,
     decision: 'keep-fallback',
     condition: 'revenir quand front-b devient moins exposée',
@@ -671,6 +681,14 @@ test('StrategicMapShell shows safest fallback when rival response invalidates th
     reason: 'garder le fallback tant que contre-poussée du front voisin reste high',
     initialBranchId: 'mini-plan-branch:1:mini-plan-tradeoff:neighbor-front:front-b',
     fallbackBranchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
+  });
+  assert.deepEqual(buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison), {
+    empty: false,
+    state: 'lost',
+    label: 'protection perdue',
+    constraint: 'contre-poussée du front voisin',
+    nextDecision: 'confirm-fallback',
+    reason: 'confirmer le fallback: contre-poussée du front voisin reste plus dangereux',
   });
   assert.deepEqual(buildMiniPlanRivalResponseFallback({
     empty: false,
@@ -702,7 +720,8 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     ],
   };
 
-  assert.deepEqual(buildMiniPlanFallbackReturnCue(fallback, comparison), {
+  const returnCue = buildMiniPlanFallbackReturnCue(fallback, comparison);
+  assert.deepEqual(returnCue, {
     empty: false,
     decision: 'return-initial',
     condition: 'revenir quand la réponse rivale se dissipe',
@@ -710,6 +729,14 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     reason: 'revenir à la branche initiale si son risque retombe au niveau medium',
     initialBranchId: 'initial',
     fallbackBranchId: 'fallback',
+  });
+  assert.deepEqual(buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison), {
+    empty: false,
+    state: 'partial',
+    label: 'protection partielle',
+    constraint: 'agitation locale avant liaison',
+    nextDecision: 'wait-signal',
+    reason: 'attendre un signal: revenir quand la réponse rivale se dissipe',
   });
   assert.deepEqual(buildMiniPlanFallbackReturnCue(null, comparison), {
     empty: true,
@@ -719,6 +746,44 @@ test('StrategicMapShell distinguishes keeping fallback from returning to origina
     reason: null,
     initialBranchId: null,
     fallbackBranchId: null,
+  });
+});
+
+test('StrategicMapShell reports whether returning keeps rival-response protection', () => {
+  const fallback = {
+    empty: false,
+    fallbackBranchId: 'fallback',
+    cost: 'délai avant branche initiale',
+  };
+  const returnCue = {
+    empty: false,
+    initialBranchId: 'initial',
+    fallbackBranchId: 'fallback',
+    condition: 'revenir quand le délai rival est absorbé',
+  };
+  const comparison = {
+    empty: false,
+    branches: [
+      { branchId: 'initial', rivalResponse: 'coupure du convoi partagé', riskLevel: 'low' },
+      { branchId: 'fallback', rivalResponse: 'veille adverse', riskLevel: 'medium' },
+    ],
+  };
+
+  assert.deepEqual(buildMiniPlanReturnProtectionStatus(returnCue, fallback, comparison), {
+    empty: false,
+    state: 'kept',
+    label: 'protection conservée',
+    constraint: 'coupure du convoi partagé',
+    nextDecision: 'return-now',
+    reason: 'revenir maintenant: le risque initial ne dépasse plus le fallback',
+  });
+  assert.deepEqual(buildMiniPlanReturnProtectionStatus(null, fallback, comparison), {
+    empty: true,
+    state: 'none',
+    label: 'protection non évaluée',
+    constraint: null,
+    nextDecision: null,
+    reason: null,
   });
 });
 
