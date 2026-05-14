@@ -597,6 +597,33 @@ function buildMonitoredCorridorRollbackGuard(monitoredCorridorPromotionRisk) {
   };
 }
 
+function buildRollbackGuardLoadMargin(monitoredCorridorRollbackGuard) {
+  if (monitoredCorridorRollbackGuard.status === 'rollback-unneeded') {
+    return {
+      status: 'peak-absorbable',
+      constraint: monitoredCorridorRollbackGuard.constraint,
+      nextGesture: 'absorber',
+      summary: 'Pic absorbable: la route principale garde assez de marge après garde.',
+    };
+  }
+
+  if (monitoredCorridorRollbackGuard.status === 'guard-recommended') {
+    return {
+      status: 'peak-capped',
+      constraint: monitoredCorridorRollbackGuard.constraint,
+      nextGesture: 'plafonner le flux',
+      summary: `Pic à plafonner: ${monitoredCorridorRollbackGuard.constraint} exige de garder la marge sous contrôle.`,
+    };
+  }
+
+  return {
+    status: 'overload-likely',
+    constraint: monitoredCorridorRollbackGuard.constraint,
+    nextGesture: monitoredCorridorRollbackGuard.nextGesture === 'revenir en secours' ? 'revenir en secours' : 'activer alternative',
+    summary: `Surcharge probable: ${monitoredCorridorRollbackGuard.constraint} demande une alternative active.`,
+  };
+}
+
 function buildPostSalvageDecisionAlert(salvageAction) {
   if (salvageAction === null) {
     return {
@@ -814,6 +841,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
   const postStabilizerReliability = buildPostStabilizerReliability(postSalvageStabilizer);
   const monitoredCorridorPromotionRisk = buildMonitoredCorridorPromotionRisk(postStabilizerReliability);
   const monitoredCorridorRollbackGuard = buildMonitoredCorridorRollbackGuard(monitoredCorridorPromotionRisk);
+  const rollbackGuardLoadMargin = buildRollbackGuardLoadMargin(monitoredCorridorRollbackGuard);
 
   return {
     id: `timing-sensitivity:${opportunityCostComparison.recommendedOptionId}`,
@@ -833,6 +861,7 @@ function buildTimingSensitivity(opportunityCostComparison, preparationBreakEven,
     postStabilizerReliability,
     monitoredCorridorPromotionRisk,
     monitoredCorridorRollbackGuard,
+    rollbackGuardLoadMargin,
   };
 }
 
