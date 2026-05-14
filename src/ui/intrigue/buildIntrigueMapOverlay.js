@@ -273,6 +273,88 @@ function buildSecondSweepStopCondition({ nextSafeSweep, unknownsRemaining, sabot
   };
 }
 
+
+function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
+  const normalizedExposure = clampPercent(marginalExposureAdded);
+  const normalizedGain = clampPercent(expectedConfidenceGain);
+
+  if (state === 'safe-action-available') {
+    return {
+      monitoringDurationTurns: 0,
+      restartTriggers: [
+        'Relancer maintenant si la fenêtre reste sûre.',
+        'Basculer en surveillance si le heat remonte avant l’ordre.',
+      ],
+      sweepRestartComparison: `Relancer bat la surveillance: +${normalizedGain} confiance attendue pour +${normalizedExposure} exposition.`,
+    };
+  }
+
+  if (state === 'await-fresh-signal') {
+    return {
+      monitoringDurationTurns: 2,
+      restartTriggers: [
+        'Relancer si un signal frais confirme un gap low-risk.',
+        'Continuer à surveiller si la fraîcheur reste insuffisante.',
+      ],
+      sweepRestartComparison: 'Surveiller bat la relance: le signal est trop ancien pour justifier une nouvelle exposition.',
+    };
+  }
+
+  if (state === 'heat-too-high') {
+    return {
+      monitoringDurationTurns: 3,
+      restartTriggers: [
+        'Relancer seulement si le heat retombe sous une fenêtre sûre.',
+        'Continuer à surveiller si l’exposition marginale reste haute.',
+      ],
+      sweepRestartComparison: `Surveiller bat la relance: +${normalizedExposure} exposition marginale pour aucun gain fiable.`,
+    };
+  }
+
+  if (state === 'wait-for-cooldown') {
+    return {
+      monitoringDurationTurns: 2,
+      restartTriggers: [
+        'Relancer si le heat baisse et que le gap reste visible.',
+        'Continuer à surveiller si le coût d’exposition ne descend pas.',
+      ],
+      sweepRestartComparison: `Surveiller bat encore la relance: +${normalizedGain} confiance ne compense pas +${normalizedExposure} exposition.`,
+    };
+  }
+
+  if (state === 'low-confidence-gain') {
+    return {
+      monitoringDurationTurns: 2,
+      restartTriggers: [
+        'Relancer si deux signaux frais augmentent le gain attendu.',
+        'Continuer à surveiller tant que le gain reste marginal.',
+      ],
+      sweepRestartComparison: `Surveiller bat la relance: +${normalizedGain} confiance attendue reste trop faible pour +${normalizedExposure} exposition.`,
+    };
+  }
+
+  return {
+    monitoringDurationTurns: monitoringPreferred ? 1 : 0,
+    restartTriggers: [
+      'Relancer si un signal frais rouvre une fenêtre sûre.',
+      'Continuer à surveiller sans nouveau gap lisible.',
+    ],
+    sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
+  };
+}
+
+function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedConfidenceGain) {
+  return {
+    ...rationale,
+    ...buildMonitoringRestartPlan({
+      state: rationale.state,
+      monitoringPreferred: rationale.monitoringPreferred,
+      marginalExposureAdded,
+      expectedConfidenceGain,
+    }),
+  };
+}
+
 function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep, unknownsRemaining, sabotageRiskScore }) {
   if (nextSafeSweep === null || secondSweepStopCondition.state === 'no-safe-sweep') {
     return {
@@ -281,13 +363,13 @@ function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep
       prepareThirdSweep: false,
       marginalExposureAdded: 0,
       expectedConfidenceGain: 0,
-      monitoringRationale: {
+      monitoringRationale: withMonitoringRestartPlan({
         state: 'surveillance-active-sufficient',
         monitoringPreferred: true,
         signalFreshness: 'insufficient',
         heatState: 'stable',
         tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
-      },
+      }, 0, 0),
       rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
     };
   }
@@ -299,13 +381,13 @@ function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep
       prepareThirdSweep: false,
       marginalExposureAdded: clampPercent(nextSafeSweep.estimatedExposureAdded + 3),
       expectedConfidenceGain: 0,
-      monitoringRationale: {
+      monitoringRationale: withMonitoringRestartPlan({
         state: 'heat-too-high',
         monitoringPreferred: true,
         signalFreshness: 'stale',
         heatState: 'too-hot',
         tradeoff: 'Le heat/exposition marginal dépasse le gain de confiance attendu.',
-      },
+      }, clampPercent(nextSafeSweep.estimatedExposureAdded + 3), 0),
       rationale: 'Arrêter: une troisième passe ajouterait trop d’exposition marginale après une seconde déjà chaude.',
     };
   }
@@ -317,13 +399,13 @@ function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep
       prepareThirdSweep: false,
       marginalExposureAdded: clampPercent(Math.max(3, nextSafeSweep.estimatedExposureAdded - 1)),
       expectedConfidenceGain: 0,
-      monitoringRationale: {
+      monitoringRationale: withMonitoringRestartPlan({
         state: 'await-fresh-signal',
         monitoringPreferred: true,
         signalFreshness: 'needs-refresh',
         heatState: 'contained',
         tradeoff: 'Sans signal frais, une nouvelle sweep ajouterait de l’exposition sans gain fiable.',
-      },
+      }, clampPercent(Math.max(3, nextSafeSweep.estimatedExposureAdded - 1)), 0),
       rationale: 'Surveiller seulement: attendre un signal frais avant de préparer une troisième passe.',
     };
   }
@@ -335,13 +417,13 @@ function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep
       prepareThirdSweep: false,
       marginalExposureAdded: clampPercent(nextSafeSweep.estimatedExposureAdded),
       expectedConfidenceGain: clampPercent(Math.min(8, unknownsRemaining * 3)),
-      monitoringRationale: {
+      monitoringRationale: withMonitoringRestartPlan({
         state: 'wait-for-cooldown',
         monitoringPreferred: true,
         signalFreshness: 'usable-later',
         heatState: 'cooling-required',
         tradeoff: 'Attendre réduit le coût d’exposition avant toute nouvelle sweep.',
-      },
+      }, clampPercent(nextSafeSweep.estimatedExposureAdded), clampPercent(Math.min(8, unknownsRemaining * 3))),
       rationale: 'Surveiller: le gain attendu ne justifie pas encore le coût tant que la fenêtre ne refroidit pas.',
     };
   }
@@ -356,13 +438,13 @@ function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep
       prepareThirdSweep: true,
       marginalExposureAdded,
       expectedConfidenceGain,
-      monitoringRationale: {
+      monitoringRationale: withMonitoringRestartPlan({
         state: 'safe-action-available',
         monitoringPreferred: false,
         signalFreshness: 'fresh-enough',
         heatState: 'contained',
         tradeoff: 'Le gain de confiance attendu dépasse l’exposition marginale; ne pas rester inactif.',
-      },
+      }, marginalExposureAdded, expectedConfidenceGain),
       rationale: `Préparer une troisième passe prudente: ${unknownsRemaining} inconnues resteraient et le gain de confiance attendu dépasse l’exposition marginale.`,
     };
   }
@@ -373,13 +455,13 @@ function buildThirdSweepRecommendation({ secondSweepStopCondition, nextSafeSweep
     prepareThirdSweep: false,
     marginalExposureAdded: clampPercent(nextSafeSweep.estimatedExposureAdded + 1),
     expectedConfidenceGain: clampPercent(Math.min(5, unknownsRemaining * 3)),
-    monitoringRationale: {
+    monitoringRationale: withMonitoringRestartPlan({
       state: 'low-confidence-gain',
       monitoringPreferred: true,
       signalFreshness: 'weak',
       heatState: 'contained',
       tradeoff: 'Le gain de confiance restant est inférieur au coût d’exposition marginal.',
-    },
+    }, clampPercent(nextSafeSweep.estimatedExposureAdded + 1), clampPercent(Math.min(5, unknownsRemaining * 3))),
     rationale: 'Arrêter après la seconde passe: le gain restant serait trop faible par rapport à l’exposition marginale.',
   };
 }

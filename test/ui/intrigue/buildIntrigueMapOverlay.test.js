@@ -154,6 +154,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
             signalFreshness: 'insufficient',
             heatState: 'stable',
             tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
+            monitoringDurationTurns: 1,
+            restartTriggers: [
+              'Relancer si un signal frais rouvre une fenêtre sûre.',
+              'Continuer à surveiller sans nouveau gap lisible.',
+            ],
+            sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
           },
           rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
@@ -218,6 +224,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
             signalFreshness: 'insufficient',
             heatState: 'stable',
             tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
+            monitoringDurationTurns: 1,
+            restartTriggers: [
+              'Relancer si un signal frais rouvre une fenêtre sûre.',
+              'Continuer à surveiller sans nouveau gap lisible.',
+            ],
+            sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
           },
           rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
         },
@@ -382,6 +394,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         signalFreshness: 'insufficient',
         heatState: 'stable',
         tradeoff: 'Aucun gain de confiance attendu ne compense une nouvelle exposition.',
+        monitoringDurationTurns: 1,
+        restartTriggers: [
+          'Relancer si un signal frais rouvre une fenêtre sûre.',
+          'Continuer à surveiller sans nouveau gap lisible.',
+        ],
+        sweepRestartComparison: 'Surveiller reste préférable tant qu’aucun gain de confiance concret n’apparaît.',
       },
       rationale: 'Aucun troisième sweep à préparer: la seconde passe n’a pas de fenêtre sûre.',
     },
@@ -438,6 +456,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
       signalFreshness: 'weak',
       heatState: 'contained',
       tradeoff: 'Le gain de confiance restant est inférieur au coût d’exposition marginal.',
+      monitoringDurationTurns: 2,
+      restartTriggers: [
+        'Relancer si deux signaux frais augmentent le gain attendu.',
+        'Continuer à surveiller tant que le gain reste marginal.',
+      ],
+      sweepRestartComparison: 'Surveiller bat la relance: +3 confiance attendue reste trop faible pour +9 exposition.',
     },
     rationale: 'Arrêter après la seconde passe: le gain restant serait trop faible par rapport à l’exposition marginale.',
   });
@@ -560,6 +584,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
       signalFreshness: 'fresh-enough',
       heatState: 'contained',
       tradeoff: 'Le gain de confiance attendu dépasse l’exposition marginale; ne pas rester inactif.',
+      monitoringDurationTurns: 0,
+      restartTriggers: [
+        'Relancer maintenant si la fenêtre reste sûre.',
+        'Basculer en surveillance si le heat remonte avant l’ordre.',
+      ],
+      sweepRestartComparison: 'Relancer bat la surveillance: +14 confiance attendue pour +9 exposition.',
     },
     rationale: 'Préparer une troisième passe prudente: 2 inconnues resteraient et le gain de confiance attendu dépasse l’exposition marginale.',
   });
@@ -607,6 +637,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
     signalFreshness: 'needs-refresh',
     heatState: 'contained',
     tradeoff: 'Sans signal frais, une nouvelle sweep ajouterait de l’exposition sans gain fiable.',
+    monitoringDurationTurns: 2,
+    restartTriggers: [
+      'Relancer si un signal frais confirme un gap low-risk.',
+      'Continuer à surveiller si la fraîcheur reste insuffisante.',
+    ],
+    sweepRestartComparison: 'Surveiller bat la relance: le signal est trop ancien pour justifier une nouvelle exposition.',
   });
 
   const tooExposed = buildIntrigueMapOverlay([
