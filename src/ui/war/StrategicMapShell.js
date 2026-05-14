@@ -383,6 +383,42 @@ export function buildMiniPlanDependencyConflicts(followUpCleanupMiniPlan = null,
     .slice(0, 3);
 }
 
+export function buildMiniPlanConflictTradeoffs(followUpCleanupMiniPlan = null, miniPlanDependencyConflicts = []) {
+  const normalizedConflicts = normalizeCleanupInput(
+    miniPlanDependencyConflicts,
+    'StrategicMapShell miniPlanDependencyConflicts',
+  );
+
+  if (!followUpCleanupMiniPlan || followUpCleanupMiniPlan.empty || normalizedConflicts.length === 0) return [];
+
+  const firstPlanStep = (followUpCleanupMiniPlan.steps ?? []).find((step) => step?.state === 'execute-cleanup')
+    ?? followUpCleanupMiniPlan.steps?.[0]
+    ?? null;
+  const miniPlanAction = String(firstPlanStep?.label ?? 'exécuter mini-plan').trim() || 'exécuter mini-plan';
+  const miniPlanCost = String(firstPlanStep?.untreatedRisk ?? 'dépendance non traitée').trim() || 'dépendance non traitée';
+
+  return normalizedConflicts
+    .map((conflict, index) => {
+      const severity = String(conflict.severity ?? 'watchable').trim() || 'watchable';
+      const blocking = severity === 'blocking';
+      const mitigation = String(conflict.mitigation ?? 'surveiller avant confirmation').trim() || 'surveiller avant confirmation';
+      const label = String(conflict.label ?? 'Dépendance visible').trim() || 'Dépendance visible';
+
+      return {
+        tradeoffId: `mini-plan-tradeoff:${conflict.residualRiskKey ?? index + 1}`,
+        conflictId: conflict.conflictId ?? null,
+        severity,
+        reason: String(conflict.reason ?? 'donnée incertaine').trim() || 'donnée incertaine',
+        recommendedChoice: blocking ? mitigation : miniPlanAction,
+        rejectedChoice: blocking ? miniPlanAction : mitigation,
+        rejectedCost: blocking ? `retarde ${miniPlanAction}` : `laisse ${label.toLowerCase()} sous surveillance`,
+        label: blocking ? `prioriser ${label.toLowerCase()}` : `continuer malgré ${label.toLowerCase()}`,
+        targetId: conflict.targetId ?? null,
+      };
+    })
+    .slice(0, 3);
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -451,6 +487,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     normalizedOptions.residualRisks,
     topFollowUpReadiness,
   );
+  const miniPlanConflictTradeoffs = buildMiniPlanConflictTradeoffs(
+    followUpCleanupMiniPlan,
+    miniPlanDependencyConflicts,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -495,6 +535,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     topFollowUpReadiness,
     followUpCleanupMiniPlan,
     miniPlanDependencyConflicts,
+    miniPlanConflictTradeoffs,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
