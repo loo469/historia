@@ -11194,6 +11194,9 @@ button { font: inherit; }
 .atlas-military-fallback-order__safest-tactical-fallback--value-advised { fill: #fde68a; }
 .atlas-military-fallback-order__safest-tactical-fallback--urgent-save-opportunity { fill: #fecaca; }
 .atlas-military-fallback-order__next-turn-hold-plan { fill: #bfdbfe; font-size: 0.39px; font-weight: 900; }
+.atlas-military-fallback-order__hold-release-cue { fill: #bbf7d0; font-size: 0.39px; font-weight: 900; }
+.atlas-military-fallback-order__hold-release-cue--cautious-release { fill: #fde68a; }
+.atlas-military-fallback-order__hold-release-cue--hold-required { fill: #fecaca; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);
