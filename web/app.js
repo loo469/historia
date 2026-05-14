@@ -10,6 +10,7 @@ import {
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
+  buildMiniPlanRivalResponseFallback,
   buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
@@ -1961,6 +1962,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanTradeoffActionPreview: buildMiniPlanTradeoffActionPreview(null, []),
       miniPlanRivalResponseRisk: buildMiniPlanRivalResponseRisk(buildMiniPlanTradeoffActionPreview(null, []), []),
       miniPlanRivalResponseComparison: buildMiniPlanRivalResponseComparison(null, []),
+      miniPlanRivalResponseFallback: buildMiniPlanRivalResponseFallback(buildMiniPlanRivalResponseComparison(null, [])),
       summary: 'Aucun fallback sûr: ordre principal non bloqué ou alternative trop risquée.',
       empty: true,
     };
@@ -1996,6 +1998,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     followUpCleanupMiniPlan,
     miniPlanConflictTradeoffs,
   );
+  const miniPlanRivalResponseFallback = buildMiniPlanRivalResponseFallback(miniPlanRivalResponseComparison);
 
   return {
     fallback: {
@@ -2016,6 +2019,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanTradeoffActionPreview,
       miniPlanRivalResponseRisk,
       miniPlanRivalResponseComparison,
+      miniPlanRivalResponseFallback,
     },
     safetyReason,
     crossDomainBlocker,
@@ -2031,7 +2035,8 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanTradeoffActionPreview,
     miniPlanRivalResponseRisk,
     miniPlanRivalResponseComparison,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}).`,
+    miniPlanRivalResponseFallback,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}).`,
     empty: false,
   };
 }
@@ -2078,9 +2083,13 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const rivalComparisonLabel = rivalComparison && !rivalComparison.empty
     ? `branches: ${rivalComparison.branches.map((branch) => `${branch.recommended ? '★' : '○'} ${branch.action} → ${branch.rivalResponse} (${branch.riskLevel})`).join(' · ')}${rivalComparison.recommendationChanged ? ' · reco change' : ' · reco stable'}`
     : 'branches: aucune comparaison';
+  const rivalFallback = fallback.miniPlanRivalResponseFallback;
+  const rivalFallbackLabel = rivalFallback && !rivalFallback.empty
+    ? `fallback: ${rivalFallback.action} @ ${rivalFallback.targetId ?? 'front'} · ${rivalFallback.reason} · coût ${rivalFallback.cost}`
+    : 'fallback: aucun repli requis';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
-      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="19.2" rx="1.2"></rect>
+      <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="20.4" rx="1.2"></rect>
       <text class="atlas-military-fallback-order__label" x="23.2" y="59.1">repli: ${fallback.order}</text>
       <text class="atlas-military-fallback-order__detail" x="23.2" y="60.2">${fallback.detail}</text>
       <text class="atlas-military-fallback-order__safety" x="23.2" y="61.3">${fallback.safetyReason.label}</text>
@@ -2097,6 +2106,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       <text class="atlas-military-fallback-order__tradeoff-action" x="23.2" y="73.4">${actionPreviewLabel}</text>
       <text class="atlas-military-fallback-order__rival-response-risk atlas-military-fallback-order__rival-response-risk--${rivalRisk?.level ?? 'low'}" x="23.2" y="74.5">${rivalRiskLabel}</text>
       <text class="atlas-military-fallback-order__rival-branch-comparison" x="23.2" y="75.6">${rivalComparisonLabel}</text>
+      <text class="atlas-military-fallback-order__rival-response-fallback" x="23.2" y="76.7">${rivalFallbackLabel}</text>
     </g>
   `;
 }

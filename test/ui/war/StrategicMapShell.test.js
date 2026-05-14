@@ -9,6 +9,7 @@ import {
   buildMiniPlanConflictTradeoffs,
   buildMiniPlanDependencyConflicts,
   buildMiniPlanRivalResponseComparison,
+  buildMiniPlanRivalResponseFallback,
   buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
   buildStrategicMapShell,
@@ -315,6 +316,14 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
       },
     ],
   });
+  assert.deepEqual(shell.miniPlanRivalResponseFallback, {
+    empty: true,
+    fallbackBranchId: null,
+    action: null,
+    reason: 'branche recommandée encore sûre',
+    cost: null,
+    targetId: null,
+  });
 });
 
 test('StrategicMapShell builds a compact executable follow-up cleanup mini-plan', () => {
@@ -606,6 +615,53 @@ test('StrategicMapShell compares rival responses across mini-plan branches befor
     recommendationChanged: false,
     reason: 'aucune branche à comparer',
     branches: [],
+  });
+});
+
+test('StrategicMapShell shows safest fallback when rival response invalidates the recommended branch', () => {
+  const comparison = {
+    empty: false,
+    recommendationChanged: true,
+    branches: [
+      {
+        branchId: 'mini-plan-branch:1:mini-plan-tradeoff:neighbor-front:front-b',
+        tradeoffId: 'mini-plan-tradeoff:neighbor-front:front-b',
+        recommended: false,
+        action: 'caler une couverture voisine minimale',
+        rivalResponse: 'contre-poussée du front voisin',
+        riskLevel: 'high',
+        targetId: 'front-b',
+      },
+      {
+        branchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
+        tradeoffId: 'mini-plan-tradeoff:low-loyalty:front-a',
+        recommended: true,
+        action: 'Scanner axe détour',
+        rivalResponse: 'agitation locale avant liaison',
+        riskLevel: 'medium',
+        targetId: 'front-a',
+      },
+    ],
+  };
+
+  assert.deepEqual(buildMiniPlanRivalResponseFallback(comparison), {
+    empty: false,
+    fallbackBranchId: 'mini-plan-branch:2:mini-plan-tradeoff:low-loyalty:front-a',
+    action: 'Scanner axe détour',
+    reason: 'agitation locale avant liaison reste medium, contre contre-poussée du front voisin',
+    cost: 'cible moins prioritaire: front-a',
+    targetId: 'front-a',
+  });
+  assert.deepEqual(buildMiniPlanRivalResponseFallback({
+    empty: false,
+    branches: [{ branchId: 'one', action: 'A', rivalResponse: 'r', riskLevel: 'medium' }],
+  }), {
+    empty: true,
+    fallbackBranchId: null,
+    action: null,
+    reason: 'branche recommandée encore sûre',
+    cost: null,
+    targetId: null,
   });
 });
 
