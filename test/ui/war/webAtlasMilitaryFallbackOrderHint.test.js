@@ -68,6 +68,7 @@ test('atlas military fallback order hint handles resource route overcommitment a
   assert.match(webAppSource, /buildMiniPlanRivalResponseRisk\(/);
   assert.match(webAppSource, /buildMiniPlanRivalResponseComparison\(/);
   assert.match(webAppSource, /buildMiniPlanRivalResponseFallback\(/);
+  assert.match(webAppSource, /buildMiniPlanFallbackReturnCue\(/);
   assert.match(webAppSource, /firstCleanupPayoff/);
   assert.match(webAppSource, /followUpCleanupChoices/);
   assert.match(webAppSource, /topFollowUpReadiness/);
@@ -105,9 +106,11 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /miniPlanRivalResponseRisk: buildMiniPlanRivalResponseRisk\(buildMiniPlanTradeoffActionPreview\(null, \[\]\), \[\]\)/);
   assert.match(webAppSource, /miniPlanRivalResponseComparison: buildMiniPlanRivalResponseComparison\(null, \[\]\)/);
   assert.match(webAppSource, /miniPlanRivalResponseFallback: buildMiniPlanRivalResponseFallback\(buildMiniPlanRivalResponseComparison\(null, \[\]\)\)/);
+  assert.match(webAppSource, /miniPlanFallbackReturnCue: buildMiniPlanFallbackReturnCue\(/);
   assert.match(webAppSource, /Risque si: aucun rival lisible/);
   assert.match(webAppSource, /branches: aucune comparaison/);
   assert.match(webAppSource, /fallback: aucun repli requis/);
+  assert.match(webAppSource, /retour: aucun arbitrage/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
@@ -118,6 +121,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__rival-response-risk/);
   assert.match(webAppSource, /atlas-military-fallback-order__rival-branch-comparison/);
   assert.match(webAppSource, /atlas-military-fallback-order__rival-response-fallback/);
+  assert.match(webAppSource, /atlas-military-fallback-order__fallback-return-cue/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
@@ -128,6 +132,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /Risque si: \$\{rivalRisk\.response\} · \$\{rivalRisk\.label\} · \$\{rivalRisk\.watch\}/);
   assert.match(webAppSource, /branches: \$\{rivalComparison\.branches\.map\(\(branch\) => `\$\{branch\.recommended \? '★' : '○'\} \$\{branch\.action\} → \$\{branch\.rivalResponse\} \(\$\{branch\.riskLevel\}\)`\)\.join\(' · '\)\}\$\{rivalComparison\.recommendationChanged \? ' · reco change' : ' · reco stable'\}/);
   assert.match(webAppSource, /fallback: \$\{rivalFallback\.action\} @ \$\{rivalFallback\.targetId \?\? 'front'\} · \$\{rivalFallback\.reason\} · coût \$\{rivalFallback\.cost\}/);
+  assert.match(webAppSource, /\$\{fallbackReturnCue\.decision === 'keep-fallback' \? 'garder fallback' : 'retour initial'\}: \$\{fallbackReturnCue\.condition\} · coût \$\{fallbackReturnCue\.switchCost\}/);
   assert.match(webAppSource, /crossDomainBlocker \? `; \$\{crossDomainBlocker\.label\}` : ''/);
   assert.match(webAppSource, /selectionPreview \? `; \$\{selectionPreview\.label\}` : ''/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__panel/);
@@ -148,4 +153,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__rival-response-risk/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__rival-branch-comparison/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__rival-response-fallback/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__fallback-return-cue/);
 });
