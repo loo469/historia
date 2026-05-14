@@ -177,6 +177,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           windowEffect: 'maintains-safe-window',
           reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
         },
+        preventiveRecoveryState: {
+          state: 'monitor-only',
+          targetSignal: null,
+          nextDecision: 'continue-monitoring',
+          reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -193,6 +199,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               targetSignal: null,
               windowEffect: 'maintains-safe-window',
               reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
+            },
+            preventiveRecoveryState: {
+              state: 'monitor-only',
+              targetSignal: null,
+              nextDecision: 'continue-monitoring',
+              reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
             },
         monitoringChecklist: [
           {
@@ -315,6 +327,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           windowEffect: 'maintains-safe-window',
           reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
         },
+        preventiveRecoveryState: {
+          state: 'monitor-only',
+          targetSignal: null,
+          nextDecision: 'continue-monitoring',
+          reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -331,6 +349,12 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               targetSignal: null,
               windowEffect: 'maintains-safe-window',
               reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
+            },
+            preventiveRecoveryState: {
+              state: 'monitor-only',
+              targetSignal: null,
+              nextDecision: 'continue-monitoring',
+              reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
             },
         monitoringChecklist: [
           {
@@ -553,6 +577,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           windowEffect: 'maintains-safe-window',
           reason: 'Aucune micro-action requise: la checklist reste stable avant le prochain signal.',
         },
+        preventiveRecoveryState: {
+          state: 'monitor-only',
+          targetSignal: null,
+          nextDecision: 'continue-monitoring',
+          reason: 'La checklist reste stable: maintenir le monitoring sans nouvelle exposition.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -648,6 +678,12 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         targetSignal: 'Gain confiance',
         windowEffect: 'advances-safe-window',
         reason: 'Attendre des signaux frais peut transformer un gain marginal en reprise sûre.',
+      },
+      preventiveRecoveryState: {
+        state: 'monitor-only',
+        targetSignal: 'Gain confiance',
+        nextDecision: 'wait-fresh-signal',
+        reason: 'La reprise reste surveillable seulement: attendre un signal frais avant tout sweep.',
       },
       monitoringChecklist: [
         {
@@ -811,6 +847,12 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         windowEffect: 'maintains-safe-window',
         reason: 'Sécuriser l’exposition maintenant garde la fenêtre sûre ouverte sans révéler de cible.',
       },
+      preventiveRecoveryState: {
+        state: 'sweep-safe-again',
+        targetSignal: 'Fenêtre sûre',
+        nextDecision: 'resume-sweep',
+        reason: 'L’exposition sécurisée maintient la fenêtre sûre: le sweep peut reprendre si le signal reste lisible.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -897,6 +939,12 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       targetSignal: 'Fraîcheur signal',
       windowEffect: 'delays-safe-window',
       reason: 'Attendre un signal frais évite de relancer sur une information qui dérive.',
+    },
+    preventiveRecoveryState: {
+      state: 'monitor-only',
+      targetSignal: 'Fraîcheur signal',
+      nextDecision: 'wait-fresh-signal',
+      reason: 'La reprise reste surveillable seulement: attendre un signal frais avant tout sweep.',
     },
     monitoringChecklist: [
       {
