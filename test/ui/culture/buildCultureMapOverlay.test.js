@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Culture } from '../../../src/domain/culture/Culture.js';
 import { HistoricalEvent } from '../../../src/domain/culture/HistoricalEvent.js';
 import { ResearchState } from '../../../src/domain/culture/ResearchState.js';
-import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice } from '../../../src/ui/culture/buildCultureMapOverlay.js';
+import { buildCultureMapOverlay, buildResidualCultureActionPayoff, buildResidualCultureFollowUpWindow, buildResidualCultureWindowClosureThreat, buildResidualCultureSupportAllocationChoice, buildResidualCulturePostAllocationStability } from '../../../src/ui/culture/buildCultureMapOverlay.js';
 
 function withoutSupportRiskPreviews(value) {
   if (Array.isArray(value)) {
@@ -953,6 +953,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         riskAvoided: 'évite de perdre une fenêtre encore exploitable sous fatigue de médiation',
         summary: 'renforcer maintenant: la fenêtre reste utile mais socialement coûteuse',
       },
+      residualCulturePostAllocationStability: {
+        status: 'useful-lull',
+        dominantFactor: 'fatigue de médiation',
+        stabilitySummary: 'accalmie utile: renforcer réduit le risque lié à fatigue de médiation',
+        nextMicroDecision: null,
+      },
     },
     summary: 'amélioration partielle: isolement du support baisse, médiation à prévoir',
   });
@@ -1059,6 +1065,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         dominantConstraint: 'aucune contrainte visible',
         riskAvoided: 'aucun coût notable évité par un renfort immédiat',
         summary: 'attendre sans coût notable: la fenêtre ne réclame pas de support dédié',
+      },
+      residualCulturePostAllocationStability: {
+        status: 'durable',
+        dominantFactor: 'aucune contrainte visible',
+        stabilitySummary: 'stabilité durable: aucun support immédiat ne change la fenêtre visible',
+        nextMicroDecision: null,
       },
     },
     summary: 'stabilisation complète: aucun second soutien requis',
@@ -1432,6 +1444,65 @@ test('buildResidualCultureSupportAllocationChoice compares reinforcing, keeping 
       dominantConstraint: 'aucune contrainte visible',
       riskAvoided: 'aucun coût notable évité par un renfort immédiat',
       summary: 'attendre sans coût notable: la fenêtre ne réclame pas de support dédié',
+    },
+  );
+});
+
+test('buildResidualCulturePostAllocationStability covers durable, useful lull, and fragile outcomes', () => {
+  assert.deepEqual(
+    buildResidualCulturePostAllocationStability(
+      {
+        recommendation: 'wait-neutral',
+        dominantConstraint: 'aucune contrainte visible',
+        riskAvoided: 'aucun coût notable évité par un renfort immédiat',
+        summary: 'attendre sans coût notable: la fenêtre ne réclame pas de support dédié',
+      },
+      { status: 'none', recommendedGesture: null },
+    ),
+    {
+      status: 'durable',
+      dominantFactor: 'aucune contrainte visible',
+      stabilitySummary: 'stabilité durable: aucun support immédiat ne change la fenêtre visible',
+      nextMicroDecision: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCulturePostAllocationStability(
+      {
+        recommendation: 'keep-support',
+        dominantConstraint: 'autre foyer visible',
+        riskAvoided: 'évite de détourner le support du risque pression frontalière',
+        summary: 'garder le support: la fenêtre résiduelle ne subit pas de pression notable',
+      },
+      { status: 'none', recommendedGesture: null },
+    ),
+    {
+      status: 'useful-lull',
+      dominantFactor: 'autre foyer visible',
+      stabilitySummary: 'accalmie utile: le support reste disponible pour autre foyer visible',
+      nextMicroDecision: null,
+    },
+  );
+
+  assert.deepEqual(
+    buildResidualCulturePostAllocationStability(
+      {
+        recommendation: 'reinforce-now',
+        dominantConstraint: 'support local',
+        riskAvoided: 'évite que support local ferme la fenêtre de suivi',
+        summary: 'renforcer maintenant: la fenêtre reste utile mais socialement coûteuse',
+      },
+      {
+        status: 'likely-close',
+        recommendedGesture: 'sécuriser un support local avant tout suivi',
+      },
+    ),
+    {
+      status: 'fragile-after-action',
+      dominantFactor: 'support local',
+      stabilitySummary: 'fragile après action: support local peut encore rouvrir la dette culturelle',
+      nextMicroDecision: 'sécuriser un support local avant tout suivi',
     },
   );
 });

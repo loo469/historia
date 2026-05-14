@@ -1062,6 +1062,44 @@ export function buildResidualCultureSupportAllocationChoice(residualCultureWindo
   };
 }
 
+export function buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat) {
+  const dominantFactor = residualCultureSupportAllocationChoice.dominantConstraint;
+
+  if (residualCultureSupportAllocationChoice.recommendation === 'wait-neutral') {
+    return {
+      status: 'durable',
+      dominantFactor,
+      stabilitySummary: 'stabilité durable: aucun support immédiat ne change la fenêtre visible',
+      nextMicroDecision: null,
+    };
+  }
+
+  if (residualCultureSupportAllocationChoice.recommendation === 'keep-support') {
+    return {
+      status: 'useful-lull',
+      dominantFactor,
+      stabilitySummary: `accalmie utile: le support reste disponible pour ${dominantFactor}`,
+      nextMicroDecision: null,
+    };
+  }
+
+  if (residualCultureWindowClosureThreat.status === 'likely-close') {
+    return {
+      status: 'fragile-after-action',
+      dominantFactor,
+      stabilitySummary: `fragile après action: ${dominantFactor} peut encore rouvrir la dette culturelle`,
+      nextMicroDecision: residualCultureWindowClosureThreat.recommendedGesture,
+    };
+  }
+
+  return {
+    status: 'useful-lull',
+    dominantFactor,
+    stabilitySummary: `accalmie utile: renforcer réduit le risque lié à ${dominantFactor}`,
+    nextMicroDecision: null,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1121,6 +1159,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureActionPayoff = buildResidualCultureActionPayoff(residualRiskAfterNextRetirement, residualCultureRiskNextAction);
   const residualCultureFollowUpWindow = buildResidualCultureFollowUpWindow(residualCultureActionPayoff, residualCultureRiskNextAction);
   const residualCultureWindowClosureThreat = buildResidualCultureWindowClosureThreat(residualCultureFollowUpWindow);
+  const residualCultureSupportAllocationChoice = buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1136,7 +1175,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureActionPayoff,
     residualCultureFollowUpWindow,
     residualCultureWindowClosureThreat,
-    residualCultureSupportAllocationChoice: buildResidualCultureSupportAllocationChoice(residualCultureWindowClosureThreat, postBundleCumulativeRisk),
+    residualCultureSupportAllocationChoice,
+    residualCulturePostAllocationStability: buildResidualCulturePostAllocationStability(residualCultureSupportAllocationChoice, residualCultureWindowClosureThreat),
   };
 }
 
