@@ -611,6 +611,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
         microAction: 'attendre stabilité confirmée puis investir',
         summary: 'Surplus disponible: viser le prochain corridor utile après stabilité confirmée.',
       },
+      surplusStabilizationDecision: {
+        status: 'fund-expansion',
+        recommendation: 'financer l’expansion',
+        corridorState: 'stable',
+        decidingConstraint: 'charge voisine',
+        summary: 'Surplus libre: financer l’expansion après stabilité du corridor.',
+      },
     },
   });
   assert.deepEqual(overlay.routes[0].capacitySpendPreview.preparationSequence, [
@@ -809,6 +816,13 @@ test('buildEconomyMapOverlay compares deterministic bottleneck preparation optio
       microAction: 'attendre stabilité confirmée puis investir',
       summary: 'Surplus disponible: viser le prochain corridor utile après stabilité confirmée.',
     },
+    surplusStabilizationDecision: {
+      status: 'fund-expansion',
+      recommendation: 'financer l’expansion',
+      corridorState: 'stable',
+      decidingConstraint: 'charge voisine',
+      summary: 'Surplus libre: financer l’expansion après stabilité du corridor.',
+    },
   });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.nextBottleneck.bestValuePreparation,
@@ -957,6 +971,13 @@ test('buildEconomyMapOverlay warns when timing sensitivity flips to the fallback
     microAction: 'conserver jusqu’à stabilité visible',
     summary: 'Surplus en réserve: attendre que le risque de rechute baisse avant dépense.',
   });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.surplusStabilizationDecision, {
+    status: 'stabilize-routes',
+    recommendation: 'stabiliser les routes',
+    corridorState: 'chargé',
+    decidingConstraint: 'risque de rechute',
+    summary: 'Surplus à retenir: stabiliser le corridor chargé avant expansion.',
+  });
   assert.deepEqual(
     overlay.routes[0].capacitySpendPreview.timingSensitivity.scenarios.map((scenario) => [
       scenario.id,
@@ -1071,6 +1092,13 @@ test('buildEconomyMapOverlay flags partially restored salvage as durable inversi
     guidingConstraint: 'alternative critique',
     microAction: 'renforcer avant de consommer le surplus',
     summary: 'Surplus prudent: renforcer l’alternative critique avant nouvel investissement.',
+  });
+  assert.deepEqual(overlay.routes[0].capacitySpendPreview.timingSensitivity.surplusStabilizationDecision, {
+    status: 'stabilize-routes',
+    recommendation: 'stabiliser les routes',
+    corridorState: 'fragile',
+    decidingConstraint: 'alternative critique',
+    summary: 'Surplus à stabiliser: sécuriser les routes avant expansion.',
   });
 });
 
