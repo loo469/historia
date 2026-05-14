@@ -387,6 +387,44 @@ function buildFlipActionability(flipScenario, opportunityCostComparison, capacit
   };
 }
 
+function buildSalvageRestorationSummary(salvageAction, delayScenario) {
+  if (salvageAction === null) {
+    return null;
+  }
+
+  const mainConstraintByCause = {
+    delay: 'alternative-plus-sure',
+    capacity: 'capacity',
+    cost: 'cost',
+    saturation: 'saturation',
+  };
+  const microDecisionByAction = {
+    'invert-priority-to-alternative': 'switch-to-alternative',
+    'secure-capacity-margin': 'wait-for-margin',
+    'reduce-preparation-cost': 'wait-for-lower-cost',
+    'secure-bottleneck-capacity': 'wait-for-margin',
+  };
+  const status = salvageAction.remainingCost === 0
+    ? 'restores-priority'
+    : salvageAction.remainingCost <= 2
+      ? 'partially-stabilized'
+      : 'still-unprofitable';
+  const nextDecision = status === 'restores-priority'
+    ? 'continue'
+    : (microDecisionByAction[salvageAction.action] ?? 'switch-to-alternative');
+
+  return {
+    status,
+    mainConstraint: mainConstraintByCause[delayScenario.cause] ?? 'delay',
+    nextDecision,
+    summary: status === 'restores-priority'
+      ? 'Salvage restaure la priorité: continuer la séquence dès que la marge est confirmée.'
+      : status === 'partially-stabilized'
+        ? `Salvage stabilise partiellement: ${salvageAction.label}; coût restant ${salvageAction.remainingCost}.`
+        : `Salvage insuffisant: basculer vers ${salvageAction.alternativeOptionId} reste plus sûr.`,
+  };
+}
+
 function buildDangerousDelaySalvage(opportunityCostComparison, delayScenario, flipWarning) {
   if (delayScenario === null || delayScenario.netValue > 0) {
     return null;
@@ -406,7 +444,7 @@ function buildDangerousDelaySalvage(opportunityCostComparison, delayScenario, fl
   };
   const remainingCost = Math.abs(delayScenario.netValue);
 
-  return {
+  const salvageAction = {
     id: `salvage:${opportunityCostComparison.recommendedOptionId}:${delayScenario.id}`,
     trigger: delayScenario.id,
     action: actionByCause[delayScenario.cause] ?? 'switch-to-alternative',
@@ -414,6 +452,11 @@ function buildDangerousDelaySalvage(opportunityCostComparison, delayScenario, fl
     alternativeOptionId: flipWarning.alternativeOptionId,
     remainingCost,
     summary: `${labelByCause[delayScenario.cause] ?? `Basculer vers ${flipWarning.alternativeOptionId}`}: coût restant ${remainingCost} après délai dangereux.`,
+  };
+
+  return {
+    ...salvageAction,
+    restorationSummary: buildSalvageRestorationSummary(salvageAction, delayScenario),
   };
 }
 
