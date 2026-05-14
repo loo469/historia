@@ -1216,6 +1216,33 @@ export function buildResidualCultureReliabilityUpgradeCondition(residualCultureM
   };
 }
 
+export function buildResidualCultureStabilityWatchWindow(residualCultureReliabilityUpgradeCondition) {
+  if (residualCultureReliabilityUpgradeCondition.status === 'already-reliable') {
+    return {
+      status: 'durable-now',
+      watchFactor: 'soutien restant',
+      watchWindow: 'stabilité déjà durable: surveillance passive suffisante',
+      followUpAction: null,
+    };
+  }
+
+  if (residualCultureReliabilityUpgradeCondition.status === 'upgrade-available') {
+    return {
+      status: 'short-watch',
+      watchFactor: 'tension locale',
+      watchWindow: 'surveillance courte recommandée: confirmer le prochain signal culturel',
+      followUpAction: residualCultureReliabilityUpgradeCondition.microDecision,
+    };
+  }
+
+  return {
+    status: 'extended-watch',
+    watchFactor: 'fragilité sociale résiduelle',
+    watchWindow: 'surveillance prolongée requise: la stabilité reste conditionnelle',
+    followUpAction: residualCultureReliabilityUpgradeCondition.microDecision,
+  };
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -1280,6 +1307,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureReevaluationTrigger = buildResidualCultureReevaluationTrigger(residualCulturePostAllocationStability);
   const residualCultureReevaluationDelayCost = buildResidualCultureReevaluationDelayCost(residualCultureReevaluationTrigger);
   const residualCultureMinimalDelayedSupport = buildResidualCultureMinimalDelayedSupport(residualCultureReevaluationDelayCost);
+  const residualCultureReliabilityUpgradeCondition = buildResidualCultureReliabilityUpgradeCondition(residualCultureMinimalDelayedSupport);
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1300,7 +1328,8 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureReevaluationTrigger,
     residualCultureReevaluationDelayCost,
     residualCultureMinimalDelayedSupport,
-    residualCultureReliabilityUpgradeCondition: buildResidualCultureReliabilityUpgradeCondition(residualCultureMinimalDelayedSupport),
+    residualCultureReliabilityUpgradeCondition,
+    residualCultureStabilityWatchWindow: buildResidualCultureStabilityWatchWindow(residualCultureReliabilityUpgradeCondition),
   };
 }
 
