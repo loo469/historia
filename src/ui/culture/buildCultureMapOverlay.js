@@ -623,6 +623,49 @@ function buildNextSafeSupportBundle(supportBundles, recommendedFirstBundle, post
   };
 }
 
+function rankStabilizationDependencyRetirements(debts) {
+  const urgencyWeight = { high: 3, medium: 2, low: 1 };
+  const typeWeight = {
+    'missing-support': 4,
+    'bundle-incompatibility': 3,
+    'bundle-dependency': 2,
+    'fragile-culture': 1,
+    'regional-mediation': 1,
+  };
+
+  return debts
+    .map((debt) => {
+      const blockedUntilSupport = debt.type === 'missing-support';
+      const expectedGain = debt.type === 'bundle-incompatibility'
+        ? 'retire un tradeoff de support qui entretient la dette de stabilisation'
+        : debt.type === 'missing-support'
+          ? 'débloque un second soutien sûr avant de réduire la dette restante'
+          : debt.type === 'bundle-dependency'
+            ? 'simplifie la séquence de soutien et clarifie la prochaine action culturelle'
+            : `réduit la priorité régionale ${debt.cause.replace(/^risque restant: |^culture encore fragile: /, '')}`;
+
+      return {
+        debtId: debt.debtId,
+        type: debt.type,
+        cause: debt.cause,
+        urgency: debt.urgency,
+        nextAction: debt.nextAction,
+        expectedGain,
+        blockedUntilSupport,
+      };
+    })
+    .sort((left, right) => (
+      (urgencyWeight[right.urgency] ?? 0) - (urgencyWeight[left.urgency] ?? 0)
+      || (typeWeight[right.type] ?? 0) - (typeWeight[left.type] ?? 0)
+      || left.debtId.localeCompare(right.debtId)
+    ))
+    .slice(0, 3)
+    .map((debt, index) => ({
+      rank: index + 1,
+      ...debt,
+    }));
+}
+
 function buildStabilizationDebtSummary(status, regionId, dependencies, incompatibilities, mediationRegionIds, fragileRegionIds, postBundleCumulativeRisk) {
   const debts = [];
 
@@ -672,10 +715,14 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     .filter((debt, index, list) => list.findIndex((candidate) => candidate.debtId === debt.debtId) === index)
     .slice(0, 3);
 
+  const dependencyRetirementRanking = rankStabilizationDependencyRetirements(uniqueDebts);
+
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
     count: uniqueDebts.length,
     debts: uniqueDebts,
+    dependencyRetirementRanking,
+    recommendedFirstRetirement: dependencyRetirementRanking[0] ? { ...dependencyRetirementRanking[0] } : null,
   };
 }
 
