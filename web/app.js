@@ -10054,6 +10054,49 @@ function buildMinimalConsolidationAfterFragileClimateReservePayment(residualRese
   };
 }
 
+function buildMinimalConsolidationNextClimateWindowPrevention(minimalConsolidationAfterFragileClimateReservePayment, residualReserveRiskAfterSecondaryClimateDebtPayment, decisionWindow) {
+  if (!minimalConsolidationAfterFragileClimateReservePayment) {
+    return null;
+  }
+
+  const constraintText = `${minimalConsolidationAfterFragileClimateReservePayment.visibleConstraint ?? ''} ${residualReserveRiskAfterSecondaryClimateDebtPayment?.visibleConstraint ?? ''} ${minimalConsolidationAfterFragileClimateReservePayment.summary ?? ''}`.toLowerCase();
+  const visibleConstraint = constraintText.includes('cascade')
+    ? 'cascade voisine'
+    : constraintText.includes('conflit') || constraintText.includes('timing')
+      ? 'conflit de timing'
+      : constraintText.includes('saison')
+        ? 'saison'
+        : constraintText.includes('pression régionale') || constraintText.includes('deadline')
+          ? 'pression régionale'
+          : constraintText.includes('dette')
+            ? 'dette secondaire'
+            : 'réserve restante';
+  const hasWindowConflict = (decisionWindow?.conflicts?.length ?? 0) > 0;
+  const state = minimalConsolidationAfterFragileClimateReservePayment.state === 'consolidation inutile'
+    ? 'fenêtre proche empêchée'
+    : minimalConsolidationAfterFragileClimateReservePayment.state === 'consolidation légère' && !hasWindowConflict
+      ? 'fenêtre contenue'
+      : 'complément requis';
+  const smallestUsefulComplement = state === 'complément requis'
+    ? 'ajouter une réserve anti-cascade courte'
+    : state === 'fenêtre contenue'
+      ? 'garder la consolidation légère jusqu’au prochain tour'
+      : 'aucun complément utile';
+  const summary = state === 'fenêtre proche empêchée'
+    ? `Fenêtre proche empêchée: consolidation minimale suffisante; contrainte ${visibleConstraint}.`
+    : `${state}: ${visibleConstraint}; plus petit complément: ${smallestUsefulComplement}.`;
+
+  return {
+    state,
+    visibleConstraint,
+    smallestUsefulComplement,
+    changesNextStep: state === 'complément requis',
+    sourceConsolidation: minimalConsolidationAfterFragileClimateReservePayment.state,
+    sourceReserveRisk: residualReserveRiskAfterSecondaryClimateDebtPayment?.state ?? null,
+    summary,
+  };
+}
+
 function buildNextClimateCommitmentAfterResidualPressure(cheapestSafeCommitment, remainingDeadlinePressure) {
   if (!cheapestSafeCommitment || !remainingDeadlinePressure || !remainingDeadlinePressure.deadlineStillThreatened) {
     return null;
@@ -10113,6 +10156,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
       secondaryClimateDebtNearWindowReopenEffect: null,
       residualReserveRiskAfterSecondaryClimateDebtPayment: null,
       minimalConsolidationAfterFragileClimateReservePayment: null,
+      minimalConsolidationNextClimateWindowPrevention: null,
       summary: 'Aucun engagement climat minimal sûr: aucun plan recovery actif à démarrer.',
     };
   }
@@ -10220,6 +10264,11 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     secondaryClimateDebtNearWindowReopenEffect,
     decisionWindow,
   );
+  const minimalConsolidationNextClimateWindowPrevention = buildMinimalConsolidationNextClimateWindowPrevention(
+    minimalConsolidationAfterFragileClimateReservePayment,
+    residualReserveRiskAfterSecondaryClimateDebtPayment,
+    decisionWindow,
+  );
 
   return {
     state: projection.firstPressureRelieved === 'aucun relief sûr' ? 'safe-but-risky' : 'recommended',
@@ -10242,6 +10291,7 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
     secondaryClimateDebtNearWindowReopenEffect,
     residualReserveRiskAfterSecondaryClimateDebtPayment,
     minimalConsolidationAfterFragileClimateReservePayment,
+    minimalConsolidationNextClimateWindowPrevention,
     summary: `${projection.provinceLabel}: engagement sûr le moins coûteux — ${selected.cost}, couvre ${projection.deadline} et réduit ${projection.firstPressureRelieved}.`,
   };
 }
@@ -10285,6 +10335,7 @@ function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
       ${view.secondaryClimateDebtNearWindowReopenEffect ? `<small><b>Effet paiement dette secondaire</b> · ${view.secondaryClimateDebtNearWindowReopenEffect.summary}</small>` : ''}
       ${view.residualReserveRiskAfterSecondaryClimateDebtPayment ? `<small><b>Risque réserve résiduel</b> · ${view.residualReserveRiskAfterSecondaryClimateDebtPayment.summary}</small>` : ''}
       ${view.minimalConsolidationAfterFragileClimateReservePayment ? `<small><b>Consolidation minimale</b> · ${view.minimalConsolidationAfterFragileClimateReservePayment.summary}</small>` : ''}
+      ${view.minimalConsolidationNextClimateWindowPrevention ? `<small><b>Fenêtre après consolidation</b> · ${view.minimalConsolidationNextClimateWindowPrevention.summary}</small>` : ''}
       <small><b>Pourquoi sûr</b> · ${commitment.safeBecause}</small>
       <small><b>Reste actif</b> · ${commitment.doesNotSolve}</small>
     </aside>
