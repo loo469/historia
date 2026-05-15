@@ -1616,6 +1616,104 @@ function buildProvinceActionQueueValidation(renderedProvinces, options) {
   };
 }
 
+
+function normalizeResolvedProvinceOrders(value) {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new TypeError('StrategicMapShell resolvedProvinceOrders must be an array.');
+  }
+
+  return value.map((entry, index) => {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new TypeError('StrategicMapShell resolvedProvinceOrders entries must be objects.');
+    }
+
+    const result = String(entry.result ?? entry.status ?? 'deferred').trim() || 'deferred';
+
+    return {
+      resolutionId: String(entry.resolutionId ?? entry.queueId ?? `resolved-${index + 1}`).trim() || `resolved-${index + 1}`,
+      queueId: entry.queueId === undefined ? null : String(entry.queueId).trim() || null,
+      provinceId: String(entry.provinceId ?? '').trim(),
+      actionCode: String(entry.actionCode ?? '').trim(),
+      label: String(entry.label ?? '').trim(),
+      result,
+      explanation: String(entry.explanation ?? '').trim(),
+      affectedFront: String(entry.affectedFront ?? '').trim(),
+    };
+  }).filter((entry) => entry.provinceId);
+}
+
+function fallbackResolutionExplanation(result, province, matchingValidation) {
+  if (matchingValidation?.conflictAwarePreview?.blockers?.length > 0) {
+    return matchingValidation.conflictAwarePreview.blockers.join(', ');
+  }
+
+  if (matchingValidation?.conflictAwarePreview?.frontEffect) {
+    return matchingValidation.conflictAwarePreview.frontEffect;
+  }
+
+  const provinceLabel = province?.label ?? 'la province ciblée';
+  if (result === 'success') return `${provinceLabel} applique l'ordre et met à jour le front local.`;
+  if (result === 'blocked') return `${provinceLabel} attend encore un prérequis avant résolution.`;
+  if (result === 'conflict') return `${provinceLabel} a été stoppée par un ordre incompatible.`;
+  if (result === 'cancelled') return `${provinceLabel} annule l'ordre sans effet de front.`;
+  return `${provinceLabel} reporte l'ordre au prochain créneau sûr.`;
+}
+
+function resultTone(result) {
+  if (result === 'success') return 'positive';
+  if (result === 'blocked' || result === 'conflict') return 'warning';
+  if (result === 'cancelled') return 'muted';
+  return 'neutral';
+}
+
+function buildAfterActionMapRecap(renderedProvinces, keyboardActionPlanner, options) {
+  const resolvedOrders = normalizeResolvedProvinceOrders(options.resolvedProvinceOrders);
+  const provinceById = new Map(renderedProvinces.map((province) => [province.provinceId, province]));
+  const validationByQueueId = new Map(
+    keyboardActionPlanner.actionQueueValidation.entries.map((entry) => [entry.queueId, entry]),
+  );
+
+  const entries = resolvedOrders.map((entry) => {
+    const province = provinceById.get(entry.provinceId) ?? null;
+    const matchingValidation = entry.queueId ? validationByQueueId.get(entry.queueId) ?? null : null;
+    const actionLabel = entry.label || matchingValidation?.actionLabel || province?.tacticalHoverIntel.nextAction.label || 'Ordre province';
+    const frontEffect = matchingValidation?.conflictAwarePreview?.frontEffect
+      ?? (province ? `met à jour ${province.tacticalHoverIntel.garrisonStatus} sur ${province.label}` : 'effet de front non projetable');
+
+    return {
+      resolutionId: entry.resolutionId,
+      queueId: entry.queueId,
+      provinceId: entry.provinceId,
+      provinceLabel: province?.label ?? entry.provinceId,
+      actionCode: entry.actionCode || matchingValidation?.actionCode || province?.tacticalHoverIntel.nextAction.code || 'unknown-action',
+      actionLabel,
+      result: entry.result,
+      tone: resultTone(entry.result),
+      explanation: entry.explanation || fallbackResolutionExplanation(entry.result, province, matchingValidation),
+      frontEffect,
+      affectedFront: entry.affectedFront || (province?.contested ? 'front local contesté' : province?.occupied ? 'zone occupée' : 'contrôle local'),
+      highlight: {
+        provinceId: entry.provinceId,
+        frontIds: [entry.affectedFront || province?.provinceId || entry.provinceId].filter(Boolean),
+      },
+    };
+  });
+
+  return {
+    empty: entries.length === 0,
+    entries,
+    affectedProvinceIds: [...new Set(entries.map((entry) => entry.provinceId))],
+    affectedFronts: [...new Set(entries.map((entry) => entry.affectedFront))],
+    summary: entries.length === 0
+      ? 'Aucune résolution récente à récapituler.'
+      : `${entries.length} ordre${entries.length > 1 ? 's' : ''} résolu${entries.length > 1 ? 's' : ''}: ${entries.filter((entry) => entry.result === 'success').length} succès · ${entries.filter((entry) => entry.result === 'blocked').length} blocage · ${entries.filter((entry) => entry.result === 'conflict').length} conflit · ${entries.filter((entry) => entry.result === 'cancelled').length} annulation · ${entries.filter((entry) => entry.result === 'deferred').length} report`,
+  };
+}
+
 function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
@@ -1846,6 +1944,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
   );
 
   const keyboardActionPlanner = buildKeyboardActionPlanner(renderedProvinces, normalizedOptions);
+  const afterActionMapRecap = buildAfterActionMapRecap(renderedProvinces, keyboardActionPlanner, normalizedOptions);
 
   return {
     title,
@@ -1853,6 +1952,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     provinces: renderedProvinces,
     mapLayers: buildProvinceMapLayers(renderedProvinces),
     keyboardActionPlanner,
+    afterActionMapRecap,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,
