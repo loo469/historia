@@ -257,6 +257,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Élargissement: rester limité.',
           reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
         },
+        observationBroadeningTradeoff: {
+          tradeoff: 'exposure-too-high',
+          visibleFactor: 'Zone brouillée',
+          action: 'wait-for-clearer-coverage',
+          label: 'Compromis: attendre.',
+          message: 'Attendre: la zone brouillée ajouterait de l’exposition sans couverture fiable.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -353,6 +360,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Élargissement: rester limité.',
               reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
+            },
+            observationBroadeningTradeoff: {
+              tradeoff: 'exposure-too-high',
+              visibleFactor: 'Zone brouillée',
+              action: 'wait-for-clearer-coverage',
+              label: 'Compromis: attendre.',
+              message: 'Attendre: la zone brouillée ajouterait de l’exposition sans couverture fiable.',
             },
         monitoringChecklist: [
           {
@@ -555,6 +569,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
           label: 'Élargissement: rester limité.',
           reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
         },
+        observationBroadeningTradeoff: {
+          tradeoff: 'exposure-too-high',
+          visibleFactor: 'Zone brouillée',
+          action: 'wait-for-clearer-coverage',
+          label: 'Compromis: attendre.',
+          message: 'Attendre: la zone brouillée ajouterait de l’exposition sans couverture fiable.',
+        },
             monitoringChecklistFocus: {
               signal: null,
               state: 'stable-for-now',
@@ -651,6 +672,13 @@ test('buildIntrigueMapOverlay merges intrigue presence and active sabotage threa
               action: 'refresh-signal',
               label: 'Élargissement: rester limité.',
               reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
+            },
+            observationBroadeningTradeoff: {
+              tradeoff: 'exposure-too-high',
+              visibleFactor: 'Zone brouillée',
+              action: 'wait-for-clearer-coverage',
+              label: 'Compromis: attendre.',
+              message: 'Attendre: la zone brouillée ajouterait de l’exposition sans couverture fiable.',
             },
         monitoringChecklist: [
           {
@@ -953,6 +981,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
           label: 'Élargissement: rester limité.',
           reason: 'La zone brouillée rend l’extension trop large: rafraîchir le signal avant tout élargissement.',
         },
+        observationBroadeningTradeoff: {
+          tradeoff: 'exposure-too-high',
+          visibleFactor: 'Zone brouillée',
+          action: 'wait-for-clearer-coverage',
+          label: 'Compromis: attendre.',
+          message: 'Attendre: la zone brouillée ajouterait de l’exposition sans couverture fiable.',
+        },
         monitoringChecklist: [
           {
             signal: 'Nouveau gap',
@@ -1128,6 +1163,13 @@ test('buildIntrigueMapOverlay exposes bounded low-exposure confidence deltas and
         action: 'broaden-one-step',
         label: 'Élargissement: prudent possible.',
         reason: 'La cible limitée absorbe la dette d’observation: élargir d’un cran seulement tant que la couverture partielle tient.',
+      },
+      observationBroadeningTradeoff: {
+        tradeoff: 'coverage-justifies-broadening',
+        visibleFactor: 'Dette d’observation',
+        action: 'broaden-one-step',
+        label: 'Compromis: élargissement utile.',
+        message: 'Le gain de couverture justifie un cran d’observation, pas une extension complète.',
       },
       monitoringChecklist: [
         {
@@ -1371,6 +1413,13 @@ test('buildIntrigueMapOverlay recommends preparing a third sweep only when resid
         label: 'Élargissement: couverture principale sûre.',
         reason: 'La première cible confirme une menace lisible: élargir vers la couverture principale sans ouvrir de zone brouillée.',
       },
+      observationBroadeningTradeoff: {
+        tradeoff: 'coverage-justifies-broadening',
+        visibleFactor: 'Menace confirmée',
+        action: 'broaden-main-coverage',
+        label: 'Compromis: couverture utile.',
+        message: 'La couverture principale vaut l’exposition ajoutée: élargir sans ouvrir de zone brouillée.',
+      },
       monitoringChecklist: [
         {
           signal: 'Fenêtre sûre',
@@ -1537,6 +1586,13 @@ test('buildIntrigueMapOverlay marks second sweep stop conditions for signal and 
       action: 'broaden-one-step',
       label: 'Élargissement: prudent possible.',
       reason: 'La cible limitée absorbe la dette d’observation: élargir d’un cran seulement tant que la couverture partielle tient.',
+    },
+    observationBroadeningTradeoff: {
+      tradeoff: 'coverage-justifies-broadening',
+      visibleFactor: 'Dette d’observation',
+      action: 'broaden-one-step',
+      label: 'Compromis: élargissement utile.',
+      message: 'Le gain de couverture justifie un cran d’observation, pas une extension complète.',
     },
     monitoringChecklist: [
       {

@@ -1021,6 +1021,47 @@ function buildObservationBroadeningSignal({ firstSafeObservationTarget }) {
   };
 }
 
+
+function buildObservationBroadeningTradeoff({ observationBroadeningSignal }) {
+  if (observationBroadeningSignal.broadening === 'primary-coverage-safe') {
+    return {
+      tradeoff: 'coverage-justifies-broadening',
+      visibleFactor: observationBroadeningSignal.visibleConstraint,
+      action: 'broaden-main-coverage',
+      label: 'Compromis: couverture utile.',
+      message: 'La couverture principale vaut l’exposition ajoutée: élargir sans ouvrir de zone brouillée.',
+    };
+  }
+
+  if (observationBroadeningSignal.broadening === 'cautious-broadening-possible') {
+    return {
+      tradeoff: 'coverage-justifies-broadening',
+      visibleFactor: observationBroadeningSignal.visibleConstraint,
+      action: 'broaden-one-step',
+      label: 'Compromis: élargissement utile.',
+      message: 'Le gain de couverture justifie un cran d’observation, pas une extension complète.',
+    };
+  }
+
+  if (observationBroadeningSignal.visibleConstraint === 'Heat restant') {
+    return {
+      tradeoff: 'exposure-too-high',
+      visibleFactor: 'Heat restant',
+      action: 'stay-focused',
+      label: 'Compromis: exposition trop haute.',
+      message: 'Rester focalisé: le heat restant rend l’exposition d’un élargissement trop chère.',
+    };
+  }
+
+  return {
+    tradeoff: 'exposure-too-high',
+    visibleFactor: observationBroadeningSignal.visibleConstraint,
+    action: 'wait-for-clearer-coverage',
+    label: 'Compromis: attendre.',
+    message: 'Attendre: la zone brouillée ajouterait de l’exposition sans couverture fiable.',
+  };
+}
+
 function buildMonitoringRestartPlan({ state, monitoringPreferred, marginalExposureAdded, expectedConfidenceGain }) {
   const normalizedExposure = clampPercent(marginalExposureAdded);
   const normalizedGain = clampPercent(expectedConfidenceGain);
@@ -1787,6 +1828,83 @@ function withMonitoringRestartPlan(rationale, marginalExposureAdded, expectedCon
             }),
           }),
         }),
+      }),
+    }),
+    observationBroadeningTradeoff: buildObservationBroadeningTradeoff({
+      observationBroadeningSignal: buildObservationBroadeningSignal({
+      firstSafeObservationTarget: buildFirstSafeObservationTarget({
+        activeObservationResumeSignal: buildActiveObservationResumeSignal({
+          followUpCoolingWindow: buildFollowUpCoolingWindow({
+            followUpHeatDebt: buildFollowUpHeatDebt({
+              resumedConstrainedSweepResult: buildResumedConstrainedSweepResult({
+                monitoringMinimalResumeSignal: buildMonitoringMinimalResumeSignal({
+                  monitoringSafeCadence: buildMonitoringSafeCadence({
+                    monitoringMarginResponsePriority: buildMonitoringMarginResponsePriority({
+                      postRecoveryMarginDecay: buildPostRecoveryMarginDecay({
+                        postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+                          preventiveRecoveryState: buildPreventiveRecoveryState({
+                            preventiveAction: buildMonitoringPreventiveAction({
+                              state: rationale.state,
+                              driftForecast: buildMonitoringDriftForecast({
+                                state: rationale.state,
+                                marginalExposureAdded,
+                                expectedConfidenceGain,
+                              }),
+                            }),
+                          }),
+                          preventiveAction: buildMonitoringPreventiveAction({
+                            state: rationale.state,
+                            driftForecast: buildMonitoringDriftForecast({
+                              state: rationale.state,
+                              marginalExposureAdded,
+                              expectedConfidenceGain,
+                            }),
+                          }),
+                          driftForecast: buildMonitoringDriftForecast({
+                            state: rationale.state,
+                            marginalExposureAdded,
+                            expectedConfidenceGain,
+                          }),
+                        }),
+                        driftForecast: buildMonitoringDriftForecast({
+                          state: rationale.state,
+                          marginalExposureAdded,
+                          expectedConfidenceGain,
+                        }),
+                      }),
+                      postRecoverySafetyMargin: buildPostRecoverySafetyMargin({
+                        preventiveRecoveryState: buildPreventiveRecoveryState({
+                          preventiveAction: buildMonitoringPreventiveAction({
+                            state: rationale.state,
+                            driftForecast: buildMonitoringDriftForecast({
+                              state: rationale.state,
+                              marginalExposureAdded,
+                              expectedConfidenceGain,
+                            }),
+                          }),
+                        }),
+                        preventiveAction: buildMonitoringPreventiveAction({
+                          state: rationale.state,
+                          driftForecast: buildMonitoringDriftForecast({
+                            state: rationale.state,
+                            marginalExposureAdded,
+                            expectedConfidenceGain,
+                          }),
+                        }),
+                        driftForecast: buildMonitoringDriftForecast({
+                          state: rationale.state,
+                          marginalExposureAdded,
+                          expectedConfidenceGain,
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
       }),
     }),
   };
