@@ -1057,6 +1057,168 @@ function buildRegionalRiskMode(regions) {
   }));
 }
 
+
+function normalizeRegionGeometryById(options) {
+  return requireObject(
+    options.regionGeometryById ?? options.provinceGeometryById ?? {},
+    'ClimateMapOverlay regionGeometryById',
+  );
+}
+
+function getRegionCenter(regionId, regionGeometryById) {
+  const geometry = regionGeometryById[regionId] ?? {};
+  const center = geometry.center ?? geometry.labelLayout ?? null;
+
+  if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.y)) {
+    return null;
+  }
+
+  return { x: center.x, y: center.y };
+}
+
+function buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById) {
+  const seasonEntriesByRegion = new Map(stateEntries
+    .filter((entry) => entry.kind === 'season')
+    .map((entry) => [entry.regionId, entry]));
+  const anomalyEntriesByRegion = new Map(stateEntries
+    .filter((entry) => entry.kind === 'anomaly')
+    .map((entry) => [entry.regionId, entry]));
+  const catastrophesByRegion = catastropheEntries.reduce((map, entry) => {
+    const bucket = map.get(entry.regionId) ?? [];
+    bucket.push(entry);
+    map.set(entry.regionId, bucket);
+    return map;
+  }, new Map());
+
+  const seasonSurfaces = regions.map((region) => {
+    const seasonEntry = seasonEntriesByRegion.get(region.regionId);
+    const center = getRegionCenter(region.regionId, regionGeometryById);
+
+    return {
+      regionId: region.regionId,
+      layerId: `${region.regionId}:climate-season-surface`,
+      kind: 'season-surface',
+      season: region.season,
+      label: region.seasonLabel,
+      tone: seasonEntry?.tone ?? 'info',
+      accent: seasonEntry?.badge?.accent ?? 'slate',
+      riskLevel: region.strategicImpact,
+      geometry: {
+        center,
+        shape: regionGeometryById[region.regionId]?.shape ?? null,
+        polygon: regionGeometryById[region.regionId]?.polygon ?? null,
+      },
+      style: {
+        fill: seasonEntry?.badge?.accent ?? 'slate',
+        opacity: region.strategicImpact === 'critical' ? 0.16 : region.strategicImpact === 'strained' ? 0.12 : 0.08,
+      },
+      ariaLabel: `${region.regionId}: saison ${region.seasonLabel}, risque ${region.strategicImpact}`,
+    };
+  });
+
+  const climateLabels = regions.map((region) => {
+    const seasonEntry = seasonEntriesByRegion.get(region.regionId);
+    const anomalyEntry = anomalyEntriesByRegion.get(region.regionId) ?? null;
+    const regionalCatastrophes = catastrophesByRegion.get(region.regionId) ?? [];
+    const center = getRegionCenter(region.regionId, regionGeometryById);
+    const alertBadges = [
+      anomalyEntry ? {
+        kind: 'anomaly',
+        label: anomalyEntry.label,
+        icon: anomalyEntry.marker.icon,
+        tone: anomalyEntry.tone,
+      } : null,
+      ...regionalCatastrophes.map((entry) => ({
+        kind: 'catastrophe',
+        label: entry.label,
+        icon: entry.style.icon,
+        tone: entry.severity === 'critical' ? 'danger' : 'warning',
+      })),
+    ].filter(Boolean);
+
+    return {
+      regionId: region.regionId,
+      layerId: `${region.regionId}:climate-label`,
+      text: region.seasonLabel,
+      meta: region.strategicSignals.summary,
+      x: center?.x ?? null,
+      y: center?.y ?? null,
+      tone: region.strategicImpact === 'critical' ? 'danger' : region.strategicImpact === 'strained' ? 'warning' : seasonEntry?.tone ?? 'calm',
+      badges: [
+        {
+          kind: 'season',
+          label: region.seasonLabel,
+          icon: seasonEntry?.badge?.icon ?? '◐',
+          tone: seasonEntry?.tone ?? 'info',
+        },
+        ...alertBadges,
+      ],
+      ariaLabel: `${region.regionId}: ${region.seasonLabel}; ${region.strategicSignals.summary}`,
+      placement: {
+        anchor: center ? 'region-center' : 'region-label-slot',
+        avoid: ['province-name', 'front-line', 'route-label'],
+        priority: region.strategicImpact === 'critical' ? 'primary' : 'secondary',
+      },
+    };
+  });
+
+  const anomalyMarkers = [...anomalyEntriesByRegion.values()].map((entry) => {
+    const center = getRegionCenter(entry.regionId, regionGeometryById);
+
+    return {
+      regionId: entry.regionId,
+      layerId: `${entry.regionId}:climate-anomaly-marker:${entry.label}`,
+      kind: 'anomaly-marker',
+      label: entry.label,
+      icon: entry.marker.icon,
+      tone: entry.tone,
+      accent: entry.marker.accent,
+      x: center?.x ?? null,
+      y: center?.y ?? null,
+      placement: 'edge-pinned',
+      ariaLabel: `${entry.regionId}: anomalie ${entry.label}`,
+    };
+  });
+
+  const disasterRings = catastropheEntries.map((entry) => ({
+    regionId: entry.regionId,
+    layerId: `${entry.regionId}:climate-disaster-ring:${entry.catastropheId}`,
+    kind: 'disaster-ring',
+    catastropheId: entry.catastropheId,
+    label: entry.label,
+    severity: entry.severity,
+    status: entry.status,
+    stroke: entry.style.stroke,
+    fill: entry.style.fill,
+    icon: entry.style.icon,
+    geometry: {
+      center: getRegionCenter(entry.regionId, regionGeometryById),
+      shape: regionGeometryById[entry.regionId]?.shape ?? null,
+      polygon: regionGeometryById[entry.regionId]?.polygon ?? null,
+    },
+    ariaLabel: `${entry.regionId}: catastrophe ${entry.label}`,
+  }));
+
+  return {
+    seasonSurfaces,
+    climateLabels,
+    anomalyMarkers,
+    disasterRings,
+    ...(seasonPreview?.active ? {
+      seasonPreviewLabels: regions
+        .filter((region) => region.season !== seasonPreview.season)
+        .map((region) => ({
+          regionId: region.regionId,
+          layerId: `${region.regionId}:climate-preview-label:${seasonPreview.season}`,
+          text: `${region.seasonLabel} → ${seasonPreview.label}`,
+          tone: seasonPreview.badge.tone,
+          icon: seasonPreview.badge.icon,
+          placement: 'edge-halo-label',
+        })),
+    } : {}),
+  };
+}
+
 function buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview) {
   const seasonLegend = [...new Set(stateEntries
     .filter((entry) => entry.kind === 'season')
@@ -1142,6 +1304,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     ...requireObject(normalizedOptions.anomalyStyleByType ?? {}, 'ClimateMapOverlay anomalyStyleByType'),
   };
   const progressionByRegion = requireObject(normalizedOptions.progressionByRegion ?? {}, 'ClimateMapOverlay progressionByRegion');
+  const regionGeometryById = normalizeRegionGeometryById(normalizedOptions);
   const tacticalHud = Boolean(normalizedOptions.tacticalHud);
   const visualEffects = Boolean(normalizedOptions.visualEffects);
   const readabilityProfile = buildReadabilityProfile(normalizedOptions);
@@ -1214,6 +1377,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
+    mapLayers: buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
     selectedClimateMitigationChoices,

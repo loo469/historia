@@ -55,7 +55,44 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
     },
   });
 
-  assert.deepEqual(overlay, {
+  const { mapLayers, ...stableOverlay } = overlay;
+
+  assert.deepEqual(mapLayers.climateLabels.map((label) => ({
+    regionId: label.regionId,
+    text: label.text,
+    tone: label.tone,
+    badgeKinds: label.badges.map((badge) => badge.kind),
+  })), [
+    {
+      regionId: 'north-coast',
+      text: 'Printemps',
+      tone: 'danger',
+      badgeKinds: ['season', 'catastrophe'],
+    },
+    {
+      regionId: 'sunreach',
+      text: 'Été',
+      tone: 'danger',
+      badgeKinds: ['season', 'anomaly', 'catastrophe'],
+    },
+  ]);
+  assert.deepEqual(mapLayers.anomalyMarkers.map((marker) => marker.layerId), [
+    'sunreach:climate-anomaly-marker:heatwave',
+  ]);
+  assert.deepEqual(mapLayers.disasterRings.map((ring) => ring.layerId), [
+    'north-coast:climate-disaster-ring:storm-1',
+    'sunreach:climate-disaster-ring:storm-1',
+  ]);
+  assert.deepEqual(mapLayers.seasonSurfaces.map((surface) => ({
+    regionId: surface.regionId,
+    season: surface.season,
+    riskLevel: surface.riskLevel,
+  })), [
+    { regionId: 'north-coast', season: 'spring', riskLevel: 'critical' },
+    { regionId: 'sunreach', season: 'summer', riskLevel: 'critical' },
+  ]);
+
+  assert.deepEqual(stableOverlay, {
     title: 'Carte climat et catastrophes',
     summary: '2 régions, 2 catastrophes visibles, 1 anomalies',
     entries: [
@@ -543,6 +580,7 @@ test('buildClimateMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildClimateMapOverlay([], { seasonLabels: [] }), /seasonLabels must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { seasonStyleByType: [] }), /seasonStyleByType must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { anomalyStyleByType: [] }), /anomalyStyleByType must be an object/);
+  assert.throws(() => buildClimateMapOverlay([], { regionGeometryById: [] }), /regionGeometryById must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { seasonPreview: [] }), /seasonPreview must be an object/);
   assert.throws(() => buildClimateMapOverlay([], { seasonPreview: {} }), /seasonPreview.season is required/);
 });
@@ -1236,4 +1274,46 @@ test('buildClimateMapOverlay keeps recovery forecast graceful for stable and mis
       summary: 'Attendre et surveiller: récupération ~7j, rechute low avant winter.',
     },
   ]);
+});
+
+test('buildClimateMapOverlay places climate map layers on province geometry', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'delta',
+      season: 'autumn',
+      temperatureC: 18,
+      precipitationLevel: 48,
+      droughtIndex: 29,
+      anomaly: 'storm',
+    },
+  ], {
+    provinceGeometryById: {
+      delta: {
+        center: { x: 42, y: 24 },
+        shape: 'polygon(40% 20%, 44% 20%, 44% 28%, 40% 28%)',
+        polygon: '40,20 44,20 44,28 40,28',
+      },
+    },
+    catastrophes: [
+      {
+        id: 'flood-1',
+        type: 'flood',
+        severity: 'critical',
+        status: 'active',
+        regionIds: ['delta'],
+        startedAt: '2026-04-19T00:00:00.000Z',
+        impact: { unrest: 2 },
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.mapLayers.seasonSurfaces[0].geometry, {
+    center: { x: 42, y: 24 },
+    shape: 'polygon(40% 20%, 44% 20%, 44% 28%, 40% 28%)',
+    polygon: '40,20 44,20 44,28 40,28',
+  });
+  assert.equal(overlay.mapLayers.climateLabels[0].x, 42);
+  assert.equal(overlay.mapLayers.climateLabels[0].placement.anchor, 'region-center');
+  assert.equal(overlay.mapLayers.anomalyMarkers[0].y, 24);
+  assert.deepEqual(overlay.mapLayers.disasterRings[0].geometry.center, { x: 42, y: 24 });
 });
