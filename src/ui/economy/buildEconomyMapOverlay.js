@@ -1225,23 +1225,128 @@ function buildResourceLayer(cityOverlays) {
   };
 }
 
+function buildCityDecisionCue(city) {
+  const totalStock = city.resources.totalStock;
+  const mainResource = city.resources.primaryResourceId ?? 'ressource';
+
+  if (city.tradeRouteIds.length === 0) {
+    return {
+      factor: 'ville isolée',
+      intensity: 'high',
+      reason: `${city.cityName} n’est reliée à aucune route logistique active dans cette couche.`,
+      tooltip: `Ville isolée: connecter ${city.cityName} avant de compter sur ses stocks.`,
+    };
+  }
+
+  if (totalStock === 0) {
+    return {
+      factor: 'manque de ressource',
+      intensity: 'critical',
+      reason: `${city.cityName} ne dispose d’aucun stock visible.`,
+      tooltip: `Manque de ressource: ${city.cityName} doit être ravitaillée en priorité.`,
+    };
+  }
+
+  if (totalStock >= city.population / 4) {
+    return {
+      factor: 'surplus utile',
+      intensity: 'positive',
+      reason: `${city.cityName} peut alimenter les routes grâce à ${totalStock} stock total.`,
+      tooltip: `Surplus utile: ${mainResource} peut soutenir une décision logistique.`,
+    };
+  }
+
+  return {
+    factor: 'stock limité',
+    intensity: city.stability < 40 ? 'medium' : 'low',
+    reason: `${city.cityName} garde une marge limitée avant tension économique.`,
+    tooltip: `Stock limité: surveiller ${mainResource} avant d’ouvrir une nouvelle dépense.`,
+  };
+}
+
+function buildRouteDecisionCue(route) {
+  const bottleneck = route.capacitySpendPreview.nextBottleneck;
+
+  if (!route.active) {
+    return {
+      factor: 'route inactive',
+      intensity: 'muted',
+      reason: `${route.routeName} ne transporte pas de capacité actuellement.`,
+      tooltip: `Route inactive: aucun flux fiable entre ${route.originCityId} et ${route.destinationCityId}.`,
+    };
+  }
+
+  if (bottleneck !== null) {
+    const intensity = bottleneck.marginRemaining === 0 ? 'critical' : 'high';
+
+    return {
+      factor: 'route saturée',
+      intensity,
+      reason: `${bottleneck.resourceId} limite ${route.routeName} avec ${bottleneck.marginRemaining} marge restante.`,
+      tooltip: `Goulet ${bottleneck.resourceId}: ${bottleneck.marginRemaining} capacité restante sur ${route.routeName}.`,
+    };
+  }
+
+  if (route.riskLevel >= 50) {
+    return {
+      factor: 'tension logistique',
+      intensity: 'medium',
+      reason: `${route.routeName} reste risquée malgré une capacité disponible.`,
+      tooltip: `Tension logistique: risque ${route.riskLevel}/100, prévoir une alternative.`,
+    };
+  }
+
+  if (route.capacitySpendPreview.capacityMobilized > 0) {
+    return {
+      factor: 'surplus mobilisé',
+      intensity: 'low',
+      reason: `${route.routeName} conserve ${route.capacitySpendPreview.capacityRemaining} capacité après dépense.`,
+      tooltip: `Surplus mobilisé: ${route.capacitySpendPreview.capacityRemaining} capacité reste disponible.`,
+    };
+  }
+
+  return {
+    factor: 'route disponible',
+    intensity: 'low',
+    reason: `${route.routeName} n’a pas de goulet visible.`,
+    tooltip: `Route disponible: capacité ${route.totalCapacity}, aucun goulet prioritaire.`,
+  };
+}
+
+function buildDecisionLegend() {
+  return [
+    { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
+    { key: 'high', label: 'Priorité haute: ville isolée ou goulet serré', tone: 'warning' },
+    { key: 'medium', label: 'Tension à surveiller: risque ou stabilité fragile', tone: 'caution' },
+    { key: 'low', label: 'Marge lisible: route ou stock encore exploitable', tone: 'neutral' },
+    { key: 'positive', label: 'Surplus utile: peut soutenir une décision', tone: 'positive' },
+    { key: 'muted', label: 'Inactif: signal conservé sans priorité', tone: 'muted' },
+  ];
+}
+
 function buildEconomyMapLayers(cityOverlays, routeOverlays) {
   return {
     cities: {
       id: 'cities',
       title: 'Villes',
       visibleByDefault: true,
-      features: cityOverlays.map((city) => ({
-        featureId: city.overlayId,
-        cityId: city.cityId,
-        label: city.label,
-        regionId: city.regionId,
-        position: city.marker.position,
-        marker: { ...city.marker },
-        capital: city.capital,
-        prosperity: city.prosperity,
-        stability: city.stability,
-      })),
+      features: cityOverlays.map((city) => {
+        const decisionCue = buildCityDecisionCue(city);
+
+        return {
+          featureId: city.overlayId,
+          cityId: city.cityId,
+          label: city.label,
+          regionId: city.regionId,
+          position: city.marker.position,
+          marker: { ...city.marker },
+          capital: city.capital,
+          prosperity: city.prosperity,
+          stability: city.stability,
+          decisionCue,
+          tooltip: decisionCue.tooltip,
+        };
+      }),
       legend: [
         { key: 'positive', label: 'Prospérité élevée', tone: 'positive' },
         { key: 'warning', label: 'Stabilité fragile', tone: 'warning' },
@@ -1253,21 +1358,31 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       id: 'logistics',
       title: 'Routes logistiques',
       visibleByDefault: true,
-      features: routeOverlays.map((route) => ({
-        featureId: route.overlayId,
-        routeId: route.routeId,
-        label: route.label,
-        cityIds: [...route.cityIds],
-        active: route.active,
-        transportMode: route.transportMode,
-        riskLevel: route.riskLevel,
-        totalCapacity: route.totalCapacity,
-        capacityRemaining: route.capacitySpendPreview.capacityRemaining,
-        state: route.capacitySpendPreview.state,
-        bottleneckResourceId: route.capacitySpendPreview.nextBottleneck?.resourceId ?? null,
-        style: { ...route.style },
-      })),
+      features: routeOverlays.map((route) => {
+        const decisionCue = buildRouteDecisionCue(route);
+
+        return {
+          featureId: route.overlayId,
+          routeId: route.routeId,
+          label: route.label,
+          cityIds: [...route.cityIds],
+          active: route.active,
+          transportMode: route.transportMode,
+          riskLevel: route.riskLevel,
+          totalCapacity: route.totalCapacity,
+          capacityRemaining: route.capacitySpendPreview.capacityRemaining,
+          state: route.capacitySpendPreview.state,
+          bottleneckResourceId: route.capacitySpendPreview.nextBottleneck?.resourceId ?? null,
+          bottleneckIntensity: decisionCue.intensity,
+          decisionCue,
+          tooltip: decisionCue.tooltip,
+          style: { ...route.style },
+        };
+      }),
       legend: [
+        { key: 'critical', label: 'Goulet saturé: aucune marge restante', tone: 'danger' },
+        { key: 'high', label: 'Goulet serré: une marge ou moins', tone: 'warning' },
+        { key: 'medium', label: 'Risque logistique élevé', tone: 'caution' },
         { key: 'remaining-margin', label: 'Marge de capacité restante', tone: 'positive' },
         { key: 'fully-spent', label: 'Capacité mobilisée', tone: 'warning' },
         { key: 'no-spend', label: 'Aucune dépense prévue', tone: 'neutral' },
@@ -1346,6 +1461,7 @@ export function buildEconomyMapOverlay(cities, routes, options = {}) {
     cities: cityOverlays,
     routes: routeOverlays,
     layers: buildEconomyMapLayers(cityOverlays, routeOverlays),
+    decisionLegend: buildDecisionLegend(),
     metrics: {
       cityCount: cityOverlays.length,
       capitalCount: cityOverlays.filter((city) => city.capital).length,

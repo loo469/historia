@@ -1192,6 +1192,26 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     { featureId: 'resource:grain:city-mill', intensity: 'available', label: 'grain: 8' },
     { featureId: 'resource:timber:city-harbor', intensity: 'available', label: 'timber: 3' },
   ]);
+
+  assert.deepEqual(overlay.decisionLegend.map((entry) => entry.key), [
+    'critical',
+    'high',
+    'medium',
+    'low',
+    'positive',
+    'muted',
+  ]);
+  assert.equal(overlay.layers.cities.features[0].decisionCue.factor, 'surplus utile');
+  assert.equal(overlay.layers.cities.features[1].decisionCue.tooltip, 'Stock limité: surveiller fish avant d’ouvrir une nouvelle dépense.');
+  assert.deepEqual(overlay.layers.logistics.legend.map((entry) => entry.key), [
+    'critical',
+    'high',
+    'medium',
+    'remaining-margin',
+    'fully-spent',
+    'no-spend',
+  ]);
+
   assert.deepEqual(overlay.layers.logistics.features, [
     {
       featureId: 'route:route-coast',
@@ -1205,6 +1225,14 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       capacityRemaining: 1,
       state: 'remaining-margin',
       bottleneckResourceId: 'grain',
+      bottleneckIntensity: 'critical',
+      decisionCue: {
+        factor: 'route saturée',
+        intensity: 'critical',
+        reason: 'grain limite Coast Road avec 0 marge restante.',
+        tooltip: 'Goulet grain: 0 capacité restante sur Coast Road.',
+      },
+      tooltip: 'Goulet grain: 0 capacité restante sur Coast Road.',
       style: {
         stroke: 'ochre',
         width: 2,
