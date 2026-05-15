@@ -1996,6 +1996,133 @@ function buildAtRiskRecoverySummary(logisticsFeatures) {
   };
 }
 
+
+function getRecoveryBudgetCost(entry, routeFeature) {
+  const option = routeFeature.recoveryPlanner.options.find((candidate) => candidate.id === entry.linkedOptionId)
+    ?? routeFeature.recoveryPlanner.options[0];
+  const base = Math.max(1, option?.costScore ?? 1);
+
+  if (entry.action === 'prioriser stock') {
+    return { stock: base + 1, convoy: 1, labor: 0, routeTime: option?.estimatedDelayTurns ?? 0, portCapacity: 0, relay: 0 };
+  }
+
+  if (entry.action === 'rerouter') {
+    return { stock: 0, convoy: base, labor: 1, routeTime: Math.max(1, option?.estimatedDelayTurns ?? 1), portCapacity: routeFeature.transportMode === 'sea' ? 1 : 0, relay: 1 };
+  }
+
+  if (entry.action === 'abandonner temporairement') {
+    return { stock: 0, convoy: 0, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 };
+  }
+
+  if (entry.action === 'renforcer') {
+    return { stock: 1, convoy: 1, labor: base, routeTime: option?.estimatedDelayTurns ?? 1, portCapacity: routeFeature.transportMode === 'sea' ? 1 : 0, relay: 1 };
+  }
+
+  return { stock: 0, convoy: 1, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 };
+}
+
+function getRecoveryBudgetGroup(cost, available, entry) {
+  const over = Object.entries(cost).filter(([key, value]) => value > (available[key] ?? 0));
+  const totalCost = Object.values(cost).reduce((sum, value) => sum + value, 0);
+
+  if (entry.classification === 'stable') {
+    return 'faisable maintenant';
+  }
+
+  if (over.length === 0 && totalCost <= 4) {
+    return 'faisable maintenant';
+  }
+
+  if (over.some(([key]) => ['stock', 'convoy', 'labor'].includes(key))) {
+    return 'nécessite renfort';
+  }
+
+  if (totalCost > 6 || over.some(([key]) => ['routeTime', 'relay'].includes(key))) {
+    return 'à séquencer';
+  }
+
+  return 'à reporter';
+}
+
+function buildRecoveryCapacityBudget(logisticsFeatures, atRiskRecoverySummary) {
+  const available = logisticsFeatures.reduce((totals, feature) => ({
+    stock: totals.stock + Math.max(0, feature.capacityRemaining),
+    convoy: totals.convoy + (feature.priorityBadge.recommendedFilter === 'convoy-priority' ? 1 : 0),
+    labor: totals.labor + (feature.disruptionReplay.severity === 'major' ? 1 : 2),
+    routeTime: totals.routeTime + Math.max(1, Math.ceil(feature.totalCapacity / 4)),
+    portCapacity: totals.portCapacity + (feature.transportMode === 'sea' ? 1 : 0),
+    relay: totals.relay + (feature.active ? 1 : 0),
+  }), { stock: 0, convoy: 0, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 });
+  const entries = atRiskRecoverySummary.entries.map((entry) => {
+    const routeFeature = logisticsFeatures.find((feature) => feature.routeId === entry.targetId);
+    const cost = routeFeature === undefined
+      ? { stock: 0, convoy: 0, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 }
+      : getRecoveryBudgetCost(entry, routeFeature);
+    const overloads = Object.entries(cost)
+      .filter(([key, value]) => value > (available[key] ?? 0))
+      .map(([key, value]) => ({
+        resource: key,
+        required: value,
+        available: available[key] ?? 0,
+        overBy: value - (available[key] ?? 0),
+      }));
+
+    return {
+      id: `recovery-budget:${entry.targetId}`,
+      targetId: entry.targetId,
+      linkedRiskEntryId: entry.id,
+      linkedCheckpointId: entry.linkedCheckpointId,
+      linkedOptionId: entry.linkedOptionId,
+      action: entry.action,
+      group: getRecoveryBudgetGroup(cost, available, entry),
+      cost,
+      overloads,
+      cannibalizes: overloads.length > 0
+        ? atRiskRecoverySummary.entries.filter((candidate) => candidate.id !== entry.id).map((candidate) => candidate.id)
+        : [],
+      summary: overloads.length === 0
+        ? `${entry.label}: ${entry.action} tient dans le budget visible.`
+        : `${entry.label}: ${entry.action} dépasse ${overloads.map((overload) => overload.resource).join(', ')}.`,
+    };
+  }).sort((left, right) => {
+    const rank = { 'nécessite renfort': 0, 'à séquencer': 1, 'à reporter': 2, 'faisable maintenant': 3 };
+
+    return rank[left.group] - rank[right.group]
+      || left.id.localeCompare(right.id);
+  });
+  const totals = entries.reduce((sum, entry) => ({
+    stock: sum.stock + entry.cost.stock,
+    convoy: sum.convoy + entry.cost.convoy,
+    labor: sum.labor + entry.cost.labor,
+    routeTime: sum.routeTime + entry.cost.routeTime,
+    portCapacity: sum.portCapacity + entry.cost.portCapacity,
+    relay: sum.relay + entry.cost.relay,
+  }), { stock: 0, convoy: 0, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 });
+  const totalOverloads = Object.entries(totals)
+    .filter(([key, value]) => value > (available[key] ?? 0))
+    .map(([key, value]) => ({ resource: key, required: value, available: available[key] ?? 0, overBy: value - (available[key] ?? 0) }));
+
+  return {
+    id: 'logistics-recovery-capacity-budget',
+    title: 'Budget capacité reprises logistiques',
+    summary: entries.length === 0
+      ? 'Aucune reprise à budgéter avec les données actuelles.'
+      : totalOverloads.length === 0
+        ? `${entries.length} reprise(s) tiennent dans la capacité visible.`
+        : `${entries.length} reprise(s), ${totalOverloads.length} dépassement(s) de capacité à arbitrer.`,
+    available,
+    totals,
+    totalOverloads,
+    entries,
+    groups: [
+      { key: 'faisable maintenant', label: 'Faisable maintenant' },
+      { key: 'nécessite renfort', label: 'Nécessite renfort' },
+      { key: 'à séquencer', label: 'À séquencer' },
+      { key: 'à reporter', label: 'À reporter' },
+    ],
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -2070,6 +2197,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       recoveryCheckpoints: buildRecoveryCheckpoints(featureWithPlanner),
     };
   });
+  const atRiskRecoverySummary = buildAtRiskRecoverySummary(logisticsFeaturesWithPlanners);
 
   return {
     cities: {
@@ -2091,7 +2219,8 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       features: logisticsFeaturesWithPlanners,
       stressFilters: buildRouteStressFilters(logisticsFeaturesWithPlanners),
       recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeaturesWithPlanners),
-      atRiskRecoverySummary: buildAtRiskRecoverySummary(logisticsFeaturesWithPlanners),
+      atRiskRecoverySummary,
+      recoveryCapacityBudget: buildRecoveryCapacityBudget(logisticsFeaturesWithPlanners, atRiskRecoverySummary),
       recoveryPlannerLegend: [
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },
