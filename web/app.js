@@ -2521,9 +2521,24 @@ function buildAtlasCultureDrift(entry, regionEntries, selectedDiscoveryId, selec
   };
 }
 
+function offsetAtlasCulturePoint(center, index, densityMode) {
+  const offsets = densityMode === 'dense'
+    ? [[-2.2, -1.4], [2.2, -1.1], [-1.6, 1.6], [1.8, 1.5], [0, -2.2], [0, 2.2]]
+    : [[-1.1, -0.8], [1.1, -0.6], [-0.9, 0.9], [0.9, 0.8]];
+  const [xOffset, yOffset] = offsets[index % offsets.length];
+
+  return {
+    x: Math.min(94, Math.max(6, center.x + xOffset)),
+    y: Math.min(94, Math.max(6, center.y + yOffset)),
+  };
+}
+
 function buildAtlasCultureFeatures(cultureView) {
   const entries = cultureView?.overlay ?? [];
   const selectedRegionId = cultureView?.selectedRegionId ?? state.selectedProvinceId;
+  const densityMode = entries.length > 6 || entries.reduce((count, entry) => count + entry.regionalDiscoveryLinks.length, 0) > 10
+    ? 'dense'
+    : 'normal';
   const dominantByRegion = new Map();
 
   entries.forEach((entry) => {
@@ -2545,17 +2560,22 @@ function buildAtlasCultureFeatures(cultureView) {
 
   const selectedDiscoveryId = entries
     .find((entry) => entry.regionId === selectedRegionId)?.regionalDiscoveryLinks?.[0]?.discoveryId ?? null;
-  const discoverySites = entries.flatMap((entry) => entry.regionalDiscoveryLinks.slice(0, 2).map((link, index) => ({
+  const discoverySites = entries.flatMap((entry) => entry.regionalDiscoveryLinks.slice(0, densityMode === 'dense' ? 1 : 2).map((link, index) => ({
     siteId: `${entry.regionId}:${entry.cultureId}:${link.discoveryId}:${index}`,
     regionId: entry.regionId,
     cultureName: entry.cultureName,
     discoveryId: link.discoveryId,
     tone: getCultureTone(entry),
     center: getProvinceCenter(entry.regionId),
-    offset: (index - 0.5) * 2.8,
+    offset: (index - 0.5) * (densityMode === 'dense' ? 1.9 : 2.8),
     focused: entry.regionId === selectedRegionId && link.discoveryId === selectedDiscoveryId,
     related: Boolean(selectedDiscoveryId) && link.discoveryId === selectedDiscoveryId && entry.regionId !== selectedRegionId,
+    priority: entry.regionId === selectedRegionId ? 3 : link.eventCount > 0 ? 2 : 1,
   })));
+  const visibleDiscoverySites = discoverySites
+    .slice()
+    .sort((left, right) => right.priority - left.priority || left.regionId.localeCompare(right.regionId) || left.discoveryId.localeCompare(right.discoveryId))
+    .slice(0, densityMode === 'dense' ? 8 : 14);
 
   const discoveryClusters = [...new Set(entries.map((entry) => entry.regionId))]
     .sort()
@@ -2565,17 +2585,22 @@ function buildAtlasCultureFeatures(cultureView) {
         .sort();
       const cultures = [...new Set(regionEntries.map((entry) => entry.cultureName))].sort();
 
+      const opportunityCount = regionEntries.reduce((count, entry) => count + (entry.eventPopups?.length ?? 0), 0);
+      const tensionCount = cultures.length > 1 ? 1 : 0;
+
       return {
         clusterId: `atlas-culture-discovery-cluster:${regionId}`,
         regionId,
         center: getProvinceCenter(regionId),
         discoveryCount: discoveries.length,
-        discoveries: discoveries.slice(0, 3),
+        discoveries: discoveries.slice(0, densityMode === 'dense' ? 2 : 3),
         cultureCount: cultures.length,
         cultures: cultures.slice(0, 2),
+        opportunityCount,
+        tensionCount,
         selected: regionId === selectedRegionId,
         tone: getCultureTone(dominantByRegion.get(regionId) ?? regionEntries[0]),
-        label: `${discoveries.length} découverte${discoveries.length > 1 ? 's' : ''} · ${cultures.length} culture${cultures.length > 1 ? 's' : ''}`,
+        label: `${discoveries.length} découverte${discoveries.length > 1 ? 's' : ''} · ${cultures.length} culture${cultures.length > 1 ? 's' : ''}${opportunityCount > 0 ? ` · ${opportunityCount} opportunité${opportunityCount > 1 ? 's' : ''}` : ''}${tensionCount > 0 ? ' · tension' : ''}`,
       };
     })
     .filter((cluster) => cluster.discoveryCount > 0)
@@ -2601,8 +2626,10 @@ function buildAtlasCultureFeatures(cultureView) {
       influenceLabel: cultures.size > 1 ? 'influence contestée' : `${zone.influenceTier} dominante`,
       discoveryLabel: `${discoveryCount} découverte${discoveryCount > 1 ? 's' : ''} active${discoveryCount > 1 ? 's' : ''}`,
       opportunityLabel: opportunity ? `opportunité: ${opportunity.title}` : 'opportunité à surveiller',
+      opportunityTitle: opportunity?.title ?? null,
       drift,
       selected: zone.regionId === selectedRegionId,
+      tension: drift.state !== 'stable' || cultures.size > 1,
     };
   }).slice(0, 6);
   const driftPreviews = regionSummaries
@@ -2659,11 +2686,30 @@ function buildAtlasCultureFeatures(cultureView) {
     .sort((a, b) => b.recommendation.priority - a.recommendation.priority || a.cultureName.localeCompare(b.cultureName))
     .slice(0, 3);
 
+  const cultureMarkers = influenceZones
+    .filter((zone) => zone.influenceTier === 'dominant' || zone.influenceTier === 'strong')
+    .map((zone, index) => ({
+      ...zone,
+      center: offsetAtlasCulturePoint(zone.center, index, densityMode),
+      priority: zone.influenceTier === 'dominant' ? 3 : 2,
+    }));
+  const opportunityMarkers = regionSummaries
+    .filter((summary) => summary.opportunityTitle)
+    .map((summary, index) => ({ ...summary, center: offsetAtlasCulturePoint(summary.center, index + 2, densityMode) }))
+    .slice(0, densityMode === 'dense' ? 3 : 5);
+  const tensionMarkers = regionSummaries
+    .filter((summary) => summary.tension)
+    .map((summary, index) => ({ ...summary, center: offsetAtlasCulturePoint(summary.center, index + 4, densityMode) }))
+    .slice(0, densityMode === 'dense' ? 3 : 5);
+
   return {
     influenceZones,
-    cultureMarkers: influenceZones.filter((zone) => zone.influenceTier === 'dominant' || zone.influenceTier === 'strong'),
-    discoverySites,
+    visualDensity: densityMode,
+    cultureMarkers,
+    discoverySites: visibleDiscoverySites,
     discoveryClusters,
+    opportunityMarkers,
+    tensionMarkers,
     focusedDiscovery: discoverySites.find((site) => site.focused) ?? null,
     regionSummaries,
     driftPreviews,
@@ -3208,7 +3254,7 @@ function renderAtlasCultureLayer(cultureView) {
   }
 
   return `
-    <g class="atlas-culture-layer ${active ? 'is-active' : 'is-muted'}" aria-label="Couche atlas culture et découvertes">
+    <g class="atlas-culture-layer atlas-culture-layer--${features.visualDensity} ${active ? 'is-active' : 'is-muted'}" aria-label="Couche atlas culture et découvertes">
       ${features.influenceZones.map((zone) => `
         <polygon class="atlas-culture-zone atlas-culture-zone--${zone.tone} atlas-culture-zone--${zone.influenceTier}" points="${zone.polygon}" aria-label="Zone d’influence ${zone.cultureName}: ${zone.influenceTier}"></polygon>
       `).join('')}
@@ -3303,7 +3349,21 @@ function renderAtlasCultureLayer(cultureView) {
         <g class="atlas-discovery-cluster atlas-discovery-cluster--${cluster.tone} ${cluster.selected ? 'is-selected' : ''}" data-atlas-discovery-cluster="${cluster.regionId}" aria-label="Cluster découvertes ${cluster.regionId}: ${cluster.label}, cultures ${cluster.cultures.join(', ')}, découvertes ${cluster.discoveries.join(', ')}">
           <rect x="${Math.min(88, cluster.center.x + 3.4)}" y="${Math.max(6, cluster.center.y - 1.8 + (index % 2) * 2.2)}" width="9.4" height="4.6" rx="1.2"></rect>
           <text x="${Math.min(89, cluster.center.x + 4.1)}%" y="${Math.max(8.9, cluster.center.y + 1.2 + (index % 2) * 2.2)}%">D×${cluster.discoveryCount}</text>
+          ${cluster.opportunityCount > 0 ? `<text class="atlas-discovery-cluster__opportunity" x="${Math.min(95, cluster.center.x + 10.4)}%" y="${Math.max(8.9, cluster.center.y + 1.2 + (index % 2) * 2.2)}%">O</text>` : ''}
+          ${cluster.tensionCount > 0 ? `<text class="atlas-discovery-cluster__tension" x="${Math.min(97, cluster.center.x + 12.3)}%" y="${Math.max(8.9, cluster.center.y + 1.2 + (index % 2) * 2.2)}%">T</text>` : ''}
           <title>${cluster.label} · ${cluster.discoveries.join(' · ')}</title>
+        </g>
+      `).join('')}
+      ${features.opportunityMarkers.map((marker) => `
+        <g class="atlas-culture-category-marker atlas-culture-category-marker--opportunity" data-atlas-culture-opportunity="${marker.regionId}" aria-label="Opportunité culturelle ${marker.cultureName}: ${marker.opportunityTitle}">
+          <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="1.45"></circle>
+          <text x="${marker.center.x}%" y="${marker.center.y + 0.55}%" text-anchor="middle">O</text>
+        </g>
+      `).join('')}
+      ${features.tensionMarkers.map((marker) => `
+        <g class="atlas-culture-category-marker atlas-culture-category-marker--tension" data-atlas-culture-tension="${marker.regionId}" aria-label="Tension culturelle ${marker.cultureName}: ${marker.drift.label}">
+          <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="1.45"></circle>
+          <text x="${marker.center.x}%" y="${marker.center.y + 0.55}%" text-anchor="middle">T</text>
         </g>
       `).join('')}
       ${features.discoverySites.map((site) => {

@@ -47,7 +47,7 @@ test('world map atlas renders culture influence zones from existing culture over
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
-  assert.match(webAppSource, /regionalDiscoveryLinks\.slice\(0, 2\)/);
+  assert.match(webAppSource, /regionalDiscoveryLinks\.slice\(0, densityMode === 'dense' \? 1 : 2\)/);
   assert.match(webAppSource, /atlas-discovery-site/);
   assert.match(webAppSource, /data-atlas-discovery="\$\{site\.discoveryId\}"/);
   assert.match(webAppSource, /Couche atlas culture et découvertes/);
@@ -56,10 +56,18 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /is-related/);
   assert.match(webAppSource, /atlas-discovery-site__link/);
   assert.match(webAppSource, /const discoveryClusters =/);
+  assert.match(webAppSource, /const visibleDiscoverySites = discoverySites/);
+  assert.match(webAppSource, /function offsetAtlasCulturePoint/);
+  assert.match(webAppSource, /visualDensity: densityMode/);
+  assert.match(webAppSource, /atlas-culture-layer--\$\{features\.visualDensity\}/);
   assert.match(webAppSource, /data-atlas-discovery-cluster="\$\{cluster\.regionId\}"/);
   assert.match(webAppSource, /D×\$\{cluster\.discoveryCount\}/);
   assert.match(webAppSource, /Cluster découvertes/);
   assert.match(webAppSource, /discoveryClusters,/);
+  assert.match(webAppSource, /opportunityMarkers/);
+  assert.match(webAppSource, /tensionMarkers/);
+  assert.match(webAppSource, /atlas-culture-category-marker--opportunity/);
+  assert.match(webAppSource, /atlas-culture-category-marker--tension/);
   assert.match(webAppSource, /linkedToFocus/);
   assert.match(webAppSource, /summary\.drift\.causes\.join/);
   assert.match(webAppSource, /mainDriver === 'migration'/);
@@ -161,6 +169,10 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-discovery-site__link/);
   assert.match(stylesSource, /\.atlas-discovery-cluster rect/);
   assert.match(stylesSource, /\.atlas-discovery-cluster\.is-selected rect/);
+  assert.match(stylesSource, /\.atlas-culture-layer--dense/);
+  assert.match(stylesSource, /\.atlas-culture-category-marker--opportunity/);
+  assert.match(stylesSource, /\.atlas-culture-category-marker--tension/);
+  assert.match(stylesSource, /@media \(max-width: 760px\)/);
   assert.match(stylesSource, /\.atlas-culture-summary__drift/);
   assert.match(stylesSource, /\.atlas-culture-drift--migre/);
   assert.match(stylesSource, /\.atlas-culture-drift\.is-linked-focus path/);

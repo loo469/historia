@@ -10728,6 +10728,8 @@ button { font: inherit; }
   opacity: 0.74;
 }
 .atlas-culture-layer.is-muted { opacity: 0.34; }
+.atlas-culture-layer--dense .atlas-discovery-site:not(.is-focused):not(.is-related) { opacity: 0.58; }
+.atlas-culture-layer--dense .atlas-culture-summary text { font-size: 1.62px; }
 .atlas-culture-zone {
   fill: rgba(45, 212, 191, 0.12);
   stroke: rgba(94, 234, 212, 0.2);
@@ -10778,6 +10780,30 @@ button { font: inherit; }
 .atlas-discovery-cluster.is-selected rect {
   fill: rgba(20, 184, 166, 0.28);
   stroke-width: 0.46;
+}
+.atlas-discovery-cluster__opportunity { fill: #fef3c7; }
+.atlas-discovery-cluster__tension { fill: #fecdd3; }
+.atlas-culture-category-marker circle {
+  fill: rgba(15, 23, 42, 0.82);
+  stroke-width: 0.36;
+}
+.atlas-culture-category-marker text {
+  font-size: 1.45px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.84);
+  stroke-width: 0.32;
+}
+.atlas-culture-category-marker--opportunity circle { stroke: rgba(253, 230, 138, 0.9); }
+.atlas-culture-category-marker--opportunity text { fill: #fef3c7; }
+.atlas-culture-category-marker--tension circle { stroke: rgba(251, 113, 133, 0.88); }
+.atlas-culture-category-marker--tension text { fill: #fecdd3; }
+
+@media (max-width: 760px) {
+  .atlas-culture-layer .atlas-culture-summary__chip,
+  .atlas-culture-layer .atlas-culture-summary__drift,
+  .atlas-discovery-site text { display: none; }
+  .atlas-discovery-cluster rect { width: 8.1px; }
 }
 
 .atlas-military-layer {
