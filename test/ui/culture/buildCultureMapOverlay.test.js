@@ -1361,6 +1361,29 @@ test('buildCultureMapOverlay exposes atlas story layers and deterministic marker
     priorityMarkerId: 'shared-bay:culture-harbor',
     priorityCultureId: 'culture-harbor',
     priorityReason: '1 événement',
+    narrativePriority: {
+      state: 'opportunity',
+      label: 'opportunité',
+      microAction: 'explorer',
+      source: 'Harbor Forum',
+      reason: 'Harbor Forum ouvre une action culturelle prioritaire.',
+      priorityScore: 85,
+      eventCount: 1,
+      discoveryCount: 2,
+      eventMarkers: [
+        {
+          eventId: 'event-harbor-forum',
+          title: 'Harbor Forum',
+          cultureId: 'culture-harbor',
+          cultureName: 'Harbor Compact',
+          importance: 4,
+          discoveryIds: ['tidal-ledgers'],
+          triggeredAt: '2026-04-20T00:00:00.000Z',
+          priorityRank: 0,
+          eventMarkerId: 'shared-bay:culture-harbor:event:event-harbor-forum',
+        },
+      ],
+    },
     stack: [
       {
         markerId: 'shared-bay:culture-harbor',
@@ -1385,7 +1408,8 @@ test('buildCultureMapOverlay exposes atlas story layers and deterministic marker
     ['discoveries', 2, true],
     ['timeline', 1, true],
   ]);
-  assert.match(overlay[0].narrativeSummary, /Harbor Forum/);
+  assert.equal(overlay[0].narrativePriority.microAction, 'explorer');
+  assert.match(overlay[0].narrativeSummary, /opportunité: Harbor Forum/);
   assert.deepEqual(overlay[0].atlasStoryLayers[2].markers, [
     {
       markerId: 'shared-bay:culture-harbor:timeline',
@@ -1397,6 +1421,107 @@ test('buildCultureMapOverlay exposes atlas story layers and deterministic marker
       reason: "Harbor Compact compte maintenant: Harbor Forum donne un repère d'action immédiat.",
     },
   ]);
+});
+
+test('buildCultureMapOverlay assigns tension and completed narrative priority states', () => {
+  const tensionOverlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-east',
+          name: 'East Chorus',
+          archetype: 'urban',
+          primaryLanguage: 'east-song',
+          valueIds: ['markets'],
+          traditionIds: ['choirs'],
+          openness: 55,
+          cohesion: 55,
+          researchDrive: 55,
+        },
+        {
+          id: 'culture-west',
+          name: 'West Loom',
+          archetype: 'guild',
+          primaryLanguage: 'west-thread',
+          valueIds: ['craft'],
+          traditionIds: ['looms'],
+          openness: 54,
+          cohesion: 56,
+          researchDrive: 55,
+        },
+      ],
+      researchStates: [
+        {
+          id: 'research-east-song',
+          cultureId: 'culture-east',
+          topicId: 'east-song',
+          status: 'completed',
+          progress: 100,
+          completedAt: '2026-04-20T00:00:00.000Z',
+          discoveredConceptIds: ['market-rhythm'],
+        },
+        {
+          id: 'research-west-loom',
+          cultureId: 'culture-west',
+          topicId: 'west-loom',
+          status: 'completed',
+          progress: 100,
+          completedAt: '2026-04-20T00:00:00.000Z',
+          discoveredConceptIds: ['loom-code'],
+        },
+      ],
+      historicalEvents: [],
+    },
+    {
+      atlasStoryLayers: true,
+      regionIdsByCulture: {
+        'culture-east': ['shared-market'],
+        'culture-west': ['shared-market'],
+      },
+    },
+  );
+
+  assert.equal(tensionOverlay[0].narrativePriority.state, 'tension');
+  assert.equal(tensionOverlay[0].narrativePriority.microAction, 'apaiser');
+  assert.match(tensionOverlay[0].narrativeSummary, /tension/);
+
+  const completedOverlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-archive',
+          name: 'Archive Circle',
+          archetype: 'scholarly',
+          primaryLanguage: 'archive-hand',
+          valueIds: ['memory'],
+          traditionIds: ['catalogues'],
+          openness: 50,
+          cohesion: 70,
+          researchDrive: 45,
+        },
+      ],
+      researchStates: [
+        {
+          id: 'research-catalogue',
+          cultureId: 'culture-archive',
+          topicId: 'catalogue',
+          status: 'completed',
+          progress: 100,
+          completedAt: '2026-04-20T00:00:00.000Z',
+          discoveredConceptIds: ['sealed-index'],
+        },
+      ],
+      historicalEvents: [],
+    },
+    {
+      atlasStoryLayers: true,
+      regionIdsByCulture: { 'culture-archive': ['quiet-stacks'] },
+    },
+  );
+
+  assert.equal(completedOverlay[0].narrativePriority.state, 'completed');
+  assert.equal(completedOverlay[0].narrativePriority.label, 'suivi terminé');
+  assert.equal(completedOverlay[0].narrativePriority.microAction, 'consolider');
 });
 
 test('buildResidualCultureActionPayoff covers complete, partial, and insufficient outcomes', () => {

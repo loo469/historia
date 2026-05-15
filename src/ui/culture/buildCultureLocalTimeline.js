@@ -86,11 +86,16 @@ export function buildCultureLocalTimeline({ selectedRegionId, selectedMarker = n
     };
   }
 
+  const narrativePriority = selectedCluster?.narrativePriority ?? selectedMarker?.narrativePriority ?? null;
+
   return {
     state: 'active',
     regionId,
     heading: 'Chronologie locale',
-    summary: `${items.length} signal${items.length > 1 ? 's' : ''} culturel${items.length > 1 ? 's' : ''} lié${items.length > 1 ? 's' : ''} à la province sélectionnée.`,
+    summary: narrativePriority
+      ? `${narrativePriority.label}: ${narrativePriority.microAction} · ${narrativePriority.reason}`
+      : `${items.length} signal${items.length > 1 ? 's' : ''} culturel${items.length > 1 ? 's' : ''} lié${items.length > 1 ? 's' : ''} à la province sélectionnée.`,
+    narrativePriority,
     items,
   };
 }

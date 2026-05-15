@@ -1493,6 +1493,101 @@ function buildAtlasStoryReason(entry, signals, rank) {
   return `${entry.cultureName} reste visible comme couche secondaire à surveiller.`;
 }
 
+function buildNarrativeEventCandidates(regionId, regionPresence, cultureSignalsById) {
+  return regionPresence
+    .flatMap((entry) => (cultureSignalsById.get(entry.cultureId)?.signals.orderedHistoricalEvents ?? [])
+      .map((event) => ({
+        eventId: event.id,
+        title: event.title,
+        cultureId: entry.cultureId,
+        cultureName: entry.cultureName,
+        importance: event.importance,
+        discoveryIds: [...event.discoveryIds],
+        triggeredAt: event.triggeredAt.toISOString(),
+      })))
+    .sort((left, right) => right.importance - left.importance
+      || left.triggeredAt.localeCompare(right.triggeredAt)
+      || left.title.localeCompare(right.title)
+      || left.cultureId.localeCompare(right.cultureId))
+    .map((event, index) => ({
+      ...event,
+      priorityRank: index,
+      eventMarkerId: `${regionId}:${event.cultureId}:event:${event.eventId}`,
+    }));
+}
+
+export function buildCultureNarrativePriority(regionId, regionPresence, cultureSignalsById) {
+  const eventCandidates = buildNarrativeEventCandidates(regionId, regionPresence, cultureSignalsById);
+  const discoveryIds = [...new Set(regionPresence.flatMap((entry) => (
+    cultureSignalsById.get(entry.cultureId)?.signals.highlightedDiscoveries ?? []
+  )))].sort();
+  const activeResearchCount = regionPresence.reduce((count, entry) => (
+    count + (cultureSignalsById.get(entry.cultureId)?.signals.activeResearchCount ?? 0)
+  ), 0);
+  const topEvent = eventCandidates[0] ?? null;
+  const hasCollision = regionPresence.length > 1 || eventCandidates.length > 1;
+
+  if (topEvent && topEvent.importance >= 4) {
+    return {
+      state: 'opportunity',
+      label: 'opportunité',
+      microAction: 'explorer',
+      source: topEvent.title,
+      reason: `${topEvent.title} ouvre une action culturelle prioritaire.`,
+      priorityScore: clampScore(80 + topEvent.importance + eventCandidates.length),
+      eventCount: eventCandidates.length,
+      discoveryCount: discoveryIds.length,
+      eventMarkers: eventCandidates.slice(0, 3),
+    };
+  }
+
+  if (hasCollision && (eventCandidates.length > 0 || discoveryIds.length > 1)) {
+    const source = topEvent?.title ?? discoveryIds[0] ?? regionPresence[0]?.cultureName ?? regionId;
+
+    return {
+      state: 'tension',
+      label: 'tension',
+      microAction: 'apaiser',
+      source,
+      reason: eventCandidates.length > 1
+        ? `${eventCandidates.length} événements se superposent: apaiser avant d'empiler une action.`
+        : `${regionPresence.length} influences partagent ${regionId}: apaiser la lecture du cluster.`,
+      priorityScore: clampScore(60 + (eventCandidates.length * 5) + discoveryIds.length),
+      eventCount: eventCandidates.length,
+      discoveryCount: discoveryIds.length,
+      eventMarkers: eventCandidates.slice(0, 3),
+    };
+  }
+
+  if (discoveryIds.length > 0 && activeResearchCount === 0 && eventCandidates.length === 0) {
+    return {
+      state: 'completed',
+      label: 'suivi terminé',
+      microAction: 'consolider',
+      source: discoveryIds[0],
+      reason: `${discoveryIds[0]} est documentée: consolider le repère sans ouvrir de journal complet.`,
+      priorityScore: clampScore(40 + discoveryIds.length),
+      eventCount: 0,
+      discoveryCount: discoveryIds.length,
+      eventMarkers: [],
+    };
+  }
+
+  return {
+    state: 'watch',
+    label: 'à surveiller',
+    microAction: activeResearchCount > 0 ? 'soutenir' : 'attendre',
+    source: topEvent?.title ?? discoveryIds[0] ?? regionPresence[0]?.cultureName ?? regionId,
+    reason: activeResearchCount > 0
+      ? `${activeResearchCount} recherche${activeResearchCount > 1 ? 's' : ''} active${activeResearchCount > 1 ? 's' : ''}: soutenir sans priorité critique.`
+      : 'Aucun signal critique: attendre le prochain repère culturel.',
+    priorityScore: clampScore(20 + activeResearchCount + discoveryIds.length),
+    eventCount: eventCandidates.length,
+    discoveryCount: discoveryIds.length,
+    eventMarkers: eventCandidates.slice(0, 3),
+  };
+}
+
 export function buildCultureMarkerCollisionCluster(regionId, regionPresence, cultureSignalsById) {
   const stack = regionPresence
     .map((entry, index) => {
@@ -1530,6 +1625,7 @@ export function buildCultureMarkerCollisionCluster(regionId, regionPresence, cul
     })
     .sort((left, right) => right.priorityScore - left.priorityScore || left.cultureId.localeCompare(right.cultureId));
   const priorityMarker = stack[0] ?? null;
+  const narrativePriority = buildCultureNarrativePriority(regionId, regionPresence, cultureSignalsById);
 
   return {
     clusterId: `${regionId}:marker-collision`,
@@ -1540,6 +1636,7 @@ export function buildCultureMarkerCollisionCluster(regionId, regionPresence, cul
     priorityMarkerId: priorityMarker?.markerId ?? null,
     priorityCultureId: priorityMarker?.cultureId ?? null,
     priorityReason: priorityMarker?.priorityReason ?? 'aucun marqueur',
+    narrativePriority,
     stack,
   };
 }
@@ -1703,11 +1800,11 @@ export function buildCultureMapOverlay(payload, options = {}) {
         const atlasStoryLayers = includeAtlasStoryLayers
           ? buildCultureAtlasStoryLayers(regionId, regionPresence, cultureSignalsById)
           : null;
+        const narrativePriority = includeAtlasStoryLayers
+          ? buildCultureNarrativePriority(regionId, regionPresence, cultureSignalsById)
+          : null;
         const narrativeSummary = includeAtlasStoryLayers
-          ? (atlasStoryLayers.find((layer) => layer.kind === 'timeline')?.markers[0]?.reason
-            ?? atlasStoryLayers.find((layer) => layer.kind === 'discoveries')?.markers[0]?.reason
-            ?? atlasStoryLayers[0]?.markers[0]?.reason
-            ?? `${culture.name} reste lisible dans ${regionId}.`)
+          ? `${narrativePriority.label}: ${narrativePriority.reason}`
           : null;
         const supportBundles = buildCultureSupportBundles(culture, regionId, regionPresence, cultureState);
         const riskChangePreview = buildCultureSupportRiskChangePreview(culture, supportBundles[0] ?? null, regionPresence, cultureState);
@@ -1786,7 +1883,7 @@ export function buildCultureMapOverlay(payload, options = {}) {
           cultureStabilizationSummary,
           ...(supportBundles.length > 0 ? { supportBundles, recommendedFirstBundle } : {}),
           ...(clusterSummary ? { clusterSummary } : {}),
-          ...(includeAtlasStoryLayers ? { markerCollisionCluster, atlasStoryLayers, narrativeSummary } : {}),
+          ...(includeAtlasStoryLayers ? { markerCollisionCluster, atlasStoryLayers, narrativeSummary, narrativePriority } : {}),
           zoneContour: buildZoneContour(cultureState.influenceTier, overlapCount, zoneRank),
           style,
           zoneStyle: buildZoneStyle(markerType, cultureState.influenceTier, style, zoneBand),
