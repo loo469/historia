@@ -1443,10 +1443,75 @@ function buildProvinceActionAffordance(tacticalHoverIntel) {
   };
 }
 
+function buildProvincePlannedActionPreview(province) {
+  if (!province) {
+    return {
+      empty: true,
+      targetProvinceId: null,
+      targetLabel: 'Aucune province sélectionnée',
+      actionLabel: 'Aucune action planifiée',
+      risk: 'données indisponibles',
+      expectedEffect: 'sélectionner ou focaliser une province pour afficher la première action recommandée',
+      tacticalReason: 'aucun focus clavier actif',
+    };
+  }
+
+  const action = province.tacticalHoverIntel.nextAction;
+  const pressure = province.tacticalHoverIntel.militaryPressure;
+  const risk = action.status === 'discouraged' || action.status === 'blocked'
+    ? 'risque élevé'
+    : pressure.level === 'critical'
+      ? 'risque critique'
+      : pressure.level === 'high'
+        ? 'risque soutenu'
+        : 'risque maîtrisé';
+
+  return {
+    empty: false,
+    targetProvinceId: province.provinceId,
+    targetLabel: province.label,
+    actionCode: action.code,
+    actionLabel: action.label,
+    actionStatus: action.status,
+    risk,
+    expectedEffect: action.status === 'available'
+      ? `améliorer ${province.tacticalHoverIntel.garrisonStatus} sur ${province.label}`
+      : action.status === 'discouraged'
+        ? `éviter une perte d'élan sur ${province.label}`
+        : action.status === 'blocked'
+          ? `attendre les prérequis avant d'agir sur ${province.label}`
+          : `maintenir ${province.label} en réserve`,
+    tacticalReason: action.reason,
+  };
+}
+
+function buildKeyboardActionPlanner(renderedProvinces) {
+  const activeProvince = renderedProvinces.find(
+    (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
+  ) ?? renderedProvinces[0] ?? null;
+
+  return {
+    mode: 'keyboard-first',
+    focusOrder: renderedProvinces.map((province, index) => ({
+      provinceId: province.provinceId,
+      label: province.label,
+      tabIndex: index === 0 ? 0 : -1,
+      selected: province.selectionState.selected,
+      focused: province.selectionState.focused,
+      queued: province.selectionState.queued,
+      actionState: province.actionAffordance.state,
+    })),
+    activeProvinceId: activeProvince?.provinceId ?? null,
+    plannedActionPreview: buildProvincePlannedActionPreview(activeProvince),
+    emptyState: renderedProvinces.length === 0 ? 'Aucune province disponible pour le planificateur clavier.' : null,
+  };
+}
+
 function enhanceProvince(renderedProvince, options, provinceGeometryById) {
   const selectedProvinceId = String(options.selectedProvinceId ?? '').trim();
   const focusedProvinceId = String(options.focusedProvinceId ?? '').trim();
   const hoveredProvinceId = String(options.hoveredProvinceId ?? '').trim();
+  const queuedProvinceId = String(options.queuedProvinceId ?? '').trim();
   const geometry = provinceGeometryById[renderedProvince.provinceId] ?? {};
   const tacticalHoverIntel = buildProvinceTacticalHoverIntel(renderedProvince, options);
 
@@ -1463,6 +1528,7 @@ function enhanceProvince(renderedProvince, options, provinceGeometryById) {
       selected: renderedProvince.provinceId === selectedProvinceId,
       focused: renderedProvince.provinceId === focusedProvinceId,
       hovered: renderedProvince.provinceId === hoveredProvinceId,
+      queued: renderedProvince.provinceId === queuedProvinceId,
     },
     tacticalHoverIntel,
     actionAffordance: buildProvinceActionAffordance(tacticalHoverIntel),
@@ -1479,6 +1545,7 @@ function buildProvinceCssClasses(province) {
     province.selectionState.selected ? 'is-selected' : null,
     province.selectionState.focused ? 'is-focused' : null,
     province.selectionState.hovered ? 'is-hovered' : null,
+    province.selectionState.queued ? 'is-queued' : null,
   ].filter(Boolean);
 }
 
@@ -1524,6 +1591,8 @@ function buildProvinceMapLayers(renderedProvinces) {
         supplyTone: province.supplyTone,
         status: province.contested ? 'contested' : province.occupied ? 'occupied' : 'stable',
         actionState: province.actionAffordance.state,
+        keyboardSelectable: true,
+        queued: province.selectionState.queued,
       },
       tacticalHoverIntel: province.tacticalHoverIntel,
       actionAffordance: province.actionAffordance,
@@ -1644,11 +1713,14 @@ export function buildStrategicMapShell(provinces, options = {}) {
     },
   );
 
+  const keyboardActionPlanner = buildKeyboardActionPlanner(renderedProvinces);
+
   return {
     title,
     subtitle,
     provinces: renderedProvinces,
     mapLayers: buildProvinceMapLayers(renderedProvinces),
+    keyboardActionPlanner,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,

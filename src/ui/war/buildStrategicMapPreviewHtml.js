@@ -177,8 +177,17 @@ function renderProvinceShapes(shell) {
       return '';
     }
 
+    const classes = [
+      'province',
+      province.contested ? 'is-contested' : '',
+      province.occupied ? 'is-occupied' : '',
+      province.selectionState.selected ? 'is-selected' : '',
+      province.selectionState.focused ? 'is-focused' : '',
+      province.selectionState.queued ? 'is-queued' : '',
+    ].filter(Boolean).join(' ');
+
     return `
-      <g class="province ${province.contested ? 'is-contested' : ''} ${province.occupied ? 'is-occupied' : ''}" style="--fill:${escapeHtml(province.style.fill)};--border:${escapeHtml(province.style.border)}">
+      <g class="${classes}" tabindex="0" aria-label="${escapeHtml(province.ariaLabel)}" style="--fill:${escapeHtml(province.style.fill)};--border:${escapeHtml(province.style.border)}">
         <polygon class="province-shape" points="${escapeHtml(polygon)}"></polygon>
         ${label.leaderNeeded ? `<path class="province-label-leader" d="M ${label.center.x} ${label.center.y} L ${label.x} ${label.y - 1.5}"></path>` : ''}
         <rect class="province-label-plate" x="${label.rectX}" y="${label.rectY}" width="${label.width}" height="${label.height}" rx="1.4" ry="1.4"></rect>
@@ -202,6 +211,33 @@ function renderProvinceTable(shell) {
   `).join('');
 }
 
+function renderKeyboardActionPlanner(shell) {
+  const preview = shell.keyboardActionPlanner.plannedActionPreview;
+  const focusItems = shell.keyboardActionPlanner.focusOrder.map((item) => `
+    <li class="planner-focus-item ${item.selected ? 'is-selected' : ''} ${item.focused ? 'is-focused' : ''} ${item.queued ? 'is-queued' : ''}">
+      <span>${escapeHtml(item.label)}</span>
+      <small>${escapeHtml(item.actionState)}${item.queued ? ' · queued' : ''}</small>
+    </li>
+  `).join('');
+
+  return `
+    <section class="action-planner" aria-label="Planificateur clavier d’action province">
+      <h2>Action clavier</h2>
+      <article class="planned-action planned-action--${escapeHtml(preview.actionStatus ?? 'empty')}">
+        <span>Première action recommandée</span>
+        <strong>${escapeHtml(preview.actionLabel)}</strong>
+        <dl>
+          <div><dt>Cible</dt><dd>${escapeHtml(preview.targetLabel)}</dd></div>
+          <div><dt>Risque</dt><dd>${escapeHtml(preview.risk)}</dd></div>
+          <div><dt>Effet attendu</dt><dd>${escapeHtml(preview.expectedEffect)}</dd></div>
+          <div><dt>Raison tactique</dt><dd>${escapeHtml(preview.tacticalReason)}</dd></div>
+        </dl>
+      </article>
+      <ol class="planner-focus-list">${focusItems}</ol>
+    </section>
+  `;
+}
+
 export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
   const map = requireGeneratedMap(generatedMap);
   const normalizedOptions = requireOptions(options);
@@ -215,6 +251,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     provinceGeometryById: map.provinceGeometryById,
     selectedProvinceId: normalizedOptions.selectedProvinceId ?? 'river-gate',
     focusedProvinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart',
+    queuedProvinceId: normalizedOptions.queuedProvinceId ?? normalizedOptions.selectedProvinceId ?? 'river-gate',
   });
 
   return `<!doctype html>
@@ -244,6 +281,9 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .province-shape { fill:var(--fill); stroke:var(--border); stroke-width:1.18; filter:drop-shadow(0 0 0.7px rgba(255,255,255,0.32)); opacity:0.88; }
     .province.is-contested .province-shape { stroke:#fbbf24; stroke-width:1.45; stroke-dasharray:2 1.2; }
     .province.is-occupied .province-shape { opacity:0.76; }
+    .province.is-focused .province-shape { filter:drop-shadow(0 0 2px rgba(103,232,249,0.78)); }
+    .province.is-selected .province-shape { stroke:#67e8f9; stroke-width:1.72; }
+    .province.is-queued .province-shape { stroke:#22c55e; stroke-width:1.62; }
     .province-label-leader { fill:none; stroke:rgba(226, 232, 240, 0.36); stroke-width:0.28; stroke-dasharray:0.7 0.85; }
     .province-label-plate { fill:rgba(5,10,20,0.74); stroke:rgba(226,232,240,0.18); stroke-width:0.22; }
     .province-label { fill:#f8fafc; font-size:2.75px; font-weight:900; paint-order:stroke; stroke:#020617; stroke-width:0.7; stroke-linejoin:round; letter-spacing:0.04em; }
@@ -257,6 +297,19 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     ul { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
     li { display:flex; align-items:center; gap:9px; color:#d7e1ee; }
     .legend-swatch { width:18px; height:18px; border-radius:7px; background:var(--fill); border:2px solid var(--border); box-shadow:0 0 20px color-mix(in srgb, var(--fill), transparent 50%); }
+    .action-planner { display:grid; gap:12px; }
+    .planned-action { background:rgba(8,13,25,0.78); border:1px solid rgba(74,222,128,0.26); border-radius:16px; padding:12px; }
+    .planned-action span { color:#93a4bb; font-size:11px; text-transform:uppercase; letter-spacing:0.09em; }
+    .planned-action strong { display:block; margin-top:4px; color:#bbf7d0; }
+    .planned-action dl { display:grid; gap:6px; margin:10px 0 0; }
+    .planned-action div { display:grid; grid-template-columns:86px 1fr; gap:8px; }
+    .planned-action dt { color:#93c5fd; font-size:11px; text-transform:uppercase; }
+    .planned-action dd { margin:0; color:#dbeafe; font-size:12px; }
+    .planner-focus-list { counter-reset:item; display:grid; gap:6px; margin:0; padding:0; }
+    .planner-focus-item { display:flex; justify-content:space-between; border:1px solid rgba(148,163,184,0.16); border-radius:12px; padding:7px 9px; }
+    .planner-focus-item.is-focused { border-color:rgba(103,232,249,0.48); }
+    .planner-focus-item.is-selected { color:#fef3c7; }
+    .planner-focus-item.is-queued { border-color:rgba(74,222,128,0.48); }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -299,6 +352,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
           <h2>Factions</h2>
           <ul>${renderLegend(shell)}</ul>
         </section>
+        ${renderKeyboardActionPlanner(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>
