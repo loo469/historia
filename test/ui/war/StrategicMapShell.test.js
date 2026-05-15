@@ -272,6 +272,39 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     ],
     summary: '1 priorité: surveiller Colline rouge',
   });
+  assert.deepEqual(shell.operationalCommitmentChecklist, {
+    empty: false,
+    fallbackMessage: 'Recommandations indisponibles sans historique de pression du front.',
+    readyCount: 0,
+    waitingCount: 1,
+    blockedCount: 0,
+    checklistItems: [
+      {
+        order: 1,
+        provinceId: 'prov-c',
+        provinceLabel: 'Colline rouge',
+        actionLabel: 'Surveiller le front',
+        priority: 'surveiller',
+        status: 'attente',
+        prerequisite: {
+          code: 'intel-confidence',
+          label: 'renseignement trop incertain',
+          blocking: true,
+        },
+        risk: 'bloquant: renseignement trop incertain',
+        decisionHint: 'laisser en attente et relire au prochain tour',
+      },
+    ],
+    acceptedRisks: [],
+    blockingRisks: [
+      {
+        provinceId: 'prov-c',
+        provinceLabel: 'Colline rouge',
+        prerequisite: 'renseignement trop incertain',
+      },
+    ],
+    summary: '0 prêt · 1 en attente · 0 bloqué',
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -740,6 +773,80 @@ test('StrategicMapShell builds a scrub-ready front pressure timeline replay', ()
     },
   ]);
   assert.equal(shell.operationalPrioritySummary.summary, '3 priorités: renforcer Front rouge → renforcer Front rouge → exploiter Front rouge');
+  assert.deepEqual(shell.operationalCommitmentChecklist, {
+    empty: false,
+    fallbackMessage: null,
+    readyCount: 1,
+    waitingCount: 0,
+    blockedCount: 2,
+    checklistItems: [
+      {
+        order: 1,
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        actionLabel: 'Consolider le soutien',
+        priority: 'renforcer',
+        status: 'bloqué',
+        prerequisite: {
+          code: 'adjacent-support',
+          label: 'soutien adjacent à rétablir',
+          blocking: true,
+        },
+        risk: 'bloquant: soutien adjacent à rétablir',
+        decisionHint: 'corriger le prérequis avant engagement',
+      },
+      {
+        order: 2,
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        actionLabel: 'Renforcer le front',
+        priority: 'renforcer',
+        status: 'bloqué',
+        prerequisite: {
+          code: 'adjacent-support',
+          label: 'soutien adjacent à rétablir',
+          blocking: true,
+        },
+        risk: 'bloquant: soutien adjacent à rétablir',
+        decisionHint: 'corriger le prérequis avant engagement',
+      },
+      {
+        order: 3,
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        actionLabel: 'Sonder prudemment la brèche',
+        priority: 'exploiter',
+        status: 'engageable',
+        prerequisite: {
+          code: 'overextension-check',
+          label: 'limiter la sur-extension',
+          blocking: false,
+        },
+        risk: 'accepté sous contrôle: limiter la sur-extension',
+        decisionHint: 'peut être engagé maintenant',
+      },
+    ],
+    acceptedRisks: [
+      {
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        risk: 'accepté sous contrôle: limiter la sur-extension',
+      },
+    ],
+    blockingRisks: [
+      {
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        prerequisite: 'soutien adjacent à rétablir',
+      },
+      {
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        prerequisite: 'soutien adjacent à rétablir',
+      },
+    ],
+    summary: '1 prêt · 0 en attente · 2 bloqué',
+  });
 });
 
 test('StrategicMapShell reports incomplete front pressure replay history', () => {
@@ -781,6 +888,16 @@ test('StrategicMapShell reports incomplete front pressure replay history', () =>
       priority: 'tenir',
       actionLabel: 'Attendre et observer',
       marker: 'option sûre',
+    },
+  ]);
+  assert.equal(shell.operationalCommitmentChecklist.readyCount, 1);
+  assert.equal(shell.operationalCommitmentChecklist.waitingCount, 0);
+  assert.equal(shell.operationalCommitmentChecklist.blockedCount, 0);
+  assert.deepEqual(shell.operationalCommitmentChecklist.acceptedRisks, [
+    {
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      risk: 'accepté: aucun prérequis bloquant détecté',
     },
   ]);
 });

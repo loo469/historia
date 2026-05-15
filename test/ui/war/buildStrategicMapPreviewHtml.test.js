@@ -48,6 +48,12 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /Conflits proches/);
   assert.match(html, /soutien manquant/);
   assert.match(html, /risque de sur-extension/);
+  assert.match(html, /Checklist de commitment opérationnel des provinces contestées/);
+  assert.match(html, /Checklist commitment/);
+  assert.match(html, /Risques acceptés/);
+  assert.match(html, /Risques bloquants/);
+  assert.match(html, /soutien adjacent à rétablir/);
+  assert.match(html, /peut être engagé maintenant/);
   assert.match(html, /class="province is-contested is-occupied is-selected is-queued is-recently-affected"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /Porte du Fleuve/);
