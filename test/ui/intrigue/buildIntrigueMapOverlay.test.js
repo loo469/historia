@@ -2172,3 +2172,80 @@ test('buildIntrigueMapOverlay exposes fog-safe verification audit trails', () =>
   assert.equal(byLocation.get('masked-audit').nextUsefulCheck.action, 'ignore');
   assert.match(byLocation.get('masked-audit').safeMapPolicy, /masquées ou généralisées/);
 });
+
+test('buildIntrigueMapOverlay exposes fog-safe intrigue signal triage queues', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-verify-triage',
+      factionId: 'shadow-league',
+      codename: 'Signal',
+      locationId: 'verify-triage',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 86,
+    }),
+    new Cellule({
+      id: 'cell-monitor-triage',
+      factionId: 'shadow-league',
+      codename: 'Watcher',
+      locationId: 'monitor-triage',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+    new Cellule({
+      id: 'cell-dismiss-triage',
+      factionId: 'shadow-league',
+      codename: 'Old Echo',
+      locationId: 'dismiss-triage',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 19,
+    }),
+    new Cellule({
+      id: 'cell-masked-triage',
+      factionId: 'shadow-league',
+      codename: 'Curtain',
+      locationId: 'masked-triage',
+      memberIds: ['ag-4'],
+      assetIds: ['asset-4'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-monitor-triage',
+      celluleId: 'cell-monitor-triage',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe route rumor',
+      theaterId: 'monitor-triage',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 76,
+      progress: 7,
+      heat: 10,
+      phase: 'planning',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.intrigueSignalTriageQueue[0]]));
+
+  assert.equal(byLocation.get('verify-triage').triageClass, 'verify-now');
+  assert.equal(byLocation.get('verify-triage').priority, 1);
+  assert.equal(byLocation.get('verify-triage').nextLeastExposureCheck.action, 'observe-locally');
+  assert.equal(byLocation.get('verify-triage').residualRisk, 'visible-residual-risk');
+  assert.match(byLocation.get('verify-triage').rationale, /Source observation directe expurgée/);
+
+  assert.equal(byLocation.get('monitor-triage').triageClass, 'monitor');
+  assert.equal(byLocation.get('monitor-triage').label, 'Surveiller');
+  assert.equal(byLocation.get('monitor-triage').nextLeastExposureCheck.action, 'limit-coverage');
+  assert.equal(byLocation.get('monitor-triage').provenanceType, 'inferred');
+
+  assert.equal(byLocation.get('dismiss-triage').triageClass, 'dismiss-provisionally');
+  assert.equal(byLocation.get('dismiss-triage').nextLeastExposureCheck, null);
+  assert.match(byLocation.get('dismiss-triage').rationale, /attendre un signal frais/);
+
+  assert.equal(byLocation.get('masked-triage').triageClass, 'keep-masked');
+  assert.equal(byLocation.get('masked-triage').priority, 5);
+  assert.equal(byLocation.get('masked-triage').nextLeastExposureCheck, null);
+  assert.match(byLocation.get('masked-triage').fogSafeCopy, /aucune cellule, relais, cible, méthode sensible ou cause cachée/);
+});
