@@ -1076,7 +1076,90 @@ function getRegionCenter(regionId, regionGeometryById) {
   return { x: center.x, y: center.y };
 }
 
-function buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById) {
+
+function normalizeAnomalyTooltipByRegion(options) {
+  return requireObject(
+    options.anomalyTooltipByRegion ?? options.anomalyTooltipsByRegion ?? {},
+    'ClimateMapOverlay anomalyTooltipByRegion',
+  );
+}
+
+function describeAnomalyCause(anomaly) {
+  const anomalyType = normalizeAnomalyType(anomaly);
+
+  return {
+    heatwave: 'température élevée et pression sèche',
+    drought: 'sécheresse prolongée et précipitations basses',
+    storm: 'front instable et vents violents',
+    flood: 'excès de pluie et saturation des sols',
+    frost: 'froid tardif et gel local',
+  }[anomalyType] ?? 'signal climatique régional anormal';
+}
+
+function describeAnomalyImpact(anomaly) {
+  const anomalyType = normalizeAnomalyType(anomaly);
+
+  return {
+    heatwave: 'récoltes fragiles, routes exposées, coût de mitigation accru',
+    drought: 'réserves et récoltes sous pression, attendre ou irriguer avant dépense',
+    storm: 'routes et opérations sensibles risquent une interruption',
+    flood: 'logistique et stabilité locale demandent une mitigation rapide',
+    frost: 'production et timing saisonnier deviennent moins fiables',
+  }[anomalyType] ?? 'vérifier la province avant d’engager une action coûteuse';
+}
+
+function buildAnomalyTooltip(entry, region, seasonPreview, anomalyTooltipByRegion) {
+  const override = anomalyTooltipByRegion[entry.regionId] ?? {};
+  const windowLabel = override.window
+    ?? override.timeWindow
+    ?? (seasonPreview?.active ? `maintenant → ${seasonPreview.label}` : 'tour actuel');
+
+  return {
+    title: `Anomalie: ${entry.label}`,
+    cause: String(override.cause ?? describeAnomalyCause(entry.label)).trim(),
+    window: String(windowLabel).trim(),
+    playerImpact: String(override.playerImpact ?? override.impact ?? describeAnomalyImpact(entry.label)).trim(),
+    riskLevel: region?.strategicImpact ?? 'strained',
+  };
+}
+
+function normalizeConfidenceBand(value) {
+  const band = String(value ?? '').trim().toLowerCase();
+
+  if (['probable', 'uncertain', 'extreme'].includes(band)) {
+    return band;
+  }
+
+  return null;
+}
+
+function inferConfidenceBand(region, previewImpact, previewRiskLevel, previewAnomaly) {
+  const explicitBand = normalizeConfidenceBand(previewImpact.confidenceBand ?? previewImpact.confidence?.band);
+
+  if (explicitBand) {
+    return explicitBand;
+  }
+
+  const numericConfidence = Number(previewImpact.confidence ?? previewImpact.probability);
+
+  if (Number.isFinite(numericConfidence)) {
+    if (numericConfidence >= 0.75) {
+      return 'probable';
+    }
+
+    if (numericConfidence < 0.45) {
+      return 'uncertain';
+    }
+  }
+
+  if (previewRiskLevel === 'critical' && (region.strategicImpact === 'critical' || previewAnomaly)) {
+    return 'extreme';
+  }
+
+  return 'uncertain';
+}
+
+function buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById, anomalyTooltipByRegion) {
   const seasonEntriesByRegion = new Map(stateEntries
     .filter((entry) => entry.kind === 'season')
     .map((entry) => [entry.regionId, entry]));
@@ -1164,6 +1247,7 @@ function buildClimateMapLayers(regions, stateEntries, catastropheEntries, season
 
   const anomalyMarkers = [...anomalyEntriesByRegion.values()].map((entry) => {
     const center = getRegionCenter(entry.regionId, regionGeometryById);
+    const region = regions.find((candidate) => candidate.regionId === entry.regionId) ?? null;
 
     return {
       regionId: entry.regionId,
@@ -1177,6 +1261,7 @@ function buildClimateMapLayers(regions, stateEntries, catastropheEntries, season
       y: center?.y ?? null,
       placement: 'edge-pinned',
       ariaLabel: `${entry.regionId}: anomalie ${entry.label}`,
+      tooltip: buildAnomalyTooltip(entry, region, seasonPreview, anomalyTooltipByRegion),
     };
   });
 
@@ -1268,6 +1353,7 @@ function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonL
         previewRiskLevel,
         currentAnomaly: region.anomaly,
         previewAnomaly,
+        confidenceBand: inferConfidenceBand(region, previewImpact, previewRiskLevel, previewAnomaly),
         changeType: riskDelta > 0 ? 'risk-increases' : riskDelta < 0 ? 'risk-decreases' : 'anomaly-changes',
         decisionHint: riskDelta > 0
           ? 'agir avant la bascule si la province porte une action sensible'
@@ -1305,6 +1391,11 @@ function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonL
         { level: 'minor', label: 'désastre mineur', decisionWeight: 'coût local' },
         { level: 'major', label: 'désastre majeur', decisionWeight: 'planifier mitigation' },
         { level: 'critical', label: 'désastre critique', decisionWeight: 'priorité stratégique' },
+      ],
+      confidenceBands: [
+        { band: 'probable', label: 'probable', meaning: 'donnée cohérente avec les signaux actuels' },
+        { band: 'uncertain', label: 'incertain', meaning: 'prévision utile mais à confirmer avant engagement coûteux' },
+        { band: 'extreme', label: 'extrême', meaning: 'risque critique ou catastrophe à traiter comme priorité' },
       ],
       copy: decisionChangingRegions.length > 0
         ? `${decisionChangingRegions.length} province(s) changent assez pour peser sur une décision.`
@@ -1401,6 +1492,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
   };
   const progressionByRegion = requireObject(normalizedOptions.progressionByRegion ?? {}, 'ClimateMapOverlay progressionByRegion');
   const regionGeometryById = normalizeRegionGeometryById(normalizedOptions);
+  const anomalyTooltipByRegion = normalizeAnomalyTooltipByRegion(normalizedOptions);
   const tacticalHud = Boolean(normalizedOptions.tacticalHud);
   const visualEffects = Boolean(normalizedOptions.visualEffects);
   const readabilityProfile = buildReadabilityProfile(normalizedOptions);
@@ -1474,7 +1566,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
-    mapLayers: buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById),
+    mapLayers: buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById, anomalyTooltipByRegion),
     climateTimeline,
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
