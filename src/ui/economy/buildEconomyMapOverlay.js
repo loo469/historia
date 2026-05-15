@@ -1422,6 +1422,118 @@ function buildRouteStressFilters(logisticsFeatures) {
   });
 }
 
+
+function getIntensityScore(intensity) {
+  return { critical: 5, high: 4, medium: 3, positive: 2, low: 1, muted: 0 }[intensity] ?? 0;
+}
+
+function buildRouteInterventionOptions(logisticsFeatures) {
+  return logisticsFeatures.flatMap((route) => route.whatIfOptions.map((whatIfOption) => {
+    const relativeCost = whatIfOption.filter === 'convoy-priority'
+      ? 'moyen'
+      : whatIfOption.filter === 'stabilization'
+        ? 'élevé'
+        : 'faible';
+    const costScore = { faible: 1, moyen: 2, élevé: 3 }[relativeCost];
+    const riskIfIgnored = route.decisionCue.intensity === 'critical'
+      ? `Ignorer ${route.label} peut bloquer le goulet ${route.bottleneckResourceId ?? 'principal'}.`
+      : route.riskLevel >= 50
+        ? `Ignorer ${route.label} laisse un risque ${route.riskLevel}/100 sur les flux.`
+        : `Ignorer ${route.label} retarde une amélioration économique disponible.`;
+
+    return {
+      id: `intervention:${whatIfOption.id}`,
+      targetType: 'route',
+      targetId: route.routeId,
+      targetLabel: route.label,
+      action: whatIfOption.filter,
+      label: whatIfOption.label,
+      relativeCost,
+      costScore,
+      expectedImpact: whatIfOption.expectedImpact,
+      impactScore: whatIfOption.impactScore,
+      riskIfIgnored,
+      microcopy: `${whatIfOption.label}: coût ${relativeCost}, impact ${whatIfOption.impactScore}; ${riskIfIgnored}`,
+      score: whatIfOption.impactScore + getIntensityScore(route.decisionCue.intensity) - costScore,
+    };
+  }));
+}
+
+function buildCityInterventionOptions(cityOverlays, cityFeatures) {
+  return cityFeatures
+    .map((feature) => {
+      const city = cityOverlays.find((candidate) => candidate.cityId === feature.cityId);
+      const totalStock = city?.resources.totalStock ?? 0;
+      const relativeCost = feature.decisionCue.intensity === 'critical'
+        ? 'élevé'
+        : feature.decisionCue.intensity === 'high' || feature.decisionCue.intensity === 'medium'
+          ? 'moyen'
+          : 'faible';
+      const costScore = { faible: 1, moyen: 2, élevé: 3 }[relativeCost];
+      const action = feature.decisionCue.factor === 'surplus utile' ? 'reporter-expansion' : 'support-city';
+      const label = action === 'reporter-expansion' ? 'Reporter expansion' : 'Soutenir cité';
+      const impactScore = Math.max(1, Math.ceil((city?.population ?? 0) / 50) + getIntensityScore(feature.decisionCue.intensity));
+      const expectedImpact = action === 'reporter-expansion'
+        ? `Préserve ${totalStock} stock utile pour une route plus contrainte.`
+        : feature.decisionCue.factor === 'ville isolée'
+          ? `Reconnecte ${feature.label} aux décisions de route.`
+          : `Réduit la tension économique de ${feature.label}.`;
+      const riskIfIgnored = action === 'reporter-expansion'
+        ? `Dépenser trop tôt peut disperser le surplus de ${feature.label}.`
+        : feature.decisionCue.factor === 'manque de ressource'
+          ? `${feature.label} peut rester sans stock exploitable.`
+          : `${feature.label} garde une tension qui concurrence les routes prioritaires.`;
+
+      return {
+        id: `intervention:city:${feature.cityId}:${action}`,
+        targetType: 'city',
+        targetId: feature.cityId,
+        targetLabel: feature.label,
+        action,
+        label,
+        relativeCost,
+        costScore,
+        expectedImpact,
+        impactScore,
+        riskIfIgnored,
+        microcopy: `${label}: coût ${relativeCost}, impact ${impactScore}; ${riskIfIgnored}`,
+        score: impactScore + getIntensityScore(feature.decisionCue.intensity) - costScore,
+      };
+    })
+    .filter((option) => option.action !== 'reporter-expansion' || option.impactScore >= 4);
+}
+
+function buildInterventionComparison(cityOverlays, layers) {
+  const options = [
+    ...buildRouteInterventionOptions(layers.logistics.features),
+    ...buildCityInterventionOptions(cityOverlays, layers.cities.features),
+  ]
+    .sort((left, right) => right.score - left.score
+      || right.impactScore - left.impactScore
+      || left.costScore - right.costScore
+      || left.id.localeCompare(right.id))
+    .slice(0, 6)
+    .map((option, index) => ({
+      ...option,
+      recommended: index === 0,
+      rank: index + 1,
+    }));
+
+  return {
+    title: 'Comparateur interventions économie',
+    summary: options.length === 0
+      ? 'Aucune intervention économique prioritaire détectée.'
+      : `${options.length} interventions comparées; recommandation: ${options[0].label} sur ${options[0].targetLabel}.`,
+    options,
+    recommendedOptionId: options[0]?.id ?? null,
+    legend: [
+      { key: 'relativeCost', label: 'Coût relatif', description: 'Charge locale estimée sans simulation globale.' },
+      { key: 'expectedImpact', label: 'Effet aval attendu', description: 'Effet lisible dérivé des routes, stocks et priorités existantes.' },
+      { key: 'riskIfIgnored', label: 'Risque si ignoré', description: 'Pourquoi laisser cette option de côté peut coûter un tour.' },
+    ],
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -1571,13 +1683,16 @@ export function buildEconomyMapOverlay(cities, routes, options = {}) {
       };
     });
 
+  const layers = buildEconomyMapLayers(cityOverlays, routeOverlays);
+
   return {
     title: 'Carte économie et logistique',
     summary: `${cityOverlays.length} villes, ${routeOverlays.length} routes logistiques`,
     cities: cityOverlays,
     routes: routeOverlays,
-    layers: buildEconomyMapLayers(cityOverlays, routeOverlays),
+    layers,
     decisionLegend: buildDecisionLegend(),
+    interventionComparison: buildInterventionComparison(cityOverlays, layers),
     metrics: {
       cityCount: cityOverlays.length,
       capitalCount: cityOverlays.filter((city) => city.capital).length,
