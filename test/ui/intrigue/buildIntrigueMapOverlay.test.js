@@ -1912,3 +1912,102 @@ test('buildIntrigueMapOverlay previews fog-safe verification paths with costs an
   assert.equal(maskedPaths[0].exposureCost, 0);
   assert.match(maskedPaths[0].fogSafeCopy, /l’absence de signal ne prouve pas un danger faible/);
 });
+
+test('buildIntrigueMapOverlay replays fog-safe incidents and evidence trail markers', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-confirmed-replay',
+      factionId: 'shadow-league',
+      codename: 'Torch',
+      locationId: 'confirmed-replay',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 76,
+    }),
+    new Cellule({
+      id: 'cell-suspected-replay',
+      factionId: 'shadow-league',
+      codename: 'Lantern',
+      locationId: 'suspected-replay',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+    new Cellule({
+      id: 'cell-masked-replay',
+      factionId: 'shadow-league',
+      codename: 'Blank',
+      locationId: 'masked-replay',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-confirmed-replay',
+      celluleId: 'cell-confirmed-replay',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Stress gate watches',
+      theaterId: 'confirmed-replay',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 12,
+      progress: 84,
+      heat: 86,
+      phase: 'execution',
+    }),
+    new OperationClandestine({
+      id: 'op-suspected-replay',
+      celluleId: 'cell-suspected-replay',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe road rumor',
+      theaterId: 'suspected-replay',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 80,
+      progress: 5,
+      heat: 10,
+      phase: 'planning',
+    }),
+  ], {
+    safeMapMode: true,
+    locationNames: {
+      'confirmed-replay': 'Confirmed Replay',
+      'suspected-replay': 'Suspected Replay',
+      'masked-replay': 'Masked Replay',
+    },
+  });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry]));
+  const confirmed = byLocation.get('confirmed-replay');
+  const suspected = byLocation.get('suspected-replay');
+  const masked = byLocation.get('masked-replay');
+
+  assert.equal(confirmed.incidentReplay.state, 'confirmed-trail');
+  assert.deepEqual(confirmed.incidentReplay.frames.map((frame) => frame.incidentType), [
+    'verification-in-progress',
+    'verification-in-progress',
+    'confirmed-trail',
+  ]);
+  assert.match(confirmed.incidentReplay.frames[0].safeCopy, /aucune source, cible ou cause cachée/);
+  assert.equal(confirmed.evidenceTrailMarkers[0].state, 'confirmed-evidence');
+  assert.equal(confirmed.evidenceTrailMarkers[0].toLocationId, 'masked-replay');
+  assert.match(confirmed.evidenceTrailMarkers[0].reason, /relais, cellule et objectif restent masqués/);
+
+  assert.equal(suspected.incidentReplay.state, 'suspected-sabotage');
+  assert.equal(suspected.incidentReplay.frames.at(-1).confidenceTrend, 'up');
+  assert.equal(suspected.evidenceTrailMarkers[0].state, 'suspected-evidence');
+  assert.match(suspected.evidenceTrailMarkers[0].label, /piste suspect/);
+
+  assert.equal(masked.incidentReplay.state, 'false-alert-or-masked');
+  assert.equal(masked.incidentReplay.frames.at(-1).confidenceTrend, 'masked');
+  assert.deepEqual(masked.evidenceTrailMarkers, [{
+    markerId: 'evidence:masked-replay:masked',
+    state: 'masked',
+    fromLocationId: 'masked-replay',
+    toLocationId: null,
+    label: 'Masked Replay: piste masquée',
+    reason: 'Mode sûr: lien de preuve non affiché car les données sont absentes ou confidentielles.',
+  }]);
+});

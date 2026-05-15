@@ -2292,6 +2292,98 @@ function buildVerificationPathPreviews({ confidenceState, safeVerificationHint, 
   ];
 }
 
+function buildIntrigueIncidentReplay({ confidenceState, suspicionHeatDecayPlayback, safeMapMasking }) {
+  const frameByState = {
+    confirmed: {
+      incidentType: 'confirmed-trail',
+      label: 'Piste confirmée',
+      confidenceTrend: 'up',
+      reason: 'La pression visible confirme la piste sans révéler cellule, relais ou cible.',
+    },
+    suspected: {
+      incidentType: 'suspected-sabotage',
+      label: 'Sabotage suspecté',
+      confidenceTrend: 'up',
+      reason: 'Un signal probable augmente la vigilance, mais la preuve reste non nominative.',
+    },
+    stale: {
+      incidentType: 'verification-in-progress',
+      label: 'Vérification en cours',
+      confidenceTrend: 'down',
+      reason: 'Le signal vieillit; la confiance baisse jusqu’à une nouvelle preuve visible.',
+    },
+    masked: {
+      incidentType: 'false-alert-or-masked',
+      label: 'Fausse alerte possible',
+      confidenceTrend: 'masked',
+      reason: 'Le mode sûr masque ou généralise l’incident faute de donnée autorisée.',
+    },
+  };
+  const current = frameByState[confidenceState.state] ?? frameByState.masked;
+  const heatFrame = suspicionHeatDecayPlayback.frames[1] ?? suspicionHeatDecayPlayback.frames[0];
+
+  return {
+    state: current.incidentType,
+    summary: `${current.label}: ${current.reason}`,
+    frames: [
+      {
+        turnOffset: -2,
+        incidentType: safeMapMasking.state === 'masked-information' ? 'false-alert-or-masked' : 'verification-in-progress',
+        label: safeMapMasking.state === 'masked-information' ? 'Signal généralisé' : 'Vérification en cours',
+        confidenceTrend: 'masked',
+        safeCopy: 'Historique expurgé: aucune source, cible ou cause cachée affichée.',
+      },
+      {
+        turnOffset: -1,
+        incidentType: heatFrame.state === 'decaying-risk' ? 'verification-in-progress' : current.incidentType,
+        label: heatFrame.state === 'decaying-risk' ? 'Chaleur en baisse' : current.label,
+        confidenceTrend: heatFrame.state === 'decaying-risk' ? 'down' : current.confidenceTrend,
+        safeCopy: `${heatFrame.label}; la confiance suit seulement les signaux visibles.`,
+      },
+      {
+        turnOffset: 0,
+        incidentType: current.incidentType,
+        label: current.label,
+        confidenceTrend: current.confidenceTrend,
+        safeCopy: current.reason,
+      },
+    ],
+  };
+}
+
+function buildEvidenceTrailMarkers({ locationId, locationName, confidenceState, safeMapMasking, locationOperations, relatedLocationIds }) {
+  if (safeMapMasking.state === 'masked-information' || confidenceState.state === 'masked') {
+    return [{
+      markerId: `evidence:${locationId}:masked`,
+      state: 'masked',
+      fromLocationId: locationId,
+      toLocationId: null,
+      label: `${locationName}: piste masquée`,
+      reason: 'Mode sûr: lien de preuve non affiché car les données sont absentes ou confidentielles.',
+    }];
+  }
+
+  const targetLocationId = relatedLocationIds.find((candidate) => candidate !== locationId) ?? null;
+  const markerState = confidenceState.state === 'confirmed'
+    ? 'confirmed-evidence'
+    : confidenceState.state === 'suspected'
+      ? 'suspected-evidence'
+      : 'stale-evidence';
+
+  return [{
+    markerId: `evidence:${locationId}:${targetLocationId ?? 'local'}`,
+    state: markerState,
+    fromLocationId: locationId,
+    toLocationId: targetLocationId,
+    label: targetLocationId === null
+      ? `${locationName}: preuve locale ${confidenceState.label.toLowerCase()}`
+      : `${locationName}: piste ${confidenceState.label.toLowerCase()} reliée à une zone autorisée`,
+    reason: locationOperations.length > 0
+      ? 'Lien autorisé par signaux visibles seulement; relais, cellule et objectif restent masqués.'
+      : 'Piste locale sans détail sensible; le marqueur indique la confiance, pas la vérité cachée.',
+  }];
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2388,6 +2480,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
       const exposedCellCount = locationCellules.filter((cellule) => cellule.isExposed).length;
       const sleeperCellCount = locationCellules.filter((cellule) => cellule.sleeper).length;
       const locationName = String(locationNames[locationId] ?? locationId).trim() || locationId;
+      const relatedLocationIds = [...locationIds].sort((left, right) => left.localeCompare(right));
 
       const lowExposureSweepConfidencePreview = buildLowExposureSweepConfidencePreview({
         celluleCount: locationCellules.length,
@@ -2422,6 +2515,19 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         suspicionHeatDecayPlayback,
         safeMapMasking,
       });
+      const incidentReplay = buildIntrigueIncidentReplay({
+        confidenceState,
+        suspicionHeatDecayPlayback,
+        safeMapMasking,
+      });
+      const evidenceTrailMarkers = buildEvidenceTrailMarkers({
+        locationId,
+        locationName,
+        confidenceState,
+        safeMapMasking,
+        locationOperations,
+        relatedLocationIds,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2429,6 +2535,8 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           confidenceState,
           safeVerificationHint,
           verificationPathPreviews,
+          incidentReplay,
+          evidenceTrailMarkers,
         }
         : {};
 
