@@ -238,6 +238,25 @@ function renderKeyboardActionPlanner(shell) {
   `;
 }
 
+function renderProvinceActionQueueValidation(shell) {
+  const validation = shell.keyboardActionPlanner.actionQueueValidation;
+  const entries = validation.entries.map((entry) => `
+    <li class="queue-validation-item queue-validation-item--${escapeHtml(entry.status)}">
+      <span>${escapeHtml(entry.provinceLabel)} · ${escapeHtml(entry.actionLabel)}</span>
+      <small>${escapeHtml(entry.status)} — ${escapeHtml(entry.reason)}</small>
+    </li>
+  `).join('');
+
+  return `
+    <section class="queue-validation" aria-label="Validation de file d’actions province">
+      <h2>Validation file</h2>
+      <p>${validation.empty ? 'Aucun ordre en file.' : `${validation.summary.readyCount} prêt · ${validation.summary.riskyCount} risqué · ${validation.summary.blockedCount} bloqué · ${validation.summary.conflictCount} conflit`}</p>
+      ${validation.nextSafeAction ? `<article class="next-safe-action"><span>Prochaine action sûre</span><strong>${escapeHtml(validation.nextSafeAction.label)}</strong><small>${escapeHtml(validation.nextSafeAction.reason)}</small></article>` : ''}
+      <ol>${entries}</ol>
+    </section>
+  `;
+}
+
 export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
   const map = requireGeneratedMap(generatedMap);
   const normalizedOptions = requireOptions(options);
@@ -252,6 +271,10 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     selectedProvinceId: normalizedOptions.selectedProvinceId ?? 'river-gate',
     focusedProvinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart',
     queuedProvinceId: normalizedOptions.queuedProvinceId ?? normalizedOptions.selectedProvinceId ?? 'river-gate',
+    provinceActionQueue: normalizedOptions.provinceActionQueue ?? [
+      { provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', label: 'Ordre principal' },
+      { provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', label: 'Appui suivant', requiresSupport: true },
+    ],
   });
 
   return `<!doctype html>
@@ -310,6 +333,19 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .planner-focus-item.is-focused { border-color:rgba(103,232,249,0.48); }
     .planner-focus-item.is-selected { color:#fef3c7; }
     .planner-focus-item.is-queued { border-color:rgba(74,222,128,0.48); }
+    .queue-validation { display:grid; gap:10px; }
+    .queue-validation p { margin:0; color:#cbd5e1; font-size:12px; }
+    .queue-validation ol { display:grid; gap:6px; margin:0; padding:0; }
+    .queue-validation-item { display:grid; gap:2px; border:1px solid rgba(148,163,184,0.16); border-radius:12px; padding:7px 9px; }
+    .queue-validation-item--ready { border-color:rgba(74,222,128,0.34); }
+    .queue-validation-item--risky { border-color:rgba(251,191,36,0.44); }
+    .queue-validation-item--blocked,
+    .queue-validation-item--conflict { border-color:rgba(248,113,113,0.48); }
+    .queue-validation-item small,
+    .next-safe-action small { color:#cbd5e1; }
+    .next-safe-action { display:grid; gap:3px; border:1px solid rgba(74,222,128,0.34); border-radius:14px; padding:9px; background:rgba(22,101,52,0.14); }
+    .next-safe-action span { color:#93a4bb; font-size:11px; text-transform:uppercase; letter-spacing:0.09em; }
+    .next-safe-action strong { color:#bbf7d0; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -353,6 +389,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
           <ul>${renderLegend(shell)}</ul>
         </section>
         ${renderKeyboardActionPlanner(shell)}
+        ${renderProvinceActionQueueValidation(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>

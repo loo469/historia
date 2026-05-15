@@ -21,6 +21,9 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /Planificateur clavier d’action province/);
   assert.match(html, /Première action recommandée/);
   assert.match(html, /Raison tactique/);
+  assert.match(html, /Validation de file d’actions province/);
+  assert.match(html, /Prochaine action sûre/);
+  assert.match(html, /queue-validation-item--conflict/);
   assert.match(html, /class="province is-contested is-occupied is-selected is-queued"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /Porte du Fleuve/);

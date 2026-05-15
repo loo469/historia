@@ -184,6 +184,17 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
       expectedEffect: 'maintenir Avant-poste en réserve',
       tacticalReason: 'aucune urgence militaire locale',
     },
+    actionQueueValidation: {
+      empty: true,
+      entries: [],
+      summary: {
+        readyCount: 0,
+        riskyCount: 0,
+        blockedCount: 0,
+        conflictCount: 0,
+      },
+      nextSafeAction: null,
+    },
     emptyState: null,
   });
   assert.deepEqual(shell.stats, {
@@ -220,6 +231,98 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     'intrigue-overlay',
   ]);
   assert.equal(shell.activeProvince.provinceId, 'prov-a');
+});
+
+
+test('StrategicMapShell validates province action queues and suggests a safe replacement', () => {
+  const shell = buildStrategicMapShell(
+    [
+      createProvince({ id: 'front', name: 'Front rouge', contested: true, neighborIds: ['support'] }),
+      createProvince({
+        id: 'support',
+        name: 'Support rompu',
+        supplyLevel: 'disrupted',
+        neighborIds: ['front'],
+      }),
+      createProvince({ id: 'reserve', name: 'Réserve nord', strategicValue: 1, neighborIds: [] }),
+    ],
+    {
+      selectedProvinceId: 'front',
+      focusedProvinceId: 'front',
+      queuedProvinceId: 'support',
+      provinceActionQueue: [
+        { queueId: 'q1', provinceId: 'reserve', label: 'Tenir la réserve' },
+        { queueId: 'q2', provinceId: 'support', label: 'Pousser sans soutien', requiresSupport: true },
+        { queueId: 'q3', provinceId: 'front', label: 'Avancer après front instable' },
+        { queueId: 'q4', provinceId: 'front', label: 'Rejouer même cible' },
+      ],
+    },
+  );
+
+  assert.deepEqual(shell.keyboardActionPlanner.actionQueueValidation, {
+    empty: false,
+    entries: [
+      {
+        queueId: 'q1',
+        provinceId: 'reserve',
+        provinceLabel: 'Réserve nord',
+        actionCode: 'hold-reserve',
+        actionLabel: 'Tenir la réserve',
+        status: 'ready',
+        reason: 'ordre prêt',
+        safeReplacement: null,
+      },
+      {
+        queueId: 'q2',
+        provinceId: 'support',
+        provinceLabel: 'Support rompu',
+        actionCode: 'avoid-push',
+        actionLabel: 'Pousser sans soutien',
+        status: 'conflict',
+        reason: 'support manquant',
+        safeReplacement: {
+          actionCode: 'hold-reserve',
+          label: 'Garder en réserve',
+          reason: 'attendre résolution du blocage',
+        },
+      },
+      {
+        queueId: 'q3',
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        actionCode: 'reinforce-front',
+        actionLabel: 'Avancer après front instable',
+        status: 'ready',
+        reason: 'ordre prêt',
+        safeReplacement: null,
+      },
+      {
+        queueId: 'q4',
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        actionCode: 'reinforce-front',
+        actionLabel: 'Rejouer même cible',
+        status: 'conflict',
+        reason: 'cible déjà engagée',
+        safeReplacement: {
+          actionCode: 'reinforce-front',
+          label: 'Renforcer le front',
+          reason: 'front contesté et pression militaire visible',
+        },
+      },
+    ],
+    summary: {
+      readyCount: 2,
+      riskyCount: 0,
+      blockedCount: 0,
+      conflictCount: 2,
+    },
+    nextSafeAction: {
+      actionCode: 'hold-reserve',
+      label: 'Garder en réserve',
+      reason: 'attendre résolution du blocage',
+    },
+  });
 });
 
 test('StrategicMapShell projects intrigue presence and sabotage risk into the map overlay slot', () => {
