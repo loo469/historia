@@ -197,6 +197,13 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     },
     emptyState: null,
   });
+  assert.deepEqual(shell.afterActionMapRecap, {
+    empty: true,
+    entries: [],
+    affectedProvinceIds: [],
+    affectedFronts: [],
+    summary: 'Aucune résolution récente à récapituler.',
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -367,6 +374,96 @@ test('StrategicMapShell validates province action queues and suggests a safe rep
       reason: 'attendre résolution du blocage',
     },
   });
+});
+
+
+test('StrategicMapShell summarizes recently resolved province orders for after-action map recap', () => {
+  const shell = buildStrategicMapShell(
+    [
+      createProvince({ id: 'front', name: 'Front rouge', contested: true, neighborIds: ['support'] }),
+      createProvince({ id: 'support', name: 'Support rompu', supplyLevel: 'disrupted', neighborIds: ['front'] }),
+      createProvince({ id: 'reserve', name: 'Réserve nord', strategicValue: 1, neighborIds: [] }),
+    ],
+    {
+      provinceActionQueue: [
+        { queueId: 'q1', provinceId: 'reserve', label: 'Tenir la réserve' },
+        { queueId: 'q2', provinceId: 'support', label: 'Pousser sans soutien', requiresSupport: true },
+        { queueId: 'q3', provinceId: 'front', label: 'Avancer après front instable' },
+      ],
+      resolvedProvinceOrders: [
+        { resolutionId: 'r1', queueId: 'q1', provinceId: 'reserve', result: 'success', label: 'Tenir la réserve', explanation: 'Réserve consolidée sans ouvrir de nouveau front.' },
+        { resolutionId: 'r2', queueId: 'q2', provinceId: 'support', result: 'blocked', label: 'Pousser sans soutien' },
+        { resolutionId: 'r3', queueId: 'q3', provinceId: 'front', result: 'conflict', label: 'Avancer après front instable', affectedFront: 'front rouge' },
+        { resolutionId: 'r4', provinceId: 'front', result: 'cancelled', label: 'Annuler la poussée', explanation: 'Ordre annulé avant résolution.' },
+        { resolutionId: 'r5', provinceId: 'reserve', result: 'deferred', label: 'Reporter le relais' },
+      ],
+    },
+  );
+
+  assert.deepEqual(shell.afterActionMapRecap.summary, '5 ordres résolus: 1 succès · 1 blocage · 1 conflit · 1 annulation · 1 report');
+  assert.deepEqual(shell.afterActionMapRecap.affectedProvinceIds, ['reserve', 'support', 'front']);
+  assert.deepEqual(shell.afterActionMapRecap.affectedFronts, ['contrôle local', 'front rouge', 'front local contesté']);
+  assert.deepEqual(shell.afterActionMapRecap.entries.map((entry) => ({
+    resolutionId: entry.resolutionId,
+    provinceLabel: entry.provinceLabel,
+    result: entry.result,
+    tone: entry.tone,
+    explanation: entry.explanation,
+    frontEffect: entry.frontEffect,
+    affectedFront: entry.affectedFront,
+    highlight: entry.highlight,
+  })), [
+    {
+      resolutionId: 'r1',
+      provinceLabel: 'Réserve nord',
+      result: 'success',
+      tone: 'positive',
+      explanation: 'Réserve consolidée sans ouvrir de nouveau front.',
+      frontEffect: 'maintient Réserve nord sans bascule de front',
+      affectedFront: 'contrôle local',
+      highlight: { provinceId: 'reserve', frontIds: ['reserve'] },
+    },
+    {
+      resolutionId: 'r2',
+      provinceLabel: 'Support rompu',
+      result: 'blocked',
+      tone: 'warning',
+      explanation: 'support manquant',
+      frontEffect: 'évite une poussée fragile sur Support rompu',
+      affectedFront: 'contrôle local',
+      highlight: { provinceId: 'support', frontIds: ['support'] },
+    },
+    {
+      resolutionId: 'r3',
+      provinceLabel: 'Front rouge',
+      result: 'conflict',
+      tone: 'warning',
+      explanation: 'stabilise front actif sur Front rouge',
+      frontEffect: 'stabilise front actif sur Front rouge',
+      affectedFront: 'front rouge',
+      highlight: { provinceId: 'front', frontIds: ['front rouge'] },
+    },
+    {
+      resolutionId: 'r4',
+      provinceLabel: 'Front rouge',
+      result: 'cancelled',
+      tone: 'muted',
+      explanation: 'Ordre annulé avant résolution.',
+      frontEffect: 'met à jour front actif sur Front rouge',
+      affectedFront: 'front local contesté',
+      highlight: { provinceId: 'front', frontIds: ['front'] },
+    },
+    {
+      resolutionId: 'r5',
+      provinceLabel: 'Réserve nord',
+      result: 'deferred',
+      tone: 'neutral',
+      explanation: "Réserve nord reporte l'ordre au prochain créneau sûr.",
+      frontEffect: 'met à jour garnison stable sur Réserve nord',
+      affectedFront: 'contrôle local',
+      highlight: { provinceId: 'reserve', frontIds: ['reserve'] },
+    },
+  ]);
 });
 
 test('StrategicMapShell projects intrigue presence and sabotage risk into the map overlay slot', () => {

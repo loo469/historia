@@ -184,6 +184,7 @@ function renderProvinceShapes(shell) {
       province.selectionState.selected ? 'is-selected' : '',
       province.selectionState.focused ? 'is-focused' : '',
       province.selectionState.queued ? 'is-queued' : '',
+      shell.afterActionMapRecap.affectedProvinceIds.includes(province.provinceId) ? 'is-recently-affected' : '',
     ].filter(Boolean).join(' ');
 
     return `
@@ -238,6 +239,27 @@ function renderKeyboardActionPlanner(shell) {
   `;
 }
 
+
+function renderAfterActionMapRecap(shell) {
+  const recap = shell.afterActionMapRecap;
+  const entries = recap.entries.map((entry) => `
+    <li class="after-action-item after-action-item--${escapeHtml(entry.result)}">
+      <span>${escapeHtml(entry.provinceLabel)} · ${escapeHtml(entry.actionLabel)}</span>
+      <strong>${escapeHtml(entry.result)}</strong>
+      <small>${escapeHtml(entry.explanation)}</small>
+      <em>${escapeHtml(entry.frontEffect)} · ${escapeHtml(entry.affectedFront)}</em>
+    </li>
+  `).join('');
+
+  return `
+    <section class="after-action-recap" aria-label="Récapitulatif des ordres de province résolus">
+      <h2>Après-action</h2>
+      <p>${escapeHtml(recap.summary)}</p>
+      ${recap.empty ? '<small class="after-action-empty">Aucun changement récent à surligner sur la carte.</small>' : `<ol>${entries}</ol>`}
+    </section>
+  `;
+}
+
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
   const entries = validation.entries.map((entry) => {
@@ -286,8 +308,12 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     focusedProvinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart',
     queuedProvinceId: normalizedOptions.queuedProvinceId ?? normalizedOptions.selectedProvinceId ?? 'river-gate',
     provinceActionQueue: normalizedOptions.provinceActionQueue ?? [
-      { provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', label: 'Ordre principal' },
-      { provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', label: 'Appui suivant', requiresSupport: true },
+      { queueId: 'preview-main', provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', label: 'Ordre principal' },
+      { queueId: 'preview-support', provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', label: 'Appui suivant', requiresSupport: true },
+    ],
+    resolvedProvinceOrders: normalizedOptions.resolvedProvinceOrders ?? [
+      { resolutionId: 'preview-success', queueId: 'preview-main', provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', result: 'success', label: 'Ordre principal résolu' },
+      { resolutionId: 'preview-deferred', queueId: 'preview-support', provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', result: 'deferred', label: 'Appui reporté' },
     ],
   });
 
@@ -321,6 +347,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .province.is-focused .province-shape { filter:drop-shadow(0 0 2px rgba(103,232,249,0.78)); }
     .province.is-selected .province-shape { stroke:#67e8f9; stroke-width:1.72; }
     .province.is-queued .province-shape { stroke:#22c55e; stroke-width:1.62; }
+    .province.is-recently-affected .province-shape { stroke:#f0abfc; stroke-width:2.05; filter:drop-shadow(0 0 5px rgba(240,171,252,0.6)); }
     .province-label-leader { fill:none; stroke:rgba(226, 232, 240, 0.36); stroke-width:0.28; stroke-dasharray:0.7 0.85; }
     .province-label-plate { fill:rgba(5,10,20,0.74); stroke:rgba(226,232,240,0.18); stroke-width:0.22; }
     .province-label { fill:#f8fafc; font-size:2.75px; font-weight:900; paint-order:stroke; stroke:#020617; stroke-width:0.7; stroke-linejoin:round; letter-spacing:0.04em; }
@@ -363,6 +390,16 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .next-safe-action { display:grid; gap:3px; border:1px solid rgba(74,222,128,0.34); border-radius:14px; padding:9px; background:rgba(22,101,52,0.14); }
     .next-safe-action span { color:#93a4bb; font-size:11px; text-transform:uppercase; letter-spacing:0.09em; }
     .next-safe-action strong { color:#bbf7d0; }
+    .after-action-recap { display:grid; gap:10px; }
+    .after-action-recap p, .after-action-empty { margin:0; color:#cbd5e1; font-size:12px; }
+    .after-action-recap ol { display:grid; gap:6px; margin:0; padding:0; }
+    .after-action-item { display:grid; gap:3px; align-items:start; border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:7px 9px; }
+    .after-action-item--success { border-color:rgba(74,222,128,0.4); }
+    .after-action-item--blocked, .after-action-item--conflict { border-color:rgba(251,191,36,0.48); }
+    .after-action-item--cancelled { border-color:rgba(148,163,184,0.28); opacity:0.86; }
+    .after-action-item strong { color:#f0abfc; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
+    .after-action-item small { color:#dbeafe; }
+    .after-action-item em { color:#bae6fd; font-size:11px; font-style:normal; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -407,6 +444,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
         </section>
         ${renderKeyboardActionPlanner(shell)}
         ${renderProvinceActionQueueValidation(shell)}
+        ${renderAfterActionMapRecap(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>
