@@ -2556,6 +2556,30 @@ function buildAtlasCultureFeatures(cultureView) {
     related: Boolean(selectedDiscoveryId) && link.discoveryId === selectedDiscoveryId && entry.regionId !== selectedRegionId,
   })));
 
+  const discoveryClusters = [...new Set(entries.map((entry) => entry.regionId))]
+    .sort()
+    .map((regionId) => {
+      const regionEntries = entries.filter((entry) => entry.regionId === regionId);
+      const discoveries = [...new Set(regionEntries.flatMap((entry) => entry.regionalDiscoveryLinks.map((link) => link.discoveryId)))]
+        .sort();
+      const cultures = [...new Set(regionEntries.map((entry) => entry.cultureName))].sort();
+
+      return {
+        clusterId: `atlas-culture-discovery-cluster:${regionId}`,
+        regionId,
+        center: getProvinceCenter(regionId),
+        discoveryCount: discoveries.length,
+        discoveries: discoveries.slice(0, 3),
+        cultureCount: cultures.length,
+        cultures: cultures.slice(0, 2),
+        selected: regionId === selectedRegionId,
+        tone: getCultureTone(dominantByRegion.get(regionId) ?? regionEntries[0]),
+        label: `${discoveries.length} découverte${discoveries.length > 1 ? 's' : ''} · ${cultures.length} culture${cultures.length > 1 ? 's' : ''}`,
+      };
+    })
+    .filter((cluster) => cluster.discoveryCount > 0)
+    .slice(0, 6);
+
   const regionSummaries = influenceZones.map((zone) => {
     const regionEntries = entries.filter((entry) => entry.regionId === zone.regionId);
     const discoveryCount = new Set(regionEntries.flatMap((entry) => entry.regionalDiscoveryLinks.map((link) => link.discoveryId))).size;
@@ -2638,6 +2662,7 @@ function buildAtlasCultureFeatures(cultureView) {
     influenceZones,
     cultureMarkers: influenceZones.filter((zone) => zone.influenceTier === 'dominant' || zone.influenceTier === 'strong'),
     discoverySites,
+    discoveryClusters,
     focusedDiscovery: discoverySites.find((site) => site.focused) ?? null,
     regionSummaries,
     driftPreviews,
@@ -3271,6 +3296,13 @@ function renderAtlasCultureLayer(cultureView) {
         <g class="atlas-culture-marker atlas-culture-marker--${marker.tone}" data-atlas-culture-region="${marker.regionId}">
           <circle cx="${marker.center.x}%" cy="${marker.center.y}%" r="${marker.influenceTier === 'dominant' ? 2.35 : 1.85}"></circle>
           <text x="${marker.center.x}%" y="${marker.center.y + 0.82}%" text-anchor="middle">C</text>
+        </g>
+      `).join('')}
+      ${features.discoveryClusters.map((cluster, index) => `
+        <g class="atlas-discovery-cluster atlas-discovery-cluster--${cluster.tone} ${cluster.selected ? 'is-selected' : ''}" data-atlas-discovery-cluster="${cluster.regionId}" aria-label="Cluster découvertes ${cluster.regionId}: ${cluster.label}, cultures ${cluster.cultures.join(', ')}, découvertes ${cluster.discoveries.join(', ')}">
+          <rect x="${Math.min(88, cluster.center.x + 3.4)}" y="${Math.max(6, cluster.center.y - 1.8 + (index % 2) * 2.2)}" width="9.4" height="4.6" rx="1.2"></rect>
+          <text x="${Math.min(89, cluster.center.x + 4.1)}%" y="${Math.max(8.9, cluster.center.y + 1.2 + (index % 2) * 2.2)}%">D×${cluster.discoveryCount}</text>
+          <title>${cluster.label} · ${cluster.discoveries.join(' · ')}</title>
         </g>
       `).join('')}
       ${features.discoverySites.map((site) => {

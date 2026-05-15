@@ -55,6 +55,11 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /is-focused/);
   assert.match(webAppSource, /is-related/);
   assert.match(webAppSource, /atlas-discovery-site__link/);
+  assert.match(webAppSource, /const discoveryClusters =/);
+  assert.match(webAppSource, /data-atlas-discovery-cluster="\$\{cluster\.regionId\}"/);
+  assert.match(webAppSource, /D×\$\{cluster\.discoveryCount\}/);
+  assert.match(webAppSource, /Cluster découvertes/);
+  assert.match(webAppSource, /discoveryClusters,/);
   assert.match(webAppSource, /linkedToFocus/);
   assert.match(webAppSource, /summary\.drift\.causes\.join/);
   assert.match(webAppSource, /mainDriver === 'migration'/);
@@ -154,6 +159,8 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-culture-summary/);
   assert.match(stylesSource, /\.atlas-discovery-site\.is-focused path/);
   assert.match(stylesSource, /\.atlas-discovery-site__link/);
+  assert.match(stylesSource, /\.atlas-discovery-cluster rect/);
+  assert.match(stylesSource, /\.atlas-discovery-cluster\.is-selected rect/);
   assert.match(stylesSource, /\.atlas-culture-summary__drift/);
   assert.match(stylesSource, /\.atlas-culture-drift--migre/);
   assert.match(stylesSource, /\.atlas-culture-drift\.is-linked-focus path/);
