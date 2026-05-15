@@ -1474,6 +1474,60 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       { key: 'échec probable', label: 'Échec probable', tone: 'critical' },
     ],
   });
+  assert.deepEqual(overlay.layers.logistics.recoveryCapacityBudget, {
+    id: 'logistics-recovery-capacity-budget',
+    title: 'Budget capacité reprises logistiques',
+    summary: '1 reprise(s), 1 dépassement(s) de capacité à arbitrer.',
+    available: {
+      stock: 1,
+      convoy: 1,
+      labor: 1,
+      routeTime: 2,
+      portCapacity: 0,
+      relay: 1,
+    },
+    totals: {
+      stock: 3,
+      convoy: 1,
+      labor: 0,
+      routeTime: 0,
+      portCapacity: 0,
+      relay: 0,
+    },
+    totalOverloads: [
+      { resource: 'stock', required: 3, available: 1, overBy: 2 },
+    ],
+    entries: [
+      {
+        id: 'recovery-budget:route-coast',
+        targetId: 'route-coast',
+        linkedRiskEntryId: 'recovery-risk:route-coast',
+        linkedCheckpointId: 'recovery-planner:route-coast:residual-risk',
+        linkedOptionId: 'recovery:route-coast:prioritize-stock',
+        action: 'prioriser stock',
+        group: 'nécessite renfort',
+        cost: {
+          stock: 3,
+          convoy: 1,
+          labor: 0,
+          routeTime: 0,
+          portCapacity: 0,
+          relay: 0,
+        },
+        overloads: [
+          { resource: 'stock', required: 3, available: 1, overBy: 2 },
+        ],
+        cannibalizes: [],
+        summary: 'Coast Road (land): prioriser stock dépasse stock.',
+      },
+    ],
+    groups: [
+      { key: 'faisable maintenant', label: 'Faisable maintenant' },
+      { key: 'nécessite renfort', label: 'Nécessite renfort' },
+      { key: 'à séquencer', label: 'À séquencer' },
+      { key: 'à reporter', label: 'À reporter' },
+    ],
+  });
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
     targetId: marker.targetId,
