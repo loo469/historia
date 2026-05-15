@@ -2528,6 +2528,66 @@ function buildIntrigueSignalTriageQueue({ locationId, locationName, confidenceSt
   }];
 }
 
+function buildExposureBudgetForPriorityVerifications({ locationId, locationName, verificationPathPreviews, intelligenceProvenancePanel, verificationAuditTrail, intrigueSignalTriageQueue, safeMapMasking }) {
+  const priorityEntry = intrigueSignalTriageQueue.find((entry) => entry.triageClass === 'verify-now') ?? null;
+  if (!priorityEntry || !priorityEntry.nextLeastExposureCheck || intelligenceProvenancePanel.provenanceType === 'unknown') {
+    return {
+      state: 'masked-budget',
+      priorityOnly: true,
+      entries: [],
+      summary: 'Budget masqué: données de provenance ou de confiance insuffisantes pour estimer l’exposition.',
+      safeMapPolicy: 'Aucune cible, relais, méthode sensible ou vérité cachée n’est utilisée pour estimer le budget.',
+    };
+  }
+
+  const compatibleChecks = verificationPathPreviews
+    .filter((path) => !path.unsafe)
+    .map((path) => ({
+      checkId: path.pathId,
+      label: path.label,
+      exposureCost: path.exposureCost,
+      exposureBand: path.exposureCost >= 10 ? 'high' : path.exposureCost >= 7 ? 'medium' : path.exposureCost > 0 ? 'low' : 'unknown',
+      relationship: 'compatible',
+      rationale: `${path.costCue}: ${path.evidenceNeeded}.`,
+    }));
+  const mutuallyRiskyChecks = verificationPathPreviews
+    .filter((path) => path.unsafe)
+    .map((path) => ({
+      checkId: path.pathId,
+      label: path.label,
+      exposureCost: path.exposureCost,
+      exposureBand: 'high',
+      relationship: 'mutually-risky',
+      rationale: 'Augmente le risque si combiné avec une vérification prioritaire visible.',
+      saferFallbackAction: path.saferFallbackAction,
+    }));
+  const entries = [...compatibleChecks, ...mutuallyRiskyChecks];
+  const safestEntry = compatibleChecks.toSorted((left, right) => left.exposureCost - right.exposureCost)[0] ?? null;
+
+  return {
+    state: safeMapMasking.state === 'masked-information' ? 'masked-budget' : 'visible-budget',
+    priorityOnly: true,
+    locationId,
+    locationName,
+    triageClass: priorityEntry.triageClass,
+    entries,
+    nextLeastExposureCheck: safestEntry ? {
+      action: priorityEntry.nextLeastExposureCheck.action,
+      checkId: safestEntry.checkId,
+      label: safestEntry.label,
+      exposureBand: safestEntry.exposureBand,
+      exposureCost: safestEntry.exposureCost,
+      evidenceNeeded: priorityEntry.nextLeastExposureCheck.evidenceNeeded,
+    } : null,
+    comparisonSummary: mutuallyRiskyChecks.length > 0
+      ? 'Une vérification compatible existe; l’élargissement simultané augmente mutuellement le risque.'
+      : 'Les vérifications visibles restent compatibles avec le budget prioritaire.',
+    residualRisk: verificationAuditTrail.lastChange === 'residual-risk' ? 'visible-residual-risk' : 'low-or-unconfirmed',
+    summary: `Budget d’exposition ${safestEntry?.exposureBand ?? 'inconnu'} pour le prochain contrôle prioritaire.`,
+    safeMapPolicy: 'Estimation prudente fondée sur D7/D8/D9; ne révèle jamais cible, relais, méthode sensible ou vérité cachée.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2698,6 +2758,15 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         intelligenceProvenancePanel,
         verificationAuditTrail,
       });
+      const exposureBudgetForPriorityVerifications = buildExposureBudgetForPriorityVerifications({
+        locationId,
+        locationName,
+        verificationPathPreviews,
+        intelligenceProvenancePanel,
+        verificationAuditTrail,
+        intrigueSignalTriageQueue,
+        safeMapMasking,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2710,6 +2779,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           intelligenceProvenancePanel,
           verificationAuditTrail,
           intrigueSignalTriageQueue,
+          exposureBudgetForPriorityVerifications,
         }
         : {};
 
