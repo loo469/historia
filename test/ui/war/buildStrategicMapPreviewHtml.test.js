@@ -18,9 +18,14 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /class="relation-line-casing"/);
   assert.match(html, /class="province-label-plate"/);
   assert.match(html, /class="province-label-leader"/);
+  assert.match(html, /Planificateur clavier d’action province/);
+  assert.match(html, /Première action recommandée/);
+  assert.match(html, /Raison tactique/);
+  assert.match(html, /class="province is-contested is-occupied is-selected is-queued"/);
+  assert.match(html, /tabindex="0"/);
   assert.match(html, /Porte du Fleuve/);
   assert.match(html, /historia-alpha-strategic-map-v1/);
-  assert.equal((html.match(/class="province /g) ?? []).length, generatedMap.provinces.length);
+  assert.equal((html.match(/<g class="province/g) ?? []).length, generatedMap.provinces.length);
 });
 
 test('buildStrategicMapPreviewHtml validates generated map input', () => {

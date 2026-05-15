@@ -63,6 +63,7 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
       selectedProvinceId: 'prov-c',
       focusedProvinceId: 'prov-a',
       hoveredProvinceId: 'prov-a',
+      queuedProvinceId: 'prov-c',
       factionMetaById: {
         'faction-a': { label: 'Alliance d’Azur' },
         'faction-b': { label: 'Ligue cramoisie' },
@@ -87,8 +88,8 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
   assert.equal(shell.subtitle, 'Vue d’ensemble des provinces et lignes de front');
   assert.deepEqual(shell.provinces.map((province) => province.provinceId), ['prov-a', 'prov-c']);
   assert.deepEqual(shell.provinces.map((province) => province.selectionState), [
-    { selected: false, focused: true, hovered: true },
-    { selected: true, focused: false, hovered: false },
+    { selected: false, focused: true, hovered: true, queued: false },
+    { selected: true, focused: false, hovered: false, queued: true },
   ]);
   assert.deepEqual(shell.provinces[0].geometry.layout, { x: 10, y: 12, w: 20, h: 18 });
   assert.equal(shell.provinces[0].geometry.shape, 'polygon(10% 12%, 30% 12%, 30% 30%, 10% 30%)');
@@ -107,7 +108,7 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     },
     {
       provinceId: 'prov-c',
-      cssClasses: ['province-node', 'province-node--contested', 'province-node--occupied', 'province-node--supply-strained', 'province-node--action-available', 'is-selected'],
+      cssClasses: ['province-node', 'province-node--contested', 'province-node--occupied', 'province-node--supply-strained', 'province-node--action-available', 'is-selected', 'is-queued'],
       status: 'contested',
       ariaLabel: 'Colline rouge — Front contesté, ravitaillement strained, loyauté 40%, valeur 4',
     },
@@ -149,6 +150,42 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
       leaderLine: null,
     },
   ]);
+  assert.deepEqual(shell.keyboardActionPlanner, {
+    mode: 'keyboard-first',
+    focusOrder: [
+      {
+        provinceId: 'prov-a',
+        label: 'Avant-poste',
+        tabIndex: 0,
+        selected: false,
+        focused: true,
+        queued: false,
+        actionState: 'idle',
+      },
+      {
+        provinceId: 'prov-c',
+        label: 'Colline rouge',
+        tabIndex: -1,
+        selected: true,
+        focused: false,
+        queued: true,
+        actionState: 'available',
+      },
+    ],
+    activeProvinceId: 'prov-a',
+    plannedActionPreview: {
+      empty: false,
+      targetProvinceId: 'prov-a',
+      targetLabel: 'Avant-poste',
+      actionCode: 'hold-reserve',
+      actionLabel: 'Garder en réserve',
+      actionStatus: 'idle',
+      risk: 'risque maîtrisé',
+      expectedEffect: 'maintenir Avant-poste en réserve',
+      tacticalReason: 'aucune urgence militaire locale',
+    },
+    emptyState: null,
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
