@@ -1313,6 +1313,115 @@ function buildRouteDecisionCue(route) {
   };
 }
 
+
+function buildRouteWhatIfOptions(route, decisionCue) {
+  const bottleneck = route.capacitySpendPreview.nextBottleneck;
+  const capacityRemaining = route.capacitySpendPreview.capacityRemaining;
+  const routeValue = Math.max(1, route.totalCapacity);
+
+  if (!route.active) {
+    return [{
+      id: `${route.routeId}:stabilize`,
+      filter: 'stabilization',
+      label: 'Stabiliser la route',
+      expectedImpact: 'Rouvre le flux avant toute priorisation convoi.',
+      impactScore: Math.max(1, Math.ceil(routeValue / 3)),
+      badge: 'reconnecter',
+    }];
+  }
+
+  const options = [];
+
+  if (bottleneck !== null || capacityRemaining <= 1) {
+    const marginGain = bottleneck?.marginRemaining === 0 ? 2 : 1;
+
+    options.push({
+      id: `${route.routeId}:convoy-priority`,
+      filter: 'convoy-priority',
+      label: 'Priorité convoi',
+      expectedImpact: bottleneck === null
+        ? 'Protège la dernière marge disponible sur cette route.'
+        : `Soulage le goulet ${bottleneck.resourceId} avant saturation.`,
+      impactScore: routeValue + marginGain + Math.ceil(route.riskLevel / 25),
+      badge: bottleneck?.marginRemaining === 0 ? 'priorité critique' : 'priorité haute',
+    });
+  }
+
+  if (route.riskLevel >= 35 || decisionCue.intensity === 'critical') {
+    options.push({
+      id: `${route.routeId}:stabilization`,
+      filter: 'stabilization',
+      label: 'Stabilisation',
+      expectedImpact: `Réduit le risque actuel (${route.riskLevel}/100) et sécurise les flux existants.`,
+      impactScore: Math.ceil(route.riskLevel / 10) + Math.max(0, routeValue - capacityRemaining),
+      badge: 'stabiliser',
+    });
+  }
+
+  if (route.riskLevel < 50 && capacityRemaining >= Math.ceil(route.totalCapacity / 2)) {
+    options.push({
+      id: `${route.routeId}:expansion`,
+      filter: 'expansion',
+      label: 'Expansion',
+      expectedImpact: `Exploite ${capacityRemaining} capacité restante pour étendre le réseau.`,
+      impactScore: capacityRemaining + Math.max(0, 50 - route.riskLevel),
+      badge: 'expansion sûre',
+    });
+  }
+
+  return options
+    .sort((left, right) => right.impactScore - left.impactScore || left.id.localeCompare(right.id))
+    .slice(0, 3);
+}
+
+function buildRoutePriorityBadge(route, decisionCue, whatIfOptions) {
+  const bestOption = whatIfOptions[0] ?? null;
+
+  if (bestOption === null) {
+    return {
+      level: decisionCue.intensity,
+      label: decisionCue.factor,
+      recommendedFilter: null,
+      downstreamEffect: decisionCue.reason,
+    };
+  }
+
+  return {
+    level: bestOption.impactScore >= route.totalCapacity + 4 ? 'critical' : decisionCue.intensity,
+    label: bestOption.badge,
+    recommendedFilter: bestOption.filter,
+    downstreamEffect: bestOption.expectedImpact,
+  };
+}
+
+function buildRouteStressFilters(logisticsFeatures) {
+  const filterDefinitions = {
+    'convoy-priority': 'Routes où une priorité convoi soulage vite un goulet.',
+    stabilization: 'Routes à stabiliser avant d’étendre ou de déplacer les flux.',
+    expansion: 'Routes avec marge suffisante pour soutenir une extension.',
+  };
+
+  return Object.entries(filterDefinitions).map(([filter, description]) => {
+    const matchingRoutes = logisticsFeatures
+      .filter((feature) => feature.whatIfOptions.some((option) => option.filter === filter))
+      .sort((left, right) => (right.priorityBadge?.level === 'critical') - (left.priorityBadge?.level === 'critical')
+        || right.riskLevel - left.riskLevel
+        || left.routeId.localeCompare(right.routeId));
+
+    return {
+      filter,
+      label: filter === 'convoy-priority'
+        ? 'Priorité convoi'
+        : filter === 'stabilization'
+          ? 'Stabilisation'
+          : 'Expansion',
+      description,
+      routeIds: matchingRoutes.map((route) => route.routeId),
+      count: matchingRoutes.length,
+    };
+  });
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -1325,6 +1434,32 @@ function buildDecisionLegend() {
 }
 
 function buildEconomyMapLayers(cityOverlays, routeOverlays) {
+  const logisticsFeatures = routeOverlays.map((route) => {
+    const decisionCue = buildRouteDecisionCue(route);
+    const whatIfOptions = buildRouteWhatIfOptions(route, decisionCue);
+    const priorityBadge = buildRoutePriorityBadge(route, decisionCue, whatIfOptions);
+
+    return {
+      featureId: route.overlayId,
+      routeId: route.routeId,
+      label: route.label,
+      cityIds: [...route.cityIds],
+      active: route.active,
+      transportMode: route.transportMode,
+      riskLevel: route.riskLevel,
+      totalCapacity: route.totalCapacity,
+      capacityRemaining: route.capacitySpendPreview.capacityRemaining,
+      state: route.capacitySpendPreview.state,
+      bottleneckResourceId: route.capacitySpendPreview.nextBottleneck?.resourceId ?? null,
+      bottleneckIntensity: decisionCue.intensity,
+      decisionCue,
+      tooltip: decisionCue.tooltip,
+      whatIfOptions,
+      priorityBadge,
+      style: { ...route.style },
+    };
+  });
+
   return {
     cities: {
       id: 'cities',
@@ -1358,27 +1493,8 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       id: 'logistics',
       title: 'Routes logistiques',
       visibleByDefault: true,
-      features: routeOverlays.map((route) => {
-        const decisionCue = buildRouteDecisionCue(route);
-
-        return {
-          featureId: route.overlayId,
-          routeId: route.routeId,
-          label: route.label,
-          cityIds: [...route.cityIds],
-          active: route.active,
-          transportMode: route.transportMode,
-          riskLevel: route.riskLevel,
-          totalCapacity: route.totalCapacity,
-          capacityRemaining: route.capacitySpendPreview.capacityRemaining,
-          state: route.capacitySpendPreview.state,
-          bottleneckResourceId: route.capacitySpendPreview.nextBottleneck?.resourceId ?? null,
-          bottleneckIntensity: decisionCue.intensity,
-          decisionCue,
-          tooltip: decisionCue.tooltip,
-          style: { ...route.style },
-        };
-      }),
+      features: logisticsFeatures,
+      stressFilters: buildRouteStressFilters(logisticsFeatures),
       legend: [
         { key: 'critical', label: 'Goulet saturé: aucune marge restante', tone: 'danger' },
         { key: 'high', label: 'Goulet serré: une marge ou moins', tone: 'warning' },
