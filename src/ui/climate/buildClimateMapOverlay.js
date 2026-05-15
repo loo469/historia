@@ -1383,6 +1383,159 @@ function buildClimateUrgency(region, previewImpact, previewRiskLevel, previewAno
   };
 }
 
+
+function normalizeCollateralCost(value, fallback = 'medium') {
+  const cost = String(value ?? fallback).trim().toLowerCase();
+
+  if (['none', 'low', 'medium', 'high'].includes(cost)) {
+    return cost;
+  }
+
+  return fallback;
+}
+
+function normalizeRiskImpact(value, fallback) {
+  const impact = String(value ?? fallback).trim();
+
+  return impact || fallback;
+}
+
+function normalizeMitigationPreview(preview, index, alertContext) {
+  const mode = String(preview.mode ?? preview.kind ?? `custom-${index + 1}`).trim();
+  const label = String(preview.label ?? mode).trim();
+
+  return {
+    previewId: String(preview.previewId ?? `${alertContext.regionId}:mitigation:${mode}`).trim(),
+    mode,
+    label,
+    expectedTiming: String(preview.expectedTiming ?? preview.timing ?? alertContext.timeWindow).trim(),
+    riskImpact: normalizeRiskImpact(preview.riskImpact ?? preview.expectedRiskImpact, alertContext.defaultRiskImpact),
+    confidenceBand: normalizeConfidenceBand(preview.confidenceBand) ?? alertContext.confidenceBand,
+    urgencyRank: alertContext.urgencyRank,
+    collateralCost: normalizeCollateralCost(preview.collateralCost ?? preview.cost, alertContext.defaultCollateralCost),
+    playerImpact: String(preview.playerImpact ?? alertContext.playerImpact).trim(),
+  };
+}
+
+function buildDefaultMitigationPreviews(alertContext) {
+  if (alertContext.urgencyRank === 1) {
+    return [
+      {
+        previewId: `${alertContext.regionId}:mitigation:immediate`,
+        mode: 'immediate-mitigation',
+        label: 'mitiger maintenant',
+        expectedTiming: alertContext.timeWindow,
+        riskImpact: alertContext.previewRiskLevel === 'critical' ? 'réduit le risque critique vers tendu' : 'réduit le risque avant impact',
+        confidenceBand: alertContext.confidenceBand,
+        urgencyRank: alertContext.urgencyRank,
+        collateralCost: 'high',
+        playerImpact: alertContext.playerImpact,
+      },
+      {
+        previewId: `${alertContext.regionId}:mitigation:delayed`,
+        mode: 'delayed-mitigation',
+        label: 'préparer puis agir',
+        expectedTiming: 'prochain tour',
+        riskImpact: 'réduction partielle si la fenêtre reste ouverte',
+        confidenceBand: alertContext.confidenceBand === 'extreme' ? 'uncertain' : alertContext.confidenceBand,
+        urgencyRank: alertContext.urgencyRank + 1,
+        collateralCost: 'medium',
+        playerImpact: 'préserve des ressources mais laisse un risque intermédiaire',
+      },
+      {
+        previewId: `${alertContext.regionId}:mitigation:no-action`,
+        mode: 'no-action',
+        label: 'ne rien changer',
+        expectedTiming: alertContext.timeWindow,
+        riskImpact: 'aucune réduction: risque inchangé ou aggravé',
+        confidenceBand: alertContext.confidenceBand,
+        urgencyRank: 4,
+        collateralCost: 'none',
+        playerImpact: 'conserve le plan mais accepte le risque signalé',
+      },
+    ];
+  }
+
+  if (alertContext.urgencyRank === 2) {
+    return [
+      {
+        previewId: `${alertContext.regionId}:mitigation:reserve`,
+        mode: 'reserve-prep',
+        label: 'préparer réserve',
+        expectedTiming: alertContext.timeWindow,
+        riskImpact: 'réduit le risque attendu sans déplacer toute la priorité',
+        confidenceBand: alertContext.confidenceBand,
+        urgencyRank: alertContext.urgencyRank,
+        collateralCost: 'medium',
+        playerImpact: alertContext.playerImpact,
+      },
+      {
+        previewId: `${alertContext.regionId}:mitigation:no-action`,
+        mode: 'no-action',
+        label: 'surveiller sans dépense',
+        expectedTiming: alertContext.timeWindow,
+        riskImpact: 'aucune réduction avant confirmation',
+        confidenceBand: alertContext.confidenceBand,
+        urgencyRank: 4,
+        collateralCost: 'none',
+        playerImpact: 'garde les ressources mais expose le plan à la bascule',
+      },
+    ];
+  }
+
+  if (alertContext.urgencyRank === 3) {
+    return [
+      {
+        previewId: `${alertContext.regionId}:mitigation:confirm`,
+        mode: 'confirm-first',
+        label: 'attendre confirmation',
+        expectedTiming: alertContext.timeWindow,
+        riskImpact: 'évite une dépense inutile tant que le signal reste incertain',
+        confidenceBand: alertContext.confidenceBand,
+        urgencyRank: alertContext.urgencyRank,
+        collateralCost: 'low',
+        playerImpact: alertContext.playerImpact,
+      },
+    ];
+  }
+
+  return [
+    {
+      previewId: `${alertContext.regionId}:mitigation:keep-plan`,
+      mode: 'no-action',
+      label: 'conserver plan',
+      expectedTiming: alertContext.timeWindow,
+      riskImpact: 'aucune mitigation nécessaire pour l’instant',
+      confidenceBand: alertContext.confidenceBand,
+      urgencyRank: alertContext.urgencyRank,
+      collateralCost: 'none',
+      playerImpact: alertContext.playerImpact,
+    },
+  ];
+}
+
+function buildClimateMitigationPreviews(region, previewImpact, alertContext) {
+  const explicitPreviews = Array.isArray(previewImpact.mitigationPreviews)
+    ? previewImpact.mitigationPreviews
+    : Array.isArray(previewImpact.mitigations)
+      ? previewImpact.mitigations
+      : null;
+  const normalizedContext = {
+    ...alertContext,
+    regionId: region.regionId,
+    defaultRiskImpact: alertContext.previewRiskLevel === 'critical'
+      ? 'réduit le risque critique attendu'
+      : 'réduit le risque attendu',
+    defaultCollateralCost: alertContext.urgencyRank <= 1 ? 'high' : alertContext.urgencyRank === 2 ? 'medium' : 'low',
+  };
+
+  if (explicitPreviews?.length) {
+    return explicitPreviews.map((preview, index) => normalizeMitigationPreview(preview, index, normalizedContext));
+  }
+
+  return buildDefaultMitigationPreviews(normalizedContext);
+}
+
 function buildClimateAlert(region, previewImpact, previewRiskLevel, previewAnomaly, seasonPreview) {
   const riskDelta = getClimateRiskRank(previewRiskLevel) - getClimateRiskRank(region.strategicImpact);
   const anomalyChanged = region.anomaly !== previewAnomaly;
@@ -1399,7 +1552,7 @@ function buildClimateAlert(region, previewImpact, previewRiskLevel, previewAnoma
     anomalyChanged,
   );
 
-  return {
+  const alertContext = {
     regionId: region.regionId,
     currentRiskLevel: region.strategicImpact,
     previewRiskLevel,
@@ -1409,6 +1562,11 @@ function buildClimateAlert(region, previewImpact, previewRiskLevel, previewAnoma
     timeWindow,
     playerImpact,
     ...urgency,
+  };
+
+  return {
+    ...alertContext,
+    mitigationPreviews: buildClimateMitigationPreviews(region, previewImpact, alertContext),
   };
 }
 
