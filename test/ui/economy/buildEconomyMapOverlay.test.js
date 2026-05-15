@@ -1282,6 +1282,24 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
         recommendedFilter: 'convoy-priority',
         downstreamEffect: 'Soulage le goulet grain avant saturation.',
       },
+      disruptionReplay: {
+        id: 'replay:route-coast',
+        routeId: 'route-coast',
+        before: {
+          riskLevel: 67,
+          capacityRemaining: 0,
+          bottleneckResourceId: 'grain',
+        },
+        after: {
+          riskLevel: 35,
+          capacityRemaining: 1,
+          bottleneckResourceId: 'grain',
+        },
+        cause: 'goulet grain',
+        severity: 'major',
+        trajectory: 'recovering',
+        summary: 'Coast Road (land): récupération après goulet grain.',
+      },
       style: {
         stroke: 'ochre',
         width: 2,
@@ -1291,6 +1309,55 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     },
   ]);
 
+
+  assert.deepEqual(overlay.layers.logistics.replayLegend.map((entry) => entry.key), [
+    'recovering',
+    'stagnating',
+    'worsening',
+  ]);
+  assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
+    targetType: marker.targetType,
+    targetId: marker.targetId,
+    status: marker.status,
+    badge: marker.badge,
+    severity: marker.severity,
+  })), [
+    {
+      targetType: 'resource',
+      targetId: 'city-mill:fish',
+      status: 'worsening',
+      badge: 'stock vide',
+      severity: 'major',
+    },
+    {
+      targetType: 'city',
+      targetId: 'city-mill',
+      status: 'stagnating',
+      badge: 'à surveiller',
+      severity: 'minor',
+    },
+    {
+      targetType: 'route',
+      targetId: 'route-coast',
+      status: 'recovering',
+      badge: 'récupération',
+      severity: 'major',
+    },
+    {
+      targetType: 'city',
+      targetId: 'city-harbor',
+      status: 'recovering',
+      badge: 'ressource utile',
+      severity: 'minor',
+    },
+    {
+      targetType: 'resource',
+      targetId: 'city-harbor:fish',
+      status: 'recovering',
+      badge: 'stock rétabli',
+      severity: 'minor',
+    },
+  ]);
 
   assert.equal(overlay.interventionComparison.recommendedOptionId, 'intervention:route-coast:convoy-priority');
   assert.deepEqual(overlay.interventionComparison.legend.map((entry) => entry.key), [
