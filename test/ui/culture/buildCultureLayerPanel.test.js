@@ -284,9 +284,17 @@ test('buildCultureLayerPanel exposes atlas story layer controls and collision st
         priorityMarkerId: 'shared-bay:culture-harbor',
         priorityCultureId: 'culture-harbor',
         priorityReason: '1 événement',
+        narrativePriority: {
+          state: 'opportunity',
+          label: 'opportunité',
+          microAction: 'explorer',
+          source: 'Harbor Forum',
+          reason: 'Harbor Forum ouvre une action culturelle prioritaire.',
+          priorityScore: 85,
+        },
         stack: [],
       },
-      narrativeSummary: "Harbor Compact compte maintenant: Harbor Forum donne un repère d'action immédiat.",
+      narrativeSummary: "opportunité: Harbor Forum ouvre une action culturelle prioritaire.",
     },
   ]);
 
@@ -308,4 +316,17 @@ test('buildCultureLayerPanel exposes atlas story layer controls and collision st
   ]);
   assert.equal(panel.collisionControls[0].strategy, 'stack-by-priority');
   assert.equal(panel.collisionControls[0].priorityCultureId, 'culture-harbor');
+  assert.deepEqual(panel.narrativePriorities, [
+    {
+      regionId: 'shared-bay',
+      cultureId: 'culture-harbor',
+      cultureName: 'Harbor Compact',
+      state: 'opportunity',
+      label: 'opportunité',
+      microAction: 'explorer',
+      source: 'Harbor Forum',
+      reason: 'Harbor Forum ouvre une action culturelle prioritaire.',
+      priorityScore: 85,
+    },
+  ]);
 });

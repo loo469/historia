@@ -51,6 +51,7 @@ function normalizeEntries(entries) {
       atlasStoryLayers: Array.isArray(normalizedEntry.atlasStoryLayers) ? normalizedEntry.atlasStoryLayers : [],
       markerCollisionCluster: normalizedEntry.markerCollisionCluster ?? null,
       narrativeSummary: String(normalizedEntry.narrativeSummary ?? '').trim(),
+      narrativePriority: normalizedEntry.narrativePriority ?? normalizedEntry.markerCollisionCluster?.narrativePriority ?? null,
     };
   });
 }
@@ -195,6 +196,23 @@ function buildCollisionControls(entries) {
     .sort((left, right) => right.markerCount - left.markerCount || left.regionId.localeCompare(right.regionId));
 }
 
+function buildNarrativePriorityRows(entries) {
+  return [...new Map(entries
+    .filter((entry) => entry.narrativePriority)
+    .map((entry) => [entry.regionId, {
+      regionId: entry.regionId,
+      cultureId: entry.narrativePriority.priorityCultureId ?? entry.cultureId,
+      cultureName: entry.narrativePriority.priorityCultureName ?? entry.cultureName,
+      state: entry.narrativePriority.state,
+      label: entry.narrativePriority.label,
+      microAction: entry.narrativePriority.microAction,
+      source: entry.narrativePriority.source,
+      reason: entry.narrativePriority.reason,
+      priorityScore: entry.narrativePriority.priorityScore,
+    }])).values()]
+    .sort((left, right) => right.priorityScore - left.priorityScore || left.regionId.localeCompare(right.regionId));
+}
+
 export function buildCultureLayerPanel(entries, options = {}) {
   const normalizedEntries = normalizeEntries(entries);
   const normalizedOptions = requireObject(options, 'CultureLayerPanel options');
@@ -231,6 +249,7 @@ export function buildCultureLayerPanel(entries, options = {}) {
     },
     atlasLayers: buildAtlasLayerControls(normalizedEntries),
     collisionControls: buildCollisionControls(normalizedEntries),
+    narrativePriorities: buildNarrativePriorityRows(normalizedEntries),
     metrics: {
       markerCount: normalizedEntries.length,
       regionCount: regionRows.length,
