@@ -1260,6 +1260,71 @@ function enhanceProvince(renderedProvince, options, provinceGeometryById) {
   };
 }
 
+function buildProvinceCssClasses(province) {
+  return [
+    'province-node',
+    province.contested ? 'province-node--contested' : null,
+    province.occupied ? 'province-node--occupied' : null,
+    `province-node--supply-${province.supplyLevel}`,
+    province.selectionState.selected ? 'is-selected' : null,
+    province.selectionState.focused ? 'is-focused' : null,
+    province.selectionState.hovered ? 'is-hovered' : null,
+  ].filter(Boolean);
+}
+
+function buildProvinceLabelNode(province) {
+  const center = province.geometry.center;
+  const labelLayout = province.geometry.labelLayout ?? center;
+
+  if (!center || !labelLayout) {
+    return null;
+  }
+
+  const align = String(labelLayout.align ?? 'middle').trim() || 'middle';
+  const x = Number.isFinite(labelLayout.x) ? labelLayout.x : center.x;
+  const y = Number.isFinite(labelLayout.y) ? labelLayout.y : center.y;
+  const leaderLine = Math.abs(x - center.x) > 4 || Math.abs(y - center.y) > 4
+    ? { from: { ...center }, to: { x, y } }
+    : null;
+
+  return {
+    provinceId: province.provinceId,
+    text: province.label,
+    meta: province.statusLabel,
+    x,
+    y,
+    align,
+    tone: String(labelLayout.tone ?? province.supplyTone ?? 'standard').trim() || 'standard',
+    leaderLine,
+  };
+}
+
+function buildProvinceMapLayers(renderedProvinces) {
+  return {
+    provinceSurfaces: renderedProvinces.map((province) => ({
+      provinceId: province.provinceId,
+      label: province.label,
+      ariaLabel: province.ariaLabel,
+      cssClasses: buildProvinceCssClasses(province),
+      data: {
+        provinceId: province.provinceId,
+        ownerFactionId: province.ownerFactionId,
+        controllingFactionId: province.controllingFactionId,
+        supplyLevel: province.supplyLevel,
+        supplyTone: province.supplyTone,
+        status: province.contested ? 'contested' : province.occupied ? 'occupied' : 'stable',
+      },
+      geometry: {
+        polygon: province.geometry.polygon,
+        shape: province.geometry.shape,
+        center: province.geometry.center,
+      },
+      style: { ...province.style },
+    })),
+    provinceLabels: renderedProvinces.map(buildProvinceLabelNode).filter(Boolean),
+  };
+}
+
 export function buildStrategicMapShell(provinces, options = {}) {
   const normalizedProvinces = requireProvinceList(provinces);
   const normalizedOptions = requireOptions(options);
@@ -1366,6 +1431,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     title,
     subtitle,
     provinces: renderedProvinces,
+    mapLayers: buildProvinceMapLayers(renderedProvinces),
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,
