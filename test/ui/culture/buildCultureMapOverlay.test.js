@@ -1279,6 +1279,126 @@ test('buildCultureMapOverlay can summarize overlapping culture clusters with dis
   });
 });
 
+test('buildCultureMapOverlay exposes atlas story layers and deterministic marker collisions', () => {
+  const overlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-harbor',
+          name: 'Harbor Compact',
+          archetype: 'maritime',
+          primaryLanguage: 'harbor-cant',
+          valueIds: ['pilots'],
+          traditionIds: ['forums'],
+          openness: 80,
+          cohesion: 58,
+          researchDrive: 74,
+        },
+        {
+          id: 'culture-delta',
+          name: 'Delta Scribes',
+          archetype: 'riverine',
+          primaryLanguage: 'delta-script',
+          valueIds: ['archives'],
+          traditionIds: ['flood-oaths'],
+          openness: 52,
+          cohesion: 62,
+          researchDrive: 64,
+        },
+      ],
+      researchStates: [
+        {
+          id: 'research-harbor-ledgers',
+          cultureId: 'culture-harbor',
+          topicId: 'harbor-ledgers',
+          status: 'active',
+          progress: 50,
+          discoveredConceptIds: ['tidal-ledgers'],
+        },
+        {
+          id: 'research-delta-archives',
+          cultureId: 'culture-delta',
+          topicId: 'delta-archives',
+          status: 'completed',
+          progress: 100,
+          completedAt: '2026-04-20T00:00:00.000Z',
+          discoveredConceptIds: ['flood-archives'],
+        },
+      ],
+      historicalEvents: [
+        {
+          id: 'event-harbor-forum',
+          title: 'Harbor Forum',
+          category: 'knowledge',
+          summary: 'Pilots compare archive routes.',
+          era: 'map-play',
+          importance: 4,
+          triggeredAt: '2026-04-20T00:00:00.000Z',
+          affectedCultureIds: ['culture-harbor'],
+          discoveryIds: ['tidal-ledgers'],
+        },
+      ],
+    },
+    {
+      atlasStoryLayers: true,
+      regionIdsByCulture: {
+        'culture-harbor': ['shared-bay'],
+        'culture-delta': ['shared-bay'],
+      },
+    },
+  );
+
+  assert.deepEqual(overlay.map((entry) => entry.markerCollisionCluster.priorityCultureId), [
+    'culture-harbor',
+    'culture-harbor',
+  ]);
+  assert.deepEqual(overlay[0].markerCollisionCluster, {
+    clusterId: 'shared-bay:marker-collision',
+    regionId: 'shared-bay',
+    markerCount: 2,
+    overflowCount: 1,
+    strategy: 'stack-by-priority',
+    priorityMarkerId: 'shared-bay:culture-harbor',
+    priorityCultureId: 'culture-harbor',
+    priorityReason: '1 événement',
+    stack: [
+      {
+        markerId: 'shared-bay:culture-harbor',
+        cultureId: 'culture-harbor',
+        cultureName: 'Harbor Compact',
+        priorityScore: 67,
+        priorityReason: '1 événement',
+        layerKinds: ['influence', 'discoveries', 'timeline'],
+      },
+      {
+        markerId: 'shared-bay:culture-delta',
+        cultureId: 'culture-delta',
+        cultureName: 'Delta Scribes',
+        priorityScore: 42,
+        priorityReason: '1 découverte',
+        layerKinds: ['influence', 'discoveries'],
+      },
+    ],
+  });
+  assert.deepEqual(overlay[0].atlasStoryLayers.map((layer) => [layer.kind, layer.markerCount, layer.enabled]), [
+    ['influence', 2, true],
+    ['discoveries', 2, true],
+    ['timeline', 1, true],
+  ]);
+  assert.match(overlay[0].narrativeSummary, /Harbor Forum/);
+  assert.deepEqual(overlay[0].atlasStoryLayers[2].markers, [
+    {
+      markerId: 'shared-bay:culture-harbor:timeline',
+      regionId: 'shared-bay',
+      cultureId: 'culture-harbor',
+      cultureName: 'Harbor Compact',
+      rank: 0,
+      enabled: true,
+      reason: "Harbor Compact compte maintenant: Harbor Forum donne un repère d'action immédiat.",
+    },
+  ]);
+});
+
 test('buildResidualCultureActionPayoff covers complete, partial, and insufficient outcomes', () => {
   assert.deepEqual(
     buildResidualCultureActionPayoff(
