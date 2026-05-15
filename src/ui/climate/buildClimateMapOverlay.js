@@ -1159,7 +1159,7 @@ function inferConfidenceBand(region, previewImpact, previewRiskLevel, previewAno
   return 'uncertain';
 }
 
-function buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById, anomalyTooltipByRegion) {
+function buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById, anomalyTooltipByRegion, resilienceMarkers = []) {
   const seasonEntriesByRegion = new Map(stateEntries
     .filter((entry) => entry.kind === 'season')
     .map((entry) => [entry.regionId, entry]));
@@ -1289,6 +1289,19 @@ function buildClimateMapLayers(regions, stateEntries, catastropheEntries, season
     climateLabels,
     anomalyMarkers,
     disasterRings,
+    resilienceMarkers: resilienceMarkers.map((marker) => {
+      const center = getRegionCenter(marker.regionId, regionGeometryById);
+
+      return {
+        ...marker,
+        layerId: `${marker.regionId}:climate-resilience:${marker.markerId}`,
+        kind: 'resilience-marker',
+        x: center?.x ?? null,
+        y: center?.y ?? null,
+        placement: 'edge-recovery-badge',
+        ariaLabel: `${marker.regionId}: résilience ${marker.resilienceState}, ${marker.label}`,
+      };
+    }),
     ...(seasonPreview?.active ? {
       seasonPreviewLabels: regions
         .filter((region) => region.season !== seasonPreview.season)
@@ -1307,6 +1320,124 @@ function buildClimateMapLayers(regions, stateEntries, catastropheEntries, season
 
 function getClimateRiskRank(riskLevel) {
   return { stable: 0, strained: 1, critical: 2 }[riskLevel] ?? 0;
+}
+
+
+function normalizeAftermathSeverity(value, fallback = 'moderate') {
+  const severity = String(value ?? fallback).trim().toLowerCase();
+
+  if (['minor', 'moderate', 'major', 'critical'].includes(severity)) {
+    return severity;
+  }
+
+  return fallback;
+}
+
+function normalizeResilienceState(value, fallback = 'recovering') {
+  const state = String(value ?? fallback).trim().toLowerCase();
+
+  if (['recovering', 'resilient', 'strained', 'regressing'].includes(state)) {
+    return state;
+  }
+
+  return fallback;
+}
+
+function buildDefaultAftermathFromAlert(alert) {
+  const appliedMitigation = alert.mitigationPreviews.find((preview) => preview.mode !== 'no-action') ?? null;
+  const missingMitigation = alert.mitigationPreviews.find((preview) => preview.mode === 'no-action') ?? null;
+  const resilienceState = alert.urgencyRank <= 1
+    ? appliedMitigation ? 'recovering' : 'strained'
+    : alert.urgencyRank === 2 ? 'resilient' : alert.urgencyRank === 3 ? 'strained' : 'recovering';
+
+  return {
+    eventId: `${alert.regionId}:forecast-aftermath`,
+    regionIds: [alert.regionId],
+    observedImpact: alert.playerImpact,
+    severity: alert.previewRiskLevel === 'critical' ? 'major' : alert.previewRiskLevel === 'strained' ? 'moderate' : 'minor',
+    appliedMitigation: appliedMitigation?.label ?? null,
+    missingMitigation: missingMitigation ? missingMitigation.label : alert.urgencyRank <= 2 ? 'aucune mitigation renseignée' : null,
+    confidenceBand: alert.confidenceBand,
+    sourceAlertId: alert.regionId,
+    resilienceState,
+  };
+}
+
+function normalizeAftermathEvent(event, index, alertsByRegion) {
+  const regionIds = requireArray(event.regionIds ?? event.affectedRegionIds ?? [event.regionId], 'ClimateMapOverlay aftermath regionIds')
+    .map((regionId) => String(regionId).trim())
+    .filter(Boolean);
+  const firstRegionId = regionIds[0] ?? `region-${index + 1}`;
+  const linkedAlert = alertsByRegion.get(firstRegionId) ?? null;
+  const severity = normalizeAftermathSeverity(event.severity, linkedAlert?.previewRiskLevel === 'critical' ? 'major' : 'moderate');
+  const resilienceState = normalizeResilienceState(
+    event.resilienceState ?? event.recoveryState,
+    event.mitigationApplied ?? event.appliedMitigation ? 'recovering' : severity === 'major' || severity === 'critical' ? 'strained' : 'resilient',
+  );
+
+  return {
+    eventId: String(event.eventId ?? event.id ?? `${firstRegionId}:aftermath:${index + 1}`).trim(),
+    observedImpact: String(event.observedImpact ?? event.impact ?? linkedAlert?.playerImpact ?? 'impact climatique observé').trim(),
+    severity,
+    affectedRegionIds: regionIds,
+    appliedMitigation: event.appliedMitigation ?? event.mitigationApplied ?? null,
+    missingMitigation: event.missingMitigation ?? event.mitigationMissing ?? null,
+    confidenceBand: normalizeConfidenceBand(event.confidenceBand) ?? linkedAlert?.confidenceBand ?? 'uncertain',
+    sourceAlertId: event.sourceAlertId ?? linkedAlert?.regionId ?? null,
+    resilienceState,
+  };
+}
+
+function buildClimateAftermathRecap(regions, climateAlerts, normalizedOptions) {
+  const alertsByRegion = new Map(climateAlerts.map((alert) => [alert.regionId, alert]));
+  const explicitEvents = Array.isArray(normalizedOptions.climateAftermathEvents)
+    ? normalizedOptions.climateAftermathEvents
+    : Array.isArray(normalizedOptions.aftermathEvents)
+      ? normalizedOptions.aftermathEvents
+      : null;
+  const events = explicitEvents?.length
+    ? explicitEvents.map((event, index) => normalizeAftermathEvent(event, index, alertsByRegion))
+    : climateAlerts
+      .filter((alert) => alert.urgencyRank <= 2 || alert.previewRiskLevel !== alert.currentRiskLevel || alert.previewAnomaly !== alert.currentAnomaly)
+      .map(buildDefaultAftermathFromAlert)
+      .map((event, index) => normalizeAftermathEvent(event, index, alertsByRegion));
+  const regionIds = new Set(regions.map((region) => region.regionId));
+  const resilienceMarkers = events.flatMap((event) => event.affectedRegionIds
+    .filter((regionId) => regionIds.has(regionId))
+    .map((regionId) => ({
+      markerId: `${event.eventId}:${regionId}`,
+      eventId: event.eventId,
+      regionId,
+      resilienceState: event.resilienceState,
+      label: event.resilienceState === 'recovering'
+        ? 'récupération en cours'
+        : event.resilienceState === 'resilient'
+          ? 'résilience renforcée'
+          : event.resilienceState === 'regressing'
+            ? 'résilience en recul'
+            : 'résilience sous pression',
+      severity: event.severity,
+      confidenceBand: event.confidenceBand,
+      tooltip: {
+        observedImpact: event.observedImpact,
+        mitigation: event.appliedMitigation
+          ? `mitigation appliquée: ${event.appliedMitigation}`
+          : event.missingMitigation
+            ? `mitigation manquante: ${event.missingMitigation}`
+            : 'mitigation non renseignée',
+        confidenceBand: event.confidenceBand,
+      },
+    })));
+
+  return {
+    title: 'Récap climat après événement',
+    fallback: events.length > 0 ? null : 'Aucun événement climatique récent à récapituler.',
+    events,
+    resilienceMarkers,
+    summary: events.length > 0
+      ? `${events.length} conséquence(s) climatique(s), ${resilienceMarkers.length} marqueur(s) de résilience.`
+      : 'Aucune conséquence récente exploitable.',
+  };
 }
 
 
@@ -1811,6 +1942,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     });
 
   const climateTimeline = buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonLabels);
+  const climateAftermathRecap = buildClimateAftermathRecap(regions, climateTimeline.climateAlerts, normalizedOptions);
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
   const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
@@ -1834,8 +1966,17 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     seasonalPanel: buildSeasonSummary(states, seasonLabels, seasonStyleByType),
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
-    mapLayers: buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById, anomalyTooltipByRegion),
+    mapLayers: buildClimateMapLayers(
+      regions,
+      stateEntries,
+      catastropheEntries,
+      seasonPreview,
+      regionGeometryById,
+      anomalyTooltipByRegion,
+      climateAftermathRecap.resilienceMarkers,
+    ),
     climateTimeline,
+    ...(climateAftermathRecap.events.length > 0 ? { climateAftermathRecap } : {}),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
     selectedClimateMitigationChoices,
