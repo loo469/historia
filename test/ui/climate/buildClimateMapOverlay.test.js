@@ -1360,27 +1360,31 @@ test('buildClimateMapOverlay exposes timeline scrubber decision-changing forecas
     ],
     fallback: null,
   });
-  assert.deepEqual(overlay.climateTimeline.decisionChangingRegions, [
+  assert.deepEqual(overlay.climateTimeline.decisionChangingRegions.map((region) => ({
+    regionId: region.regionId,
+    confidenceBand: region.confidenceBand,
+    urgencyRank: region.urgencyRank,
+    microAction: region.microAction,
+    timeWindow: region.timeWindow,
+    changeType: region.changeType,
+    tone: region.tone,
+  })), [
     {
       regionId: 'delta',
-      currentRiskLevel: 'stable',
-      previewRiskLevel: 'critical',
-      currentAnomaly: null,
-      previewAnomaly: 'storm',
       confidenceBand: 'extreme',
+      urgencyRank: 1,
+      microAction: 'déplacer priorité',
+      timeWindow: 'maintenant → Automne',
       changeType: 'risk-increases',
-      decisionHint: 'agir avant la bascule si la province porte une action sensible',
       tone: 'warning',
     },
     {
       regionId: 'sunreach',
-      currentRiskLevel: 'critical',
-      previewRiskLevel: 'strained',
-      currentAnomaly: 'heatwave',
-      previewAnomaly: null,
       confidenceBand: 'uncertain',
+      urgencyRank: 3,
+      microAction: 'attendre confirmation',
+      timeWindow: 'maintenant → Automne',
       changeType: 'risk-decreases',
-      decisionHint: 'attendre la fenêtre prévue peut réduire le coût',
       tone: 'positive',
     },
   ]);
@@ -1440,9 +1444,9 @@ test('buildClimateMapOverlay exposes deterministic confidence bands and anomaly 
     regionId: region.regionId,
     confidenceBand: region.confidenceBand,
   })), [
-    { regionId: 'basin', confidenceBand: 'uncertain' },
     { regionId: 'coast', confidenceBand: 'extreme' },
     { regionId: 'ridge', confidenceBand: 'probable' },
+    { regionId: 'basin', confidenceBand: 'uncertain' },
   ]);
   assert.deepEqual(overlay.mapLayers.anomalyMarkers.find((marker) => marker.regionId === 'ridge').tooltip, {
     title: 'Anomalie: storm',
@@ -1454,5 +1458,106 @@ test('buildClimateMapOverlay exposes deterministic confidence bands and anomaly 
   assert.equal(
     overlay.mapLayers.anomalyMarkers.find((marker) => marker.regionId === 'basin').tooltip.playerImpact,
     'réserves et récoltes sous pression, attendre ou irriguer avant dépense',
+  );
+});
+
+test('buildClimateMapOverlay ranks climate alerts by urgency and keeps static fallback', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'citadel', season: 'spring', temperatureC: 18, precipitationLevel: 40, droughtIndex: 20 },
+    { regionId: 'granary', season: 'spring', temperatureC: 20, precipitationLevel: 35, droughtIndex: 25 },
+    { regionId: 'watch', season: 'spring', temperatureC: 21, precipitationLevel: 30, droughtIndex: 30 },
+    { regionId: 'quiet', season: 'spring', temperatureC: 19, precipitationLevel: 32, droughtIndex: 22 },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        citadel: {
+          strategicImpact: 'critical',
+          anomaly: 'storm',
+          confidenceBand: 'extreme',
+          timeWindow: 'tour actuel',
+          playerImpact: 'priorité capitale et route fragile',
+        },
+        granary: {
+          strategicImpact: 'strained',
+          anomaly: null,
+          confidenceBand: 'probable',
+          timeWindow: '2 tours',
+          playerImpact: 'réserve de grains à préparer',
+        },
+        watch: {
+          strategicImpact: 'stable',
+          anomaly: 'frost',
+          confidenceBand: 'uncertain',
+          timeWindow: 'fin de saison',
+          playerImpact: 'signal à confirmer avant dépense',
+        },
+        quiet: {
+          strategicImpact: 'stable',
+          anomaly: null,
+          confidenceBand: 'probable',
+          timeWindow: 'fin de saison',
+          playerImpact: 'aucun changement majeur',
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.climateTimeline.climateAlerts.map((alert) => ({
+    regionId: alert.regionId,
+    urgencyRank: alert.urgencyRank,
+    microAction: alert.microAction,
+    confidenceBand: alert.confidenceBand,
+    timeWindow: alert.timeWindow,
+    playerImpact: alert.playerImpact,
+  })), [
+    {
+      regionId: 'citadel',
+      urgencyRank: 1,
+      microAction: 'déplacer priorité',
+      confidenceBand: 'extreme',
+      timeWindow: 'tour actuel',
+      playerImpact: 'priorité capitale et route fragile',
+    },
+    {
+      regionId: 'granary',
+      urgencyRank: 2,
+      microAction: 'préparer réserve',
+      confidenceBand: 'probable',
+      timeWindow: '2 tours',
+      playerImpact: 'réserve de grains à préparer',
+    },
+    {
+      regionId: 'watch',
+      urgencyRank: 3,
+      microAction: 'attendre confirmation',
+      confidenceBand: 'uncertain',
+      timeWindow: 'fin de saison',
+      playerImpact: 'signal à confirmer avant dépense',
+    },
+    {
+      regionId: 'quiet',
+      urgencyRank: 4,
+      microAction: 'conserver plan',
+      confidenceBand: 'probable',
+      timeWindow: 'fin de saison',
+      playerImpact: 'aucun changement majeur',
+    },
+  ]);
+  assert.deepEqual(overlay.climateTimeline.alertSummary.buckets.map((bucket) => bucket.microAction), [
+    'déplacer priorité',
+    'préparer réserve',
+    'attendre confirmation',
+    'conserver plan',
+  ]);
+
+  const staticOverlay = buildClimateMapOverlay([
+    { regionId: 'quiet', season: 'spring', temperatureC: 19, precipitationLevel: 32, droughtIndex: 22 },
+  ]);
+
+  assert.deepEqual(staticOverlay.climateTimeline.climateAlerts, []);
+  assert.equal(
+    staticOverlay.climateTimeline.alertSummary.fallback,
+    'Fallback statique: aucune prévision exploitable pour classer les alertes.',
   );
 });

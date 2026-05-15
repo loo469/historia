@@ -1309,6 +1309,109 @@ function getClimateRiskRank(riskLevel) {
   return { stable: 0, strained: 1, critical: 2 }[riskLevel] ?? 0;
 }
 
+
+function normalizeForecastWindow(previewImpact, seasonPreview) {
+  return String(
+    previewImpact.window
+      ?? previewImpact.timeWindow
+      ?? previewImpact.forecastWindow
+      ?? (seasonPreview?.active ? `maintenant → ${seasonPreview.label}` : 'tour actuel'),
+  ).trim();
+}
+
+function normalizeForecastPlayerImpact(region, previewImpact, previewRiskLevel, previewAnomaly) {
+  const explicitImpact = previewImpact.playerImpact ?? previewImpact.impact ?? previewImpact.decisionImpact;
+
+  if (explicitImpact !== undefined) {
+    return String(explicitImpact).trim();
+  }
+
+  if (previewRiskLevel === 'critical') {
+    return 'décision de carte sensible: prioriser mitigation ou détour';
+  }
+
+  if (previewRiskLevel === 'strained' || previewAnomaly) {
+    return 'préparer réserve ou vérifier routes/récoltes avant engagement';
+  }
+
+  if (region.strategicImpact === 'critical' && previewRiskLevel !== 'critical') {
+    return 'amélioration prévue: conserver le plan si le timing le permet';
+  }
+
+  return 'aucun changement majeur: conserver le plan actuel';
+}
+
+function buildClimateUrgency(region, previewImpact, previewRiskLevel, previewAnomaly, confidenceBand, riskDelta, anomalyChanged) {
+  const window = normalizeForecastWindow(previewImpact, previewImpact.seasonPreview ?? null);
+  const immediateWindow = /maintenant|now|tour actuel|1\s*tour|imm[eé]diat/i.test(window);
+  const highImpact = /priorit|mitigation|d[ée]tour|route|r[ée]colte|r[ée]serve|co[uû]t|fragile|sensible/i.test(
+    normalizeForecastPlayerImpact(region, previewImpact, previewRiskLevel, previewAnomaly),
+  );
+
+  if (confidenceBand === 'extreme' || (previewRiskLevel === 'critical' && (immediateWindow || highImpact))) {
+    return {
+      urgencyRank: 1,
+      urgency: 'act-now',
+      urgencyLabel: 'agir maintenant',
+      microAction: 'déplacer priorité',
+    };
+  }
+
+  if (confidenceBand === 'probable' && (riskDelta > 0 || previewRiskLevel === 'strained' || highImpact)) {
+    return {
+      urgencyRank: 2,
+      urgency: 'prepare',
+      urgencyLabel: 'préparer',
+      microAction: 'préparer réserve',
+    };
+  }
+
+  if (anomalyChanged || riskDelta !== 0 || confidenceBand === 'uncertain') {
+    return {
+      urgencyRank: 3,
+      urgency: 'monitor',
+      urgencyLabel: 'surveiller',
+      microAction: 'attendre confirmation',
+    };
+  }
+
+  return {
+    urgencyRank: 4,
+    urgency: 'ignore-now',
+    urgencyLabel: 'ignorer pour l’instant',
+    microAction: 'conserver plan',
+  };
+}
+
+function buildClimateAlert(region, previewImpact, previewRiskLevel, previewAnomaly, seasonPreview) {
+  const riskDelta = getClimateRiskRank(previewRiskLevel) - getClimateRiskRank(region.strategicImpact);
+  const anomalyChanged = region.anomaly !== previewAnomaly;
+  const confidenceBand = inferConfidenceBand(region, previewImpact, previewRiskLevel, previewAnomaly);
+  const timeWindow = normalizeForecastWindow(previewImpact, seasonPreview);
+  const playerImpact = normalizeForecastPlayerImpact(region, previewImpact, previewRiskLevel, previewAnomaly);
+  const urgency = buildClimateUrgency(
+    region,
+    { ...previewImpact, seasonPreview },
+    previewRiskLevel,
+    previewAnomaly,
+    confidenceBand,
+    riskDelta,
+    anomalyChanged,
+  );
+
+  return {
+    regionId: region.regionId,
+    currentRiskLevel: region.strategicImpact,
+    previewRiskLevel,
+    currentAnomaly: region.anomaly,
+    previewAnomaly,
+    confidenceBand,
+    timeWindow,
+    playerImpact,
+    ...urgency,
+  };
+}
+
 function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonLabels) {
   const previewImpacts = seasonPreview?.active ? normalizePreviewImpacts(normalizedOptions, seasonPreview) : {};
   const frames = [
@@ -1334,26 +1437,24 @@ function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonL
     });
   }
 
-  const decisionChangingRegions = seasonPreview?.active
+  const climateAlerts = seasonPreview?.active
     ? regions.map((region) => {
       const previewImpact = previewImpacts[region.regionId] ?? {};
       const previewRiskLevel = String(previewImpact.riskLevel ?? previewImpact.strategicImpact ?? region.strategicImpact).trim()
         || region.strategicImpact;
       const previewAnomaly = previewImpact.anomaly === undefined ? region.anomaly : previewImpact.anomaly;
-      const riskDelta = getClimateRiskRank(previewRiskLevel) - getClimateRiskRank(region.strategicImpact);
-      const anomalyChanged = region.anomaly !== previewAnomaly;
 
-      if (riskDelta === 0 && !anomalyChanged) {
-        return null;
-      }
+      return buildClimateAlert(region, previewImpact, previewRiskLevel, previewAnomaly, seasonPreview);
+    }).sort((left, right) => left.urgencyRank - right.urgencyRank || left.regionId.localeCompare(right.regionId))
+    : [];
+
+  const decisionChangingRegions = climateAlerts
+    .filter((alert) => alert.currentRiskLevel !== alert.previewRiskLevel || alert.currentAnomaly !== alert.previewAnomaly)
+    .map((alert) => {
+      const riskDelta = getClimateRiskRank(alert.previewRiskLevel) - getClimateRiskRank(alert.currentRiskLevel);
 
       return {
-        regionId: region.regionId,
-        currentRiskLevel: region.strategicImpact,
-        previewRiskLevel,
-        currentAnomaly: region.anomaly,
-        previewAnomaly,
-        confidenceBand: inferConfidenceBand(region, previewImpact, previewRiskLevel, previewAnomaly),
+        ...alert,
         changeType: riskDelta > 0 ? 'risk-increases' : riskDelta < 0 ? 'risk-decreases' : 'anomaly-changes',
         decisionHint: riskDelta > 0
           ? 'agir avant la bascule si la province porte une action sensible'
@@ -1362,8 +1463,7 @@ function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonL
             : 'vérifier l’anomalie avant d’engager récoltes ou routes',
         tone: riskDelta > 0 ? 'warning' : riskDelta < 0 ? 'positive' : 'info',
       };
-    }).filter(Boolean)
-    : [];
+    });
 
   return {
     mode: seasonPreview?.active ? 'now-next-scrubber' : 'static-current-climate',
@@ -1381,6 +1481,16 @@ function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonL
     },
     frames,
     decisionChangingRegions,
+    climateAlerts,
+    alertSummary: {
+      fallback: seasonPreview?.active ? null : 'Fallback statique: aucune prévision exploitable pour classer les alertes.',
+      buckets: [
+        { urgencyRank: 1, urgency: 'act-now', label: 'agir maintenant', microAction: 'déplacer priorité' },
+        { urgencyRank: 2, urgency: 'prepare', label: 'préparer', microAction: 'préparer réserve' },
+        { urgencyRank: 3, urgency: 'monitor', label: 'surveiller', microAction: 'attendre confirmation' },
+        { urgencyRank: 4, urgency: 'ignore-now', label: 'ignorer pour l’instant', microAction: 'conserver plan' },
+      ],
+    },
     clarity: {
       anomalyLevels: [
         { level: 'none', label: 'aucune anomalie', decisionWeight: 'normal' },
