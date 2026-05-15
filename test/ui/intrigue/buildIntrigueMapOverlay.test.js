@@ -2249,3 +2249,58 @@ test('buildIntrigueMapOverlay exposes fog-safe intrigue signal triage queues', (
   assert.equal(byLocation.get('masked-triage').nextLeastExposureCheck, null);
   assert.match(byLocation.get('masked-triage').fogSafeCopy, /aucune cellule, relais, cible, méthode sensible ou cause cachée/);
 });
+
+test('buildIntrigueMapOverlay exposes fog-safe exposure budgets for priority verifications', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-budget-priority',
+      factionId: 'shadow-league',
+      codename: 'Budget',
+      locationId: 'budget-priority',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 88,
+    }),
+    new Cellule({
+      id: 'cell-budget-masked',
+      factionId: 'shadow-league',
+      codename: 'Curtain',
+      locationId: 'budget-masked',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-budget-priority',
+      celluleId: 'cell-budget-priority',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Pressure visible checkpoint',
+      theaterId: 'budget-priority',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 88,
+      progress: 72,
+      heat: 76,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.exposureBudgetForPriorityVerifications]));
+  const priorityBudget = byLocation.get('budget-priority');
+  const maskedBudget = byLocation.get('budget-masked');
+
+  assert.equal(priorityBudget.state, 'visible-budget');
+  assert.equal(priorityBudget.triageClass, 'verify-now');
+  assert.equal(priorityBudget.nextLeastExposureCheck.action, 'observe-locally');
+  assert.equal(priorityBudget.nextLeastExposureCheck.exposureBand, 'medium');
+  assert.equal(priorityBudget.residualRisk, 'visible-residual-risk');
+  assert.deepEqual(priorityBudget.entries.map((entry) => entry.relationship), ['compatible', 'mutually-risky']);
+  assert.match(priorityBudget.comparisonSummary, /augmente mutuellement le risque/);
+  assert.match(priorityBudget.safeMapPolicy, /ne révèle jamais cible, relais, méthode sensible ou vérité cachée/);
+
+  assert.equal(maskedBudget.state, 'masked-budget');
+  assert.deepEqual(maskedBudget.entries, []);
+  assert.equal(maskedBudget.nextLeastExposureCheck, undefined);
+  assert.match(maskedBudget.summary, /données de provenance ou de confiance insuffisantes/);
+});
