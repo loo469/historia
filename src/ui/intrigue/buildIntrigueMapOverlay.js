@@ -2110,6 +2110,83 @@ function buildLowExposureSweepConfidencePreview({ celluleCount, exposedCellCount
   };
 }
 
+function buildSuspicionHeatDecayPlayback({ locationCellules, locationOperations, sabotageRiskScore }) {
+  const currentHeat = clampPercent(Math.max(
+    sabotageRiskScore,
+    ...locationOperations.map((operation) => operation.heat),
+    ...locationCellules.map((cellule) => cellule.exposure),
+    0,
+  ));
+  const decayStep = locationOperations.length > 0 ? 12 : locationCellules.some((cellule) => cellule.isExposed) ? 9 : 7;
+  const floor = locationOperations.some((operation) => operation.phase === 'execution') ? 25 : 0;
+  const frames = [0, 1, 2, 3].map((turnOffset) => {
+    const projectedHeat = clampPercent(Math.max(floor, currentHeat - (decayStep * turnOffset)));
+    const state = currentHeat === 0
+      ? 'masked'
+      : turnOffset === 0 && projectedHeat >= 70
+        ? 'active-risk'
+        : projectedHeat > floor && projectedHeat > 0
+          ? 'decaying-risk'
+          : projectedHeat === 0
+            ? 'masked'
+            : 'decaying-risk';
+
+    return {
+      turnOffset,
+      projectedHeat,
+      state,
+      label: state === 'active-risk'
+        ? `T+${turnOffset}: risque actif`
+        : state === 'decaying-risk'
+          ? `T+${turnOffset}: chaleur en décroissance`
+          : `T+${turnOffset}: information masquée`,
+    };
+  });
+
+  return {
+    state: frames[0].state,
+    currentHeat,
+    decayStep,
+    frames,
+    summary: currentHeat > 0
+      ? `Chaleur ${currentHeat}, décroissance sûre estimée -${decayStep}/tour sans révéler la source.`
+      : 'Aucune chaleur confirmée: information gardée masquée en mode sûr.',
+  };
+}
+
+function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
+  const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
+  const decayingRisk = !activeRisk && sabotageRiskScore > 0;
+  const state = activeRisk
+    ? 'active-risk'
+    : decayingRisk
+      ? 'decaying-risk'
+      : 'masked-information';
+
+  return {
+    state,
+    redactedLabel: state === 'active-risk'
+      ? 'Risque actif visible'
+      : state === 'decaying-risk'
+        ? 'Risque en décroissance'
+        : 'Information masquée',
+    safeLabel: state === 'masked-information'
+      ? 'Indice intrigue masqué: données absentes ou confidentielles.'
+      : `Indice intrigue ${presenceLevel}, risque ${riskLevel}: détails sensibles expurgés.`,
+    maskedDetails: [
+      exposedCellCount === 0 ? 'identité cellule' : null,
+      'relais opérationnel',
+      'objectif précis',
+      state === 'masked-information' ? 'cause du signal' : null,
+    ].filter(Boolean),
+    reason: state === 'active-risk'
+      ? 'La carte montre seulement le niveau de pression actif, pas la source.'
+      : state === 'decaying-risk'
+        ? 'La pression baisse; le mode sûr masque encore les routes et relais.'
+        : 'Aucun signal confirmé ne justifie de révéler une route ou cible.',
+  };
+}
+
 function normalizeStyle(styleMap, key, defaults) {
   const style = styleMap[key] ?? styleMap.default ?? defaults[key] ?? defaults.none;
   const fallback = defaults[key] ?? defaults.none;
@@ -2180,6 +2257,22 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         sleeperCellCount,
         sabotageRiskScore,
       });
+      const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
+        ? {
+          suspicionHeatDecayPlayback: buildSuspicionHeatDecayPlayback({
+            locationCellules,
+            locationOperations,
+            sabotageRiskScore,
+          }),
+          safeMapMasking: buildSafeMapMasking({
+            presenceLevel,
+            riskLevel,
+            sabotageRiskScore,
+            exposedCellCount,
+            locationOperations,
+          }),
+        }
+        : {};
 
       return {
         overlayId: `intrigue:${locationId}`,
@@ -2198,6 +2291,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           sabotageOperationCount: locationOperations.length,
         },
         lowExposureSweepConfidencePreview,
+        ...safeMapSignals,
         style: {
           presence: normalizeStyle(styleByPresence, presenceLevel, DEFAULT_STYLE_BY_PRESENCE),
           risk: normalizeStyle(styleByRisk, riskLevel, DEFAULT_STYLE_BY_RISK),
