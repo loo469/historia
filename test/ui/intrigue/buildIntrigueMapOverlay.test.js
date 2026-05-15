@@ -1829,3 +1829,86 @@ test('buildIntrigueMapOverlay exposes fog-safe confidence states and verificatio
   assert.equal(byLocation.get('masked-zone').safeVerificationHint.action, 'ignore');
   assert.match(byLocation.get('masked-zone').safeVerificationHint.reason, /ne pas transformer l’absence de données/);
 });
+
+test('buildIntrigueMapOverlay previews fog-safe verification paths with costs and unsafe fallback', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-confirmed-path',
+      factionId: 'shadow-league',
+      codename: 'Torch',
+      locationId: 'confirmed-path',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 76,
+    }),
+    new Cellule({
+      id: 'cell-uncertain-path',
+      factionId: 'shadow-league',
+      codename: 'Lantern',
+      locationId: 'uncertain-path',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+    new Cellule({
+      id: 'cell-masked-path',
+      factionId: 'shadow-league',
+      codename: 'Blank',
+      locationId: 'masked-path',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-confirmed-hot',
+      celluleId: 'cell-confirmed-path',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Stress gate watches',
+      theaterId: 'confirmed-path',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 12,
+      progress: 84,
+      heat: 86,
+      phase: 'execution',
+    }),
+    new OperationClandestine({
+      id: 'op-uncertain-probe',
+      celluleId: 'cell-uncertain-path',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe road rumor',
+      theaterId: 'uncertain-path',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 80,
+      progress: 5,
+      heat: 10,
+      phase: 'planning',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry]));
+  const confirmedPaths = byLocation.get('confirmed-path').verificationPathPreviews;
+  const uncertainPaths = byLocation.get('uncertain-path').verificationPathPreviews;
+  const maskedPaths = byLocation.get('masked-path').verificationPathPreviews;
+
+  assert.equal(confirmedPaths[0].pathId, 'observe-local-confirmation');
+  assert.equal(confirmedPaths[0].recommended, true);
+  assert.equal(confirmedPaths[0].costCue, 'coût modéré');
+  assert.match(confirmedPaths[0].heatDecayContext, /Chaleur active/);
+  assert.match(confirmedPaths[0].fogSafeCopy, /sans nommer source ni cible/);
+  assert.deepEqual(confirmedPaths.filter((path) => path.unsafe).map((path) => path.saferFallbackAction), ['observe-locally']);
+  assert.match(confirmedPaths.find((path) => path.unsafe).fogSafeCopy, /ne révèle aucun relais, cellule ou cible/);
+
+  assert.equal(uncertainPaths[0].pathId, 'limited-coverage-check');
+  assert.equal(uncertainPaths[0].unsafe, false);
+  assert.equal(uncertainPaths[0].costCue, 'coût bas');
+  assert.match(uncertainPaths[0].fogSafeCopy, /danger réel non confirmé/);
+  assert.match(uncertainPaths[0].evidenceNeeded, /pas une identité cachée/);
+
+  assert.equal(maskedPaths[0].pathId, 'ignore-masked-signal');
+  assert.equal(maskedPaths[0].exposureCost, 0);
+  assert.match(maskedPaths[0].fogSafeCopy, /l’absence de signal ne prouve pas un danger faible/);
+});
