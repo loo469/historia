@@ -2091,3 +2091,84 @@ test('buildIntrigueMapOverlay exposes fog-safe intelligence provenance panels', 
   assert.equal(byLocation.get('unknown-prov').nextVerificationStep.action, 'ignore');
   assert.match(byLocation.get('unknown-prov').safeMapSummary, /Provenance généralisée/);
 });
+
+test('buildIntrigueMapOverlay exposes fog-safe verification audit trails', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-confirmed-audit',
+      factionId: 'shadow-league',
+      codename: 'Beacon',
+      locationId: 'confirmed-audit',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 82,
+    }),
+    new Cellule({
+      id: 'cell-suspected-audit',
+      factionId: 'shadow-league',
+      codename: 'Needle',
+      locationId: 'suspected-audit',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+    new Cellule({
+      id: 'cell-stale-audit',
+      factionId: 'shadow-league',
+      codename: 'Ember',
+      locationId: 'stale-audit',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 20,
+    }),
+    new Cellule({
+      id: 'cell-masked-audit',
+      factionId: 'shadow-league',
+      codename: 'Curtain',
+      locationId: 'masked-audit',
+      memberIds: ['ag-4'],
+      assetIds: ['asset-4'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-suspected-audit',
+      celluleId: 'cell-suspected-audit',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe route rumor',
+      theaterId: 'suspected-audit',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 82,
+      progress: 8,
+      heat: 12,
+      phase: 'planning',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.verificationAuditTrail]));
+
+  assert.equal(byLocation.get('confirmed-audit').state, 'visible-audit');
+  assert.deepEqual(byLocation.get('confirmed-audit').steps.map((step) => step.stepId), ['local-observation', 'cross-check']);
+  assert.equal(byLocation.get('confirmed-audit').steps[0].change, 'confidence-up');
+  assert.equal(byLocation.get('confirmed-audit').lastChange, 'residual-risk');
+  assert.equal(byLocation.get('confirmed-audit').nextUsefulCheck.action, 'observe-locally');
+  assert.match(byLocation.get('confirmed-audit').steps[0].fogSafeCopy, /Aucun détail de cellule, cible, relais ou cause cachée/);
+
+  assert.equal(byLocation.get('suspected-audit').state, 'visible-audit');
+  assert.deepEqual(byLocation.get('suspected-audit').steps.map((step) => step.label), ['Source indirecte', 'Confirmation partielle']);
+  assert.equal(byLocation.get('suspected-audit').steps[0].evidenceState, 'suspected-evidence');
+  assert.equal(byLocation.get('suspected-audit').nextUsefulCheck.action, 'limit-coverage');
+  assert.match(byLocation.get('suspected-audit').incidentContext, /Sabotage suspecté/);
+
+  assert.equal(byLocation.get('stale-audit').state, 'visible-audit');
+  assert.deepEqual(byLocation.get('stale-audit').steps.map((step) => step.change), ['confidence-down', 'trail-dismissed']);
+  assert.equal(byLocation.get('stale-audit').nextUsefulCheck.action, 'wait');
+  assert.match(byLocation.get('stale-audit').summary, /Recoupement, Impasse/);
+
+  assert.equal(byLocation.get('masked-audit').state, 'redacted-audit');
+  assert.deepEqual(byLocation.get('masked-audit').steps.map((step) => step.stepId), ['dead-end']);
+  assert.equal(byLocation.get('masked-audit').lastChange, 'masked');
+  assert.equal(byLocation.get('masked-audit').nextUsefulCheck.action, 'ignore');
+  assert.match(byLocation.get('masked-audit').safeMapPolicy, /masquées ou généralisées/);
+});
