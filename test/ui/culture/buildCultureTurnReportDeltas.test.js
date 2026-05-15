@@ -145,6 +145,23 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       },
     ],
   });
+  assert.deepEqual(report.recommendationCoherence, {
+    state: 'coherent',
+    activeFilter: 'all',
+    summary: '1 recommandation sur une trajectoire culturelle cohérente.',
+    trajectoryGroups: [
+      {
+        trajectory: 'expansion',
+        count: 1,
+        actions: ['amplifier'],
+        recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
+        summary: 'expansion: Compact d’Aurora',
+      },
+    ],
+    tensions: [],
+    explanation: 'archive-routes → amplifier → expansion',
+    uncertainRecommendationIds: [],
+  });
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -168,6 +185,15 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
       activeFilter: 'all',
       summary: 'Aucune recommandation culturelle pour ce filtre.',
       recommendations: [],
+    },
+    recommendationCoherence: {
+      state: 'quiet',
+      activeFilter: 'all',
+      summary: 'Aucune cohérence culturelle à synthétiser.',
+      trajectoryGroups: [],
+      tensions: [],
+      explanation: 'Aucun signal récent → recommandation → cohérence.',
+      uncertainRecommendationIds: [],
     },
   });
 });
@@ -329,4 +355,89 @@ test('buildCultureTurnReportDeltas recommends apaiser and attendre for volatile 
   assert.deepEqual(watchReport.stabilizationRecommendations.recommendations.map((recommendation) => [recommendation.action, recommendation.tone, recommendation.level]), [
     ['attendre', 'watch', 'observing'],
   ]);
+});
+
+test('buildCultureTurnReportDeltas summarizes coherence tensions between active cultural recommendations', () => {
+  const report = buildCultureTurnReportDeltas({
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'explorer',
+        consequencePreview: {
+          confidence: 'high',
+          opportunity: 'archives ouvertes',
+          summary: 'explorer: archives ouvertes.',
+        },
+      },
+    },
+    previousMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'emerging',
+      influenceScore: 70,
+      discoveries: ['archive-routes'],
+    },
+    activeRecommendations: [
+      {
+        recommendationId: 'harbor:momentum:surge:stabilization',
+        regionId: 'harbor',
+        cultureName: 'Harbor Compact',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'harbor-forum',
+        confidence: 'high',
+        chain: 'harbor-forum → influence renforcée → amplifier',
+        rank: 2,
+      },
+      {
+        recommendationId: 'mist:momentum:fragile:stabilization',
+        regionId: 'mist-hills',
+        cultureName: 'Mist Circle',
+        action: 'enquêter',
+        tone: 'tension',
+        level: 'fragile',
+        discoveryId: 'fog-index',
+        confidence: 'low',
+        chain: 'fog-index → fragile → enquêter',
+        rank: 3,
+      },
+      {
+        recommendationId: 'ember:momentum:volatile:stabilization',
+        regionId: 'ember-ford',
+        cultureName: 'Ember Guild',
+        action: 'apaiser',
+        tone: 'tension',
+        level: 'volatile',
+        discoveryId: 'ash-treaty',
+        confidence: 'medium',
+        chain: 'ash-treaty → volatile → apaiser',
+        rank: 4,
+      },
+    ],
+  });
+
+  assert.equal(report.recommendationCoherence.state, 'conflict');
+  assert.deepEqual(report.recommendationCoherence.trajectoryGroups.map((group) => [group.trajectory, group.count]), [
+    ['expansion', 2],
+    ['apaisement', 1],
+    ['enquête', 1],
+  ]);
+  assert.deepEqual(report.recommendationCoherence.tensions.map((tension) => [tension.label, tension.level]), [
+    ['enquête incertaine', 'uncertain'],
+    ['opportunités concurrentes', 'conflict'],
+    ['apaisement tardif', 'warning'],
+  ]);
+  assert.match(report.recommendationCoherence.explanation, /archive-routes → amplifier → expansion/);
+  assert.deepEqual(report.recommendationCoherence.uncertainRecommendationIds, ['mist:momentum:fragile:stabilization']);
 });
