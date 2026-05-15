@@ -251,3 +251,61 @@ test('buildCultureLayerPanel falls back to the first marker and validates inputs
   assert.throws(() => buildCultureLayerPanel([], { activeFilter: [] }), /activeFilter is required/);
   assert.throws(() => buildCultureLayerPanel([{ overlayId: 'x', regionId: 'r', cultureId: 'c', cultureName: 'n', label: 'l', cultureMetrics: [] }]), /cultureMetrics must be an object/);
 });
+test('buildCultureLayerPanel exposes atlas story layer controls and collision stacks', () => {
+  const panel = buildCultureLayerPanel([
+    {
+      overlayId: 'shared-bay:culture-harbor',
+      regionId: 'shared-bay',
+      cultureId: 'culture-harbor',
+      cultureName: 'Harbor Compact',
+      label: 'Harbor Compact (1 découvertes)',
+      summary: '1 recherches actives, 1 événements, 2 repères culturels',
+      influenceScore: 76,
+      influenceTier: 'strong',
+      discoveries: ['tidal-ledgers'],
+      unlockedResearchIds: ['harbor-ledgers'],
+      eventIds: ['event-harbor-forum'],
+      eventTitles: ['Harbor Forum'],
+      identityTags: ['forums'],
+      highlights: ['tidal-ledgers'],
+      markerType: 'innovation',
+      primaryLanguage: 'harbor-cant',
+      cultureMetrics: { openness: 80, cohesion: 58, researchDrive: 74 },
+      atlasStoryLayers: [
+        { layerId: 'shared-bay:atlas-layer:influence', kind: 'influence', label: 'Influences', enabled: true, markerCount: 2, markers: [] },
+        { layerId: 'shared-bay:atlas-layer:timeline', kind: 'timeline', label: 'Chronologie locale', enabled: true, markerCount: 1, markers: [] },
+      ],
+      markerCollisionCluster: {
+        clusterId: 'shared-bay:marker-collision',
+        regionId: 'shared-bay',
+        markerCount: 2,
+        overflowCount: 1,
+        strategy: 'stack-by-priority',
+        priorityMarkerId: 'shared-bay:culture-harbor',
+        priorityCultureId: 'culture-harbor',
+        priorityReason: '1 événement',
+        stack: [],
+      },
+      narrativeSummary: "Harbor Compact compte maintenant: Harbor Forum donne un repère d'action immédiat.",
+    },
+  ]);
+
+  assert.deepEqual(panel.atlasLayers, [
+    {
+      kind: 'influence',
+      label: 'Influences',
+      enabled: true,
+      markerCount: 2,
+      regionIds: ['shared-bay'],
+    },
+    {
+      kind: 'timeline',
+      label: 'Chronologie locale',
+      enabled: true,
+      markerCount: 1,
+      regionIds: ['shared-bay'],
+    },
+  ]);
+  assert.equal(panel.collisionControls[0].strategy, 'stack-by-priority');
+  assert.equal(panel.collisionControls[0].priorityCultureId, 'culture-harbor');
+});

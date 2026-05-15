@@ -48,6 +48,9 @@ function normalizeEntries(entries) {
         normalizedEntry.cultureMetrics ?? {},
         `CultureLayerPanel entries[${index}].cultureMetrics`,
       ),
+      atlasStoryLayers: Array.isArray(normalizedEntry.atlasStoryLayers) ? normalizedEntry.atlasStoryLayers : [],
+      markerCollisionCluster: normalizedEntry.markerCollisionCluster ?? null,
+      narrativeSummary: String(normalizedEntry.narrativeSummary ?? '').trim(),
     };
   });
 }
@@ -155,6 +158,43 @@ function buildFocus(entries, normalizedOptions) {
   };
 }
 
+function buildAtlasLayerControls(entries) {
+  const layersByKind = new Map();
+
+  for (const entry of entries) {
+    for (const layer of entry.atlasStoryLayers) {
+      const current = layersByKind.get(layer.kind) ?? {
+        kind: layer.kind,
+        label: layer.label,
+        enabled: false,
+        markerCount: 0,
+        regionIds: new Set(),
+      };
+      current.enabled = current.enabled || layer.enabled;
+      current.markerCount += layer.markerCount ?? 0;
+      current.regionIds.add(entry.regionId);
+      layersByKind.set(layer.kind, current);
+    }
+  }
+
+  return [...layersByKind.values()]
+    .sort((left, right) => left.kind.localeCompare(right.kind))
+    .map((layer) => ({
+      kind: layer.kind,
+      label: layer.label,
+      enabled: layer.enabled,
+      markerCount: layer.markerCount,
+      regionIds: [...layer.regionIds].sort(),
+    }));
+}
+
+function buildCollisionControls(entries) {
+  return [...new Map(entries
+    .filter((entry) => entry.markerCollisionCluster)
+    .map((entry) => [entry.regionId, entry.markerCollisionCluster])).values()]
+    .sort((left, right) => right.markerCount - left.markerCount || left.regionId.localeCompare(right.regionId));
+}
+
 export function buildCultureLayerPanel(entries, options = {}) {
   const normalizedEntries = normalizeEntries(entries);
   const normalizedOptions = requireObject(options, 'CultureLayerPanel options');
@@ -189,6 +229,8 @@ export function buildCultureLayerPanel(entries, options = {}) {
       summary: `${comparison.length} cultures visibles comparées`,
       rows: comparison,
     },
+    atlasLayers: buildAtlasLayerControls(normalizedEntries),
+    collisionControls: buildCollisionControls(normalizedEntries),
     metrics: {
       markerCount: normalizedEntries.length,
       regionCount: regionRows.length,
