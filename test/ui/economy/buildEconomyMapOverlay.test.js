@@ -1111,3 +1111,106 @@ test('buildEconomyMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildEconomyMapOverlay([], [], { cityPositionById: [] }), /cityPositionById must be an object/);
   assert.throws(() => buildEconomyMapOverlay([], [], { styleByTransportMode: [] }), /styleByTransportMode must be an object/);
 });
+
+test('buildEconomyMapOverlay exposes city resource and logistics map layers', () => {
+  const overlay = buildEconomyMapOverlay([
+    {
+      id: 'city-harbor',
+      name: 'Harbor',
+      regionId: 'coast',
+      population: 100,
+      prosperity: 72,
+      stability: 65,
+      stockByResource: { fish: 24, timber: 3 },
+      tradeRouteIds: ['route-coast'],
+      capital: true,
+    },
+    {
+      id: 'city-mill',
+      name: 'Mill',
+      regionId: 'riverlands',
+      population: 50,
+      prosperity: 44,
+      stability: 31,
+      stockByResource: { fish: 0, grain: 8 },
+      tradeRouteIds: ['route-coast'],
+    },
+  ], [
+    {
+      id: 'route-coast',
+      name: 'Coast Road',
+      stopCityIds: ['city-harbor', 'city-mill'],
+      distance: 6,
+      capacityByResource: { grain: 4, timber: 2 },
+      transportMode: 'land',
+      riskLevel: 47,
+    },
+  ], {
+    cityPositionById: {
+      'city-harbor': { x: 2, y: 3 },
+      'city-mill': { x: 7, y: 5 },
+    },
+    recommendedUnlockByRouteId: {
+      'route-coast': {
+        mobilizedByResource: { grain: 4, timber: 1 },
+      },
+    },
+  });
+
+  assert.deepEqual(Object.keys(overlay.layers), ['cities', 'resources', 'logistics']);
+  assert.deepEqual(overlay.layers.cities.features.map((feature) => ({
+    featureId: feature.featureId,
+    label: feature.label,
+    position: feature.position,
+    capital: feature.capital,
+  })), [
+    {
+      featureId: 'city:city-harbor',
+      label: 'Harbor ★',
+      position: { x: 2, y: 3 },
+      capital: true,
+    },
+    {
+      featureId: 'city:city-mill',
+      label: 'Mill',
+      position: { x: 7, y: 5 },
+      capital: false,
+    },
+  ]);
+  assert.deepEqual(overlay.layers.resources.totalsByResource, [
+    { resourceId: 'fish', totalQuantity: 24, cityCount: 2 },
+    { resourceId: 'grain', totalQuantity: 8, cityCount: 1 },
+    { resourceId: 'timber', totalQuantity: 3, cityCount: 1 },
+  ]);
+  assert.deepEqual(overlay.layers.resources.features.map((feature) => ({
+    featureId: feature.featureId,
+    intensity: feature.intensity,
+    label: feature.label,
+  })), [
+    { featureId: 'resource:fish:city-harbor', intensity: 'abundant', label: 'fish: 24' },
+    { featureId: 'resource:fish:city-mill', intensity: 'empty', label: 'fish: 0' },
+    { featureId: 'resource:grain:city-mill', intensity: 'available', label: 'grain: 8' },
+    { featureId: 'resource:timber:city-harbor', intensity: 'available', label: 'timber: 3' },
+  ]);
+  assert.deepEqual(overlay.layers.logistics.features, [
+    {
+      featureId: 'route:route-coast',
+      routeId: 'route-coast',
+      label: 'Coast Road (land)',
+      cityIds: ['city-harbor', 'city-mill'],
+      active: true,
+      transportMode: 'land',
+      riskLevel: 47,
+      totalCapacity: 6,
+      capacityRemaining: 1,
+      state: 'remaining-margin',
+      bottleneckResourceId: 'grain',
+      style: {
+        stroke: 'ochre',
+        width: 2,
+        pattern: 'solid',
+        opacity: 0.85,
+      },
+    },
+  ]);
+});

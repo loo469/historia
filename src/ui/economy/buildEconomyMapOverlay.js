@@ -1183,6 +1183,99 @@ function normalizeRouteStyle(route, styleByTransportMode) {
   };
 }
 
+function buildResourceLayer(cityOverlays) {
+  const resourceFeatures = cityOverlays.flatMap((city) => city.resources.entries.map((resource) => ({
+    featureId: `resource:${resource.resourceId}:${city.cityId}`,
+    cityId: city.cityId,
+    cityName: city.cityName,
+    resourceId: resource.resourceId,
+    quantity: resource.quantity,
+    position: city.marker.position,
+    intensity: resource.quantity === 0
+      ? 'empty'
+      : resource.quantity >= city.population / 5
+        ? 'abundant'
+        : 'available',
+    label: `${resource.resourceId}: ${resource.quantity}`,
+  })));
+  const totalsByResource = Object.values(resourceFeatures.reduce((totals, feature) => {
+    totals[feature.resourceId] ??= {
+      resourceId: feature.resourceId,
+      totalQuantity: 0,
+      cityCount: 0,
+    };
+    totals[feature.resourceId].totalQuantity += feature.quantity;
+    totals[feature.resourceId].cityCount += 1;
+
+    return totals;
+  }, {})).sort((left, right) => left.resourceId.localeCompare(right.resourceId));
+
+  return {
+    id: 'resources',
+    title: 'Ressources stockées',
+    visibleByDefault: true,
+    features: resourceFeatures.sort((left, right) => left.resourceId.localeCompare(right.resourceId)
+      || left.cityId.localeCompare(right.cityId)),
+    totalsByResource,
+    legend: [
+      { key: 'abundant', label: 'Stock abondant', tone: 'positive' },
+      { key: 'available', label: 'Stock disponible', tone: 'neutral' },
+      { key: 'empty', label: 'Stock nul', tone: 'muted' },
+    ],
+  };
+}
+
+function buildEconomyMapLayers(cityOverlays, routeOverlays) {
+  return {
+    cities: {
+      id: 'cities',
+      title: 'Villes',
+      visibleByDefault: true,
+      features: cityOverlays.map((city) => ({
+        featureId: city.overlayId,
+        cityId: city.cityId,
+        label: city.label,
+        regionId: city.regionId,
+        position: city.marker.position,
+        marker: { ...city.marker },
+        capital: city.capital,
+        prosperity: city.prosperity,
+        stability: city.stability,
+      })),
+      legend: [
+        { key: 'positive', label: 'Prospérité élevée', tone: 'positive' },
+        { key: 'warning', label: 'Stabilité fragile', tone: 'warning' },
+        { key: 'neutral', label: 'Ville stable', tone: 'neutral' },
+      ],
+    },
+    resources: buildResourceLayer(cityOverlays),
+    logistics: {
+      id: 'logistics',
+      title: 'Routes logistiques',
+      visibleByDefault: true,
+      features: routeOverlays.map((route) => ({
+        featureId: route.overlayId,
+        routeId: route.routeId,
+        label: route.label,
+        cityIds: [...route.cityIds],
+        active: route.active,
+        transportMode: route.transportMode,
+        riskLevel: route.riskLevel,
+        totalCapacity: route.totalCapacity,
+        capacityRemaining: route.capacitySpendPreview.capacityRemaining,
+        state: route.capacitySpendPreview.state,
+        bottleneckResourceId: route.capacitySpendPreview.nextBottleneck?.resourceId ?? null,
+        style: { ...route.style },
+      })),
+      legend: [
+        { key: 'remaining-margin', label: 'Marge de capacité restante', tone: 'positive' },
+        { key: 'fully-spent', label: 'Capacité mobilisée', tone: 'warning' },
+        { key: 'no-spend', label: 'Aucune dépense prévue', tone: 'neutral' },
+      ],
+    },
+  };
+}
+
 export function buildEconomyMapOverlay(cities, routes, options = {}) {
   const normalizedCities = requireArray(cities, 'EconomyMapOverlay cities').map(normalizeCity);
   const normalizedRoutes = requireArray(routes, 'EconomyMapOverlay routes').map(normalizeRoute);
@@ -1252,6 +1345,7 @@ export function buildEconomyMapOverlay(cities, routes, options = {}) {
     summary: `${cityOverlays.length} villes, ${routeOverlays.length} routes logistiques`,
     cities: cityOverlays,
     routes: routeOverlays,
+    layers: buildEconomyMapLayers(cityOverlays, routeOverlays),
     metrics: {
       cityCount: cityOverlays.length,
       capitalCount: cityOverlays.filter((city) => city.capital).length,
