@@ -337,6 +337,38 @@ function renderOperationalPrioritySummary(shell) {
   `;
 }
 
+
+function renderOperationalCommitmentChecklist(shell) {
+  const checklist = shell.operationalCommitmentChecklist;
+  const items = checklist.checklistItems.map((item) => `
+    <li class="commitment-checklist-item commitment-checklist-item--${escapeHtml(item.status)}">
+      <span>${item.order}. ${escapeHtml(item.provinceLabel)} · ${escapeHtml(item.priority)} · ${escapeHtml(item.status)}</span>
+      <strong>${escapeHtml(item.actionLabel)}</strong>
+      <small>${escapeHtml(item.risk)}</small>
+      <em>${escapeHtml(item.decisionHint)}</em>
+    </li>
+  `).join('');
+  const acceptedRisks = checklist.acceptedRisks.map((risk) => `
+    <li><span>${escapeHtml(risk.provinceLabel)}</span><small>${escapeHtml(risk.risk)}</small></li>
+  `).join('');
+  const blockingRisks = checklist.blockingRisks.map((risk) => `
+    <li><span>${escapeHtml(risk.provinceLabel)}</span><small>${escapeHtml(risk.prerequisite)}</small></li>
+  `).join('');
+
+  return `
+    <section class="commitment-checklist" aria-label="Checklist de commitment opérationnel des provinces contestées">
+      <h2>Checklist commitment</h2>
+      <p>${escapeHtml(checklist.fallbackMessage ?? checklist.summary)}</p>
+      <div class="commitment-checklist-counts"><span>${checklist.readyCount} prêt</span><span>${checklist.waitingCount} attente</span><span>${checklist.blockedCount} bloqué</span></div>
+      ${checklist.empty ? '<small class="commitment-checklist-empty">Aucun engagement à vérifier.</small>' : `<ol>${items}</ol>`}
+      <div class="commitment-risk-summary">
+        <article><span>Risques acceptés</span>${acceptedRisks ? `<ul>${acceptedRisks}</ul>` : '<small>Aucun risque accepté.</small>'}</article>
+        <article><span>Risques bloquants</span>${blockingRisks ? `<ul>${blockingRisks}</ul>` : '<small>Aucun blocage.</small>'}</article>
+      </div>
+    </section>
+  `;
+}
+
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
   const entries = validation.entries.map((entry) => {
@@ -522,6 +554,23 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .operational-priority-conflicts { display:grid; gap:6px; border-top:1px solid rgba(148,163,184,0.14); padding-top:7px; }
     .operational-priority-conflicts > span { color:#fca5a5; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
     .operational-priority-conflict { border-color:rgba(248,113,113,0.36); }
+    .commitment-checklist { display:grid; gap:10px; }
+    .commitment-checklist p, .commitment-checklist-empty { margin:0; color:#cbd5e1; font-size:12px; }
+    .commitment-checklist ol, .commitment-checklist ul { display:grid; gap:6px; margin:0; padding:0; }
+    .commitment-checklist-counts { display:flex; flex-wrap:wrap; gap:6px; }
+    .commitment-checklist-counts span { border:1px solid rgba(148,163,184,0.22); border-radius:999px; padding:3px 8px; color:#dbeafe; font-size:11px; }
+    .commitment-checklist-item { display:grid; gap:3px; border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:7px 9px; }
+    .commitment-checklist-item--engageable, .commitment-checklist-item--tenir { border-color:rgba(74,222,128,0.44); background:rgba(22,101,52,0.10); }
+    .commitment-checklist-item--attente { border-color:rgba(251,191,36,0.42); background:rgba(120,53,15,0.10); }
+    .commitment-checklist-item--bloqué { border-color:rgba(248,113,113,0.42); background:rgba(127,29,29,0.10); }
+    .commitment-checklist-item strong { color:#bfdbfe; font-size:12px; }
+    .commitment-checklist-item small { color:#cbd5e1; }
+    .commitment-checklist-item em { color:#bae6fd; font-size:11px; font-style:normal; }
+    .commitment-risk-summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .commitment-risk-summary article { display:grid; gap:5px; border-top:1px solid rgba(148,163,184,0.14); padding-top:7px; }
+    .commitment-risk-summary article > span { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
+    .commitment-risk-summary li { display:grid; gap:2px; border:1px solid rgba(148,163,184,0.16); border-radius:10px; padding:6px 8px; }
+    .commitment-risk-summary small { color:#cbd5e1; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -570,6 +619,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
         ${renderFrontPressureReplay(shell)}
         ${renderFrontRecoveryRecommendations(shell)}
         ${renderOperationalPrioritySummary(shell)}
+        ${renderOperationalCommitmentChecklist(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>

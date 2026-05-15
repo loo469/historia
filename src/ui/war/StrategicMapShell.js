@@ -2098,6 +2098,89 @@ function buildOperationalPrioritySummary(renderedProvinces, frontPressureReplay,
   };
 }
 
+
+function prerequisiteForPriorityEntry(entry, conflicts) {
+  const matchingConflict = conflicts.find((item) => item.provinceId === entry.provinceId && item.actionCode === entry.actionCode)
+    ?? conflicts.find((item) => item.provinceId === entry.provinceId && (
+    item.type === 'soutien manquant' && entry.priority === 'renforcer'
+    || item.type === 'risque de sur-extension' && entry.priority === 'exploiter'
+    || item.type === 'fronts adjacents incompatibles' && entry.priority === 'exploiter'
+    || item.type === 'historique incomplet' && entry.priority === 'surveiller'
+  ));
+
+  if (matchingConflict?.type === 'soutien manquant') return { code: 'adjacent-support', label: 'soutien adjacent à rétablir', blocking: true };
+  if (matchingConflict?.type === 'risque de sur-extension') return { code: 'overextension-check', label: 'limiter la sur-extension', blocking: false };
+  if (matchingConflict?.type === 'fronts adjacents incompatibles') return { code: 'front-compatibility', label: 'front adjacent incompatible', blocking: true };
+  if (matchingConflict?.type === 'historique incomplet') return { code: 'intel-confidence', label: 'renseignement trop incertain', blocking: true };
+  if (entry.priority === 'renforcer') return { code: 'logistics-ready', label: 'logistique critique vérifiée', blocking: false };
+  if (entry.priority === 'exploiter') return { code: 'weather-window', label: 'fenêtre météo à confirmer', blocking: false };
+  return null;
+}
+
+function commitmentStatusForEntry(entry, prerequisite) {
+  if (entry.priority === 'surveiller' || entry.priority === 'différer') return 'attente';
+  if (prerequisite?.blocking) return 'bloqué';
+  if (entry.priority === 'tenir') return 'tenir';
+  return 'engageable';
+}
+
+function buildOperationalCommitmentChecklist(operationalPrioritySummary) {
+  const detailedEntries = operationalPrioritySummary.priorities.flatMap((priority) => priority.entries);
+  const checklistItems = operationalPrioritySummary.actionOrder.map((entry) => {
+    const detailedEntry = detailedEntries.find((item) => item.order === entry.order && item.provinceId === entry.provinceId) ?? entry;
+    const prerequisite = prerequisiteForPriorityEntry(detailedEntry, operationalPrioritySummary.conflicts);
+    const status = commitmentStatusForEntry(entry, prerequisite);
+
+    return {
+      order: entry.order,
+      provinceId: entry.provinceId,
+      provinceLabel: entry.provinceLabel,
+      actionLabel: entry.actionLabel,
+      priority: entry.priority,
+      status,
+      prerequisite,
+      risk: prerequisite?.blocking
+        ? `bloquant: ${prerequisite.label}`
+        : prerequisite
+          ? `accepté sous contrôle: ${prerequisite.label}`
+          : 'accepté: aucun prérequis bloquant détecté',
+      decisionHint: status === 'engageable'
+        ? 'peut être engagé maintenant'
+        : status === 'tenir'
+          ? 'tenir sans escalade automatique'
+          : status === 'attente'
+            ? 'laisser en attente et relire au prochain tour'
+            : 'corriger le prérequis avant engagement',
+    };
+  });
+  const blockingRisks = checklistItems.filter((item) => item.prerequisite?.blocking).map((item) => ({
+    provinceId: item.provinceId,
+    provinceLabel: item.provinceLabel,
+    prerequisite: item.prerequisite.label,
+  }));
+  const acceptedRisks = checklistItems.filter((item) => !item.prerequisite?.blocking && item.status !== 'attente').map((item) => ({
+    provinceId: item.provinceId,
+    provinceLabel: item.provinceLabel,
+    risk: item.risk,
+  }));
+
+  return {
+    empty: checklistItems.length === 0,
+    fallbackMessage: checklistItems.length === 0
+      ? 'Checklist indisponible: aucune priorité opérationnelle exploitable.'
+      : operationalPrioritySummary.fallbackMessage,
+    readyCount: checklistItems.filter((item) => item.status === 'engageable' || item.status === 'tenir').length,
+    waitingCount: checklistItems.filter((item) => item.status === 'attente').length,
+    blockedCount: checklistItems.filter((item) => item.status === 'bloqué').length,
+    checklistItems,
+    acceptedRisks,
+    blockingRisks,
+    summary: checklistItems.length === 0
+      ? 'Aucun engagement à vérifier.'
+      : `${checklistItems.filter((item) => item.status === 'engageable' || item.status === 'tenir').length} prêt · ${checklistItems.filter((item) => item.status === 'attente').length} en attente · ${checklistItems.filter((item) => item.status === 'bloqué').length} bloqué`,
+  };
+}
+
 function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
@@ -2332,6 +2415,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const frontPressureReplay = buildFrontPressureTimelineReplay(renderedProvinces, normalizedOptions);
   const frontRecoveryRecommendations = buildFrontRecoveryRecommendations(frontPressureReplay);
   const operationalPrioritySummary = buildOperationalPrioritySummary(renderedProvinces, frontPressureReplay, frontRecoveryRecommendations);
+  const operationalCommitmentChecklist = buildOperationalCommitmentChecklist(operationalPrioritySummary);
 
   return {
     title,
@@ -2343,6 +2427,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     frontPressureReplay,
     frontRecoveryRecommendations,
     operationalPrioritySummary,
+    operationalCommitmentChecklist,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,
