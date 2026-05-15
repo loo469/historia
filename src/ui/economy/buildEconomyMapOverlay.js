@@ -1595,6 +1595,104 @@ function buildInterventionComparison(cityOverlays, layers) {
   };
 }
 
+
+function buildRouteDisruptionReplay(route, decisionCue, priorityBadge) {
+  const bottleneck = route.nextBottleneck ?? null;
+  const severityScore = getIntensityScore(decisionCue.intensity) + Math.ceil(route.riskLevel / 25);
+  const severity = severityScore >= 7
+    ? 'major'
+    : severityScore >= 5
+      ? 'moderate'
+      : 'minor';
+  const beforePressure = Math.min(100, route.riskLevel + (bottleneck === null ? 5 : 20));
+  const afterPressure = Math.max(0, route.riskLevel - (priorityBadge.recommendedFilter === 'convoy-priority' ? 12 : 4));
+  const trajectory = afterPressure < beforePressure - 8
+    ? 'recovering'
+    : afterPressure > beforePressure
+      ? 'worsening'
+      : 'stagnating';
+
+  return {
+    id: `replay:${route.routeId}`,
+    routeId: route.routeId,
+    before: {
+      riskLevel: beforePressure,
+      capacityRemaining: Math.max(0, route.capacityRemaining - (bottleneck === null ? 0 : 1)),
+      bottleneckResourceId: bottleneck?.resourceId ?? null,
+    },
+    after: {
+      riskLevel: afterPressure,
+      capacityRemaining: route.capacityRemaining,
+      bottleneckResourceId: route.bottleneckResourceId,
+    },
+    cause: bottleneck === null
+      ? decisionCue.factor
+      : `goulet ${bottleneck.resourceId}`,
+    severity,
+    trajectory,
+    summary: `${route.label}: ${trajectory === 'recovering' ? 'récupération' : trajectory === 'worsening' ? 'dégradation' : 'stagnation'} après ${bottleneck === null ? decisionCue.factor : `goulet ${bottleneck.resourceId}`}.`,
+  };
+}
+
+function buildRecoveryMarker(feature) {
+  const replay = feature.disruptionReplay;
+  const status = replay.trajectory === 'recovering'
+    ? 'recovering'
+    : replay.trajectory === 'worsening'
+      ? 'worsening'
+      : 'stagnating';
+
+  return {
+    markerId: `recovery:${feature.routeId}`,
+    targetType: 'route',
+    targetId: feature.routeId,
+    status,
+    badge: status === 'recovering'
+      ? 'récupération'
+      : status === 'worsening'
+        ? 'empire'
+        : 'stagne',
+    severity: replay.severity,
+    summary: replay.summary,
+  };
+}
+
+function buildRecoveryMarkers(cityFeatures, resourceFeatures, logisticsFeatures) {
+  const routeMarkers = logisticsFeatures.map(buildRecoveryMarker);
+  const cityMarkers = cityFeatures
+    .filter((city) => ['critical', 'high', 'medium', 'positive'].includes(city.decisionCue.intensity))
+    .map((city) => ({
+      markerId: `recovery:${city.cityId}`,
+      targetType: 'city',
+      targetId: city.cityId,
+      status: city.decisionCue.intensity === 'positive' ? 'recovering' : 'stagnating',
+      badge: city.decisionCue.intensity === 'positive' ? 'ressource utile' : 'à surveiller',
+      severity: city.decisionCue.intensity === 'critical' ? 'major' : 'minor',
+      summary: city.decisionCue.reason,
+    }));
+  const resourceMarkers = resourceFeatures
+    .filter((resource) => resource.intensity !== 'available')
+    .map((resource) => ({
+      markerId: `recovery:resource:${resource.resourceId}:${resource.cityId}`,
+      targetType: 'resource',
+      targetId: `${resource.cityId}:${resource.resourceId}`,
+      status: resource.intensity === 'abundant' ? 'recovering' : 'worsening',
+      badge: resource.intensity === 'abundant' ? 'stock rétabli' : 'stock vide',
+      severity: resource.intensity === 'empty' ? 'major' : 'minor',
+      summary: `${resource.cityName}: ${resource.label}.`,
+    }));
+
+  return [...routeMarkers, ...cityMarkers, ...resourceMarkers]
+    .sort((left, right) => {
+      const statusRank = { worsening: 0, stagnating: 1, recovering: 2 };
+      const severityRank = { major: 0, moderate: 1, minor: 2 };
+
+      return statusRank[left.status] - statusRank[right.status]
+        || severityRank[left.severity] - severityRank[right.severity]
+        || left.markerId.localeCompare(right.markerId);
+    });
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -1611,8 +1709,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
     const decisionCue = buildRouteDecisionCue(route);
     const whatIfOptions = buildRouteWhatIfOptions(route, decisionCue);
     const priorityBadge = buildRoutePriorityBadge(route, decisionCue, whatIfOptions);
-
-    return {
+    const baseFeature = {
       featureId: route.overlayId,
       routeId: route.routeId,
       label: route.label,
@@ -1631,43 +1728,59 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       priorityBadge,
       style: { ...route.style },
     };
+
+    return {
+      ...baseFeature,
+      disruptionReplay: buildRouteDisruptionReplay({
+        ...baseFeature,
+        nextBottleneck: route.capacitySpendPreview.nextBottleneck,
+      }, decisionCue, priorityBadge),
+    };
   });
+  const cityFeatures = cityOverlays.map((city) => {
+    const decisionCue = buildCityDecisionCue(city);
+
+    return {
+      featureId: city.overlayId,
+      cityId: city.cityId,
+      label: city.label,
+      regionId: city.regionId,
+      position: city.marker.position,
+      marker: { ...city.marker },
+      capital: city.capital,
+      prosperity: city.prosperity,
+      stability: city.stability,
+      decisionCue,
+      tooltip: decisionCue.tooltip,
+    };
+  });
+  const resourceLayer = buildResourceLayer(cityOverlays);
 
   return {
     cities: {
       id: 'cities',
       title: 'Villes',
       visibleByDefault: true,
-      features: cityOverlays.map((city) => {
-        const decisionCue = buildCityDecisionCue(city);
-
-        return {
-          featureId: city.overlayId,
-          cityId: city.cityId,
-          label: city.label,
-          regionId: city.regionId,
-          position: city.marker.position,
-          marker: { ...city.marker },
-          capital: city.capital,
-          prosperity: city.prosperity,
-          stability: city.stability,
-          decisionCue,
-          tooltip: decisionCue.tooltip,
-        };
-      }),
+      features: cityFeatures,
       legend: [
         { key: 'positive', label: 'Prospérité élevée', tone: 'positive' },
         { key: 'warning', label: 'Stabilité fragile', tone: 'warning' },
         { key: 'neutral', label: 'Ville stable', tone: 'neutral' },
       ],
     },
-    resources: buildResourceLayer(cityOverlays),
+    resources: resourceLayer,
     logistics: {
       id: 'logistics',
       title: 'Routes logistiques',
       visibleByDefault: true,
       features: logisticsFeatures,
       stressFilters: buildRouteStressFilters(logisticsFeatures),
+      recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeatures),
+      replayLegend: [
+        { key: 'recovering', label: 'Récupère', tone: 'positive' },
+        { key: 'stagnating', label: 'Stagne', tone: 'warning' },
+        { key: 'worsening', label: 'Empire', tone: 'danger' },
+      ],
       legend: [
         { key: 'critical', label: 'Goulet saturé: aucune marge restante', tone: 'danger' },
         { key: 'high', label: 'Goulet serré: une marge ou moins', tone: 'warning' },
