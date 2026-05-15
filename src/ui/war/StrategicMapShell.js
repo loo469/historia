@@ -1988,6 +1988,116 @@ function buildFrontRecoveryRecommendations(frontPressureReplay) {
   };
 }
 
+
+function operationalPriorityForAction(actionCode) {
+  if (['hold-line', 'hold-and-observe'].includes(actionCode)) return 'tenir';
+  if (['reinforce-front', 'consolidate-support'].includes(actionCode)) return 'renforcer';
+  if (['exploit-breach', 'limited-probe'].includes(actionCode)) return 'exploiter';
+  if (actionCode === 'wait') return 'différer';
+  return 'surveiller';
+}
+
+function priorityRank(priority) {
+  return {
+    renforcer: 0,
+    tenir: 1,
+    exploiter: 2,
+    surveiller: 3,
+    différer: 4,
+  }[priority] ?? 5;
+}
+
+function buildOperationalPriorityConflict(entry, activeFrame) {
+  if (entry.actionCode === 'consolidate-support') {
+    return { type: 'soutien manquant', reason: 'la recommandation dépend d’un soutien à rétablir avant reprise' };
+  }
+
+  if (entry.actionCode === 'limited-probe') {
+    return { type: 'risque de sur-extension', reason: 'l’opportunité existe mais la pression adjacente reste élevée' };
+  }
+
+  if (entry.actionCode === 'exploit-breach' && activeFrame?.adjacentPressure.length > 0) {
+    return { type: 'fronts adjacents incompatibles', reason: 'une exploitation peut exposer les fronts voisins signalés par le replay' };
+  }
+
+  return null;
+}
+
+function buildOperationalPrioritySummary(renderedProvinces, frontPressureReplay, frontRecoveryRecommendations) {
+  const contestedProvinces = renderedProvinces.filter((province) => province.contested);
+  const activeFrame = frontPressureReplay.activeFrame;
+  const activeProvinceId = activeFrame?.provinceId ?? contestedProvinces[0]?.provinceId ?? null;
+  const activeProvince = renderedProvinces.find((province) => province.provinceId === activeProvinceId) ?? null;
+  const entries = frontRecoveryRecommendations.recommendations.map((recommendation, index) => {
+    const priority = operationalPriorityForAction(recommendation.actionCode);
+    const conflict = buildOperationalPriorityConflict(recommendation, activeFrame);
+
+    return {
+      order: index + 1,
+      provinceId: activeProvinceId,
+      provinceLabel: activeFrame?.provinceLabel ?? activeProvince?.label ?? 'Province contestée',
+      priority,
+      actionCode: recommendation.actionCode,
+      actionLabel: recommendation.label,
+      reason: recommendation.reason,
+      risk: recommendation.risk,
+      marker: recommendation.safest ? 'option sûre' : recommendation.opportunistic ? 'option opportuniste' : 'option de suivi',
+      conflict,
+    };
+  });
+
+  const replayProvinceIds = new Set(frontPressureReplay.frames.map((frame) => frame.provinceId));
+  const uncoveredContested = contestedProvinces.filter((province) => !replayProvinceIds.has(province.provinceId));
+  uncoveredContested.forEach((province) => {
+    entries.push({
+      order: entries.length + 1,
+      provinceId: province.provinceId,
+      provinceLabel: province.label,
+      priority: 'surveiller',
+      actionCode: 'watch-front',
+      actionLabel: 'Surveiller le front',
+      reason: 'province contestée sans replay exploitable dans la fenêtre active',
+      risk: 'incertain: données de replay incomplètes',
+      marker: 'fallback',
+      conflict: { type: 'historique incomplet', reason: 'aucune recommandation locale fiable pour cette province' },
+    });
+  });
+
+  const sortedEntries = entries
+    .slice()
+    .sort((left, right) => priorityRank(left.priority) - priorityRank(right.priority) || left.order - right.order)
+    .map((entry, index) => ({ ...entry, order: index + 1 }));
+  const priorities = ['tenir', 'renforcer', 'exploiter', 'surveiller', 'différer'].map((priority) => ({
+    priority,
+    entries: sortedEntries.filter((entry) => entry.priority === priority),
+  }));
+
+  return {
+    empty: sortedEntries.length === 0,
+    fallbackMessage: frontRecoveryRecommendations.fallbackMessage
+      ?? (uncoveredContested.length > 0 ? 'Certaines provinces contestées n’ont pas encore de replay exploitable.' : null),
+    priorities,
+    conflicts: sortedEntries.map((entry) => entry.conflict ? {
+      provinceId: entry.provinceId,
+      provinceLabel: entry.provinceLabel,
+      actionCode: entry.actionCode,
+      type: entry.conflict.type,
+      reason: entry.conflict.reason,
+    } : null).filter(Boolean),
+    actionOrder: sortedEntries.map((entry) => ({
+      order: entry.order,
+      provinceId: entry.provinceId,
+      provinceLabel: entry.provinceLabel,
+      priority: entry.priority,
+      actionLabel: entry.actionLabel,
+      marker: entry.marker,
+    })),
+    summary: sortedEntries.length === 0
+      ? 'Aucune priorité opérationnelle disponible.'
+      : `${sortedEntries.length} priorité${sortedEntries.length > 1 ? 's' : ''}: ${sortedEntries.map((entry) => `${entry.priority} ${entry.provinceLabel}`).join(' → ')}`,
+  };
+}
+
 function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
@@ -2221,6 +2331,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const afterActionMapRecap = buildAfterActionMapRecap(renderedProvinces, keyboardActionPlanner, normalizedOptions);
   const frontPressureReplay = buildFrontPressureTimelineReplay(renderedProvinces, normalizedOptions);
   const frontRecoveryRecommendations = buildFrontRecoveryRecommendations(frontPressureReplay);
+  const operationalPrioritySummary = buildOperationalPrioritySummary(renderedProvinces, frontPressureReplay, frontRecoveryRecommendations);
 
   return {
     title,
@@ -2231,6 +2342,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     afterActionMapRecap,
     frontPressureReplay,
     frontRecoveryRecommendations,
+    operationalPrioritySummary,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,

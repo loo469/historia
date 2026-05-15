@@ -43,6 +43,11 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /Sonder prudemment la brèche/);
   assert.match(html, /option la plus sûre/);
   assert.match(html, /option opportuniste/);
+  assert.match(html, /Synthèse de priorité opérationnelle des provinces contestées/);
+  assert.match(html, /Priorités opérationnelles/);
+  assert.match(html, /Conflits proches/);
+  assert.match(html, /soutien manquant/);
+  assert.match(html, /risque de sur-extension/);
   assert.match(html, /class="province is-contested is-occupied is-selected is-queued is-recently-affected"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /Porte du Fleuve/);

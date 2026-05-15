@@ -222,6 +222,56 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     opportunisticActionCode: null,
     recommendations: [],
   });
+  assert.deepEqual(shell.operationalPrioritySummary, {
+    empty: false,
+    fallbackMessage: 'Recommandations indisponibles sans historique de pression du front.',
+    priorities: [
+      { priority: 'tenir', entries: [] },
+      { priority: 'renforcer', entries: [] },
+      { priority: 'exploiter', entries: [] },
+      {
+        priority: 'surveiller',
+        entries: [
+          {
+            order: 1,
+            provinceId: 'prov-c',
+            provinceLabel: 'Colline rouge',
+            priority: 'surveiller',
+            actionCode: 'watch-front',
+            actionLabel: 'Surveiller le front',
+            reason: 'province contestée sans replay exploitable dans la fenêtre active',
+            risk: 'incertain: données de replay incomplètes',
+            marker: 'fallback',
+            conflict: {
+              type: 'historique incomplet',
+              reason: 'aucune recommandation locale fiable pour cette province',
+            },
+          },
+        ],
+      },
+      { priority: 'différer', entries: [] },
+    ],
+    conflicts: [
+      {
+        provinceId: 'prov-c',
+        provinceLabel: 'Colline rouge',
+        actionCode: 'watch-front',
+        type: 'historique incomplet',
+        reason: 'aucune recommandation locale fiable pour cette province',
+      },
+    ],
+    actionOrder: [
+      {
+        order: 1,
+        provinceId: 'prov-c',
+        provinceLabel: 'Colline rouge',
+        priority: 'surveiller',
+        actionLabel: 'Surveiller le front',
+        marker: 'fallback',
+      },
+    ],
+    summary: '1 priorité: surveiller Colline rouge',
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -647,6 +697,49 @@ test('StrategicMapShell builds a scrub-ready front pressure timeline replay', ()
       },
     ],
   });
+  assert.deepEqual(shell.operationalPrioritySummary.actionOrder, [
+    {
+      order: 1,
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      priority: 'renforcer',
+      actionLabel: 'Consolider le soutien',
+      marker: 'option sûre',
+    },
+    {
+      order: 2,
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      priority: 'renforcer',
+      actionLabel: 'Renforcer le front',
+      marker: 'option de suivi',
+    },
+    {
+      order: 3,
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      priority: 'exploiter',
+      actionLabel: 'Sonder prudemment la brèche',
+      marker: 'option opportuniste',
+    },
+  ]);
+  assert.deepEqual(shell.operationalPrioritySummary.conflicts, [
+    {
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      actionCode: 'consolidate-support',
+      type: 'soutien manquant',
+      reason: 'la recommandation dépend d’un soutien à rétablir avant reprise',
+    },
+    {
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      actionCode: 'limited-probe',
+      type: 'risque de sur-extension',
+      reason: 'l’opportunité existe mais la pression adjacente reste élevée',
+    },
+  ]);
+  assert.equal(shell.operationalPrioritySummary.summary, '3 priorités: renforcer Front rouge → renforcer Front rouge → exploiter Front rouge');
 });
 
 test('StrategicMapShell reports incomplete front pressure replay history', () => {
@@ -679,6 +772,17 @@ test('StrategicMapShell reports incomplete front pressure replay history', () =>
       },
     ],
   });
+  assert.equal(shell.operationalPrioritySummary.fallbackMessage, 'Historique incomplet: attendre ou consolider avant une reprise risquée.');
+  assert.deepEqual(shell.operationalPrioritySummary.actionOrder, [
+    {
+      order: 1,
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      priority: 'tenir',
+      actionLabel: 'Attendre et observer',
+      marker: 'option sûre',
+    },
+  ]);
 });
 
 test('StrategicMapShell projects intrigue presence and sabotage risk into the map overlay slot', () => {

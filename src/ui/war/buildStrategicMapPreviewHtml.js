@@ -310,6 +310,33 @@ function renderFrontRecoveryRecommendations(shell) {
   `;
 }
 
+
+function renderOperationalPrioritySummary(shell) {
+  const summary = shell.operationalPrioritySummary;
+  const orderItems = summary.actionOrder.map((entry) => `
+    <li class="operational-priority-order operational-priority-order--${escapeHtml(entry.priority)}">
+      <span>${entry.order}. ${escapeHtml(entry.provinceLabel)} · ${escapeHtml(entry.priority)}</span>
+      <strong>${escapeHtml(entry.actionLabel)}</strong>
+      <small>${escapeHtml(entry.marker)}</small>
+    </li>
+  `).join('');
+  const conflicts = summary.conflicts.map((conflict) => `
+    <li class="operational-priority-conflict">
+      <span>${escapeHtml(conflict.provinceLabel)} · ${escapeHtml(conflict.type)}</span>
+      <small>${escapeHtml(conflict.reason)}</small>
+    </li>
+  `).join('');
+
+  return `
+    <section class="operational-priority" aria-label="Synthèse de priorité opérationnelle des provinces contestées">
+      <h2>Priorités opérationnelles</h2>
+      <p>${escapeHtml(summary.fallbackMessage ?? summary.summary)}</p>
+      ${summary.empty ? '<small class="operational-priority-empty">Aucune priorité à afficher.</small>' : `<ol>${orderItems}</ol>`}
+      ${summary.conflicts.length > 0 ? `<div class="operational-priority-conflicts"><span>Conflits proches</span><ul>${conflicts}</ul></div>` : ''}
+    </section>
+  `;
+}
+
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
   const entries = validation.entries.map((entry) => {
@@ -482,6 +509,19 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .front-recovery-item.is-opportunistic strong { color:#fde68a; }
     .front-recovery-item small { color:#dbeafe; }
     .front-recovery-item em { color:#bae6fd; font-size:11px; font-style:normal; }
+    .operational-priority { display:grid; gap:10px; }
+    .operational-priority p, .operational-priority-empty { margin:0; color:#cbd5e1; font-size:12px; }
+    .operational-priority ol, .operational-priority ul { display:grid; gap:6px; margin:0; padding:0; }
+    .operational-priority-order, .operational-priority-conflict { display:grid; gap:3px; border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:7px 9px; }
+    .operational-priority-order--renforcer { border-color:rgba(74,222,128,0.42); }
+    .operational-priority-order--tenir { border-color:rgba(96,165,250,0.42); }
+    .operational-priority-order--exploiter { border-color:rgba(251,191,36,0.48); }
+    .operational-priority-order--surveiller, .operational-priority-order--différer { border-color:rgba(148,163,184,0.32); }
+    .operational-priority-order strong { color:#bfdbfe; font-size:12px; }
+    .operational-priority-order small, .operational-priority-conflict small { color:#cbd5e1; }
+    .operational-priority-conflicts { display:grid; gap:6px; border-top:1px solid rgba(148,163,184,0.14); padding-top:7px; }
+    .operational-priority-conflicts > span { color:#fca5a5; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
+    .operational-priority-conflict { border-color:rgba(248,113,113,0.36); }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -529,6 +569,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
         ${renderAfterActionMapRecap(shell)}
         ${renderFrontPressureReplay(shell)}
         ${renderFrontRecoveryRecommendations(shell)}
+        ${renderOperationalPrioritySummary(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>
