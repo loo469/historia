@@ -1691,3 +1691,118 @@ test('buildClimateMapOverlay preserves explicit mitigation previews without merg
     },
   ]);
 });
+
+test('buildClimateMapOverlay exposes climate aftermath recap and resilience markers', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+    { regionId: 'ridge', season: 'spring', temperatureC: 29, precipitationLevel: 18, droughtIndex: 68, anomaly: 'drought' },
+  ], {
+    regionGeometryById: {
+      delta: { center: { x: 24, y: 12 } },
+      ridge: { center: { x: 44, y: 18 } },
+    },
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        delta: {
+          strategicImpact: 'critical',
+          anomaly: 'flood',
+          confidenceBand: 'extreme',
+          timeWindow: 'tour actuel',
+          playerImpact: 'route fluviale et récolte touchées',
+        },
+      },
+    },
+    climateAftermathEvents: [
+      {
+        eventId: 'flood-aftermath',
+        affectedRegionIds: ['delta', 'ridge'],
+        observedImpact: 'récoltes basses et route coupée',
+        severity: 'major',
+        appliedMitigation: 'digues renforcées',
+        confidenceBand: 'probable',
+        resilienceState: 'recovering',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateAftermathRecap.events, [
+    {
+      eventId: 'flood-aftermath',
+      observedImpact: 'récoltes basses et route coupée',
+      severity: 'major',
+      affectedRegionIds: ['delta', 'ridge'],
+      appliedMitigation: 'digues renforcées',
+      missingMitigation: null,
+      confidenceBand: 'probable',
+      sourceAlertId: 'delta',
+      resilienceState: 'recovering',
+    },
+  ]);
+  assert.deepEqual(overlay.mapLayers.resilienceMarkers.map((marker) => ({
+    regionId: marker.regionId,
+    resilienceState: marker.resilienceState,
+    severity: marker.severity,
+    confidenceBand: marker.confidenceBand,
+    x: marker.x,
+    y: marker.y,
+    tooltip: marker.tooltip,
+  })), [
+    {
+      regionId: 'delta',
+      resilienceState: 'recovering',
+      severity: 'major',
+      confidenceBand: 'probable',
+      x: 24,
+      y: 12,
+      tooltip: {
+        observedImpact: 'récoltes basses et route coupée',
+        mitigation: 'mitigation appliquée: digues renforcées',
+        confidenceBand: 'probable',
+      },
+    },
+    {
+      regionId: 'ridge',
+      resilienceState: 'recovering',
+      severity: 'major',
+      confidenceBand: 'probable',
+      x: 44,
+      y: 18,
+      tooltip: {
+        observedImpact: 'récoltes basses et route coupée',
+        mitigation: 'mitigation appliquée: digues renforcées',
+        confidenceBand: 'probable',
+      },
+    },
+  ]);
+});
+
+test('buildClimateMapOverlay links urgent alerts to default aftermath when no explicit recap exists', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'citadel', season: 'spring', temperatureC: 18, precipitationLevel: 40, droughtIndex: 20 },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        citadel: {
+          strategicImpact: 'critical',
+          anomaly: 'storm',
+          confidenceBand: 'extreme',
+          timeWindow: 'tour actuel',
+          playerImpact: 'priorité capitale et route fragile',
+        },
+      },
+    },
+  });
+
+  assert.equal(overlay.climateAftermathRecap.events[0].sourceAlertId, 'citadel');
+  assert.equal(overlay.climateAftermathRecap.events[0].appliedMitigation, 'mitiger maintenant');
+  assert.equal(overlay.climateAftermathRecap.events[0].missingMitigation, 'ne rien changer');
+  assert.deepEqual(overlay.mapLayers.resilienceMarkers.map((marker) => ({
+    regionId: marker.regionId,
+    resilienceState: marker.resilienceState,
+    label: marker.label,
+  })), [
+    { regionId: 'citadel', resilienceState: 'recovering', label: 'récupération en cours' },
+  ]);
+});
