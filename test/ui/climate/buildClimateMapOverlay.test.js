@@ -1367,6 +1367,7 @@ test('buildClimateMapOverlay exposes timeline scrubber decision-changing forecas
       previewRiskLevel: 'critical',
       currentAnomaly: null,
       previewAnomaly: 'storm',
+      confidenceBand: 'extreme',
       changeType: 'risk-increases',
       decisionHint: 'agir avant la bascule si la province porte une action sensible',
       tone: 'warning',
@@ -1377,6 +1378,7 @@ test('buildClimateMapOverlay exposes timeline scrubber decision-changing forecas
       previewRiskLevel: 'strained',
       currentAnomaly: 'heatwave',
       previewAnomaly: null,
+      confidenceBand: 'uncertain',
       changeType: 'risk-decreases',
       decisionHint: 'attendre la fenêtre prévue peut réduire le coût',
       tone: 'positive',
@@ -1384,4 +1386,73 @@ test('buildClimateMapOverlay exposes timeline scrubber decision-changing forecas
   ]);
   assert.equal(overlay.climateTimeline.clarity.copy, '2 province(s) changent assez pour peser sur une décision.');
   assert.equal(overlay.climateTimeline.clarity.disasterLevels[2].decisionWeight, 'priorité stratégique');
+  assert.deepEqual(overlay.climateTimeline.clarity.confidenceBands.map((band) => band.band), [
+    'probable',
+    'uncertain',
+    'extreme',
+  ]);
+});
+
+test('buildClimateMapOverlay exposes deterministic confidence bands and anomaly tooltips', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'ridge',
+      season: 'spring',
+      temperatureC: 17,
+      precipitationLevel: 32,
+      droughtIndex: 42,
+      anomaly: 'storm',
+    },
+    {
+      regionId: 'basin',
+      season: 'spring',
+      temperatureC: 26,
+      precipitationLevel: 14,
+      droughtIndex: 61,
+      anomaly: 'drought',
+    },
+    {
+      regionId: 'coast',
+      season: 'spring',
+      temperatureC: 20,
+      precipitationLevel: 44,
+      droughtIndex: 18,
+    },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        ridge: { strategicImpact: 'critical', anomaly: 'storm', confidenceBand: 'probable' },
+        basin: { strategicImpact: 'stable', anomaly: null, confidence: 0.35 },
+        coast: { strategicImpact: 'critical', anomaly: 'flood' },
+      },
+    },
+    anomalyTooltipByRegion: {
+      ridge: {
+        cause: 'cellule orageuse confirmée par les guetteurs',
+        window: '2 tours',
+        playerImpact: 'retarder les routes exposées',
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.climateTimeline.decisionChangingRegions.map((region) => ({
+    regionId: region.regionId,
+    confidenceBand: region.confidenceBand,
+  })), [
+    { regionId: 'basin', confidenceBand: 'uncertain' },
+    { regionId: 'coast', confidenceBand: 'extreme' },
+    { regionId: 'ridge', confidenceBand: 'probable' },
+  ]);
+  assert.deepEqual(overlay.mapLayers.anomalyMarkers.find((marker) => marker.regionId === 'ridge').tooltip, {
+    title: 'Anomalie: storm',
+    cause: 'cellule orageuse confirmée par les guetteurs',
+    window: '2 tours',
+    playerImpact: 'retarder les routes exposées',
+    riskLevel: 'strained',
+  });
+  assert.equal(
+    overlay.mapLayers.anomalyMarkers.find((marker) => marker.regionId === 'basin').tooltip.playerImpact,
+    'réserves et récoltes sous pression, attendre ou irriguer avant dépense',
+  );
 });
