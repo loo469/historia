@@ -147,6 +147,96 @@ function buildInfluenceDiffs(selectedMarker, previousMarker, selectedCluster, re
   }];
 }
 
+function buildMomentumLevel(priority, influenceDiff, recapItem) {
+  const confidence = priority?.consequencePreview?.confidence ?? influenceDiff?.linkedPriority?.confidence ?? recapItem?.linkedPriority?.confidence ?? 'low';
+
+  if (confidence === 'low' || influenceDiff?.changeState === 'masked' || influenceDiff?.changeState === 'investigate') {
+    return 'fragile';
+  }
+
+  if (priority?.state === 'opportunity' || influenceDiff?.changeState === 'strengthened') {
+    return 'surging';
+  }
+
+  if (priority?.state === 'tension' || influenceDiff?.changeState === 'weakened') {
+    return 'volatile';
+  }
+
+  return 'observing';
+}
+
+function buildMomentumFilterState(priority, level) {
+  if (priority?.state === 'opportunity' || level === 'surging') {
+    return 'opportunity';
+  }
+
+  if (priority?.state === 'tension' || level === 'volatile' || level === 'fragile') {
+    return 'tension';
+  }
+
+  return 'watch';
+}
+
+function buildCulturalMomentumLayer({ regionId, selectedMarker, selectedCluster, timelineRecap, influenceDiffs, momentumFilter }) {
+  const priority = selectedMarker?.narrativePriority ?? selectedCluster?.narrativePriority ?? selectedCluster?.markerCollisionCluster?.narrativePriority ?? null;
+  const discoveryIds = (selectedMarker?.discoveries ?? [])
+    .slice(0, 3)
+    .sort();
+  const fallbackDiscovery = discoveryIds[0] ?? timelineRecap.find((item) => item.kind === 'discovery')?.title ?? priority?.source ?? 'signal culturel';
+  const baseDiffs = influenceDiffs.length > 0 ? influenceDiffs : [{
+    diffId: `${regionId}:momentum:unknown`,
+    regionId,
+    cultureName: selectedMarker?.cultureName ?? 'Culture locale',
+    changeState: priority?.consequencePreview?.confidence === 'low' ? 'investigate' : 'stable',
+    label: priority?.consequencePreview?.confidence === 'low' ? 'à investiguer' : 'stable',
+    reason: priority?.reason ?? 'momentum culturel stable',
+    linkedPriority: priority ? {
+      state: priority.state,
+      microAction: priority.microAction,
+      confidence: priority.consequencePreview?.confidence ?? 'medium',
+    } : null,
+  }];
+  const items = baseDiffs.map((diff, index) => {
+    const recapItem = timelineRecap[index] ?? timelineRecap[0] ?? null;
+    const level = buildMomentumLevel(priority, diff, recapItem);
+    const filterState = buildMomentumFilterState(priority, level);
+    const action = priority?.microAction ?? (level === 'fragile' ? 'observer' : 'attendre');
+    const risk = priority?.state === 'tension' || level === 'volatile' || level === 'fragile'
+      ? (priority?.consequencePreview?.tradeoff ?? diff.reason)
+      : null;
+
+    return {
+      momentumId: `${regionId}:momentum:${diff.changeState}:${index + 1}`,
+      regionId,
+      cultureName: diff.cultureName,
+      level,
+      filterState,
+      discoveryId: discoveryIds[index] ?? fallbackDiscovery,
+      influenceState: diff.changeState,
+      chain: `${discoveryIds[index] ?? fallbackDiscovery} → ${diff.label} → ${action}`,
+      suggestedAction: action,
+      opportunity: priority?.consequencePreview?.opportunity ?? recapItem?.summary ?? diff.reason,
+      risk,
+      confidence: priority?.consequencePreview?.confidence ?? diff.linkedPriority?.confidence ?? 'low',
+      markerIds: priority?.consequencePreview?.visibleMarkerIds ?? [],
+    };
+  });
+  const filteredItems = momentumFilter && momentumFilter !== 'all'
+    ? items.filter((item) => item.filterState === momentumFilter)
+    : items;
+
+  return {
+    layerId: `${regionId}:cultural-momentum`,
+    regionId,
+    activeFilter: momentumFilter ?? 'all',
+    availableFilters: ['all', 'opportunity', 'tension', 'watch'],
+    summary: filteredItems.length === 0
+      ? 'Aucun momentum culturel pour ce filtre.'
+      : `${filteredItems.length} chaîne${filteredItems.length > 1 ? 's' : ''} découverte → influence → décision.`,
+    items: filteredItems.slice(0, 3),
+  };
+}
+
 function dedupeAndSort(deltas) {
   return [...new Map(deltas.map((delta) => [
     `${delta.tone}:${delta.label}:${delta.value}:${delta.regionId}`,
@@ -167,10 +257,19 @@ export function buildCultureTurnReportDeltas({
   localTimeline = null,
   consequenceChips = [],
   previousMarker = null,
+  momentumFilter = 'all',
 } = {}) {
   const regionId = normalizeText(selectedRegionId ?? selectedMarker?.regionId ?? selectedCluster?.regionIds?.[0], 'province');
   const timelineRecap = buildDiscoveryTimelineRecap(localTimeline, selectedMarker, selectedCluster, regionId);
   const influenceDiffs = buildInfluenceDiffs(selectedMarker, previousMarker, selectedCluster, regionId);
+  const momentumLayer = buildCulturalMomentumLayer({
+    regionId,
+    selectedMarker,
+    selectedCluster,
+    timelineRecap,
+    influenceDiffs,
+    momentumFilter,
+  });
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
@@ -186,6 +285,14 @@ export function buildCultureTurnReportDeltas({
       deltas: [],
       timelineRecap: [],
       influenceDiffs: [],
+      momentumLayer: {
+        layerId: `${regionId}:cultural-momentum`,
+        regionId,
+        activeFilter: momentumFilter,
+        availableFilters: ['all', 'opportunity', 'tension', 'watch'],
+        summary: 'Aucun momentum culturel pour ce filtre.',
+        items: [],
+      },
     };
   }
 
@@ -197,5 +304,6 @@ export function buildCultureTurnReportDeltas({
     deltas,
     timelineRecap,
     influenceDiffs,
+    momentumLayer,
   };
 }

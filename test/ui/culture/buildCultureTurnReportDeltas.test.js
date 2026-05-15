@@ -22,6 +22,8 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         consequencePreview: {
           confidence: 'high',
           summary: 'explorer: archives ouvertes; tradeoff: retarde apaisement.',
+          opportunity: 'Saisir les archives peut déclencher une décision culturelle immédiate.',
+          visibleMarkerIds: ['river-gate:culture-aurora:event:event-archive-opening'],
         },
       },
     },
@@ -98,6 +100,30 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       },
     },
   ]);
+  assert.deepEqual(report.momentumLayer, {
+    layerId: 'river-gate:cultural-momentum',
+    regionId: 'river-gate',
+    activeFilter: 'all',
+    availableFilters: ['all', 'opportunity', 'tension', 'watch'],
+    summary: '1 chaîne découverte → influence → décision.',
+    items: [
+      {
+        momentumId: 'river-gate:momentum:strengthened:1',
+        regionId: 'river-gate',
+        cultureName: 'Compact d’Aurora',
+        level: 'surging',
+        filterState: 'opportunity',
+        discoveryId: 'archive-routes',
+        influenceState: 'strengthened',
+        chain: 'archive-routes → influence renforcée → explorer',
+        suggestedAction: 'explorer',
+        opportunity: 'Saisir les archives peut déclencher une décision culturelle immédiate.',
+        risk: null,
+        confidence: 'high',
+        markerIds: ['river-gate:culture-aurora:event:event-archive-opening'],
+      },
+    ],
+  });
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -109,6 +135,14 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
     deltas: [],
     timelineRecap: [],
     influenceDiffs: [],
+    momentumLayer: {
+      layerId: 'quiet-field:cultural-momentum',
+      regionId: 'quiet-field',
+      activeFilter: 'all',
+      availableFilters: ['all', 'opportunity', 'tension', 'watch'],
+      summary: 'Aucun momentum culturel pour ce filtre.',
+      items: [],
+    },
   });
 });
 
@@ -148,4 +182,46 @@ test('buildCultureTurnReportDeltas classifies new, weakened, masked, and investi
     selectedMarker: baseMarker,
     previousMarker: { ...baseMarker, influenceScore: 42, discoveries: ['fog-index'] },
   }).influenceDiffs[0].changeState, 'investigate');
+});
+
+test('buildCultureTurnReportDeltas filters fragile cultural momentum for tension decisions', () => {
+  const report = buildCultureTurnReportDeltas({
+    selectedRegionId: 'mist-hills',
+    momentumFilter: 'tension',
+    selectedMarker: {
+      overlayId: 'mist-hills:culture-mist',
+      regionId: 'mist-hills',
+      cultureName: 'Mist Circle',
+      influenceTier: 'faint',
+      influenceScore: 42,
+      discoveries: ['fog-index'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'watch',
+        microAction: 'attendre',
+        reason: 'Aucun signal critique: attendre le prochain repère culturel.',
+        consequencePreview: {
+          confidence: 'low',
+          tradeoff: 'risque de laisser passer un signal faible',
+          summary: 'attendre: intel culturel incomplet.',
+          visibleMarkerIds: ['mist-hills:culture-mist'],
+        },
+      },
+    },
+    previousMarker: {
+      overlayId: 'mist-hills:culture-mist',
+      regionId: 'mist-hills',
+      cultureName: 'Mist Circle',
+      influenceTier: 'faint',
+      influenceScore: 42,
+      discoveries: ['fog-index'],
+    },
+  });
+
+  assert.equal(report.momentumLayer.activeFilter, 'tension');
+  assert.deepEqual(report.momentumLayer.items.map((item) => [item.level, item.filterState, item.discoveryId, item.suggestedAction, item.confidence]), [
+    ['fragile', 'tension', 'fog-index', 'attendre', 'low'],
+  ]);
+  assert.match(report.momentumLayer.items[0].risk, /signal faible/);
 });
