@@ -237,6 +237,71 @@ function buildCulturalMomentumLayer({ regionId, selectedMarker, selectedCluster,
   };
 }
 
+function buildStabilizationAction(momentumItem) {
+  if (momentumItem.level === 'surging') {
+    return momentumItem.suggestedAction === 'soutenir' ? 'soutenir' : 'amplifier';
+  }
+
+  if (momentumItem.level === 'volatile') {
+    return 'apaiser';
+  }
+
+  if (momentumItem.level === 'fragile') {
+    return momentumItem.confidence === 'low' ? 'enquêter' : 'attendre';
+  }
+
+  return 'attendre';
+}
+
+function buildStabilizationTone(momentumItem, action) {
+  if (momentumItem.filterState === 'opportunity' || action === 'amplifier' || action === 'soutenir') {
+    return 'opportunity';
+  }
+
+  if (momentumItem.filterState === 'tension' || action === 'apaiser') {
+    return 'tension';
+  }
+
+  return 'watch';
+}
+
+function buildCultureStabilizationRecommendations(momentumLayer) {
+  const recommendations = (momentumLayer?.items ?? []).map((item, index) => {
+    const action = buildStabilizationAction(item);
+    const tone = buildStabilizationTone(item, action);
+    const reason = `${item.discoveryId} → ${item.level} → ${action}`;
+    const expectedEffect = tone === 'opportunity'
+      ? `opportunité à saisir: ${item.opportunity}`
+      : tone === 'tension'
+        ? `tension à calmer: ${item.risk ?? item.opportunity}`
+        : 'signal trop fragile pour agir sans observation';
+
+    return {
+      recommendationId: `${item.momentumId}:stabilization`,
+      regionId: item.regionId,
+      cultureName: item.cultureName,
+      action,
+      tone,
+      level: item.level,
+      discoveryId: item.discoveryId,
+      chain: `${item.chain} → ${action}`,
+      reason,
+      expectedEffect,
+      confidence: item.confidence,
+      markerIds: item.markerIds,
+      rank: index + 1,
+    };
+  });
+
+  return {
+    activeFilter: momentumLayer?.activeFilter ?? 'all',
+    summary: recommendations.length === 0
+      ? 'Aucune recommandation culturelle pour ce filtre.'
+      : `${recommendations.length} recommandation${recommendations.length > 1 ? 's' : ''} de stabilisation culturelle.`,
+    recommendations,
+  };
+}
+
 function dedupeAndSort(deltas) {
   return [...new Map(deltas.map((delta) => [
     `${delta.tone}:${delta.label}:${delta.value}:${delta.regionId}`,
@@ -270,6 +335,7 @@ export function buildCultureTurnReportDeltas({
     influenceDiffs,
     momentumFilter,
   });
+  const stabilizationRecommendations = buildCultureStabilizationRecommendations(momentumLayer);
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
@@ -293,6 +359,11 @@ export function buildCultureTurnReportDeltas({
         summary: 'Aucun momentum culturel pour ce filtre.',
         items: [],
       },
+      stabilizationRecommendations: {
+        activeFilter: momentumFilter,
+        summary: 'Aucune recommandation culturelle pour ce filtre.',
+        recommendations: [],
+      },
     };
   }
 
@@ -305,5 +376,6 @@ export function buildCultureTurnReportDeltas({
     timelineRecap,
     influenceDiffs,
     momentumLayer,
+    stabilizationRecommendations,
   };
 }

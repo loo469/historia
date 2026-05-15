@@ -124,6 +124,27 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       },
     ],
   });
+  assert.deepEqual(report.stabilizationRecommendations, {
+    activeFilter: 'all',
+    summary: '1 recommandation de stabilisation culturelle.',
+    recommendations: [
+      {
+        recommendationId: 'river-gate:momentum:strengthened:1:stabilization',
+        regionId: 'river-gate',
+        cultureName: 'Compact d’Aurora',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'archive-routes',
+        chain: 'archive-routes → influence renforcée → explorer → amplifier',
+        reason: 'archive-routes → surging → amplifier',
+        expectedEffect: 'opportunité à saisir: Saisir les archives peut déclencher une décision culturelle immédiate.',
+        confidence: 'high',
+        markerIds: ['river-gate:culture-aurora:event:event-archive-opening'],
+        rank: 1,
+      },
+    ],
+  });
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -142,6 +163,11 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
       availableFilters: ['all', 'opportunity', 'tension', 'watch'],
       summary: 'Aucun momentum culturel pour ce filtre.',
       items: [],
+    },
+    stabilizationRecommendations: {
+      activeFilter: 'all',
+      summary: 'Aucune recommandation culturelle pour ce filtre.',
+      recommendations: [],
     },
   });
 });
@@ -224,4 +250,83 @@ test('buildCultureTurnReportDeltas filters fragile cultural momentum for tension
     ['fragile', 'tension', 'fog-index', 'attendre', 'low'],
   ]);
   assert.match(report.momentumLayer.items[0].risk, /signal faible/);
+  assert.deepEqual(report.stabilizationRecommendations.recommendations.map((recommendation) => [
+    recommendation.action,
+    recommendation.tone,
+    recommendation.reason,
+    recommendation.expectedEffect,
+  ]), [
+    ['enquêter', 'tension', 'fog-index → fragile → enquêter', 'tension à calmer: risque de laisser passer un signal faible'],
+  ]);
+});
+
+test('buildCultureTurnReportDeltas recommends apaiser and attendre for volatile or observing momentum', () => {
+  const volatileReport = buildCultureTurnReportDeltas({
+    selectedRegionId: 'ember-ford',
+    momentumFilter: 'tension',
+    selectedMarker: {
+      overlayId: 'ember-ford:culture-ember',
+      regionId: 'ember-ford',
+      cultureName: 'Ember Guild',
+      influenceTier: 'strong',
+      influenceScore: 44,
+      discoveries: ['ash-treaty'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'tension',
+        microAction: 'apaiser',
+        consequencePreview: {
+          confidence: 'medium',
+          tradeoff: 'médiation requise avant amplification',
+          summary: 'apaiser: tension de mémoire locale.',
+        },
+      },
+    },
+    previousMarker: {
+      overlayId: 'ember-ford:culture-ember',
+      regionId: 'ember-ford',
+      cultureName: 'Ember Guild',
+      influenceTier: 'strong',
+      influenceScore: 58,
+      discoveries: ['ash-treaty'],
+    },
+  });
+  assert.deepEqual(volatileReport.stabilizationRecommendations.recommendations.map((recommendation) => [recommendation.action, recommendation.tone, recommendation.level]), [
+    ['apaiser', 'tension', 'volatile'],
+  ]);
+
+  const watchReport = buildCultureTurnReportDeltas({
+    selectedRegionId: 'plain-watch',
+    momentumFilter: 'watch',
+    selectedMarker: {
+      overlayId: 'plain-watch:culture-watch',
+      regionId: 'plain-watch',
+      cultureName: 'Plain Watch',
+      influenceTier: 'emerging',
+      influenceScore: 35,
+      discoveries: ['quiet-marker'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'watch',
+        microAction: 'attendre',
+        consequencePreview: {
+          confidence: 'medium',
+          summary: 'attendre: aucun basculement immédiat.',
+        },
+      },
+    },
+    previousMarker: {
+      overlayId: 'plain-watch:culture-watch',
+      regionId: 'plain-watch',
+      cultureName: 'Plain Watch',
+      influenceTier: 'emerging',
+      influenceScore: 35,
+      discoveries: ['quiet-marker'],
+    },
+  });
+  assert.deepEqual(watchReport.stabilizationRecommendations.recommendations.map((recommendation) => [recommendation.action, recommendation.tone, recommendation.level]), [
+    ['attendre', 'watch', 'observing'],
+  ]);
 });
