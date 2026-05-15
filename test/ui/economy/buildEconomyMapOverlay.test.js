@@ -1290,4 +1290,53 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       },
     },
   ]);
+
+
+  assert.equal(overlay.interventionComparison.recommendedOptionId, 'intervention:route-coast:convoy-priority');
+  assert.deepEqual(overlay.interventionComparison.legend.map((entry) => entry.key), [
+    'relativeCost',
+    'expectedImpact',
+    'riskIfIgnored',
+  ]);
+  assert.deepEqual(overlay.interventionComparison.options.map((option) => ({
+    id: option.id,
+    rank: option.rank,
+    recommended: option.recommended,
+    relativeCost: option.relativeCost,
+    expectedImpact: option.expectedImpact,
+    riskIfIgnored: option.riskIfIgnored,
+  })), [
+    {
+      id: 'intervention:route-coast:convoy-priority',
+      rank: 1,
+      recommended: true,
+      relativeCost: 'moyen',
+      expectedImpact: 'Soulage le goulet grain avant saturation.',
+      riskIfIgnored: 'Ignorer Coast Road (land) peut bloquer le goulet grain.',
+    },
+    {
+      id: 'intervention:route-coast:stabilization',
+      rank: 2,
+      recommended: false,
+      relativeCost: 'élevé',
+      expectedImpact: 'Réduit le risque actuel (47/100) et sécurise les flux existants.',
+      riskIfIgnored: 'Ignorer Coast Road (land) peut bloquer le goulet grain.',
+    },
+    {
+      id: 'intervention:city:city-harbor:reporter-expansion',
+      rank: 3,
+      recommended: false,
+      relativeCost: 'faible',
+      expectedImpact: 'Préserve 27 stock utile pour une route plus contrainte.',
+      riskIfIgnored: 'Dépenser trop tôt peut disperser le surplus de Harbor ★.',
+    },
+    {
+      id: 'intervention:city:city-mill:support-city',
+      rank: 4,
+      recommended: false,
+      relativeCost: 'moyen',
+      expectedImpact: 'Réduit la tension économique de Mill.',
+      riskIfIgnored: 'Mill garde une tension qui concurrence les routes prioritaires.',
+    },
+  ]);
 });
