@@ -302,6 +302,135 @@ function buildCultureStabilizationRecommendations(momentumLayer) {
   };
 }
 
+function buildRecommendationTrajectory(action) {
+  if (action === 'soutenir') {
+    return 'consolidation';
+  }
+
+  if (action === 'amplifier') {
+    return 'expansion';
+  }
+
+  if (action === 'apaiser') {
+    return 'apaisement';
+  }
+
+  if (action === 'enquêter') {
+    return 'enquête';
+  }
+
+  return 'attente';
+}
+
+function normalizeCoherenceRecommendation(recommendation, index) {
+  const action = recommendation.action ?? recommendation.suggestedAction ?? 'attendre';
+  const trajectory = recommendation.trajectory ?? buildRecommendationTrajectory(action);
+
+  return {
+    recommendationId: recommendation.recommendationId ?? `culture-recommendation:${index + 1}`,
+    regionId: recommendation.regionId ?? 'province',
+    cultureName: recommendation.cultureName ?? 'Culture locale',
+    action,
+    tone: recommendation.tone ?? 'watch',
+    level: recommendation.level ?? 'observing',
+    discoveryId: recommendation.discoveryId ?? 'signal culturel',
+    confidence: recommendation.confidence ?? 'low',
+    chain: recommendation.chain ?? `${recommendation.discoveryId ?? 'signal culturel'} → ${recommendation.level ?? 'observing'} → ${action}`,
+    expectedEffect: recommendation.expectedEffect ?? 'effet culturel à confirmer',
+    trajectory,
+    rank: recommendation.rank ?? index + 1,
+  };
+}
+
+function buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations = []) {
+  const recommendations = [
+    ...(stabilizationRecommendations?.recommendations ?? []),
+    ...(activeRecommendations ?? []),
+  ].map(normalizeCoherenceRecommendation);
+  const trajectoryOrder = ['consolidation', 'expansion', 'apaisement', 'enquête', 'attente'];
+  const trajectoryGroups = trajectoryOrder
+    .map((trajectory) => {
+      const members = recommendations.filter((recommendation) => recommendation.trajectory === trajectory);
+      return members.length === 0 ? null : {
+        trajectory,
+        count: members.length,
+        actions: [...new Set(members.map((member) => member.action))],
+        recommendationIds: members.map((member) => member.recommendationId),
+        summary: `${trajectory}: ${members.map((member) => member.cultureName).join(', ')}`,
+      };
+    })
+    .filter(Boolean);
+  const tensions = [];
+  const expansionRecommendations = recommendations.filter((recommendation) => recommendation.trajectory === 'expansion');
+  const apaisementRecommendations = recommendations.filter((recommendation) => recommendation.trajectory === 'apaisement');
+
+  recommendations.forEach((recommendation) => {
+    if ((recommendation.action === 'amplifier' || recommendation.action === 'soutenir')
+      && (recommendation.level === 'fragile' || recommendation.confidence === 'low')) {
+      tensions.push({
+        tensionId: `${recommendation.recommendationId}:fragile-amplification`,
+        level: 'warning',
+        label: 'amplification fragile',
+        recommendationIds: [recommendation.recommendationId],
+        reason: `${recommendation.discoveryId} → ${recommendation.action}: signal encore fragile`,
+      });
+    }
+
+    if (recommendation.action === 'enquêter' && recommendation.confidence === 'low') {
+      tensions.push({
+        tensionId: `${recommendation.recommendationId}:low-confidence-investigation`,
+        level: 'uncertain',
+        label: 'enquête incertaine',
+        recommendationIds: [recommendation.recommendationId],
+        reason: `${recommendation.discoveryId} → enquêter: confiance trop basse pour sur-vendre la lecture`,
+      });
+    }
+  });
+
+  if (expansionRecommendations.length > 1) {
+    tensions.push({
+      tensionId: 'culture-coherence:competing-opportunities',
+      level: 'conflict',
+      label: 'opportunités concurrentes',
+      recommendationIds: expansionRecommendations.map((recommendation) => recommendation.recommendationId),
+      reason: `${expansionRecommendations.length} opportunités demandent amplification en parallèle`,
+    });
+  }
+
+  apaisementRecommendations
+    .filter((recommendation) => recommendation.rank > 1 || expansionRecommendations.length > 0)
+    .forEach((recommendation) => {
+      tensions.push({
+        tensionId: `${recommendation.recommendationId}:late-appeasement`,
+        level: 'warning',
+        label: 'apaisement tardif',
+        recommendationIds: [recommendation.recommendationId],
+        reason: `${recommendation.discoveryId} → apaiser: risque de passer après une expansion active`,
+      });
+    });
+
+  return {
+    state: recommendations.length === 0 ? 'quiet' : tensions.some((tension) => tension.level === 'conflict') ? 'conflict' : tensions.length > 0 ? 'mixed' : 'coherent',
+    activeFilter: stabilizationRecommendations?.activeFilter ?? 'all',
+    summary: recommendations.length === 0
+      ? 'Aucune cohérence culturelle à synthétiser.'
+      : tensions.length === 0
+        ? `${recommendations.length} recommandation${recommendations.length > 1 ? 's' : ''} sur une trajectoire culturelle cohérente.`
+        : `${tensions.length} tension${tensions.length > 1 ? 's' : ''} entre recommandations culturelles actives.`,
+    trajectoryGroups,
+    tensions,
+    explanation: recommendations.length === 0
+      ? 'Aucun signal récent → recommandation → cohérence.'
+      : recommendations
+        .slice(0, 3)
+        .map((recommendation) => `${recommendation.discoveryId} → ${recommendation.action} → ${recommendation.trajectory}`)
+        .join(' | '),
+    uncertainRecommendationIds: recommendations
+      .filter((recommendation) => recommendation.confidence === 'low' || recommendation.level === 'fragile')
+      .map((recommendation) => recommendation.recommendationId),
+  };
+}
+
 function dedupeAndSort(deltas) {
   return [...new Map(deltas.map((delta) => [
     `${delta.tone}:${delta.label}:${delta.value}:${delta.regionId}`,
@@ -323,6 +452,7 @@ export function buildCultureTurnReportDeltas({
   consequenceChips = [],
   previousMarker = null,
   momentumFilter = 'all',
+  activeRecommendations = [],
 } = {}) {
   const regionId = normalizeText(selectedRegionId ?? selectedMarker?.regionId ?? selectedCluster?.regionIds?.[0], 'province');
   const timelineRecap = buildDiscoveryTimelineRecap(localTimeline, selectedMarker, selectedCluster, regionId);
@@ -336,6 +466,7 @@ export function buildCultureTurnReportDeltas({
     momentumFilter,
   });
   const stabilizationRecommendations = buildCultureStabilizationRecommendations(momentumLayer);
+  const recommendationCoherence = buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations);
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
@@ -364,6 +495,15 @@ export function buildCultureTurnReportDeltas({
         summary: 'Aucune recommandation culturelle pour ce filtre.',
         recommendations: [],
       },
+      recommendationCoherence: {
+        state: 'quiet',
+        activeFilter: momentumFilter,
+        summary: 'Aucune cohérence culturelle à synthétiser.',
+        trajectoryGroups: [],
+        tensions: [],
+        explanation: 'Aucun signal récent → recommandation → cohérence.',
+        uncertainRecommendationIds: [],
+      },
     };
   }
 
@@ -377,5 +517,6 @@ export function buildCultureTurnReportDeltas({
     influenceDiffs,
     momentumLayer,
     stabilizationRecommendations,
+    recommendationCoherence,
   };
 }
