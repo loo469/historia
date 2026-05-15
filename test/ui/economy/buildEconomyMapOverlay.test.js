@@ -1212,6 +1212,31 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     'no-spend',
   ]);
 
+
+  assert.deepEqual(overlay.layers.logistics.stressFilters, [
+    {
+      filter: 'convoy-priority',
+      label: 'Priorité convoi',
+      description: 'Routes où une priorité convoi soulage vite un goulet.',
+      routeIds: ['route-coast'],
+      count: 1,
+    },
+    {
+      filter: 'stabilization',
+      label: 'Stabilisation',
+      description: 'Routes à stabiliser avant d’étendre ou de déplacer les flux.',
+      routeIds: ['route-coast'],
+      count: 1,
+    },
+    {
+      filter: 'expansion',
+      label: 'Expansion',
+      description: 'Routes avec marge suffisante pour soutenir une extension.',
+      routeIds: [],
+      count: 0,
+    },
+  ]);
+
   assert.deepEqual(overlay.layers.logistics.features, [
     {
       featureId: 'route:route-coast',
@@ -1233,6 +1258,30 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
         tooltip: 'Goulet grain: 0 capacité restante sur Coast Road.',
       },
       tooltip: 'Goulet grain: 0 capacité restante sur Coast Road.',
+      whatIfOptions: [
+        {
+          id: 'route-coast:convoy-priority',
+          filter: 'convoy-priority',
+          label: 'Priorité convoi',
+          expectedImpact: 'Soulage le goulet grain avant saturation.',
+          impactScore: 10,
+          badge: 'priorité critique',
+        },
+        {
+          id: 'route-coast:stabilization',
+          filter: 'stabilization',
+          label: 'Stabilisation',
+          expectedImpact: 'Réduit le risque actuel (47/100) et sécurise les flux existants.',
+          impactScore: 10,
+          badge: 'stabiliser',
+        },
+      ],
+      priorityBadge: {
+        level: 'critical',
+        label: 'priorité critique',
+        recommendedFilter: 'convoy-priority',
+        downstreamEffect: 'Soulage le goulet grain avant saturation.',
+      },
       style: {
         stroke: 'ochre',
         width: 2,
