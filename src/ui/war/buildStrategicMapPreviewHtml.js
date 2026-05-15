@@ -289,6 +289,27 @@ function renderFrontPressureReplay(shell) {
   `;
 }
 
+
+function renderFrontRecoveryRecommendations(shell) {
+  const recovery = shell.frontRecoveryRecommendations;
+  const entries = recovery.recommendations.map((recommendation) => `
+    <li class="front-recovery-item ${recommendation.safest ? 'is-safest' : ''} ${recommendation.opportunistic ? 'is-opportunistic' : ''}">
+      <span>${escapeHtml(recommendation.label)} · ${escapeHtml(recommendation.stance)}</span>
+      <strong>${recommendation.safest ? 'option la plus sûre' : recommendation.opportunistic ? 'option opportuniste' : 'option de reprise'}</strong>
+      <small>${escapeHtml(recommendation.reason)}</small>
+      <em>Risque: ${escapeHtml(recommendation.risk)}</em>
+    </li>
+  `).join('');
+
+  return `
+    <section class="front-recovery" aria-label="Recommandations de récupération après replay de pression">
+      <h2>Reprise front</h2>
+      <p>${escapeHtml(recovery.fallbackMessage ?? 'Actions proposées depuis le replay de pression.')}</p>
+      ${recovery.empty ? '<small class="front-recovery-empty">Aucune recommandation disponible.</small>' : `<ol>${entries}</ol>`}
+    </section>
+  `;
+}
+
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
   const entries = validation.entries.map((entry) => {
@@ -451,6 +472,16 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .front-pressure-frame strong { color:#f5d0fe; font-size:12px; }
     .front-pressure-frame small { color:#dbeafe; }
     .front-pressure-frame em { color:#bae6fd; font-size:11px; font-style:normal; }
+    .front-recovery { display:grid; gap:10px; }
+    .front-recovery p, .front-recovery-empty { margin:0; color:#cbd5e1; font-size:12px; }
+    .front-recovery ol { display:grid; gap:6px; margin:0; padding:0; }
+    .front-recovery-item { display:grid; gap:3px; border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:7px 9px; }
+    .front-recovery-item.is-safest { border-color:rgba(74,222,128,0.44); background:rgba(22,101,52,0.12); }
+    .front-recovery-item.is-opportunistic { border-color:rgba(251,191,36,0.48); background:rgba(120,53,15,0.12); }
+    .front-recovery-item strong { color:#bbf7d0; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
+    .front-recovery-item.is-opportunistic strong { color:#fde68a; }
+    .front-recovery-item small { color:#dbeafe; }
+    .front-recovery-item em { color:#bae6fd; font-size:11px; font-style:normal; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -497,6 +528,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
         ${renderProvinceActionQueueValidation(shell)}
         ${renderAfterActionMapRecap(shell)}
         ${renderFrontPressureReplay(shell)}
+        ${renderFrontRecoveryRecommendations(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>

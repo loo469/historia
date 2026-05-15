@@ -1866,6 +1866,128 @@ function buildFrontPressureTimelineReplay(renderedProvinces, options) {
   };
 }
 
+
+function buildRecoveryRecommendation({ actionCode, label, stance, reason, risk, safest = false, opportunistic = false }) {
+  return {
+    actionCode,
+    label,
+    stance,
+    reason,
+    risk,
+    safest,
+    opportunistic,
+  };
+}
+
+function buildFrontRecoveryRecommendations(frontPressureReplay) {
+  if (frontPressureReplay.empty) {
+    return {
+      empty: true,
+      fallbackMessage: 'Recommandations indisponibles sans historique de pression du front.',
+      safestActionCode: null,
+      opportunisticActionCode: null,
+      recommendations: [],
+    };
+  }
+
+  if (frontPressureReplay.incomplete) {
+    return {
+      empty: false,
+      fallbackMessage: 'Historique incomplet: attendre ou consolider avant une reprise risquée.',
+      safestActionCode: 'hold-and-observe',
+      opportunisticActionCode: null,
+      recommendations: [
+        buildRecoveryRecommendation({
+          actionCode: 'hold-and-observe',
+          label: 'Attendre et observer',
+          stance: 'sûre',
+          reason: 'un seul état de replay ne suffit pas pour distinguer gain, perte ou pression adjacente',
+          risk: 'faible, mais l’initiative reste limitée',
+          safest: true,
+        }),
+      ],
+    };
+  }
+
+  const activeFrame = frontPressureReplay.activeFrame;
+  const frames = frontPressureReplay.frames;
+  const hasBlocked = frames.some((frame) => frame.marker.type === 'blocked');
+  const hasGain = frames.some((frame) => frame.marker.type === 'gain');
+  const hasLoss = frames.some((frame) => frame.marker.type === 'loss');
+  const hasAdjacentPressure = frames.some((frame) => frame.adjacentPressure.length > 0);
+  const supportPressure = activeFrame?.adjacentPressure.some((adjacent) => ['high', 'critical'].includes(adjacent.pressure)) ?? false;
+  const recommendations = [];
+
+  if (hasBlocked || supportPressure) {
+    recommendations.push(buildRecoveryRecommendation({
+      actionCode: 'consolidate-support',
+      label: 'Consolider le soutien',
+      stance: 'sûre',
+      reason: hasBlocked
+        ? 'le replay montre un blocage qui empêche la pression de retomber'
+        : 'la pression adjacente reste haute autour de la province contestée',
+      risk: 'faible à moyen: stabilise le front mais retarde l’exploitation',
+      safest: true,
+    }));
+  }
+
+  if (hasLoss || activeFrame?.pressureDelta > 0) {
+    recommendations.push(buildRecoveryRecommendation({
+      actionCode: 'reinforce-front',
+      label: 'Renforcer le front',
+      stance: recommendations.length === 0 ? 'sûre' : 'défensive',
+      reason: 'le replay indique une perte de pression favorable ou une remontée adverse',
+      risk: 'moyen: consomme des ressources mais évite une rupture',
+      safest: recommendations.length === 0,
+    }));
+  }
+
+  if (hasGain && !supportPressure) {
+    recommendations.push(buildRecoveryRecommendation({
+      actionCode: 'exploit-breach',
+      label: 'Exploiter la brèche',
+      stance: 'opportuniste',
+      reason: 'un gain récent ouvre une fenêtre avant que la pression voisine ne remonte',
+      risk: 'élevé: peut exposer le front si le soutien manque',
+      opportunistic: true,
+    }));
+  }
+
+  if (hasGain && supportPressure) {
+    recommendations.push(buildRecoveryRecommendation({
+      actionCode: 'limited-probe',
+      label: 'Sonder prudemment la brèche',
+      stance: 'opportuniste',
+      reason: 'le replay montre un gain, mais la pression adjacente exige une reprise limitée',
+      risk: 'moyen à élevé: opportunité réelle mais soutien fragile',
+      opportunistic: true,
+    }));
+  }
+
+  if (recommendations.length < 2) {
+    recommendations.push(buildRecoveryRecommendation({
+      actionCode: 'hold-line',
+      label: 'Tenir la ligne',
+      stance: recommendations.length === 0 ? 'sûre' : 'attente',
+      reason: 'le replay ne montre pas de bascule assez nette pour forcer une action',
+      risk: 'faible: garde la lisibilité mais laisse l’adversaire respirer',
+      safest: recommendations.length === 0,
+    }));
+  }
+
+  const compactRecommendations = recommendations.slice(0, 3);
+  const safest = compactRecommendations.find((recommendation) => recommendation.safest) ?? compactRecommendations[0] ?? null;
+  const opportunistic = compactRecommendations.find((recommendation) => recommendation.opportunistic) ?? null;
+
+  return {
+    empty: compactRecommendations.length === 0,
+    fallbackMessage: null,
+    safestActionCode: safest?.actionCode ?? null,
+    opportunisticActionCode: opportunistic?.actionCode ?? null,
+    recommendations: compactRecommendations,
+  };
+}
+
 function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
@@ -2098,6 +2220,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const keyboardActionPlanner = buildKeyboardActionPlanner(renderedProvinces, normalizedOptions);
   const afterActionMapRecap = buildAfterActionMapRecap(renderedProvinces, keyboardActionPlanner, normalizedOptions);
   const frontPressureReplay = buildFrontPressureTimelineReplay(renderedProvinces, normalizedOptions);
+  const frontRecoveryRecommendations = buildFrontRecoveryRecommendations(frontPressureReplay);
 
   return {
     title,
@@ -2107,6 +2230,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     keyboardActionPlanner,
     afterActionMapRecap,
     frontPressureReplay,
+    frontRecoveryRecommendations,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,
