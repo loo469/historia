@@ -2166,3 +2166,133 @@ test('buildClimateMapOverlay keeps cross-region climate priority overrides conse
     },
   ]);
 });
+
+test('buildClimateMapOverlay groups climate priorities into prudent action bundles', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+    { regionId: 'ridge', season: 'spring', temperatureC: 29, precipitationLevel: 18, droughtIndex: 68, anomaly: 'drought' },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'delta-ready',
+        regionId: 'delta',
+        observedImpact: 'route stabilisée',
+        severity: 'minor',
+        appliedMitigation: 'digues inspectées',
+        confidenceBand: 'probable',
+        resilienceState: 'resilient',
+      },
+      {
+        eventId: 'ridge-risk',
+        regionId: 'ridge',
+        observedImpact: 'sols fragiles',
+        severity: 'moderate',
+        missingMitigation: 'réservoir non renforcé',
+        confidenceBand: 'uncertain',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'delta-ready',
+        windowId: 'delta-ready:now',
+        label: 'tour actuel',
+        state: 'safe',
+        affectedRegionIds: ['delta'],
+        confidenceBand: 'probable',
+      },
+      {
+        aftermathEventId: 'ridge-risk',
+        windowId: 'ridge-risk:later',
+        label: 'prochain tour',
+        state: 'safe',
+        affectedRegionIds: ['ridge'],
+        confidenceBand: 'uncertain',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateActionBundleAssistant.bundles.map((bundle) => ({
+    kind: bundle.kind,
+    priorityIds: bundle.priorityIds,
+    regionIds: bundle.regionIds,
+    viability: bundle.viability,
+    resourceConflicts: bundle.resourceConflicts,
+    confidenceNote: bundle.confidenceNote,
+  })), [
+    {
+      kind: 'secure-now',
+      priorityIds: ['delta-ready:now:readiness:priority'],
+      regionIds: ['delta'],
+      viability: 'viable',
+      resourceConflicts: [],
+      confidenceNote: 'confiance cohérente avec les prévisions disponibles',
+    },
+    {
+      kind: 'prepare',
+      priorityIds: ['ridge-risk:later:readiness:priority'],
+      regionIds: ['ridge'],
+      viability: 'fragile',
+      resourceConflicts: ['mitigation', 'local-resilience', 'residual-risk'],
+      confidenceNote: 'prudence: au moins une prévision reste incertaine',
+    },
+  ]);
+  assert.equal(overlay.climateActionBundleAssistant.summary, '1 bundle(s) viable(s), 1 fragile(s), 0 déconseillé(s).');
+});
+
+test('buildClimateMapOverlay supports explicit prudent climate bundle overrides', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'delta-risk',
+        regionId: 'delta',
+        observedImpact: 'route encore instable',
+        severity: 'major',
+        missingMitigation: 'réserve absente',
+        confidenceBand: 'probable',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'delta-risk',
+        windowId: 'delta-risk:now',
+        label: 'tour actuel',
+        state: 'risky',
+        affectedRegionIds: ['delta'],
+        confidenceBand: 'probable',
+      },
+    ],
+    climatePrioritySummary: [
+      {
+        windowId: 'delta-risk:now',
+        priority: 'avoid',
+        resourceConflicts: ['reserve', 'window-timing', 'residual-risk'],
+        reason: 'fenêtre trop exposée',
+      },
+    ],
+    climateActionBundles: [
+      {
+        kind: 'postpone',
+        viability: 'discouraged',
+        reason: 'ne pas combiner avec une reprise agricole ce tour',
+        confidenceNote: 'prudence maintenue malgré confiance probable',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateActionBundleAssistant.bundles, [
+    {
+      bundleId: 'climate-bundle:postpone',
+      kind: 'postpone',
+      priorityIds: ['delta-risk:now:readiness:priority'],
+      regionIds: ['delta'],
+      viability: 'discouraged',
+      resourceConflicts: ['reserve', 'window-timing', 'residual-risk'],
+      reason: 'ne pas combiner avec une reprise agricole ce tour',
+      confidenceNote: 'prudence maintenue malgré confiance probable',
+    },
+  ]);
+});

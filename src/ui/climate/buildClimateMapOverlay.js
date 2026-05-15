@@ -1813,6 +1813,147 @@ function buildClimatePrioritySummary(climateSafeWindowCalendar, climateRecoveryR
 }
 
 
+function getClimateBundleKind(priority) {
+  if (priority.priority === 'act-now') {
+    return 'secure-now';
+  }
+
+  if (priority.priority === 'prepare-first') {
+    return 'prepare';
+  }
+
+  if (priority.priority === 'defer') {
+    return 'monitor';
+  }
+
+  return 'postpone';
+}
+
+function describeClimateBundleViability(kind, priorities, conflicts) {
+  if (kind === 'secure-now') {
+    return priorities.some((priority) => priority.confidenceBand === 'uncertain') || conflicts.length > 0
+      ? 'fragile'
+      : 'viable';
+  }
+
+  if (kind === 'prepare') {
+    return priorities.some((priority) => priority.confidenceBand === 'uncertain') ? 'fragile' : 'viable';
+  }
+
+  if (kind === 'monitor') {
+    return conflicts.includes('residual-risk') || conflicts.includes('window-timing') ? 'fragile' : 'viable';
+  }
+
+  return 'discouraged';
+}
+
+function describeClimateBundleReason(kind, viability, conflicts) {
+  if (viability === 'viable') {
+    return kind === 'secure-now'
+      ? 'actions combinables maintenant sans conflit majeur de ressources'
+      : 'bundle utilisable avec préparation ou surveillance limitée';
+  }
+
+  if (viability === 'fragile') {
+    return conflicts.length > 0
+      ? `fragile: conflits ${conflicts.join(', ')} à arbitrer avant engagement`
+      : 'fragile: prévisions ou fenêtres à confirmer avant engagement';
+  }
+
+  return 'déconseillé: reporter évite de sur-vendre une fenêtre contradictoire ou trop risquée';
+}
+
+function normalizeClimateBundleOverride(override, baseBundle) {
+  const kind = String(override.kind ?? override.bundleKind ?? baseBundle.kind).trim().toLowerCase();
+  const viability = String(override.viability ?? baseBundle.viability).trim().toLowerCase();
+
+  return {
+    ...baseBundle,
+    ...override,
+    bundleId: String(override.bundleId ?? baseBundle.bundleId).trim(),
+    kind: ['secure-now', 'prepare', 'monitor', 'postpone'].includes(kind) ? kind : baseBundle.kind,
+    priorityIds: requireArray(override.priorityIds ?? baseBundle.priorityIds, 'ClimateMapOverlay climateActionBundle priorityIds')
+      .map((priorityId) => String(priorityId).trim())
+      .filter(Boolean),
+    regionIds: requireArray(override.regionIds ?? baseBundle.regionIds, 'ClimateMapOverlay climateActionBundle regionIds')
+      .map((regionId) => String(regionId).trim())
+      .filter(Boolean),
+    viability: ['viable', 'fragile', 'discouraged'].includes(viability) ? viability : baseBundle.viability,
+    resourceConflicts: requireArray(
+      override.resourceConflicts ?? baseBundle.resourceConflicts,
+      'ClimateMapOverlay climateActionBundle resourceConflicts',
+    ).map((conflict) => String(conflict).trim()).filter(Boolean),
+    reason: String(override.reason ?? baseBundle.reason).trim(),
+    confidenceNote: String(override.confidenceNote ?? baseBundle.confidenceNote).trim(),
+  };
+}
+
+function buildClimateActionBundleAssistant(climatePrioritySummary, normalizedOptions) {
+  const explicitBundles = Array.isArray(normalizedOptions.climateActionBundles)
+    ? normalizedOptions.climateActionBundles
+    : Array.isArray(normalizedOptions.climateActionBundleAssistant)
+      ? normalizedOptions.climateActionBundleAssistant
+      : [];
+
+  if (climatePrioritySummary.priorities.length === 0) {
+    return {
+      title: 'Assistant bundles actions climat',
+      fallback: 'Aucune priorité climatique inter-régions à grouper.',
+      bundles: [],
+      bundleConflicts: [],
+      summary: 'Aucun bundle climatique pour le tour courant.',
+    };
+  }
+
+  const grouped = climatePrioritySummary.priorities.reduce((acc, priority) => {
+    const kind = getClimateBundleKind(priority);
+    if (!acc.has(kind)) {
+      acc.set(kind, []);
+    }
+    acc.get(kind).push(priority);
+    return acc;
+  }, new Map());
+
+  const bundles = [...grouped.entries()].map(([kind, priorities]) => {
+    const conflicts = [...new Set(priorities.flatMap((priority) => priority.resourceConflicts))];
+    const viability = describeClimateBundleViability(kind, priorities, conflicts);
+    const baseBundle = {
+      bundleId: `climate-bundle:${kind}`,
+      kind,
+      priorityIds: priorities.map((priority) => priority.priorityId),
+      regionIds: [...new Set(priorities.flatMap((priority) => priority.regionIds))],
+      viability,
+      resourceConflicts: conflicts,
+      reason: describeClimateBundleReason(kind, viability, conflicts),
+      confidenceNote: priorities.some((priority) => priority.confidenceBand === 'uncertain')
+        ? 'prudence: au moins une prévision reste incertaine'
+        : 'confiance cohérente avec les prévisions disponibles',
+    };
+    const override = explicitBundles.find((bundle) => (bundle.kind ?? bundle.bundleKind ?? baseBundle.kind) === kind);
+
+    return override ? normalizeClimateBundleOverride(override, baseBundle) : baseBundle;
+  }).sort((left, right) => {
+    const rank = { 'secure-now': 0, prepare: 1, monitor: 2, postpone: 3 };
+
+    return (rank[left.kind] ?? 3) - (rank[right.kind] ?? 3) || left.bundleId.localeCompare(right.bundleId);
+  });
+
+  const bundleConflicts = [...new Set(bundles.flatMap((bundle) => bundle.resourceConflicts))];
+  const counts = bundles.reduce((acc, bundle) => {
+    acc[bundle.viability] = (acc[bundle.viability] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    title: 'Assistant bundles actions climat',
+    fallback: null,
+    bundles,
+    bundleConflicts,
+    summary: `${counts.viable ?? 0} bundle(s) viable(s), ${counts.fragile ?? 0} fragile(s), ${counts.discouraged ?? 0} déconseillé(s).`,
+  };
+}
+
+
 function buildClimateAftermathRecap(regions, climateAlerts, normalizedOptions) {
   const alertsByRegion = new Map(climateAlerts.map((alert) => [alert.regionId, alert]));
   const explicitEvents = Array.isArray(normalizedOptions.climateAftermathEvents)
@@ -2383,6 +2524,10 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     climateRecoveryReadiness,
     normalizedOptions,
   );
+  const climateActionBundleAssistant = buildClimateActionBundleAssistant(
+    climatePrioritySummary,
+    normalizedOptions,
+  );
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
   const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
@@ -2421,6 +2566,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       climateSafeWindowCalendar,
       climateRecoveryReadiness,
       climatePrioritySummary,
+      climateActionBundleAssistant,
     } : {}),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
