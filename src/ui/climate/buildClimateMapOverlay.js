@@ -1529,6 +1529,149 @@ function buildClimateSafeWindowCalendar(climateAftermathRecap, climateAlerts, no
   };
 }
 
+function buildReadinessPrerequisites(window, event, markers) {
+  const hasMitigation = Boolean(event.appliedMitigation);
+  const missingMitigation = event.missingMitigation ?? 'renfort local non confirmé';
+  const resilientMarkerCount = markers
+    .filter((marker) => ['recovering', 'resilient'].includes(marker.resilienceState))
+    .length;
+  const residualRisk = window.state === 'safe' && window.confidenceBand !== 'uncertain'
+    ? (event.severity === 'critical' ? 'élevé' : 'contenu')
+    : window.confidenceBand === 'uncertain'
+      ? 'incertain à vérifier'
+      : 'élevé';
+
+  return {
+    reserve: event.severity === 'critical' || event.severity === 'major'
+      ? 'réserve renforcée requise avant reprise'
+      : 'réserve standard suffisante',
+    mitigationActive: hasMitigation
+      ? `active: ${event.appliedMitigation}`
+      : `manquante: ${missingMitigation}`,
+    localResilience: resilientMarkerCount === markers.length && markers.length > 0
+      ? 'résilience locale suffisante'
+      : 'résilience locale à consolider',
+    minimalDelay: window.state === 'safe'
+      ? `fenêtre exploitable: ${window.label}`
+      : `attendre au moins ${window.label} ou renforcer avant action`,
+    residualRisk,
+  };
+}
+
+function inferReadinessStatus(window, event, prerequisites) {
+  if (window.state === 'critical') {
+    return 'discouraged';
+  }
+
+  if (window.confidenceBand === 'uncertain' || prerequisites.residualRisk !== 'contenu') {
+    return 'nearly-ready';
+  }
+
+  if (!event.appliedMitigation || prerequisites.localResilience !== 'résilience locale suffisante') {
+    return 'nearly-ready';
+  }
+
+  return window.state === 'safe' ? 'ready' : 'nearly-ready';
+}
+
+function buildReadinessAction(status, window) {
+  if (status === 'ready') {
+    return 'utiliser la fenêtre en gardant la réserve active';
+  }
+
+  if (status === 'nearly-ready') {
+    return window.confidenceBand === 'uncertain'
+      ? 'confirmer la prévision puis renforcer avant reprise'
+      : 'compléter les prérequis avant d’engager l’action';
+  }
+
+  return 'déconseillé: renforcer et attendre une fenêtre moins exposée';
+}
+
+function normalizeRecoveryReadinessOverride(override, baseRecommendation) {
+  const status = String(override.status ?? override.readinessStatus ?? baseRecommendation.status).trim().toLowerCase();
+
+  return {
+    ...baseRecommendation,
+    ...override,
+    recommendationId: String(override.recommendationId ?? baseRecommendation.recommendationId).trim(),
+    windowId: String(override.windowId ?? baseRecommendation.windowId).trim(),
+    aftermathEventId: String(override.aftermathEventId ?? baseRecommendation.aftermathEventId).trim(),
+    resilienceMarkerIds: requireArray(
+      override.resilienceMarkerIds ?? baseRecommendation.resilienceMarkerIds,
+      'ClimateMapOverlay recoveryReadiness resilienceMarkerIds',
+    ).map((markerId) => String(markerId).trim()).filter(Boolean),
+    status: ['ready', 'nearly-ready', 'discouraged'].includes(status) ? status : baseRecommendation.status,
+    prerequisites: {
+      ...baseRecommendation.prerequisites,
+      ...requireObject(override.prerequisites ?? {}, 'ClimateMapOverlay recoveryReadiness prerequisites'),
+    },
+    action: String(override.action ?? baseRecommendation.action).trim(),
+    confidenceBand: normalizeConfidenceBand(override.confidenceBand) ?? baseRecommendation.confidenceBand,
+  };
+}
+
+function buildClimateRecoveryReadiness(climateAftermathRecap, climateSafeWindowCalendar, normalizedOptions) {
+  const eventsById = new Map(climateAftermathRecap.events.map((event) => [event.eventId, event]));
+  const markersByEvent = new Map(climateAftermathRecap.events.map((event) => [
+    event.eventId,
+    climateAftermathRecap.resilienceMarkers.filter((marker) => event.affectedRegionIds.includes(marker.regionId)),
+  ]));
+  const explicitReadiness = Array.isArray(normalizedOptions.climateRecoveryReadiness)
+    ? normalizedOptions.climateRecoveryReadiness
+    : Array.isArray(normalizedOptions.climateReadinessRecommendations)
+      ? normalizedOptions.climateReadinessRecommendations
+      : [];
+
+  if (climateSafeWindowCalendar.windows.length === 0) {
+    return {
+      title: 'Préparation reprise climat',
+      fallback: 'Aucune fenêtre climatique sûre à qualifier.',
+      recommendations: [],
+      summary: 'Aucune recommandation de reprise climatique.',
+    };
+  }
+
+  const recommendations = climateSafeWindowCalendar.windows.map((window) => {
+    const event = eventsById.get(window.aftermathEventId);
+    const markers = markersByEvent.get(window.aftermathEventId) ?? [];
+    const prerequisites = event
+      ? buildReadinessPrerequisites(window, event, markers)
+      : {
+        reserve: 'réserve à confirmer',
+        mitigationActive: 'mitigation à confirmer',
+        localResilience: 'résilience locale à vérifier',
+        minimalDelay: `fenêtre à vérifier: ${window.label}`,
+        residualRisk: 'incertain à vérifier',
+      };
+    const status = event ? inferReadinessStatus(window, event, prerequisites) : 'nearly-ready';
+    const baseRecommendation = {
+      recommendationId: `${window.windowId}:readiness`,
+      windowId: window.windowId,
+      aftermathEventId: window.aftermathEventId,
+      resilienceMarkerIds: [...window.resilienceMarkerIds],
+      status,
+      confidenceBand: window.confidenceBand,
+      prerequisites,
+      action: buildReadinessAction(status, window),
+    };
+    const override = explicitReadiness.find((item) => (item.windowId ?? window.windowId) === window.windowId);
+
+    return override ? normalizeRecoveryReadinessOverride(override, baseRecommendation) : baseRecommendation;
+  }).sort((left, right) => {
+    const rank = { discouraged: 0, 'nearly-ready': 1, ready: 2 };
+
+    return (rank[left.status] ?? 1) - (rank[right.status] ?? 1) || left.recommendationId.localeCompare(right.recommendationId);
+  });
+
+  return {
+    title: 'Préparation reprise climat',
+    fallback: null,
+    recommendations,
+    summary: `${recommendations.length} recommandation(s) de préparation avant fenêtre climatique.`,
+  };
+}
+
 function buildClimateAftermathRecap(regions, climateAlerts, normalizedOptions) {
   const alertsByRegion = new Map(climateAlerts.map((alert) => [alert.regionId, alert]));
   const explicitEvents = Array.isArray(normalizedOptions.climateAftermathEvents)
@@ -2089,6 +2232,11 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     climateTimeline.climateAlerts,
     normalizedOptions,
   );
+  const climateRecoveryReadiness = buildClimateRecoveryReadiness(
+    climateAftermathRecap,
+    climateSafeWindowCalendar,
+    normalizedOptions,
+  );
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
   const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
@@ -2125,6 +2273,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     ...(climateAftermathRecap.events.length > 0 ? {
       climateAftermathRecap,
       climateSafeWindowCalendar,
+      climateRecoveryReadiness,
     } : {}),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,

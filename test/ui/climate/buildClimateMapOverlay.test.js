@@ -1920,3 +1920,124 @@ test('buildClimateMapOverlay accepts explicit uncertain safe climate windows', (
     },
   ]);
 });
+
+test('buildClimateMapOverlay recommends recovery readiness for safe climate windows', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        delta: {
+          strategicImpact: 'critical',
+          anomaly: 'flood',
+          confidenceBand: 'extreme',
+          timeWindow: 'tour actuel',
+          playerImpact: 'route fluviale et récolte touchées',
+        },
+      },
+    },
+    climateAftermathEvents: [
+      {
+        eventId: 'flood-aftermath',
+        affectedRegionIds: ['delta'],
+        observedImpact: 'route coupée',
+        severity: 'major',
+        appliedMitigation: 'digues renforcées',
+        confidenceBand: 'probable',
+        resilienceState: 'recovering',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateRecoveryReadiness.recommendations.map((recommendation) => ({
+    windowId: recommendation.windowId,
+    status: recommendation.status,
+    confidenceBand: recommendation.confidenceBand,
+    residualRisk: recommendation.prerequisites.residualRisk,
+    mitigationActive: recommendation.prerequisites.mitigationActive,
+    action: recommendation.action,
+  })), [
+    {
+      windowId: 'flood-aftermath:window:1',
+      status: 'discouraged',
+      confidenceBand: 'probable',
+      residualRisk: 'élevé',
+      mitigationActive: 'active: digues renforcées',
+      action: 'déconseillé: renforcer et attendre une fenêtre moins exposée',
+    },
+    {
+      windowId: 'flood-aftermath:window:2',
+      status: 'nearly-ready',
+      confidenceBand: 'probable',
+      residualRisk: 'élevé',
+      mitigationActive: 'active: digues renforcées',
+      action: 'compléter les prérequis avant d’engager l’action',
+    },
+    {
+      windowId: 'flood-aftermath:window:3',
+      status: 'ready',
+      confidenceBand: 'probable',
+      residualRisk: 'contenu',
+      mitigationActive: 'active: digues renforcées',
+      action: 'utiliser la fenêtre en gardant la réserve active',
+    },
+  ]);
+});
+
+test('buildClimateMapOverlay keeps uncertain readiness recommendations conservative and overrideable', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'ridge', season: 'spring', temperatureC: 29, precipitationLevel: 18, droughtIndex: 68, anomaly: 'drought' },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'dry-aftermath',
+        regionId: 'ridge',
+        observedImpact: 'sols fragiles',
+        severity: 'moderate',
+        missingMitigation: 'réservoir non renforcé',
+        confidenceBand: 'uncertain',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'dry-aftermath',
+        windowId: 'dry-aftermath:wait',
+        label: 'attendre pluie confirmée',
+        state: 'safe',
+        affectedRegionIds: ['ridge'],
+        confidenceBand: 'uncertain',
+      },
+    ],
+    climateRecoveryReadiness: [
+      {
+        windowId: 'dry-aftermath:wait',
+        status: 'nearly-ready',
+        action: 'vérifier pluie puis remplir le réservoir',
+        prerequisites: {
+          reserve: 'réserve eau requise',
+        },
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateRecoveryReadiness.recommendations, [
+    {
+      recommendationId: 'dry-aftermath:wait:readiness',
+      windowId: 'dry-aftermath:wait',
+      aftermathEventId: 'dry-aftermath',
+      resilienceMarkerIds: ['dry-aftermath:ridge'],
+      status: 'nearly-ready',
+      confidenceBand: 'uncertain',
+      prerequisites: {
+        reserve: 'réserve eau requise',
+        mitigationActive: 'manquante: réservoir non renforcé',
+        localResilience: 'résilience locale à consolider',
+        minimalDelay: 'fenêtre exploitable: attendre pluie confirmée',
+        residualRisk: 'incertain à vérifier',
+      },
+      action: 'vérifier pluie puis remplir le réservoir',
+    },
+  ]);
+});
