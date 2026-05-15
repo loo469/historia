@@ -339,14 +339,21 @@ function normalizeCoherenceRecommendation(recommendation, index) {
     expectedEffect: recommendation.expectedEffect ?? 'effet culturel à confirmer',
     trajectory,
     rank: recommendation.rank ?? index + 1,
+    supportKey: recommendation.supportKey ?? recommendation.action ?? action,
+    markerIds: recommendation.markerIds ?? [],
+    expiresSoon: recommendation.expiresSoon === true,
   };
 }
 
-function buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations = []) {
-  const recommendations = [
+function collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations = []) {
+  return [
     ...(stabilizationRecommendations?.recommendations ?? []),
     ...(activeRecommendations ?? []),
   ].map(normalizeCoherenceRecommendation);
+}
+
+function buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations = []) {
+  const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectoryOrder = ['consolidation', 'expansion', 'apaisement', 'enquête', 'attente'];
   const trajectoryGroups = trajectoryOrder
     .map((trajectory) => {
@@ -431,6 +438,129 @@ function buildCultureRecommendationCoherenceSummary(stabilizationRecommendations
   };
 }
 
+function buildCommitmentBundleName(trajectory) {
+  if (trajectory === 'apaisement') {
+    return 'apaisement local';
+  }
+
+  if (trajectory === 'consolidation') {
+    return 'consolidation régionale';
+  }
+
+  if (trajectory === 'enquête') {
+    return 'enquête';
+  }
+
+  if (trajectory === 'expansion') {
+    return 'expansion prudente';
+  }
+
+  return 'attente';
+}
+
+function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = []) {
+  const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
+  const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
+  const bundles = trajectories
+    .map((trajectory) => {
+      const members = recommendations.filter((recommendation) => recommendation.trajectory === trajectory);
+      if (members.length === 0) {
+        return null;
+      }
+
+      const uncertainMembers = members.filter((member) => member.confidence === 'low' || member.level === 'fragile');
+      const safeMembers = members.filter((member) => !uncertainMembers.includes(member));
+      const state = safeMembers.length > 0 && uncertainMembers.length === 0
+        ? 'safe'
+        : safeMembers.length > 0
+          ? 'mixed'
+          : 'uncertain';
+
+      return {
+        bundleId: `culture-commitment:${trajectory}`,
+        label: buildCommitmentBundleName(trajectory),
+        trajectory,
+        state,
+        safeRecommendationIds: safeMembers.map((member) => member.recommendationId),
+        uncertainRecommendationIds: uncertainMembers.map((member) => member.recommendationId),
+        actions: [...new Set(members.map((member) => member.action))],
+        markerIds: [...new Set(members.flatMap((member) => member.markerIds))],
+        explanation: members
+          .map((member) => `${member.discoveryId} → ${member.action} → ${state === 'uncertain' ? 'incertain' : buildCommitmentBundleName(trajectory)}`)
+          .join(' | '),
+      };
+    })
+    .filter(Boolean);
+  const incompatibilities = [];
+  const supportGroups = recommendations.reduce((groups, recommendation) => {
+    groups.set(recommendation.supportKey, [...(groups.get(recommendation.supportKey) ?? []), recommendation]);
+    return groups;
+  }, new Map());
+
+  supportGroups.forEach((members, supportKey) => {
+    if (members.length > 1 && supportKey !== 'attendre') {
+      incompatibilities.push({
+        incompatibilityId: `culture-commitment:support:${supportKey}`,
+        type: 'same-support-required',
+        severity: 'choice',
+        recommendationIds: members.map((member) => member.recommendationId),
+        reason: `même soutien requis: ${supportKey}`,
+      });
+    }
+  });
+
+  const expansion = recommendations.filter((recommendation) => recommendation.trajectory === 'expansion');
+  const apaisement = recommendations.filter((recommendation) => recommendation.trajectory === 'apaisement');
+  if (expansion.length > 0 && apaisement.length > 0) {
+    incompatibilities.push({
+      incompatibilityId: 'culture-commitment:timing:expansion-apaisement',
+      type: 'contradictory-narrative-timing',
+      severity: 'sequence',
+      recommendationIds: [...expansion, ...apaisement].map((member) => member.recommendationId),
+      reason: 'timing narratif contradictoire: apaiser avant expansion active',
+    });
+  }
+
+  recommendations
+    .filter((recommendation) => recommendation.confidence === 'low')
+    .forEach((recommendation) => {
+      incompatibilities.push({
+        incompatibilityId: `${recommendation.recommendationId}:low-confidence-commitment`,
+        type: 'low-confidence',
+        severity: 'uncertain',
+        recommendationIds: [recommendation.recommendationId],
+        reason: `${recommendation.discoveryId}: confiance trop basse pour engagement sûr`,
+      });
+    });
+
+  recommendations
+    .filter((recommendation) => recommendation.expiresSoon)
+    .forEach((recommendation) => {
+      incompatibilities.push({
+        incompatibilityId: `${recommendation.recommendationId}:expiring-opportunity`,
+        type: 'expiring-opportunity',
+        severity: 'urgent',
+        recommendationIds: [recommendation.recommendationId],
+        reason: `${recommendation.discoveryId}: opportunité qui expire`,
+      });
+    });
+
+  return {
+    state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
+    summary: bundles.length === 0
+      ? 'Aucun bundle d’engagement culturel disponible.'
+      : `${bundles.length} bundle${bundles.length > 1 ? 's' : ''} d’engagement culturel, ${incompatibilities.length} incompatibilité${incompatibilities.length > 1 ? 's' : ''}.`,
+    bundles,
+    incompatibilities,
+    dependencyExplanation: bundles.length === 0
+      ? 'Aucune dépendance entre marqueurs culturels.'
+      : bundles
+        .slice(0, 3)
+        .map((bundle) => `${bundle.label}: ${bundle.explanation}`)
+        .join(' | '),
+  };
+}
+
 function dedupeAndSort(deltas) {
   return [...new Map(deltas.map((delta) => [
     `${delta.tone}:${delta.label}:${delta.value}:${delta.regionId}`,
@@ -467,6 +597,7 @@ export function buildCultureTurnReportDeltas({
   });
   const stabilizationRecommendations = buildCultureStabilizationRecommendations(momentumLayer);
   const recommendationCoherence = buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations);
+  const commitmentBundles = buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations);
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
@@ -504,6 +635,13 @@ export function buildCultureTurnReportDeltas({
         explanation: 'Aucun signal récent → recommandation → cohérence.',
         uncertainRecommendationIds: [],
       },
+      commitmentBundles: {
+        state: 'quiet',
+        summary: 'Aucun bundle d’engagement culturel disponible.',
+        bundles: [],
+        incompatibilities: [],
+        dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
+      },
     };
   }
 
@@ -518,5 +656,6 @@ export function buildCultureTurnReportDeltas({
     momentumLayer,
     stabilizationRecommendations,
     recommendationCoherence,
+    commitmentBundles,
   };
 }
