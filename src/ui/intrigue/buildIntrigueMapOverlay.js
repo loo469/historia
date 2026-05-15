@@ -2475,6 +2475,59 @@ function buildVerificationAuditTrail({ confidenceState, safeVerificationHint, ve
   };
 }
 
+function buildIntrigueSignalTriageQueue({ locationId, locationName, confidenceState, safeMapMasking, intelligenceProvenancePanel, verificationAuditTrail }) {
+  const decisionByState = {
+    confirmed: {
+      triageClass: 'verify-now',
+      priority: 1,
+      label: 'Vérifier maintenant',
+      rationale: 'Provenance observée et audit visible indiquent une confiance haute avec risque résiduel.',
+    },
+    suspected: {
+      triageClass: safeMapMasking.state === 'active-risk' ? 'verify-now' : 'monitor',
+      priority: safeMapMasking.state === 'active-risk' ? 2 : 3,
+      label: safeMapMasking.state === 'active-risk' ? 'Vérifier maintenant' : 'Surveiller',
+      rationale: 'Provenance déduite: garder sous surveillance et contrôler seulement si la pression visible monte.',
+    },
+    stale: {
+      triageClass: 'dismiss-provisionally',
+      priority: 4,
+      label: 'Écarter provisoirement',
+      rationale: 'Audit en baisse ou impasse: attendre un signal frais avant d’exposer une vérification.',
+    },
+    masked: {
+      triageClass: 'keep-masked',
+      priority: 5,
+      label: 'Garder masqué',
+      rationale: 'Mode sûr: signal trop sensible ou insuffisant pour guider une action.',
+    },
+  };
+  const decision = decisionByState[confidenceState.state] ?? decisionByState.masked;
+  const nextUsefulCheck = decision.triageClass === 'verify-now' || decision.triageClass === 'monitor'
+    ? verificationAuditTrail.nextUsefulCheck
+    : null;
+
+  return [{
+    queueId: `triage:${locationId}`,
+    locationId,
+    locationName,
+    triageClass: decision.triageClass,
+    priority: decision.priority,
+    label: decision.label,
+    rationale: `${decision.rationale} Source ${intelligenceProvenancePanel.sourceLabel.toLowerCase()}, dernier changement ${verificationAuditTrail.lastChange}.`,
+    provenanceType: intelligenceProvenancePanel.provenanceType,
+    confidence: confidenceState.label,
+    residualRisk: verificationAuditTrail.lastChange === 'residual-risk' ? 'visible-residual-risk' : 'low-or-unconfirmed',
+    nextLeastExposureCheck: nextUsefulCheck ? {
+      action: nextUsefulCheck.action,
+      label: nextUsefulCheck.label,
+      costCue: nextUsefulCheck.costCue,
+      evidenceNeeded: nextUsefulCheck.evidenceNeeded,
+    } : null,
+    fogSafeCopy: 'Classement basé uniquement sur provenance, audit, confiance et risque visibles; aucune cellule, relais, cible, méthode sensible ou cause cachée révélée.',
+  }];
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2637,6 +2690,14 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         evidenceTrailMarkers,
         safeMapMasking,
       });
+      const intrigueSignalTriageQueue = buildIntrigueSignalTriageQueue({
+        locationId,
+        locationName,
+        confidenceState,
+        safeMapMasking,
+        intelligenceProvenancePanel,
+        verificationAuditTrail,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2648,6 +2709,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           evidenceTrailMarkers,
           intelligenceProvenancePanel,
           verificationAuditTrail,
+          intrigueSignalTriageQueue,
         }
         : {};
 
