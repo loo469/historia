@@ -1693,6 +1693,101 @@ function buildRecoveryMarkers(cityFeatures, resourceFeatures, logisticsFeatures)
     });
 }
 
+
+function buildLogisticsRecoveryPlanner(routeFeature, cityFeatures, resourceFeatures) {
+  const dependentCities = cityFeatures
+    .filter((city) => routeFeature.cityIds.includes(city.cityId))
+    .sort((left, right) => left.cityId.localeCompare(right.cityId));
+  const dependentResources = resourceFeatures
+    .filter((resource) => routeFeature.cityIds.includes(resource.cityId))
+    .filter((resource) => routeFeature.bottleneckResourceId === null || resource.resourceId === routeFeature.bottleneckResourceId)
+    .sort((left, right) => left.resourceId.localeCompare(right.resourceId) || left.cityId.localeCompare(right.cityId));
+  const impactedCityIds = dependentCities.map((city) => city.cityId);
+  const impactedResourceIds = [...new Set(dependentResources.map((resource) => resource.resourceId))];
+  const bottleneckLabel = routeFeature.bottleneckResourceId ?? 'flux principal';
+  const severityScore = { major: 3, moderate: 2, minor: 1 }[routeFeature.disruptionReplay.severity] ?? 1;
+  const cityPressure = dependentCities.filter((city) => ['critical', 'high', 'medium'].includes(city.decisionCue.intensity)).length;
+  const emptyStockPressure = dependentResources.filter((resource) => resource.intensity === 'empty').length;
+
+  const options = [
+    {
+      id: `recovery:${routeFeature.routeId}:repair`,
+      action: 'repair',
+      label: 'Réparer la route',
+      badge: 'plan:réparer',
+      relativeCost: routeFeature.disruptionReplay.severity === 'major' ? 'élevé' : 'moyen',
+      costScore: routeFeature.disruptionReplay.severity === 'major' ? 3 : 2,
+      estimatedDelayTurns: routeFeature.active ? 2 : 3,
+      reDisruptionRisk: routeFeature.riskLevel >= 60 ? 'high' : routeFeature.riskLevel >= 35 ? 'medium' : 'low',
+      impact: `Restaure la capacité de ${routeFeature.label} pour ${impactedCityIds.length || 'les'} villes dépendantes.`,
+      impactScore: routeFeature.totalCapacity + severityScore + cityPressure,
+      affectedCityIds: impactedCityIds,
+      affectedResourceIds: impactedResourceIds,
+      reason: 'Réduit durablement la cause visible du replay sans changer les badges de récupération.',
+    },
+    {
+      id: `recovery:${routeFeature.routeId}:reroute`,
+      action: 'reroute',
+      label: 'Rerouter temporairement',
+      badge: 'plan:rerouter',
+      relativeCost: 'moyen',
+      costScore: 2,
+      estimatedDelayTurns: 1,
+      reDisruptionRisk: routeFeature.riskLevel >= 50 ? 'medium' : 'low',
+      impact: `Contourne ${bottleneckLabel} pour garder un flux minimal vers ${impactedCityIds.length || 'les'} villes liées.`,
+      impactScore: Math.max(2, Math.ceil(routeFeature.totalCapacity / 2) + cityPressure + emptyStockPressure),
+      affectedCityIds: impactedCityIds,
+      affectedResourceIds: impactedResourceIds,
+      reason: 'Option rapide si la réparation immobilise trop longtemps la route.',
+    },
+    {
+      id: `recovery:${routeFeature.routeId}:prioritize-stock`,
+      action: 'prioritize-stock',
+      label: 'Prioriser convoi/stock',
+      badge: 'plan:priorité',
+      relativeCost: routeFeature.bottleneckResourceId === null ? 'faible' : 'moyen',
+      costScore: routeFeature.bottleneckResourceId === null ? 1 : 2,
+      estimatedDelayTurns: 0,
+      reDisruptionRisk: emptyStockPressure > 0 ? 'high' : routeFeature.riskLevel >= 45 ? 'medium' : 'low',
+      impact: `Protège immédiatement ${bottleneckLabel} avec les stocks et convois visibles.`,
+      impactScore: Math.max(1, severityScore + emptyStockPressure + getIntensityScore(routeFeature.decisionCue.intensity)),
+      affectedCityIds: impactedCityIds,
+      affectedResourceIds: impactedResourceIds,
+      reason: 'Action immédiate issue du stress et de la priorité déjà visibles.',
+    },
+  ].map((option) => {
+    const riskPenalty = { high: 2, medium: 1, low: 0 }[option.reDisruptionRisk] ?? 1;
+
+    return {
+      ...option,
+      score: option.impactScore - option.costScore - option.estimatedDelayTurns - riskPenalty,
+    };
+  }).sort((left, right) => right.score - left.score
+    || right.impactScore - left.impactScore
+    || left.estimatedDelayTurns - right.estimatedDelayTurns
+    || left.id.localeCompare(right.id));
+
+  return {
+    id: `recovery-planner:${routeFeature.routeId}`,
+    targetType: 'route',
+    targetId: routeFeature.routeId,
+    basedOnReplayId: routeFeature.disruptionReplay.id,
+    summary: `${routeFeature.label}: ${options[0].label} recommandé après ${routeFeature.disruptionReplay.cause}.`,
+    dataCompleteness: impactedCityIds.length === 0
+      ? 'partial'
+      : impactedResourceIds.length === 0
+        ? 'route-only'
+        : 'complete',
+    recommendedOptionId: options[0].id,
+    recommendationReason: options[0].reason,
+    options: options.map((option, index) => ({
+      ...option,
+      recommended: index === 0,
+      rank: index + 1,
+    })),
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -1755,6 +1850,10 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
     };
   });
   const resourceLayer = buildResourceLayer(cityOverlays);
+  const logisticsFeaturesWithPlanners = logisticsFeatures.map((feature) => ({
+    ...feature,
+    recoveryPlanner: buildLogisticsRecoveryPlanner(feature, cityFeatures, resourceLayer.features),
+  }));
 
   return {
     cities: {
@@ -1773,9 +1872,14 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       id: 'logistics',
       title: 'Routes logistiques',
       visibleByDefault: true,
-      features: logisticsFeatures,
-      stressFilters: buildRouteStressFilters(logisticsFeatures),
-      recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeatures),
+      features: logisticsFeaturesWithPlanners,
+      stressFilters: buildRouteStressFilters(logisticsFeaturesWithPlanners),
+      recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeaturesWithPlanners),
+      recoveryPlannerLegend: [
+        { key: 'repair', label: 'Réparer', tone: 'stable' },
+        { key: 'reroute', label: 'Rerouter', tone: 'caution' },
+        { key: 'prioritize-stock', label: 'Prioriser convoi/stock', tone: 'positive' },
+      ],
       replayLegend: [
         { key: 'recovering', label: 'Récupère', tone: 'positive' },
         { key: 'stagnating', label: 'Stagne', tone: 'warning' },
