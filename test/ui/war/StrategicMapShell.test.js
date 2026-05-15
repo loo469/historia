@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { Province } from '../../../src/domain/war/Province.js';
 import {
   buildFirstCleanupPayoff,
+  buildIntriguePresenceSabotageOverlay,
   buildFollowUpCleanupChoices,
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
@@ -126,6 +127,94 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     'intrigue-overlay',
   ]);
   assert.equal(shell.activeProvince.provinceId, 'prov-a');
+});
+
+test('StrategicMapShell projects intrigue presence and sabotage risk into the map overlay slot', () => {
+  const provinces = [
+    createProvince({ id: 'ashlands', name: 'Ashlands' }),
+    createProvince({ id: 'riverlands', name: 'Riverlands' }),
+    createProvince({ id: 'quiet-plains', name: 'Quiet Plains' }),
+  ];
+  const intrigueMapOverlay = [
+    {
+      locationId: 'riverlands',
+      locationName: 'Riverlands',
+      presenceLevel: 'low',
+      sabotageRiskLevel: 'high',
+      sabotageRiskScore: 83.6,
+      metrics: { celluleCount: 1, sabotageOperationCount: 2 },
+    },
+    {
+      locationId: 'ashlands',
+      locationName: 'Ashlands',
+      presenceLevel: 'high',
+      sabotageRiskLevel: 'medium',
+      sabotageRiskScore: 48,
+      metrics: { celluleCount: 3, sabotageOperationCount: 1 },
+    },
+    {
+      locationId: 'off-map',
+      presenceLevel: 'high',
+      sabotageRiskLevel: 'high',
+      sabotageRiskScore: 100,
+      metrics: { celluleCount: 4, sabotageOperationCount: 4 },
+    },
+    {
+      locationId: 'quiet-plains',
+      presenceLevel: 'none',
+      sabotageRiskLevel: 'none',
+      sabotageRiskScore: 0,
+    },
+  ];
+
+  const shell = buildStrategicMapShell(provinces, { intrigueMapOverlay });
+
+  assert.deepEqual(shell.overlays.intrigue, {
+    overlayId: 'intrigue-presence-sabotage',
+    slotId: 'intrigue-overlay',
+    label: 'Présence intrigue et risque sabotage',
+    markers: [
+      {
+        provinceId: 'riverlands',
+        provinceName: 'Riverlands',
+        locationId: 'riverlands',
+        label: 'Riverlands: présence low, sabotage high (84)',
+        tone: 'danger',
+        presence: { level: 'low', celluleCount: 1 },
+        sabotageRisk: { level: 'high', score: 84, operationCount: 2 },
+      },
+      {
+        provinceId: 'ashlands',
+        provinceName: 'Ashlands',
+        locationId: 'ashlands',
+        label: 'Ashlands: présence high, sabotage medium (48)',
+        tone: 'warning',
+        presence: { level: 'high', celluleCount: 3 },
+        sabotageRisk: { level: 'medium', score: 48, operationCount: 1 },
+      },
+    ],
+    summary: {
+      markerCount: 2,
+      highRiskCount: 1,
+      activePresenceCount: 2,
+    },
+  });
+  assert.deepEqual(buildIntriguePresenceSabotageOverlay(provinces, undefined).summary, {
+    markerCount: 0,
+    highRiskCount: 0,
+    activePresenceCount: 0,
+  });
+});
+
+test('StrategicMapShell rejects invalid intrigue map overlay payloads', () => {
+  assert.throws(
+    () => buildStrategicMapShell([createProvince()], { intrigueMapOverlay: {} }),
+    /intrigueMapOverlay must be an array/,
+  );
+  assert.throws(
+    () => buildStrategicMapShell([createProvince()], { intrigueMapOverlay: [null] }),
+    /intrigueMapOverlay entries must be objects/,
+  );
 });
 
 test('StrategicMapShell exposes the first cleanup payoff from cleanup orders and residual risks', () => {
