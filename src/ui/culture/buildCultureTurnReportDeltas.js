@@ -2,7 +2,7 @@ function normalizeText(value, fallback = '') {
   return String(value ?? fallback).trim();
 }
 
-function buildDelta({ deltaId, tone, label, value, reason, regionId, cultureName }) {
+function buildDelta({ deltaId, tone, label, value, reason, regionId, cultureName, changeState = null, linkedPriority = null }) {
   return {
     deltaId,
     tone,
@@ -11,6 +11,8 @@ function buildDelta({ deltaId, tone, label, value, reason, regionId, cultureName
     reason,
     regionId,
     cultureName,
+    ...(changeState ? { changeState } : {}),
+    ...(linkedPriority ? { linkedPriority } : {}),
   };
 }
 
@@ -70,6 +72,81 @@ function buildConsequenceDeltas(consequenceChips, regionId) {
     }));
 }
 
+function buildDiscoveryTimelineRecap(localTimeline, selectedMarker, selectedCluster, regionId) {
+  const priority = selectedMarker?.narrativePriority ?? selectedCluster?.narrativePriority ?? selectedCluster?.markerCollisionCluster?.narrativePriority ?? null;
+  const items = (localTimeline?.items ?? [])
+    .filter((item) => item.kind === 'event' || item.kind === 'discovery')
+    .map((item, index) => ({
+      recapId: `${regionId}:recap:${item.timelineId}`,
+      order: item.date ? item.date : `turn-order-${index + 1}`,
+      kind: item.kind,
+      title: item.title,
+      changeState: item.kind === 'discovery' ? 'new' : 'investigate',
+      summary: priority?.consequencePreview?.summary ?? item.summary,
+      linkedPriority: priority ? {
+        state: priority.state,
+        microAction: priority.microAction,
+        confidence: priority.consequencePreview?.confidence ?? 'medium',
+      } : null,
+    }))
+    .sort((left, right) => left.order.localeCompare(right.order) || left.title.localeCompare(right.title))
+    .slice(0, 3);
+
+  return items;
+}
+
+function buildInfluenceDiffs(selectedMarker, previousMarker, selectedCluster, regionId) {
+  if (!selectedMarker) {
+    return [];
+  }
+
+  const priority = selectedMarker.narrativePriority ?? selectedCluster?.narrativePriority ?? selectedCluster?.markerCollisionCluster?.narrativePriority ?? null;
+  const previousScore = Number.isFinite(previousMarker?.influenceScore) ? previousMarker.influenceScore : null;
+  const currentScore = Number.isFinite(selectedMarker.influenceScore) ? selectedMarker.influenceScore : 0;
+  const previousDiscoveries = new Set(previousMarker?.discoveries ?? []);
+  const hasNewDiscovery = (selectedMarker.discoveries ?? []).some((discoveryId) => !previousDiscoveries.has(discoveryId));
+  const confidence = priority?.consequencePreview?.confidence ?? 'medium';
+  const changeState = selectedMarker.visible === false || selectedMarker.masked === true
+    ? 'masked'
+    : previousScore === null
+      ? 'new'
+      : currentScore > previousScore
+        ? 'strengthened'
+        : currentScore < previousScore
+          ? 'weakened'
+          : confidence === 'low'
+            ? 'investigate'
+            : hasNewDiscovery
+              ? 'new'
+              : 'stable';
+
+  return [{
+    diffId: `${regionId}:influence-diff:${selectedMarker.overlayId}`,
+    regionId,
+    cultureName: selectedMarker.cultureName,
+    previousScore,
+    currentScore,
+    changeState,
+    label: changeState === 'new'
+      ? 'nouveau repère'
+      : changeState === 'strengthened'
+        ? 'influence renforcée'
+        : changeState === 'weakened'
+          ? 'influence affaiblie'
+          : changeState === 'masked'
+            ? 'repère masqué'
+            : changeState === 'investigate'
+              ? 'à investiguer'
+              : 'stable',
+    reason: priority?.consequencePreview?.summary ?? `${selectedMarker.influenceTier} · ${currentScore}`,
+    linkedPriority: priority ? {
+      state: priority.state,
+      microAction: priority.microAction,
+      confidence,
+    } : null,
+  }];
+}
+
 function dedupeAndSort(deltas) {
   return [...new Map(deltas.map((delta) => [
     `${delta.tone}:${delta.label}:${delta.value}:${delta.regionId}`,
@@ -89,21 +166,26 @@ export function buildCultureTurnReportDeltas({
   selectedCluster = null,
   localTimeline = null,
   consequenceChips = [],
+  previousMarker = null,
 } = {}) {
   const regionId = normalizeText(selectedRegionId ?? selectedMarker?.regionId ?? selectedCluster?.regionIds?.[0], 'province');
+  const timelineRecap = buildDiscoveryTimelineRecap(localTimeline, selectedMarker, selectedCluster, regionId);
+  const influenceDiffs = buildInfluenceDiffs(selectedMarker, previousMarker, selectedCluster, regionId);
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
     ...buildConsequenceDeltas(consequenceChips, regionId),
   ]);
 
-  if (deltas.length === 0) {
+  if (deltas.length === 0 && timelineRecap.length === 0 && influenceDiffs.length === 0) {
     return {
       state: 'quiet',
       turn,
       regionId,
       summary: 'Aucun delta culture/découverte visible ce tour.',
       deltas: [],
+      timelineRecap: [],
+      influenceDiffs: [],
     };
   }
 
@@ -111,7 +193,9 @@ export function buildCultureTurnReportDeltas({
     state: 'active',
     turn,
     regionId,
-    summary: `Tour ${turn}: ${deltas.length} delta${deltas.length > 1 ? 's' : ''} culture/découverte à vérifier.`,
+    summary: `Tour ${turn}: ${deltas.length} delta${deltas.length > 1 ? 's' : ''} culture/découverte à vérifier, ${influenceDiffs.length} diff${influenceDiffs.length > 1 ? 's' : ''} d’influence.`,
     deltas,
+    timelineRecap,
+    influenceDiffs,
   };
 }
