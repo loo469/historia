@@ -2223,6 +2223,75 @@ function buildSafeVerificationHint({ confidenceState, safeMapMasking }) {
   };
 }
 
+function buildVerificationPathPreviews({ confidenceState, safeVerificationHint, suspicionHeatDecayPlayback, safeMapMasking }) {
+  const currentHeat = suspicionHeatDecayPlayback.currentHeat;
+  const nextCoolerFrame = suspicionHeatDecayPlayback.frames.find((frame) => frame.turnOffset > 0 && frame.projectedHeat < currentHeat) ?? null;
+  const heatDecayContext = currentHeat >= 70
+    ? 'Chaleur active: éviter les vérifications larges avant refroidissement.'
+    : nextCoolerFrame
+      ? `${nextCoolerFrame.label}: coût réduit si la vérification attend ce palier.`
+      : 'Aucune décroissance exploitable: rester sur une vérification minimale.';
+  const pathByState = {
+    confirmed: {
+      pathId: 'observe-local-confirmation',
+      label: 'Confirmer par observation locale',
+      exposureCost: currentHeat >= 70 ? 8 : 4,
+      confidenceAfter: 'confirmed-stable',
+      evidenceNeeded: 'un second indice visible sur la même province, sans nommer source ni cible',
+    },
+    suspected: {
+      pathId: 'limited-coverage-check',
+      label: 'Vérifier en couverture limitée',
+      exposureCost: currentHeat >= 45 ? 9 : 6,
+      confidenceAfter: 'suspected-or-confirmed',
+      evidenceNeeded: 'une convergence de niveau de risque ou de fraîcheur, pas une identité cachée',
+    },
+    stale: {
+      pathId: 'wait-fresh-signal',
+      label: 'Attendre un signal frais',
+      exposureCost: 1,
+      confidenceAfter: 'stale-or-suspected',
+      evidenceNeeded: 'fraîcheur visible renouvelée avant toute action directe',
+    },
+    masked: {
+      pathId: 'ignore-masked-signal',
+      label: 'Ignorer tant que masqué',
+      exposureCost: 0,
+      confidenceAfter: 'masked-safe',
+      evidenceNeeded: 'donnée visible non confidentielle; l’absence de signal ne prouve pas un danger faible',
+    },
+  };
+  const recommended = pathByState[confidenceState.state] ?? pathByState.masked;
+  const unsafeBroadening = currentHeat >= 70 || safeMapMasking.state === 'active-risk'
+    ? [{
+      pathId: 'broad-coverage-now',
+      label: 'Élargir la couverture maintenant',
+      recommended: false,
+      unsafe: true,
+      exposureCost: clampPercent(Math.max(14, currentHeat - 50)),
+      costCue: 'trop coûteux',
+      confidenceAfter: 'uncertain-with-exposure',
+      evidenceNeeded: 'non recommandé: coûterait de l’exposition sans preuve fog-safe supplémentaire',
+      heatDecayContext,
+      fogSafeCopy: 'Chemin bloqué: la carte ne révèle aucun relais, cellule ou cible pour justifier cet élargissement.',
+      saferFallbackAction: safeVerificationHint.action,
+    }]
+    : [];
+
+  return [
+    {
+      ...recommended,
+      recommended: true,
+      unsafe: false,
+      costCue: recommended.exposureCost >= 8 ? 'coût modéré' : recommended.exposureCost > 0 ? 'coût bas' : 'sans coût',
+      heatDecayContext,
+      fogSafeCopy: `${recommended.label}: ${confidenceState.safeCopy} Prochaine preuve requise: ${recommended.evidenceNeeded}.`,
+      saferFallbackAction: null,
+    },
+    ...unsafeBroadening,
+  ];
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2347,12 +2416,19 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         exposedCellCount,
       });
       const safeVerificationHint = buildSafeVerificationHint({ confidenceState, safeMapMasking });
+      const verificationPathPreviews = buildVerificationPathPreviews({
+        confidenceState,
+        safeVerificationHint,
+        suspicionHeatDecayPlayback,
+        safeMapMasking,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
           safeMapMasking,
           confidenceState,
           safeVerificationHint,
+          verificationPathPreviews,
         }
         : {};
 
