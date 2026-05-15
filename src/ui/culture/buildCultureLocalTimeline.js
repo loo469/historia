@@ -93,9 +93,10 @@ export function buildCultureLocalTimeline({ selectedRegionId, selectedMarker = n
     regionId,
     heading: 'Chronologie locale',
     summary: narrativePriority
-      ? `${narrativePriority.label}: ${narrativePriority.microAction} · ${narrativePriority.reason}`
+      ? `${narrativePriority.label}: ${narrativePriority.microAction} · ${narrativePriority.consequencePreview?.confidenceLabel ?? narrativePriority.reason}`
       : `${items.length} signal${items.length > 1 ? 's' : ''} culturel${items.length > 1 ? 's' : ''} lié${items.length > 1 ? 's' : ''} à la province sélectionnée.`,
     narrativePriority,
+    consequencePreview: narrativePriority?.consequencePreview ?? null,
     items,
   };
 }

@@ -291,6 +291,10 @@ test('buildCultureLayerPanel exposes atlas story layer controls and collision st
           source: 'Harbor Forum',
           reason: 'Harbor Forum ouvre une action culturelle prioritaire.',
           priorityScore: 85,
+          consequencePreview: {
+            previewId: 'shared-bay:priority:opportunity:consequence',
+            confidence: 'high',
+          },
         },
         stack: [],
       },
@@ -327,6 +331,10 @@ test('buildCultureLayerPanel exposes atlas story layer controls and collision st
       source: 'Harbor Forum',
       reason: 'Harbor Forum ouvre une action culturelle prioritaire.',
       priorityScore: 85,
+      consequencePreview: {
+        previewId: 'shared-bay:priority:opportunity:consequence',
+        confidence: 'high',
+      },
     },
   ]);
 });

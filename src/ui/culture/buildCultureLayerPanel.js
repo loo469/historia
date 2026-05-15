@@ -52,6 +52,10 @@ function normalizeEntries(entries) {
       markerCollisionCluster: normalizedEntry.markerCollisionCluster ?? null,
       narrativeSummary: String(normalizedEntry.narrativeSummary ?? '').trim(),
       narrativePriority: normalizedEntry.narrativePriority ?? normalizedEntry.markerCollisionCluster?.narrativePriority ?? null,
+      consequencePreview: normalizedEntry.consequencePreview
+        ?? normalizedEntry.narrativePriority?.consequencePreview
+        ?? normalizedEntry.markerCollisionCluster?.narrativePriority?.consequencePreview
+        ?? null,
     };
   });
 }
@@ -209,6 +213,7 @@ function buildNarrativePriorityRows(entries) {
       source: entry.narrativePriority.source,
       reason: entry.narrativePriority.reason,
       priorityScore: entry.narrativePriority.priorityScore,
+      consequencePreview: entry.consequencePreview,
     }])).values()]
     .sort((left, right) => right.priorityScore - left.priorityScore || left.regionId.localeCompare(right.regionId));
 }
