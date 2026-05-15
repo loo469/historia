@@ -38,6 +38,8 @@ test('ProvinceRenderer builds deterministic UI data for a stable province', () =
     contested: false,
     supplyLevel: 'stable',
     supplyTone: 'ready',
+    statusLabel: 'Contrôle stable',
+    ariaLabel: 'Marches du Nord — Contrôle stable, ravitaillement stable, loyauté 68%, valeur 4',
     loyalty: 68,
     strategicValue: 4,
     neighborIds: ['prov-b', 'prov-c'],
@@ -80,6 +82,8 @@ test('ProvinceRenderer highlights contested occupation states and supports suppl
   });
   assert.deepEqual(rendered.badges, ['contested', 'occupied', 'supply:disrupted', 'value:4']);
   assert.equal(rendered.supplyTone, 'breaking');
+  assert.equal(rendered.statusLabel, 'Front contesté');
+  assert.equal(rendered.ariaLabel, 'Marches du Nord — Front contesté, ravitaillement disrupted, loyauté 31%, valeur 4');
 });
 
 test('ProvinceRenderer rejects invalid inputs', () => {

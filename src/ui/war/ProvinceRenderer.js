@@ -35,6 +35,18 @@ function getFactionPalette(paletteByFaction, factionId) {
   };
 }
 
+function buildProvinceStatusLabel(province) {
+  if (province.contested) {
+    return 'Front contesté';
+  }
+
+  if (province.isOccupied) {
+    return 'Occupation';
+  }
+
+  return 'Contrôle stable';
+}
+
 export function renderProvince(province, options = {}) {
   const normalizedProvince = requireProvince(province);
   const normalizedOptions = requireOptions(options);
@@ -53,6 +65,10 @@ export function renderProvince(province, options = {}) {
   const ownerPalette = getFactionPalette(paletteByFaction, normalizedProvince.ownerFactionId);
   const controllerPalette = getFactionPalette(paletteByFaction, normalizedProvince.controllingFactionId);
 
+  const statusLabel = buildProvinceStatusLabel(normalizedProvince);
+  const supplyTone = String(supplyToneByLevel[normalizedProvince.supplyLevel] ?? normalizedProvince.supplyLevel).trim()
+    || normalizedProvince.supplyLevel;
+
   return {
     provinceId: normalizedProvince.id,
     label: normalizedProvince.name,
@@ -61,8 +77,9 @@ export function renderProvince(province, options = {}) {
     occupied: normalizedProvince.isOccupied,
     contested: normalizedProvince.contested,
     supplyLevel: normalizedProvince.supplyLevel,
-    supplyTone: String(supplyToneByLevel[normalizedProvince.supplyLevel] ?? normalizedProvince.supplyLevel).trim()
-      || normalizedProvince.supplyLevel,
+    supplyTone,
+    statusLabel,
+    ariaLabel: `${normalizedProvince.name} — ${statusLabel}, ravitaillement ${normalizedProvince.supplyLevel}, loyauté ${normalizedProvince.loyalty}%, valeur ${normalizedProvince.strategicValue}`,
     loyalty: normalizedProvince.loyalty,
     strategicValue: normalizedProvince.strategicValue,
     neighborIds: [...normalizedProvince.neighborIds],

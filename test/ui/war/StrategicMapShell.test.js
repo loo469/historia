@@ -92,6 +92,37 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
   assert.deepEqual(shell.provinces[0].geometry.layout, { x: 10, y: 12, w: 20, h: 18 });
   assert.equal(shell.provinces[0].geometry.shape, 'polygon(10% 12%, 30% 12%, 30% 30%, 10% 30%)');
   assert.equal(shell.provinces[1].geometry.layout, null);
+  assert.deepEqual(shell.mapLayers.provinceSurfaces.map((surface) => ({
+    provinceId: surface.provinceId,
+    cssClasses: surface.cssClasses,
+    status: surface.data.status,
+    ariaLabel: surface.ariaLabel,
+  })), [
+    {
+      provinceId: 'prov-a',
+      cssClasses: ['province-node', 'province-node--supply-stable', 'is-focused', 'is-hovered'],
+      status: 'stable',
+      ariaLabel: 'Avant-poste — Contrôle stable, ravitaillement stable, loyauté 82%, valeur 2',
+    },
+    {
+      provinceId: 'prov-c',
+      cssClasses: ['province-node', 'province-node--contested', 'province-node--occupied', 'province-node--supply-strained', 'is-selected'],
+      status: 'contested',
+      ariaLabel: 'Colline rouge — Front contesté, ravitaillement strained, loyauté 40%, valeur 4',
+    },
+  ]);
+  assert.deepEqual(shell.mapLayers.provinceLabels, [
+    {
+      provinceId: 'prov-a',
+      text: 'Avant-poste',
+      meta: 'Contrôle stable',
+      x: 20,
+      y: 18,
+      align: 'middle',
+      tone: 'capital',
+      leaderLine: null,
+    },
+  ]);
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
