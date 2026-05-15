@@ -260,6 +260,35 @@ function renderAfterActionMapRecap(shell) {
   `;
 }
 
+
+function renderFrontPressureReplay(shell) {
+  const replay = shell.frontPressureReplay;
+  const frames = replay.frames.map((frame) => {
+    const adjacent = frame.adjacentPressure.length > 0
+      ? frame.adjacentPressure.map((item) => `${item.label}: ${item.pressure}`).join(', ')
+      : 'aucune pression adjacente';
+
+    return `
+    <li class="front-pressure-frame front-pressure-frame--${escapeHtml(frame.marker.type)} ${frame.frameIndex === replay.currentIndex ? 'is-active' : ''}">
+      <span>${escapeHtml(frame.turnLabel)} · ${escapeHtml(frame.provinceLabel)}</span>
+      <strong>${escapeHtml(frame.marker.label)} · ${escapeHtml(frame.changeLabel)}</strong>
+      <small>${escapeHtml(frame.summary)}</small>
+      <em>${escapeHtml(adjacent)}</em>
+    </li>
+  `;
+  }).join('');
+
+  return `
+    <section class="front-pressure-replay" aria-label="Replay timeline de pression du front">
+      <h2>Replay front</h2>
+      <p>${escapeHtml(replay.fallbackMessage ?? replay.activeFrame?.summary ?? 'Timeline prête.')}</p>
+      ${replay.controls ? `<label class="front-pressure-scrub"><span>${escapeHtml(replay.controls.label)}</span><input type="range" min="${replay.controls.min}" max="${replay.controls.max}" step="${replay.controls.step}" value="${replay.currentIndex}" aria-label="${escapeHtml(replay.controls.label)}"><small>${replay.currentIndex + 1}/${replay.frameCount}</small></label>` : ''}
+      ${replay.beforeAfter ? `<article class="front-pressure-before-after"><span>Avant</span><strong>${escapeHtml(replay.beforeAfter.before)}</strong><span>Après</span><strong>${escapeHtml(replay.beforeAfter.after)}</strong><small>${escapeHtml(replay.beforeAfter.changeLabel)}</small></article>` : ''}
+      ${replay.empty ? '<small class="front-pressure-empty">Aucun historique à rejouer pour cette province.</small>' : `<ol>${frames}</ol>`}
+    </section>
+  `;
+}
+
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
   const entries = validation.entries.map((entry) => {
@@ -314,6 +343,12 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     resolvedProvinceOrders: normalizedOptions.resolvedProvinceOrders ?? [
       { resolutionId: 'preview-success', queueId: 'preview-main', provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', result: 'success', label: 'Ordre principal résolu' },
       { resolutionId: 'preview-deferred', queueId: 'preview-support', provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', result: 'deferred', label: 'Appui reporté' },
+    ],
+    frontPressureReplayIndex: normalizedOptions.frontPressureReplayIndex ?? 1,
+    frontPressureTimeline: normalizedOptions.frontPressureTimeline ?? [
+      { frameId: 'preview-pressure-before', provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', turnLabel: 'Avant ordre', previousPressure: 'critical', pressure: 'high', marker: 'gain', reason: 'renforts stabilisent la province contestée', adjacentPressure: [{ provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', label: 'Voisin ciblé', pressure: 'high' }] },
+      { frameId: 'preview-pressure-after', provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', turnLabel: 'Après résolution', previousPressure: 'high', pressure: 'critical', marker: 'loss', reason: 'la pression adjacente remonte après le report du soutien', adjacentPressure: [{ provinceId: normalizedOptions.focusedProvinceId ?? 'crown-heart', label: 'Voisin ciblé', pressure: 'critical' }] },
+      { frameId: 'preview-pressure-blocked', provinceId: normalizedOptions.selectedProvinceId ?? 'river-gate', turnLabel: 'Ordre bloqué', previousPressure: 'critical', pressure: 'critical', marker: 'blocked', result: 'blocked', reason: 'le ravitaillement empêche la bascule du front' },
     ],
   });
 
@@ -400,6 +435,22 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .after-action-item strong { color:#f0abfc; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
     .after-action-item small { color:#dbeafe; }
     .after-action-item em { color:#bae6fd; font-size:11px; font-style:normal; }
+    .front-pressure-replay { display:grid; gap:10px; }
+    .front-pressure-replay p, .front-pressure-empty { margin:0; color:#cbd5e1; font-size:12px; }
+    .front-pressure-scrub { display:grid; grid-template-columns:1fr auto; gap:6px 10px; align-items:center; color:#bfdbfe; font-size:12px; }
+    .front-pressure-scrub input { grid-column:1 / -1; width:100%; accent-color:#f0abfc; }
+    .front-pressure-before-after { display:grid; grid-template-columns:auto 1fr auto 1fr; gap:5px 8px; border:1px solid rgba(240,171,252,0.28); border-radius:12px; padding:8px; background:rgba(88,28,135,0.14); }
+    .front-pressure-before-after span, .front-pressure-before-after small { color:#c4b5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
+    .front-pressure-before-after small { grid-column:1 / -1; text-transform:none; letter-spacing:0; }
+    .front-pressure-replay ol { display:grid; gap:6px; margin:0; padding:0; }
+    .front-pressure-frame { display:grid; gap:3px; border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:7px 9px; }
+    .front-pressure-frame.is-active { border-color:rgba(240,171,252,0.58); box-shadow:0 0 0 1px rgba(240,171,252,0.16) inset; }
+    .front-pressure-frame--gain { border-color:rgba(74,222,128,0.36); }
+    .front-pressure-frame--loss { border-color:rgba(248,113,113,0.44); }
+    .front-pressure-frame--blocked { border-color:rgba(251,191,36,0.48); }
+    .front-pressure-frame strong { color:#f5d0fe; font-size:12px; }
+    .front-pressure-frame small { color:#dbeafe; }
+    .front-pressure-frame em { color:#bae6fd; font-size:11px; font-style:normal; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -445,6 +496,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
         ${renderKeyboardActionPlanner(shell)}
         ${renderProvinceActionQueueValidation(shell)}
         ${renderAfterActionMapRecap(shell)}
+        ${renderFrontPressureReplay(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>

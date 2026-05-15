@@ -204,6 +204,17 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     affectedFronts: [],
     summary: 'Aucune résolution récente à récapituler.',
   });
+  assert.deepEqual(shell.frontPressureReplay, {
+    empty: true,
+    incomplete: false,
+    frameCount: 0,
+    currentIndex: -1,
+    controls: null,
+    beforeAfter: null,
+    frames: [],
+    activeFrame: null,
+    fallbackMessage: 'Aucun historique de pression disponible pour le replay.',
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -464,6 +475,151 @@ test('StrategicMapShell summarizes recently resolved province orders for after-a
       highlight: { provinceId: 'reserve', frontIds: ['reserve'] },
     },
   ]);
+});
+
+
+test('StrategicMapShell builds a scrub-ready front pressure timeline replay', () => {
+  const shell = buildStrategicMapShell(
+    [
+      createProvince({ id: 'front', name: 'Front rouge', contested: true, neighborIds: ['support', 'reserve'] }),
+      createProvince({ id: 'support', name: 'Support rompu', supplyLevel: 'disrupted', neighborIds: ['front'] }),
+      createProvince({ id: 'reserve', name: 'Réserve nord', strategicValue: 1, neighborIds: ['front'] }),
+    ],
+    {
+      frontPressureReplayIndex: 1,
+      frontPressureTimeline: [
+        {
+          frameId: 't1',
+          provinceId: 'front',
+          turnLabel: 'Avant ordre',
+          previousPressure: 'critical',
+          pressure: 'high',
+          marker: 'gain',
+          reason: 'renfort arrivé sur la ligne contestée',
+          adjacentPressure: [{ provinceId: 'support', label: 'Support rompu', pressure: 'high' }],
+        },
+        {
+          frameId: 't2',
+          provinceId: 'front',
+          turnLabel: 'Après blocage voisin',
+          previousPressure: 'high',
+          pressure: 'critical',
+          marker: 'loss',
+          reason: 'support voisin désorganisé',
+          adjacentPressure: [{ provinceId: 'support', label: 'Support rompu', pressure: 'critical' }],
+        },
+        {
+          frameId: 't3',
+          provinceId: 'front',
+          turnLabel: 'Ordre reporté',
+          previousPressure: 'critical',
+          pressure: 'critical',
+          marker: 'blocked',
+          result: 'blocked',
+          reason: 'ordre bloqué par ravitaillement rompu',
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(shell.frontPressureReplay, {
+    empty: false,
+    incomplete: false,
+    frameCount: 3,
+    currentIndex: 1,
+    controls: {
+      type: 'scrub',
+      min: 0,
+      max: 2,
+      step: 1,
+      label: 'Rejouer la pression du front',
+    },
+    beforeAfter: {
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      before: 'critical',
+      after: 'critical',
+      changeLabel: '+1 pression',
+    },
+    frames: [
+      {
+        frameId: 't1',
+        frameIndex: 0,
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        turnLabel: 'Avant ordre',
+        previousPressure: 'critical',
+        pressure: 'high',
+        pressureDelta: -1,
+        changeLabel: '-1 pression',
+        marker: { type: 'gain', label: 'gain', tone: 'positive' },
+        adjacentPressure: [{ provinceId: 'support', label: 'Support rompu', pressure: 'high' }],
+        summary: '-1 pression — renfort arrivé sur la ligne contestée',
+        reason: 'renfort arrivé sur la ligne contestée',
+      },
+      {
+        frameId: 't2',
+        frameIndex: 1,
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        turnLabel: 'Après blocage voisin',
+        previousPressure: 'high',
+        pressure: 'critical',
+        pressureDelta: 1,
+        changeLabel: '+1 pression',
+        marker: { type: 'loss', label: 'perte', tone: 'negative' },
+        adjacentPressure: [{ provinceId: 'support', label: 'Support rompu', pressure: 'critical' }],
+        summary: '+1 pression — support voisin désorganisé',
+        reason: 'support voisin désorganisé',
+      },
+      {
+        frameId: 't3',
+        frameIndex: 2,
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        turnLabel: 'Ordre reporté',
+        previousPressure: 'critical',
+        pressure: 'critical',
+        pressureDelta: 0,
+        changeLabel: 'pression stable',
+        marker: { type: 'blocked', label: 'blocage', tone: 'warning' },
+        adjacentPressure: [],
+        summary: 'pression stable — ordre bloqué par ravitaillement rompu',
+        reason: 'ordre bloqué par ravitaillement rompu',
+      },
+    ],
+    activeFrame: {
+      frameId: 't2',
+      frameIndex: 1,
+      provinceId: 'front',
+      provinceLabel: 'Front rouge',
+      turnLabel: 'Après blocage voisin',
+      previousPressure: 'high',
+      pressure: 'critical',
+      pressureDelta: 1,
+      changeLabel: '+1 pression',
+      marker: { type: 'loss', label: 'perte', tone: 'negative' },
+      adjacentPressure: [{ provinceId: 'support', label: 'Support rompu', pressure: 'critical' }],
+      summary: '+1 pression — support voisin désorganisé',
+      reason: 'support voisin désorganisé',
+    },
+    fallbackMessage: null,
+  });
+});
+
+test('StrategicMapShell reports incomplete front pressure replay history', () => {
+  const shell = buildStrategicMapShell(
+    [createProvince({ id: 'front', name: 'Front rouge', contested: true })],
+    {
+      frontPressureTimeline: [
+        { frameId: 'only', provinceId: 'front', previousPressure: 'high', pressure: 'high' },
+      ],
+    },
+  );
+
+  assert.equal(shell.frontPressureReplay.empty, false);
+  assert.equal(shell.frontPressureReplay.incomplete, true);
+  assert.equal(shell.frontPressureReplay.fallbackMessage, 'Historique incomplet: un seul état disponible pour ce front.');
 });
 
 test('StrategicMapShell projects intrigue presence and sabotage risk into the map overlay slot', () => {

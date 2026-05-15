@@ -1714,6 +1714,158 @@ function buildAfterActionMapRecap(renderedProvinces, keyboardActionPlanner, opti
   };
 }
 
+
+function normalizePressureLevel(value, fallback = 'stable') {
+  const level = String(value ?? fallback).trim() || fallback;
+  if (['low', 'stable', 'guarded', 'high', 'critical'].includes(level)) return level;
+  return fallback;
+}
+
+function pressureScore(level) {
+  return {
+    low: 0,
+    stable: 1,
+    guarded: 2,
+    high: 3,
+    critical: 4,
+  }[level] ?? 1;
+}
+
+function pressureChangeLabel(delta) {
+  if (delta > 0) return `+${delta} pression`;
+  if (delta < 0) return `${delta} pression`;
+  return 'pression stable';
+}
+
+function markerTone(marker) {
+  if (marker === 'gain') return 'positive';
+  if (marker === 'loss') return 'negative';
+  if (marker === 'blocked') return 'warning';
+  return 'neutral';
+}
+
+function markerLabel(marker) {
+  if (marker === 'gain') return 'gain';
+  if (marker === 'loss') return 'perte';
+  if (marker === 'blocked') return 'blocage';
+  return 'pression adjacente';
+}
+
+function inferMarker(previousPressure, pressure, result) {
+  if (result === 'blocked' || result === 'conflict') return 'blocked';
+  const delta = pressureScore(pressure) - pressureScore(previousPressure);
+  if (delta < 0) return 'gain';
+  if (delta > 0) return 'loss';
+  return 'adjacent-pressure';
+}
+
+function normalizeFrontPressureTimeline(value) {
+  if (value === undefined) return [];
+
+  if (!Array.isArray(value)) {
+    throw new TypeError('StrategicMapShell frontPressureTimeline must be an array.');
+  }
+
+  return value.map((entry, index) => {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new TypeError('StrategicMapShell frontPressureTimeline entries must be objects.');
+    }
+
+    const pressure = normalizePressureLevel(entry.pressure, 'stable');
+    const previousPressure = normalizePressureLevel(entry.previousPressure, pressure);
+    const result = String(entry.result ?? '').trim();
+    const marker = String(entry.marker ?? inferMarker(previousPressure, pressure, result)).trim() || 'adjacent-pressure';
+    const adjacentPressure = Array.isArray(entry.adjacentPressure) ? entry.adjacentPressure : [];
+
+    return {
+      frameId: String(entry.frameId ?? `front-frame-${index + 1}`).trim() || `front-frame-${index + 1}`,
+      provinceId: String(entry.provinceId ?? '').trim(),
+      turnLabel: String(entry.turnLabel ?? `État ${index + 1}`).trim() || `État ${index + 1}`,
+      pressure,
+      previousPressure,
+      result,
+      marker,
+      reason: String(entry.reason ?? '').trim(),
+      adjacentPressure: adjacentPressure.map((adjacent, adjacentIndex) => ({
+        provinceId: String(adjacent?.provinceId ?? `adjacent-${adjacentIndex + 1}`).trim() || `adjacent-${adjacentIndex + 1}`,
+        label: String(adjacent?.label ?? adjacent?.provinceId ?? `Voisin ${adjacentIndex + 1}`).trim() || `Voisin ${adjacentIndex + 1}`,
+        pressure: normalizePressureLevel(adjacent?.pressure, 'stable'),
+      })),
+    };
+  }).filter((entry) => entry.provinceId).slice(-4);
+}
+
+function buildFrontPressureTimelineReplay(renderedProvinces, options) {
+  const timeline = normalizeFrontPressureTimeline(options.frontPressureTimeline);
+  const provinceById = new Map(renderedProvinces.map((province) => [province.provinceId, province]));
+  const frames = timeline.map((entry, index) => {
+    const province = provinceById.get(entry.provinceId) ?? null;
+    const delta = pressureScore(entry.pressure) - pressureScore(entry.previousPressure);
+    const reason = entry.reason || (
+      entry.marker === 'blocked'
+        ? 'un blocage empêche le front de bouger'
+        : delta < 0
+          ? 'les ordres récents relâchent la pression locale'
+          : delta > 0
+            ? 'les pressions voisines renforcent le front adverse'
+            : 'aucun basculement net entre les deux états'
+    );
+
+    return {
+      frameId: entry.frameId,
+      frameIndex: index,
+      provinceId: entry.provinceId,
+      provinceLabel: province?.label ?? entry.provinceId,
+      turnLabel: entry.turnLabel,
+      previousPressure: entry.previousPressure,
+      pressure: entry.pressure,
+      pressureDelta: delta,
+      changeLabel: pressureChangeLabel(delta),
+      marker: {
+        type: entry.marker,
+        label: markerLabel(entry.marker),
+        tone: markerTone(entry.marker),
+      },
+      adjacentPressure: entry.adjacentPressure,
+      summary: `${pressureChangeLabel(delta)} — ${reason}`,
+      reason,
+    };
+  });
+
+  const requestedIndex = Number.isInteger(options.frontPressureReplayIndex) ? options.frontPressureReplayIndex : frames.length - 1;
+  const currentIndex = frames.length === 0 ? -1 : Math.min(Math.max(requestedIndex, 0), frames.length - 1);
+  const activeFrame = currentIndex === -1 ? null : frames[currentIndex];
+  const firstFrame = frames[0] ?? null;
+
+  return {
+    empty: frames.length === 0,
+    incomplete: frames.length > 0 && frames.length < 2,
+    frameCount: frames.length,
+    currentIndex,
+    controls: frames.length === 0 ? null : {
+      type: 'scrub',
+      min: 0,
+      max: frames.length - 1,
+      step: 1,
+      label: 'Rejouer la pression du front',
+    },
+    beforeAfter: activeFrame && firstFrame ? {
+      provinceId: activeFrame.provinceId,
+      provinceLabel: activeFrame.provinceLabel,
+      before: firstFrame.previousPressure,
+      after: activeFrame.pressure,
+      changeLabel: activeFrame.changeLabel,
+    } : null,
+    frames,
+    activeFrame,
+    fallbackMessage: frames.length === 0
+      ? 'Aucun historique de pression disponible pour le replay.'
+      : frames.length < 2
+        ? 'Historique incomplet: un seul état disponible pour ce front.'
+        : null,
+  };
+}
+
 function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
@@ -1945,6 +2097,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
 
   const keyboardActionPlanner = buildKeyboardActionPlanner(renderedProvinces, normalizedOptions);
   const afterActionMapRecap = buildAfterActionMapRecap(renderedProvinces, keyboardActionPlanner, normalizedOptions);
+  const frontPressureReplay = buildFrontPressureTimelineReplay(renderedProvinces, normalizedOptions);
 
   return {
     title,
@@ -1953,6 +2106,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     mapLayers: buildProvinceMapLayers(renderedProvinces),
     keyboardActionPlanner,
     afterActionMapRecap,
+    frontPressureReplay,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,

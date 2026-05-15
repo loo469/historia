@@ -32,6 +32,12 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /Après-action/);
   assert.match(html, /Ordre principal résolu/);
   assert.match(html, /Appui reporté/);
+  assert.match(html, /Replay timeline de pression du front/);
+  assert.match(html, /Rejouer la pression du front/);
+  assert.match(html, /Avant ordre/);
+  assert.match(html, /Après résolution/);
+  assert.match(html, /Ordre bloqué/);
+  assert.match(html, /front-pressure-frame--loss is-active/);
   assert.match(html, /class="province is-contested is-occupied is-selected is-queued is-recently-affected"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /Porte du Fleuve/);
