@@ -2429,6 +2429,52 @@ function buildIntelligenceProvenancePanel({ confidenceState, safeVerificationHin
   };
 }
 
+function buildVerificationAuditTrail({ confidenceState, safeVerificationHint, verificationPathPreviews, incidentReplay, evidenceTrailMarkers, safeMapMasking }) {
+  const recommendedPath = verificationPathPreviews.find((path) => path.recommended) ?? verificationPathPreviews[0] ?? null;
+  const stepByState = {
+    confirmed: [
+      ['local-observation', 'Observation locale', 'confidence-up', 'Confiance montée: pression visible confirmée sans identité cachée.'],
+      ['cross-check', 'Recoupement', 'residual-risk', 'Risque résiduel maintenu: vérifier seulement les signaux visibles.'],
+    ],
+    suspected: [
+      ['indirect-source', 'Source indirecte', 'confidence-up', 'Confiance montée: signal probable, source non nominative.'],
+      ['partial-confirmation', 'Confirmation partielle', 'residual-risk', 'Risque résiduel: attendre une preuve visible avant extension.'],
+    ],
+    stale: [
+      ['cross-check', 'Recoupement', 'confidence-down', 'Confiance baissée: indice ancien sans fraîcheur confirmée.'],
+      ['dead-end', 'Impasse', 'trail-dismissed', 'Piste écartée provisoirement jusqu’à nouveau signal.'],
+    ],
+    masked: [
+      ['dead-end', 'Impasse', 'masked', 'Entrée généralisée: données trop sensibles ou absentes.'],
+    ],
+  };
+  const steps = (stepByState[confidenceState.state] ?? stepByState.masked).map(([stepId, label, change, safeResult], index) => ({
+    stepId,
+    order: index + 1,
+    label,
+    change,
+    safeResult,
+    evidenceState: evidenceTrailMarkers[index]?.state ?? evidenceTrailMarkers[0]?.state ?? 'masked',
+    fogSafeCopy: `${label}: ${safeResult} Aucun détail de cellule, cible, relais ou cause cachée n’est affiché.`,
+  }));
+
+  return {
+    state: confidenceState.state === 'masked' ? 'redacted-audit' : 'visible-audit',
+    summary: `${steps.length} étape${steps.length > 1 ? 's' : ''} de vérification visible${steps.length > 1 ? 's' : ''}: ${steps.map((step) => step.label).join(', ')}.`,
+    steps,
+    lastChange: steps.at(-1)?.change ?? 'masked',
+    nextUsefulCheck: recommendedPath ? {
+      action: safeVerificationHint.action,
+      label: safeVerificationHint.label,
+      costCue: recommendedPath.costCue,
+      evidenceNeeded: recommendedPath.evidenceNeeded,
+      reason: 'Prochain contrôle utile choisi depuis la provenance visible, sans accéder aux détails cachés.',
+    } : null,
+    incidentContext: incidentReplay.summary,
+    safeMapPolicy: 'Les entrées trop sensibles sont masquées ou généralisées en mode safe-map.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2583,6 +2629,14 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         locationOperations,
         exposedCellCount,
       });
+      const verificationAuditTrail = buildVerificationAuditTrail({
+        confidenceState,
+        safeVerificationHint,
+        verificationPathPreviews,
+        incidentReplay,
+        evidenceTrailMarkers,
+        safeMapMasking,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2593,6 +2647,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           incidentReplay,
           evidenceTrailMarkers,
           intelligenceProvenancePanel,
+          verificationAuditTrail,
         }
         : {};
 
