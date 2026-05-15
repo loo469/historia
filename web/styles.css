@@ -2928,6 +2928,22 @@ button { font: inherit; }
   filter: drop-shadow(0 10px 18px rgba(2, 6, 23, 0.22));
   pointer-events: none;
 }
+.intrigue-map-layer--safe-mode {
+  filter: drop-shadow(0 8px 14px rgba(2, 6, 23, 0.18));
+}
+.intrigue-map-layer--safe-mode .intrigue-hotspot__halo,
+.intrigue-map-layer--safe-mode .intrigue-threat-glyph__backplate,
+.intrigue-map-layer--safe-mode .world-map-intrigue-signal__aura {
+  opacity: 0.58;
+}
+.intrigue-map-layer--safe-mode .intrigue-hotspot__label,
+.intrigue-map-layer--safe-mode .intrigue-hotspot__meta,
+.intrigue-map-layer--safe-mode .world-map-intrigue-signal__copy {
+  display: none;
+}
+.intrigue-map-layer--safe-mode .intrigue-threat-glyph__tick {
+  opacity: 0.35;
+}
 .intrigue-critical-signal__pulse {
   fill: rgba(251, 113, 133, 0.14);
   stroke: rgba(251, 113, 133, 0.86);
@@ -3119,6 +3135,61 @@ button { font: inherit; }
 .world-map-intrigue-filter-chip b {
   color: #f8fafc;
 }
+.intrigue-safe-map-mode,
+.intrigue-risk-explanations,
+.intrigue-observation-exposure-warnings {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.5);
+}
+.intrigue-safe-map-mode {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-color: rgba(45, 212, 191, 0.32);
+}
+.intrigue-safe-map-mode span,
+.intrigue-risk-explanation p,
+.intrigue-observation-exposure-warning p {
+  color: #cbd5e1;
+  margin: 0;
+}
+.intrigue-safe-map-mode__toggle {
+  border: 1px solid rgba(45, 212, 191, 0.34);
+  color: #ccfbf1;
+  background: rgba(20, 184, 166, 0.14);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.intrigue-safe-map-mode__toggle.is-active {
+  background: rgba(20, 184, 166, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(153, 246, 228, 0.18);
+}
+.intrigue-risk-explanations__grid {
+  display: grid;
+  gap: 6px;
+}
+.intrigue-risk-explanation,
+.intrigue-observation-exposure-warning {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 11px;
+  border-left: 3px solid rgba(148, 163, 184, 0.5);
+  background: rgba(2, 6, 23, 0.25);
+}
+.intrigue-risk-explanation--danger,
+.intrigue-observation-exposure-warning--danger { border-left-color: rgba(248, 113, 113, 0.86); }
+.intrigue-risk-explanation--warning,
+.intrigue-observation-exposure-warning--warning { border-left-color: rgba(251, 191, 36, 0.86); }
+.intrigue-risk-explanation--watch,
+.intrigue-observation-exposure-warning--watch { border-left-color: rgba(96, 165, 250, 0.76); }
+.intrigue-risk-explanation--shadow,
+.intrigue-observation-exposure-warning--shadow { border-left-color: rgba(148, 163, 184, 0.58); }
 .atlas-counterintelligence-plan {
   display: grid;
   gap: 8px;

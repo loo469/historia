@@ -595,6 +595,25 @@ test('atlas intrigue filters prioritize stale uncertain recent and probable sign
   assert.match(stylesSource, /world-map-intrigue-filter-chip\.is-active/);
 });
 
+test('intrigue map adds safe mode, risk explanations, exposure warnings, and confidential fallback', () => {
+  assert.match(webAppSource, /intrigueSafeMapMode: true/);
+  assert.match(webAppSource, /function buildIntrigueRiskExplanations/);
+  assert.match(webAppSource, /function buildIntrigueObservationExposureWarnings/);
+  assert.match(webAppSource, /function renderIntrigueSafeMapModeControls/);
+  assert.match(webAppSource, /data-toggle-intrigue-safe-map-mode/);
+  assert.match(webAppSource, /state\.intrigueSafeMapMode = !state\.intrigueSafeMapMode/);
+  assert.match(webAppSource, /Mode carte sûr intrigue/);
+  assert.match(webAppSource, /Données intrigue absentes ou confidentielles/);
+  assert.match(webAppSource, /évite de déduire cellule, relais, cible ou cause cachée/);
+  assert.match(webAppSource, /Alertes observation élargie et coût d’exposition/);
+  assert.match(webAppSource, /Aucune donnée d’observation élargie lisible/);
+  assert.match(webAppSource, /intrigue-map-layer--safe-mode/);
+  assert.match(stylesSource, /\.intrigue-map-layer--safe-mode/);
+  assert.match(stylesSource, /\.intrigue-safe-map-mode/);
+  assert.match(stylesSource, /\.intrigue-risk-explanations/);
+  assert.match(stylesSource, /\.intrigue-observation-exposure-warnings/);
+});
+
 test('world map intrigue signals show presence risk shadows and probable sabotage safely', () => {
   assert.match(webAppSource, /function buildWorldMapIntrigueSignals/);
   assert.match(webAppSource, /function renderWorldMapIntrigueSignals/);

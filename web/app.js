@@ -454,6 +454,7 @@ const state = {
     alerts: true,
     sabotage: true,
   },
+  intrigueSafeMapMode: true,
   intrigueExposureOutcomeFilters: {
     lowered: false,
     unchanged: false,
@@ -14176,6 +14177,107 @@ function renderWorldMapIntrigueSignals(signals) {
   `;
 }
 
+function buildIntrigueRiskExplanations(intrigueView = null) {
+  const entries = intrigueView?.map?.entries ?? [];
+
+  if (entries.length === 0) {
+    return [{
+      key: 'fallback-confidential',
+      tone: 'shadow',
+      title: 'Données intrigue absentes ou confidentielles',
+      explanation: 'Mode sûr: la carte conserve seulement un repère neutre et évite de déduire cellule, relais, cible ou cause cachée.',
+    }];
+  }
+
+  return entries.slice(0, 4).map((entry) => {
+    const factors = [
+      entry.presenceLevel !== 'none' ? `présence ${entry.presenceLevel}` : 'présence non confirmée',
+      entry.sabotageRiskLevel !== 'none' ? `sabotage ${entry.sabotageRiskLevel}` : 'sabotage non confirmé',
+      entry.metrics.exposedCellCount > 0 ? 'exposition visible' : 'identifiants masqués',
+    ];
+
+    return {
+      key: entry.locationId,
+      tone: entry.sabotageRiskLevel === 'high' ? 'danger' : entry.sabotageRiskLevel === 'medium' || entry.presenceLevel === 'high' ? 'warning' : 'watch',
+      title: entry.locationName,
+      explanation: `${factors.join(' · ')}; lecture par indices uniquement, sans révéler les détails cachés.`,
+    };
+  });
+}
+
+function buildIntrigueObservationExposureWarnings(intrigueView = null) {
+  const entries = intrigueView?.map?.entries ?? [];
+  const warnings = entries.map((entry) => {
+    const tradeoff = entry.lowExposureSweepConfidencePreview?.thirdSweepRecommendation?.monitoringRationale?.observationBroadeningTradeoff ?? null;
+
+    if (!tradeoff) {
+      return null;
+    }
+
+    return {
+      locationId: entry.locationId,
+      locationName: entry.locationName,
+      tone: tradeoff.tradeoff === 'exposure-too-high' ? 'warning' : 'watch',
+      label: tradeoff.label,
+      message: `${entry.locationName}: ${tradeoff.message}`,
+      action: tradeoff.action,
+    };
+  }).filter(Boolean);
+
+  return warnings.length > 0 ? warnings : [{
+    locationId: null,
+    locationName: 'Carte intrigue',
+    tone: 'shadow',
+    label: 'Observation: fallback sûr.',
+    message: 'Aucune donnée d’observation élargie lisible: rester en mode discret et attendre un signal confirmé.',
+    action: 'safe-map-fallback',
+  }];
+}
+
+function renderIntrigueSafeMapModeControls() {
+  return `
+    <section class="intrigue-safe-map-mode" aria-label="Mode carte intrigue discret">
+      <div>
+        <strong>Mode carte sûr intrigue</strong>
+        <span>${state.intrigueSafeMapMode ? 'Intensité réduite, icônes compactes et détails secondaires masqués.' : 'Lecture complète de la couche intrigue active.'}</span>
+      </div>
+      <button type="button" class="intrigue-safe-map-mode__toggle ${state.intrigueSafeMapMode ? 'is-active' : ''}" data-toggle-intrigue-safe-map-mode aria-pressed="${state.intrigueSafeMapMode}">
+        ${state.intrigueSafeMapMode ? 'Mode sûr actif' : 'Activer mode sûr'}
+      </button>
+    </section>
+  `;
+}
+
+function renderIntrigueRiskExplanations(explanations) {
+  return `
+    <section class="intrigue-risk-explanations" aria-label="Explication fog-safe des risques intrigue sabotage">
+      <strong>Pourquoi ces risques apparaissent</strong>
+      <div class="intrigue-risk-explanations__grid">
+        ${explanations.map((item) => `
+          <article class="intrigue-risk-explanation intrigue-risk-explanation--${item.tone}">
+            <span>${item.title}</span>
+            <p>${item.explanation}</p>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderIntrigueObservationExposureWarnings(warnings) {
+  return `
+    <section class="intrigue-observation-exposure-warnings" aria-label="Alertes observation élargie et coût d’exposition">
+      <strong>Observation élargie</strong>
+      ${warnings.map((warning) => `
+        <article class="intrigue-observation-exposure-warning intrigue-observation-exposure-warning--${warning.tone}">
+          <span>${warning.label}</span>
+          <p>${warning.message}</p>
+        </article>
+      `).join('')}
+    </section>
+  `;
+}
+
 function renderWorldMapIntrigueSignalRollup(rollup) {
   if (rollup.totalCount === 0) {
     return '';
@@ -17133,6 +17235,7 @@ function renderIntrigueMapOverlay(intrigueView) {
     `;
   }
 
+  const safeMode = state.intrigueSafeMapMode;
   const heatmapMarkup = intrigueView.map.entries.map((entry) => `
     <g class="intrigue-heat-node intrigue-heat-node--${entry.sabotageRiskLevel} ${entry.isSelected ? 'is-selected' : ''}">
       <circle class="intrigue-heat-node__outer" cx="${entry.center.x}%" cy="${entry.center.y}%" r="${entry.heatRadius}" style="opacity:${Math.min(0.62, entry.heatIntensity)}"></circle>
@@ -17172,13 +17275,9 @@ function renderIntrigueMapOverlay(intrigueView) {
   `).join('');
 
   return `
-    <svg class="intrigue-map-layer" viewBox="0 0 100 100" aria-label="Overlay intrigue et heatmap de sabotage">
-      <g class="intrigue-heat-layer">
-        ${heatmapMarkup}
-      </g>
-      <g class="intrigue-network-layer">
-        ${linkMarkup}
-      </g>
+    <svg class="intrigue-map-layer ${safeMode ? 'intrigue-map-layer--safe-mode' : ''}" viewBox="0 0 100 100" aria-label="Overlay intrigue et heatmap de sabotage${safeMode ? ' en mode discret sûr' : ''}">
+      ${safeMode ? '' : `<g class="intrigue-heat-layer">${heatmapMarkup}</g>`}
+      ${safeMode ? '' : `<g class="intrigue-network-layer">${linkMarkup}</g>`}
       <g class="intrigue-threat-layer">
         ${threatGlyphMarkup}
       </g>
@@ -17199,6 +17298,8 @@ function renderIntrigueSidePanel(intrigueView) {
   const worldMapSignals = buildWorldMapIntrigueSignals(intrigueView, { ignoreFilters: true });
   const worldMapSignalRollup = buildWorldMapIntrigueSignalRollup(worldMapSignals);
   const counterintelligencePlan = buildAtlasCounterintelligenceSweepPlan(worldMapSignals);
+  const riskExplanations = buildIntrigueRiskExplanations(intrigueView);
+  const observationExposureWarnings = buildIntrigueObservationExposureWarnings(intrigueView);
 
   return `
     <section class="panel overlay-panel overlay-panel--intrigue">
@@ -17217,6 +17318,9 @@ function renderIntrigueSidePanel(intrigueView) {
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.alerts ? 'is-active' : ''}" data-intrigue-filter="alerts">Alertes</button>
         <button type="button" class="intrigue-filter-chip ${intrigueView.filters.sabotage ? 'is-active' : ''}" data-intrigue-filter="sabotage">Sabotage</button>
       </section>
+      ${renderIntrigueSafeMapModeControls()}
+      ${renderIntrigueRiskExplanations(riskExplanations)}
+      ${renderIntrigueObservationExposureWarnings(observationExposureWarnings)}
       ${renderWorldMapIntrigueSignalRollup(worldMapSignalRollup)}
       ${renderAtlasCounterintelligenceSweepPlan(counterintelligencePlan)}
       ${renderIntrigueExposureMarkerRollup(exposureMarkerRollup)}
@@ -19046,6 +19150,13 @@ function render() {
     element.addEventListener('click', () => {
       const key = element.dataset.intrigueFilter;
       state.intrigueFilters[key] = !state.intrigueFilters[key];
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-toggle-intrigue-safe-map-mode]').forEach((element) => {
+    element.addEventListener('click', () => {
+      state.intrigueSafeMapMode = !state.intrigueSafeMapMode;
       render();
     });
   });
