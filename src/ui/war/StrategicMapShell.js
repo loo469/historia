@@ -78,10 +78,90 @@ function normalizeCleanupInput(value, label) {
   return value.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry));
 }
 
+function normalizeIntrigueMapEntries(value) {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new TypeError('StrategicMapShell intrigueMapOverlay must be an array.');
+  }
+
+  return value.map((entry) => {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new TypeError('StrategicMapShell intrigueMapOverlay entries must be objects.');
+    }
+
+    const locationId = String(entry.locationId ?? '').trim();
+
+    return {
+      locationId,
+      locationName: String(entry.locationName ?? locationId).trim() || locationId,
+      presenceLevel: String(entry.presenceLevel ?? 'none').trim() || 'none',
+      sabotageRiskLevel: String(entry.sabotageRiskLevel ?? 'none').trim() || 'none',
+      sabotageRiskScore: Number.isFinite(entry.sabotageRiskScore) ? Math.max(0, Math.min(100, Math.round(entry.sabotageRiskScore))) : 0,
+      celluleCount: Number.isFinite(entry.metrics?.celluleCount) ? Math.max(0, Math.round(entry.metrics.celluleCount)) : 0,
+      sabotageOperationCount: Number.isFinite(entry.metrics?.sabotageOperationCount)
+        ? Math.max(0, Math.round(entry.metrics.sabotageOperationCount))
+        : 0,
+    };
+  }).filter((entry) => entry.locationId);
+}
+
 function getRiskLocationId(riskKey) {
   const [, locationId = null] = String(riskKey ?? '').split(':');
 
   return locationId && locationId.trim() ? locationId.trim() : null;
+}
+
+export function buildIntriguePresenceSabotageOverlay(provinces, intrigueMapOverlay = []) {
+  const normalizedProvinces = requireProvinceList(provinces);
+  const provinceById = new Map(normalizedProvinces.map((province) => [province.id, province]));
+  const entries = normalizeIntrigueMapEntries(intrigueMapOverlay)
+    .filter((entry) => provinceById.has(entry.locationId))
+    .filter((entry) => entry.presenceLevel !== 'none' || entry.sabotageRiskLevel !== 'none' || entry.sabotageRiskScore > 0)
+    .map((entry) => {
+      const province = provinceById.get(entry.locationId);
+      const tone = entry.sabotageRiskLevel === 'high'
+        ? 'danger'
+        : entry.sabotageRiskLevel === 'medium' || entry.presenceLevel === 'high'
+          ? 'warning'
+          : 'watch';
+      const sortPriority = (entry.sabotageRiskScore * 10)
+        + (entry.presenceLevel === 'high' ? 3 : entry.presenceLevel === 'medium' ? 2 : entry.presenceLevel === 'low' ? 1 : 0);
+
+      return {
+        provinceId: province.id,
+        provinceName: province.name,
+        locationId: entry.locationId,
+        label: `${province.name}: présence ${entry.presenceLevel}, sabotage ${entry.sabotageRiskLevel} (${entry.sabotageRiskScore})`,
+        tone,
+        presence: {
+          level: entry.presenceLevel,
+          celluleCount: entry.celluleCount,
+        },
+        sabotageRisk: {
+          level: entry.sabotageRiskLevel,
+          score: entry.sabotageRiskScore,
+          operationCount: entry.sabotageOperationCount,
+        },
+        sortPriority,
+      };
+    })
+    .sort((left, right) => right.sortPriority - left.sortPriority || left.provinceId.localeCompare(right.provinceId))
+    .map(({ sortPriority, ...entry }) => entry);
+
+  return {
+    overlayId: 'intrigue-presence-sabotage',
+    slotId: 'intrigue-overlay',
+    label: 'Présence intrigue et risque sabotage',
+    markers: entries,
+    summary: {
+      markerCount: entries.length,
+      highRiskCount: entries.filter((entry) => entry.sabotageRisk.level === 'high').length,
+      activePresenceCount: entries.filter((entry) => entry.presence.level !== 'none').length,
+    },
+  };
 }
 
 export function buildFirstCleanupPayoff(cleanupOrders = [], residualRisks = []) {
@@ -1333,6 +1413,10 @@ export function buildStrategicMapShell(provinces, options = {}) {
     || 'Vue d’ensemble des provinces et lignes de front';
   const overlaySlots = normalizeOverlaySlots(normalizedOptions.overlaySlots);
   const provinceGeometryById = normalizeGeometryMap(normalizedOptions.provinceGeometryById);
+  const intriguePresenceSabotageOverlay = buildIntriguePresenceSabotageOverlay(
+    normalizedProvinces,
+    normalizedOptions.intrigueMapOverlay,
+  );
   const firstCleanupPayoff = buildFirstCleanupPayoff(normalizedOptions.cleanupOrders, normalizedOptions.residualRisks);
   const followUpCleanupChoices = buildFollowUpCleanupChoices(
     normalizedOptions.cleanupOrders,
@@ -1445,6 +1529,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
         label: slotId.replace(/-/g, ' '),
         enabled: true,
       })),
+      intrigue: intriguePresenceSabotageOverlay,
     },
     firstCleanupPayoff,
     followUpCleanupChoices,
