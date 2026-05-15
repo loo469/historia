@@ -1516,6 +1516,58 @@ function buildNarrativeEventCandidates(regionId, regionPresence, cultureSignalsB
     }));
 }
 
+function buildCultureConsequencePreview(regionId, priority, regionPresence) {
+  const confidence = priority.eventCount > 0 && priority.discoveryCount > 0
+    ? 'high'
+    : priority.eventCount === 0 && priority.discoveryCount === 0
+      ? 'low'
+      : 'medium';
+  const visibleMarkerIds = priority.eventMarkers.length > 0
+    ? priority.eventMarkers.map((event) => event.eventMarkerId)
+    : regionPresence.slice(0, 3).map((entry) => `${regionId}:${entry.cultureId}`);
+  const opportunityByState = {
+    opportunity: `Saisir ${priority.source} peut transformer le signal culturel en avantage narratif immédiat.`,
+    tension: `Apaiser ${priority.source} peut rendre les influences superposées lisibles avant décision.`,
+    completed: `Consolider ${priority.source} sécurise le gain culturel déjà visible.`,
+    watch: priority.microAction === 'soutenir'
+      ? `Soutenir ${priority.source} garde la recherche locale exploitable.`
+      : `Attendre ${priority.source} évite de surinterpréter un signal incomplet.`,
+  };
+  const tradeoffByAction = {
+    explorer: 'retarde l’apaisement des influences secondaires du cluster',
+    apaiser: 'sacrifie une exploitation immédiate de la découverte prioritaire',
+    consolider: 'retarde l’ouverture de nouveaux fils de recherche',
+    soutenir: 'consomme l’attention qui pourrait explorer un événement plus fort ailleurs',
+    attendre: 'risque de laisser passer une opportunité faible si de nouveaux marqueurs confirment le signal',
+  };
+  const confidenceLabel = confidence === 'high'
+    ? 'confiance élevée: événement et découverte visibles'
+    : confidence === 'medium'
+      ? 'confiance moyenne: signal partiel mais lisible'
+      : 'confiance basse: intel culturel incomplet';
+
+  return {
+    previewId: `${regionId}:priority:${priority.state}:consequence`,
+    regionId,
+    state: priority.state,
+    microAction: priority.microAction,
+    confidence,
+    confidenceLabel,
+    opportunity: opportunityByState[priority.state] ?? opportunityByState.watch,
+    tradeoff: tradeoffByAction[priority.microAction] ?? 'arbitrage culturel à confirmer',
+    delayedOrSacrificed: tradeoffByAction[priority.microAction] ?? 'aucun sacrifice connu',
+    visibleMarkerIds,
+    summary: `${priority.microAction}: ${opportunityByState[priority.state] ?? opportunityByState.watch} Tradeoff: ${tradeoffByAction[priority.microAction] ?? 'arbitrage culturel à confirmer'}.`,
+  };
+}
+
+function withCultureConsequencePreview(regionId, priority, regionPresence) {
+  return {
+    ...priority,
+    consequencePreview: buildCultureConsequencePreview(regionId, priority, regionPresence),
+  };
+}
+
 export function buildCultureNarrativePriority(regionId, regionPresence, cultureSignalsById) {
   const eventCandidates = buildNarrativeEventCandidates(regionId, regionPresence, cultureSignalsById);
   const discoveryIds = [...new Set(regionPresence.flatMap((entry) => (
@@ -1528,7 +1580,7 @@ export function buildCultureNarrativePriority(regionId, regionPresence, cultureS
   const hasCollision = regionPresence.length > 1 || eventCandidates.length > 1;
 
   if (topEvent && topEvent.importance >= 4) {
-    return {
+    return withCultureConsequencePreview(regionId, {
       state: 'opportunity',
       label: 'opportunité',
       microAction: 'explorer',
@@ -1538,13 +1590,13 @@ export function buildCultureNarrativePriority(regionId, regionPresence, cultureS
       eventCount: eventCandidates.length,
       discoveryCount: discoveryIds.length,
       eventMarkers: eventCandidates.slice(0, 3),
-    };
+    }, regionPresence);
   }
 
   if (hasCollision && (eventCandidates.length > 0 || discoveryIds.length > 1)) {
     const source = topEvent?.title ?? discoveryIds[0] ?? regionPresence[0]?.cultureName ?? regionId;
 
-    return {
+    return withCultureConsequencePreview(regionId, {
       state: 'tension',
       label: 'tension',
       microAction: 'apaiser',
@@ -1556,11 +1608,11 @@ export function buildCultureNarrativePriority(regionId, regionPresence, cultureS
       eventCount: eventCandidates.length,
       discoveryCount: discoveryIds.length,
       eventMarkers: eventCandidates.slice(0, 3),
-    };
+    }, regionPresence);
   }
 
   if (discoveryIds.length > 0 && activeResearchCount === 0 && eventCandidates.length === 0) {
-    return {
+    return withCultureConsequencePreview(regionId, {
       state: 'completed',
       label: 'suivi terminé',
       microAction: 'consolider',
@@ -1570,10 +1622,10 @@ export function buildCultureNarrativePriority(regionId, regionPresence, cultureS
       eventCount: 0,
       discoveryCount: discoveryIds.length,
       eventMarkers: [],
-    };
+    }, regionPresence);
   }
 
-  return {
+  return withCultureConsequencePreview(regionId, {
     state: 'watch',
     label: 'à surveiller',
     microAction: activeResearchCount > 0 ? 'soutenir' : 'attendre',
@@ -1585,7 +1637,7 @@ export function buildCultureNarrativePriority(regionId, regionPresence, cultureS
     eventCount: eventCandidates.length,
     discoveryCount: discoveryIds.length,
     eventMarkers: eventCandidates.slice(0, 3),
-  };
+  }, regionPresence);
 }
 
 export function buildCultureMarkerCollisionCluster(regionId, regionPresence, cultureSignalsById) {

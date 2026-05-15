@@ -1383,6 +1383,19 @@ test('buildCultureMapOverlay exposes atlas story layers and deterministic marker
           eventMarkerId: 'shared-bay:culture-harbor:event:event-harbor-forum',
         },
       ],
+      consequencePreview: {
+        previewId: 'shared-bay:priority:opportunity:consequence',
+        regionId: 'shared-bay',
+        state: 'opportunity',
+        microAction: 'explorer',
+        confidence: 'high',
+        confidenceLabel: 'confiance élevée: événement et découverte visibles',
+        opportunity: 'Saisir Harbor Forum peut transformer le signal culturel en avantage narratif immédiat.',
+        tradeoff: 'retarde l’apaisement des influences secondaires du cluster',
+        delayedOrSacrificed: 'retarde l’apaisement des influences secondaires du cluster',
+        visibleMarkerIds: ['shared-bay:culture-harbor:event:event-harbor-forum'],
+        summary: 'explorer: Saisir Harbor Forum peut transformer le signal culturel en avantage narratif immédiat. Tradeoff: retarde l’apaisement des influences secondaires du cluster.',
+      },
     },
     stack: [
       {
@@ -1483,6 +1496,8 @@ test('buildCultureMapOverlay assigns tension and completed narrative priority st
 
   assert.equal(tensionOverlay[0].narrativePriority.state, 'tension');
   assert.equal(tensionOverlay[0].narrativePriority.microAction, 'apaiser');
+  assert.equal(tensionOverlay[0].narrativePriority.consequencePreview.confidence, 'medium');
+  assert.match(tensionOverlay[0].narrativePriority.consequencePreview.tradeoff, /sacrifie/);
   assert.match(tensionOverlay[0].narrativeSummary, /tension/);
 
   const completedOverlay = buildCultureMapOverlay(
@@ -1522,6 +1537,34 @@ test('buildCultureMapOverlay assigns tension and completed narrative priority st
   assert.equal(completedOverlay[0].narrativePriority.state, 'completed');
   assert.equal(completedOverlay[0].narrativePriority.label, 'suivi terminé');
   assert.equal(completedOverlay[0].narrativePriority.microAction, 'consolider');
+
+  const lowConfidenceOverlay = buildCultureMapOverlay(
+    {
+      cultures: [
+        {
+          id: 'culture-mist',
+          name: 'Mist Circle',
+          archetype: 'oral',
+          primaryLanguage: 'mist-sign',
+          valueIds: ['silence'],
+          traditionIds: ['watchfires'],
+          openness: 45,
+          cohesion: 52,
+          researchDrive: 40,
+        },
+      ],
+      researchStates: [],
+      historicalEvents: [],
+    },
+    {
+      atlasStoryLayers: true,
+      regionIdsByCulture: { 'culture-mist': ['mist-hills'] },
+    },
+  );
+
+  assert.equal(lowConfidenceOverlay[0].narrativePriority.state, 'watch');
+  assert.equal(lowConfidenceOverlay[0].narrativePriority.consequencePreview.confidence, 'low');
+  assert.match(lowConfidenceOverlay[0].narrativePriority.consequencePreview.confidenceLabel, /incomplet/);
 });
 
 test('buildResidualCultureActionPayoff covers complete, partial, and insufficient outcomes', () => {
