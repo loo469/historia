@@ -271,6 +271,13 @@ test('StrategicMapShell validates province action queues and suggests a safe rep
         status: 'ready',
         reason: 'ordre prêt',
         safeReplacement: null,
+        conflictAwarePreview: {
+          frontEffect: 'maintient Réserve nord sans bascule de front',
+          blockers: [],
+          mutuallyExclusiveWith: null,
+          safestAlternative: null,
+          confirmationHint: 'confirmable maintenant',
+        },
       },
       {
         queueId: 'q2',
@@ -285,6 +292,17 @@ test('StrategicMapShell validates province action queues and suggests a safe rep
           label: 'Garder en réserve',
           reason: 'attendre résolution du blocage',
         },
+        conflictAwarePreview: {
+          frontEffect: 'évite une poussée fragile sur Support rompu',
+          blockers: ['support manquant'],
+          mutuallyExclusiveWith: null,
+          safestAlternative: {
+            actionCode: 'hold-reserve',
+            label: 'Garder en réserve',
+            reason: 'attendre résolution du blocage',
+          },
+          confirmationHint: 'corriger avant confirmation',
+        },
       },
       {
         queueId: 'q3',
@@ -295,6 +313,17 @@ test('StrategicMapShell validates province action queues and suggests a safe rep
         status: 'ready',
         reason: 'ordre prêt',
         safeReplacement: null,
+        conflictAwarePreview: {
+          frontEffect: 'stabilise front actif sur Front rouge',
+          blockers: [],
+          mutuallyExclusiveWith: {
+            queueId: 'q2',
+            provinceId: 'support',
+            reason: 'fronts voisins liés',
+          },
+          safestAlternative: null,
+          confirmationHint: 'confirmable maintenant',
+        },
       },
       {
         queueId: 'q4',
@@ -308,6 +337,21 @@ test('StrategicMapShell validates province action queues and suggests a safe rep
           actionCode: 'reinforce-front',
           label: 'Renforcer le front',
           reason: 'front contesté et pression militaire visible',
+        },
+        conflictAwarePreview: {
+          frontEffect: 'stabilise front actif sur Front rouge',
+          blockers: ['cible déjà engagée'],
+          mutuallyExclusiveWith: {
+            queueId: 'q3',
+            provinceId: 'front',
+            reason: 'même cible',
+          },
+          safestAlternative: {
+            actionCode: 'reinforce-front',
+            label: 'Renforcer le front',
+            reason: 'front contesté et pression militaire visible',
+          },
+          confirmationHint: 'corriger avant confirmation',
         },
       },
     ],

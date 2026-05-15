@@ -1527,6 +1527,41 @@ function queueStatusForProvince(province) {
   return 'ready';
 }
 
+function buildQueueActionConflictPreview({ entry, province, status, reason, action, previousEntry, previousProvince, safeReplacement }) {
+  const blockers = status === 'blocked' || status === 'conflict'
+    ? [reason]
+    : status === 'risky'
+      ? [province?.actionAffordance.reason ?? 'risque tactique à confirmer']
+      : [];
+  const mutuallyExclusiveWith = previousEntry && (
+    previousEntry.provinceId === entry.provinceId
+    || province?.neighborIds.includes(previousEntry.provinceId)
+    || previousProvince?.neighborIds.includes(entry.provinceId)
+  ) ? {
+      queueId: previousEntry.queueId,
+      provinceId: previousEntry.provinceId,
+      reason: previousEntry.provinceId === entry.provinceId ? 'même cible' : 'fronts voisins liés',
+    } : null;
+
+  return {
+    frontEffect: province
+      ? action?.status === 'available'
+        ? `stabilise ${province.tacticalHoverIntel.garrisonStatus} sur ${province.label}`
+        : action?.status === 'discouraged'
+          ? `évite une poussée fragile sur ${province.label}`
+          : `maintient ${province.label} sans bascule de front`
+      : 'aucun effet projetable sans cible valide',
+    blockers,
+    mutuallyExclusiveWith,
+    safestAlternative: safeReplacement,
+    confirmationHint: status === 'ready'
+      ? 'confirmable maintenant'
+      : status === 'risky'
+        ? 'confirmation possible après lecture du risque'
+        : 'corriger avant confirmation',
+  };
+}
+
 function buildProvinceActionQueueValidation(renderedProvinces, options) {
   const queue = normalizeProvinceActionQueue(options.provinceActionQueue);
   const provinceById = new Map(renderedProvinces.map((province) => [province.provinceId, province]));
@@ -1538,6 +1573,12 @@ function buildProvinceActionQueueValidation(renderedProvinces, options) {
     const baseStatus = queueStatusForProvince(province);
     const status = conflictReason ? (baseStatus === 'blocked' ? 'blocked' : 'conflict') : baseStatus;
     const action = province?.tacticalHoverIntel.nextAction ?? null;
+    const reason = conflictReason ?? (status === 'ready' ? 'ordre prêt' : 'ordre risqué');
+    const safeReplacement = status === 'ready' ? null : {
+      actionCode: action?.status === 'available' ? action.code : 'hold-reserve',
+      label: action?.status === 'available' ? action.label : 'Garder en réserve',
+      reason: action?.status === 'available' ? action.reason : 'attendre résolution du blocage',
+    };
 
     return {
       queueId: entry.queueId,
@@ -1546,12 +1587,18 @@ function buildProvinceActionQueueValidation(renderedProvinces, options) {
       actionCode: entry.actionCode || action?.code || 'unknown-action',
       actionLabel: entry.label || action?.label || 'Action inconnue',
       status,
-      reason: conflictReason ?? (status === 'ready' ? 'ordre prêt' : 'ordre risqué'),
-      safeReplacement: status === 'ready' ? null : {
-        actionCode: action?.status === 'available' ? action.code : 'hold-reserve',
-        label: action?.status === 'available' ? action.label : 'Garder en réserve',
-        reason: action?.status === 'available' ? action.reason : 'attendre résolution du blocage',
-      },
+      reason,
+      safeReplacement,
+      conflictAwarePreview: buildQueueActionConflictPreview({
+        entry,
+        province,
+        status,
+        reason,
+        action,
+        previousEntry,
+        previousProvince,
+        safeReplacement,
+      }),
     };
   });
   const firstBlocked = queueEntries.find((entry) => entry.status === 'blocked' || entry.status === 'conflict') ?? null;

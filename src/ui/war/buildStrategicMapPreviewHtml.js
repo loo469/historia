@@ -240,12 +240,26 @@ function renderKeyboardActionPlanner(shell) {
 
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
-  const entries = validation.entries.map((entry) => `
+  const entries = validation.entries.map((entry) => {
+    const preview = entry.conflictAwarePreview;
+    const blockers = preview.blockers.length > 0 ? preview.blockers.join(', ') : 'aucun blocage';
+    const exclusive = preview.mutuallyExclusiveWith
+      ? `Exclusif avec ${preview.mutuallyExclusiveWith.queueId}: ${preview.mutuallyExclusiveWith.reason}`
+      : 'pas d’exclusion';
+
+    return `
     <li class="queue-validation-item queue-validation-item--${escapeHtml(entry.status)}">
       <span>${escapeHtml(entry.provinceLabel)} · ${escapeHtml(entry.actionLabel)}</span>
       <small>${escapeHtml(entry.status)} — ${escapeHtml(entry.reason)}</small>
+      <div class="conflict-aware-preview">
+        <b>${escapeHtml(preview.frontEffect)}</b>
+        <small>Blocage: ${escapeHtml(blockers)}</small>
+        <small>${escapeHtml(exclusive)}</small>
+        <em>${escapeHtml(preview.confirmationHint)}</em>
+      </div>
     </li>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <section class="queue-validation" aria-label="Validation de file d’actions province">
@@ -343,6 +357,9 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .queue-validation-item--conflict { border-color:rgba(248,113,113,0.48); }
     .queue-validation-item small,
     .next-safe-action small { color:#cbd5e1; }
+    .conflict-aware-preview { display:grid; gap:2px; margin-top:5px; padding-top:5px; border-top:1px solid rgba(148,163,184,0.12); }
+    .conflict-aware-preview b { color:#e0f2fe; font-size:12px; }
+    .conflict-aware-preview em { color:#fde68a; font-size:11px; font-style:normal; }
     .next-safe-action { display:grid; gap:3px; border:1px solid rgba(74,222,128,0.34); border-radius:14px; padding:9px; background:rgba(22,101,52,0.14); }
     .next-safe-action span { color:#93a4bb; font-size:11px; text-transform:uppercase; letter-spacing:0.09em; }
     .next-safe-action strong { color:#bbf7d0; }
