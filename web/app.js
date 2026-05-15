@@ -5511,6 +5511,15 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
   const climateCascadeGroupMarker = selectedClimateCascadeGroup?.markers.find((marker) => marker.provinceId === province.provinceId) ?? null;
   const worldClimateEntry = worldClimateLayer?.entries.find((entry) => entry.provinceId === province.provinceId) ?? null;
   const warOverlayOverflow = buildProvinceWarOverlayOverflowSummary(province, { readinessTone, militaryOutcomeMarker, logisticsOutcomeMarker });
+  const tacticalIntel = province.tacticalHoverIntel ?? {
+    empty: true,
+    summary: 'Données guerre indisponibles',
+    control: { status: tacticalState },
+    militaryPressure: { label: 'pression inconnue', score: 0 },
+    garrisonStatus: 'garnison inconnue',
+    nextAction: { label: 'Aucune action fiable', status: 'idle', reason: 'données guerre manquantes' },
+  };
+  const actionAffordance = province.actionAffordance ?? { state: 'idle', label: 'aucune action urgente', cssClass: 'province-node--action-idle', reason: tacticalIntel.nextAction.reason };
   const isReadinessHighlight = Boolean(readinessTone);
   const isMilitaryOutcomeHighlight = Boolean(militaryOutcomeMarker);
   const isLogisticsOutcomeHighlight = Boolean(logisticsOutcomeMarker);
@@ -5546,6 +5555,7 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
     isMuted ? 'is-muted' : '',
     province.contested ? 'is-contested' : '',
     province.occupied ? 'is-occupied' : '',
+    actionAffordance.cssClass,
   ].filter(Boolean).join(' ');
 
   return `
@@ -5554,6 +5564,8 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
       type="button"
       data-province-id="${province.provinceId}"
       data-tactical-state="${readinessLabel ?? tacticalState}"
+      data-tactical-action="${tacticalIntel.nextAction.label}"
+      data-action-affordance="${actionAffordance.state}"
       data-readiness-highlight="${readinessTone ?? ''}"
       data-economy-blocker="${economyBlockerLabel ?? ''}"
       data-military-outcome="${militaryOutcomeMarker?.label ?? ''}"
@@ -5570,6 +5582,13 @@ function renderProvinceCard(province, focusContext, postCommitClimateMarkers = [
       <span class="province-node__signal">${selectionSignal}</span>
       <span class="province-node__name">${province.label}</span>
       <span class="province-node__meta">${province.supplyTone} · loyauté ${province.loyalty}</span>
+      <span class="province-node__tactical-tooltip province-node__tactical-tooltip--${actionAffordance.state}" role="tooltip">
+        <b>${tacticalIntel.summary}</b>
+        <small>Contrôle: ${tacticalIntel.control.status} · Menace: ${tacticalIntel.militaryPressure.label} (${tacticalIntel.militaryPressure.score})</small>
+        <small>Garnison/front: ${tacticalIntel.garrisonStatus}</small>
+        <em>${actionAffordance.label}: ${tacticalIntel.nextAction.label}</em>
+      </span>
+      <span class="province-node__action-affordance province-node__action-affordance--${actionAffordance.state}" aria-label="${actionAffordance.label}: ${actionAffordance.reason}">${actionAffordance.label}</span>
       ${economyBlocker ? `<span class="province-node__economy-blocker"><b>${economyBlocker.blocker}</b>${economyBlocker.summary}<small>${economyBlocker.effect}</small></span>` : ''}
       ${renderProvinceLogisticsOutcomeMarker(logisticsOutcomeMarker)}
       ${climateMarker ? `<span class="province-node__climate-marker"><b>${climateMarker.label}</b>${climateMarker.summary}<small>${climateMarker.detail}</small></span>` : ''}

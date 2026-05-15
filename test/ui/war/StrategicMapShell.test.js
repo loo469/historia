@@ -101,15 +101,40 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
   })), [
     {
       provinceId: 'prov-a',
-      cssClasses: ['province-node', 'province-node--supply-stable', 'is-focused', 'is-hovered'],
+      cssClasses: ['province-node', 'province-node--supply-stable', 'province-node--action-idle', 'is-focused', 'is-hovered'],
       status: 'stable',
       ariaLabel: 'Avant-poste — Contrôle stable, ravitaillement stable, loyauté 82%, valeur 2',
     },
     {
       provinceId: 'prov-c',
-      cssClasses: ['province-node', 'province-node--contested', 'province-node--occupied', 'province-node--supply-strained', 'is-selected'],
+      cssClasses: ['province-node', 'province-node--contested', 'province-node--occupied', 'province-node--supply-strained', 'province-node--action-available', 'is-selected'],
       status: 'contested',
       ariaLabel: 'Colline rouge — Front contesté, ravitaillement strained, loyauté 40%, valeur 4',
+    },
+  ]);
+  assert.deepEqual(shell.mapLayers.provinceSurfaces.map((surface) => ({
+    provinceId: surface.provinceId,
+    actionState: surface.data.actionState,
+    affordanceLabel: surface.actionAffordance.label,
+    pressure: surface.tacticalHoverIntel.militaryPressure.label,
+    nextAction: surface.tacticalHoverIntel.nextAction.label,
+    garrisonStatus: surface.tacticalHoverIntel.garrisonStatus,
+  })), [
+    {
+      provinceId: 'prov-a',
+      actionState: 'idle',
+      affordanceLabel: 'aucune action urgente',
+      pressure: 'pression basse',
+      nextAction: 'Garder en réserve',
+      garrisonStatus: 'garnison stable',
+    },
+    {
+      provinceId: 'prov-c',
+      actionState: 'available',
+      affordanceLabel: 'action disponible',
+      pressure: 'pression critique',
+      nextAction: 'Renforcer le front',
+      garrisonStatus: 'front actif',
     },
   ]);
   assert.deepEqual(shell.mapLayers.provinceLabels, [
