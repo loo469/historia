@@ -1485,7 +1485,91 @@ function buildProvincePlannedActionPreview(province) {
   };
 }
 
-function buildKeyboardActionPlanner(renderedProvinces) {
+function normalizeProvinceActionQueue(value) {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new TypeError('StrategicMapShell provinceActionQueue must be an array.');
+  }
+
+  return value.map((entry, index) => {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new TypeError('StrategicMapShell provinceActionQueue entries must be objects.');
+    }
+
+    return {
+      queueId: String(entry.queueId ?? `queue-${index + 1}`).trim() || `queue-${index + 1}`,
+      provinceId: String(entry.provinceId ?? '').trim(),
+      actionCode: String(entry.actionCode ?? '').trim(),
+      label: String(entry.label ?? '').trim(),
+      requiresSupport: Boolean(entry.requiresSupport),
+      invalidatedByPrevious: Boolean(entry.invalidatedByPrevious),
+    };
+  }).filter((entry) => entry.provinceId);
+}
+
+function getQueueConflictReason(entry, province, previousEntry, previousProvince) {
+  if (!province) return 'cible inconnue';
+  if (previousEntry && previousEntry.provinceId === entry.provinceId) return 'cible déjà engagée';
+  if (entry.requiresSupport && ['disrupted', 'collapsed'].includes(province.supplyLevel)) return 'support manquant';
+  if (province.neighborIds.includes(previousEntry?.provinceId) && previousProvince?.contested) return 'front voisin instable';
+  if (entry.invalidatedByPrevious) return 'action rendue caduque';
+  if (province.actionAffordance.state === 'blocked') return province.actionAffordance.reason;
+  return null;
+}
+
+function queueStatusForProvince(province) {
+  if (!province) return 'blocked';
+  if (province.actionAffordance.state === 'blocked') return 'blocked';
+  if (province.actionAffordance.state === 'discouraged') return 'risky';
+  return 'ready';
+}
+
+function buildProvinceActionQueueValidation(renderedProvinces, options) {
+  const queue = normalizeProvinceActionQueue(options.provinceActionQueue);
+  const provinceById = new Map(renderedProvinces.map((province) => [province.provinceId, province]));
+  const queueEntries = queue.map((entry, index) => {
+    const province = provinceById.get(entry.provinceId) ?? null;
+    const previousEntry = queue[index - 1] ?? null;
+    const previousProvince = previousEntry ? provinceById.get(previousEntry.provinceId) ?? null : null;
+    const conflictReason = getQueueConflictReason(entry, province, previousEntry, previousProvince);
+    const baseStatus = queueStatusForProvince(province);
+    const status = conflictReason ? (baseStatus === 'blocked' ? 'blocked' : 'conflict') : baseStatus;
+    const action = province?.tacticalHoverIntel.nextAction ?? null;
+
+    return {
+      queueId: entry.queueId,
+      provinceId: entry.provinceId,
+      provinceLabel: province?.label ?? entry.provinceId,
+      actionCode: entry.actionCode || action?.code || 'unknown-action',
+      actionLabel: entry.label || action?.label || 'Action inconnue',
+      status,
+      reason: conflictReason ?? (status === 'ready' ? 'ordre prêt' : 'ordre risqué'),
+      safeReplacement: status === 'ready' ? null : {
+        actionCode: action?.status === 'available' ? action.code : 'hold-reserve',
+        label: action?.status === 'available' ? action.label : 'Garder en réserve',
+        reason: action?.status === 'available' ? action.reason : 'attendre résolution du blocage',
+      },
+    };
+  });
+  const firstBlocked = queueEntries.find((entry) => entry.status === 'blocked' || entry.status === 'conflict') ?? null;
+
+  return {
+    empty: queueEntries.length === 0,
+    entries: queueEntries,
+    summary: {
+      readyCount: queueEntries.filter((entry) => entry.status === 'ready').length,
+      riskyCount: queueEntries.filter((entry) => entry.status === 'risky').length,
+      blockedCount: queueEntries.filter((entry) => entry.status === 'blocked').length,
+      conflictCount: queueEntries.filter((entry) => entry.status === 'conflict').length,
+    },
+    nextSafeAction: firstBlocked?.safeReplacement ?? null,
+  };
+}
+
+function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
   ) ?? renderedProvinces[0] ?? null;
@@ -1503,6 +1587,7 @@ function buildKeyboardActionPlanner(renderedProvinces) {
     })),
     activeProvinceId: activeProvince?.provinceId ?? null,
     plannedActionPreview: buildProvincePlannedActionPreview(activeProvince),
+    actionQueueValidation: buildProvinceActionQueueValidation(renderedProvinces, options),
     emptyState: renderedProvinces.length === 0 ? 'Aucune province disponible pour le planificateur clavier.' : null,
   };
 }
@@ -1713,7 +1798,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     },
   );
 
-  const keyboardActionPlanner = buildKeyboardActionPlanner(renderedProvinces);
+  const keyboardActionPlanner = buildKeyboardActionPlanner(renderedProvinces, normalizedOptions);
 
   return {
     title,
