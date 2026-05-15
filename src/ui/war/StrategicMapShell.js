@@ -1317,11 +1317,138 @@ function buildLegend(renderedProvinces, options) {
   };
 }
 
+function getProvinceMilitaryPressure(province) {
+  let score = 0;
+
+  if (province.contested) score += 72;
+  if (province.occupied) score += 48;
+  if (province.supplyLevel === 'collapsed') score += 20;
+  if (province.supplyLevel === 'disrupted') score += 14;
+  if (province.supplyLevel === 'strained') score += 8;
+  if (province.loyalty < 45) score += 10;
+  score += Math.min(18, Math.max(0, province.strategicValue) * 2);
+
+  const normalizedScore = Math.max(0, Math.min(100, score));
+
+  return {
+    score: normalizedScore,
+    level: normalizedScore >= 75 ? 'critical' : normalizedScore >= 50 ? 'high' : normalizedScore >= 28 ? 'watch' : 'low',
+    label: normalizedScore >= 75 ? 'pression critique' : normalizedScore >= 50 ? 'pression élevée' : normalizedScore >= 28 ? 'à surveiller' : 'pression basse',
+  };
+}
+
+function buildDefaultProvinceAction(province, pressure) {
+  if (province.contested) {
+    return {
+      code: 'reinforce-front',
+      label: 'Renforcer le front',
+      status: 'available',
+      reason: 'front contesté et pression militaire visible',
+    };
+  }
+
+  if (province.supplyLevel === 'collapsed' || province.supplyLevel === 'disrupted') {
+    return {
+      code: 'avoid-push',
+      label: 'Reporter l’offensive',
+      status: 'discouraged',
+      reason: 'ravitaillement insuffisant pour une action sûre',
+    };
+  }
+
+  if (province.occupied) {
+    return {
+      code: 'secure-occupation',
+      label: 'Stabiliser l’occupation',
+      status: 'available',
+      reason: 'contrôle différent du propriétaire',
+    };
+  }
+
+  if (pressure.level === 'low') {
+    return {
+      code: 'hold-reserve',
+      label: 'Garder en réserve',
+      status: 'idle',
+      reason: 'aucune urgence militaire locale',
+    };
+  }
+
+  return {
+    code: 'probe-neighbor-fronts',
+    label: 'Tester les fronts voisins',
+    status: 'available',
+    reason: 'pression locale exploitable',
+  };
+}
+
+function normalizeProvinceAction(action, province, pressure) {
+  const fallback = buildDefaultProvinceAction(province, pressure);
+
+  if (action === undefined) {
+    return fallback;
+  }
+
+  if (action === null || typeof action !== 'object' || Array.isArray(action)) {
+    throw new TypeError('StrategicMapShell tacticalActionByProvinceId entries must be objects.');
+  }
+
+  const status = String(action.status ?? fallback.status).trim() || fallback.status;
+
+  return {
+    code: String(action.code ?? fallback.code).trim() || fallback.code,
+    label: String(action.label ?? fallback.label).trim() || fallback.label,
+    status: ['available', 'discouraged', 'idle', 'blocked'].includes(status) ? status : fallback.status,
+    reason: String(action.reason ?? fallback.reason).trim() || fallback.reason,
+  };
+}
+
+function buildProvinceTacticalHoverIntel(province, options) {
+  const pressure = getProvinceMilitaryPressure(province);
+  const tacticalActionByProvinceId = normalizeTextMap(
+    options.tacticalActionByProvinceId,
+    'StrategicMapShell tacticalActionByProvinceId',
+  );
+  const nextAction = normalizeProvinceAction(tacticalActionByProvinceId[province.provinceId], province, pressure);
+
+  return {
+    empty: false,
+    title: province.label,
+    control: {
+      ownerFactionId: province.ownerFactionId,
+      controllingFactionId: province.controllingFactionId,
+      status: province.statusLabel,
+    },
+    militaryPressure: pressure,
+    garrisonStatus: province.contested ? 'front actif' : province.occupied ? 'garnison d’occupation' : 'garnison stable',
+    nextAction,
+    summary: `${province.statusLabel} · ${pressure.label} · ${nextAction.label}`,
+  };
+}
+
+function buildProvinceActionAffordance(tacticalHoverIntel) {
+  const action = tacticalHoverIntel.nextAction;
+
+  return {
+    state: action.status,
+    label: action.status === 'available'
+      ? 'action disponible'
+      : action.status === 'discouraged'
+        ? 'action déconseillée'
+        : action.status === 'blocked'
+          ? 'action bloquée'
+          : 'aucune action urgente',
+    cssClass: `province-node--action-${action.status}`,
+    reason: action.reason,
+  };
+}
+
 function enhanceProvince(renderedProvince, options, provinceGeometryById) {
   const selectedProvinceId = String(options.selectedProvinceId ?? '').trim();
   const focusedProvinceId = String(options.focusedProvinceId ?? '').trim();
   const hoveredProvinceId = String(options.hoveredProvinceId ?? '').trim();
   const geometry = provinceGeometryById[renderedProvince.provinceId] ?? {};
+  const tacticalHoverIntel = buildProvinceTacticalHoverIntel(renderedProvince, options);
 
   return {
     ...renderedProvince,
@@ -1337,6 +1464,8 @@ function enhanceProvince(renderedProvince, options, provinceGeometryById) {
       focused: renderedProvince.provinceId === focusedProvinceId,
       hovered: renderedProvince.provinceId === hoveredProvinceId,
     },
+    tacticalHoverIntel,
+    actionAffordance: buildProvinceActionAffordance(tacticalHoverIntel),
   };
 }
 
@@ -1346,6 +1475,7 @@ function buildProvinceCssClasses(province) {
     province.contested ? 'province-node--contested' : null,
     province.occupied ? 'province-node--occupied' : null,
     `province-node--supply-${province.supplyLevel}`,
+    province.actionAffordance.cssClass,
     province.selectionState.selected ? 'is-selected' : null,
     province.selectionState.focused ? 'is-focused' : null,
     province.selectionState.hovered ? 'is-hovered' : null,
@@ -1393,7 +1523,10 @@ function buildProvinceMapLayers(renderedProvinces) {
         supplyLevel: province.supplyLevel,
         supplyTone: province.supplyTone,
         status: province.contested ? 'contested' : province.occupied ? 'occupied' : 'stable',
+        actionState: province.actionAffordance.state,
       },
+      tacticalHoverIntel: province.tacticalHoverIntel,
+      actionAffordance: province.actionAffordance,
       geometry: {
         polygon: province.geometry.polygon,
         shape: province.geometry.shape,
