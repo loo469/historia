@@ -55,7 +55,11 @@ test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into 
     },
   });
 
-  const { mapLayers, ...stableOverlay } = overlay;
+  const { mapLayers, climateTimeline, ...stableOverlay } = overlay;
+
+  assert.equal(climateTimeline.mode, 'static-current-climate');
+  assert.equal(climateTimeline.control.enabled, false);
+  assert.equal(climateTimeline.clarity.copy, 'Fallback statique: aucune donnée de prévision fournie.');
 
   assert.deepEqual(mapLayers.climateLabels.map((label) => ({
     regionId: label.regionId,
@@ -1316,4 +1320,68 @@ test('buildClimateMapOverlay places climate map layers on province geometry', ()
   assert.equal(overlay.mapLayers.climateLabels[0].placement.anchor, 'region-center');
   assert.equal(overlay.mapLayers.anomalyMarkers[0].y, 24);
   assert.deepEqual(overlay.mapLayers.disasterRings[0].geometry.center, { x: 42, y: 24 });
+});
+
+test('buildClimateMapOverlay exposes timeline scrubber decision-changing forecast clarity', () => {
+  const overlay = buildClimateMapOverlay([
+    {
+      regionId: 'sunreach',
+      season: 'summer',
+      temperatureC: 33,
+      precipitationLevel: 11,
+      droughtIndex: 74,
+      anomaly: 'heatwave',
+    },
+    {
+      regionId: 'delta',
+      season: 'summer',
+      temperatureC: 20,
+      precipitationLevel: 48,
+      droughtIndex: 20,
+    },
+  ], {
+    seasonLabels: { summer: 'Été', autumn: 'Automne' },
+    seasonPreview: {
+      season: 'autumn',
+      impactsByRegion: {
+        sunreach: { strategicImpact: 'strained', anomaly: null },
+        delta: { strategicImpact: 'critical', anomaly: 'storm' },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.climateTimeline.control, {
+    controlId: 'climate-timeline-scrubber',
+    label: 'Maintenant → Automne',
+    enabled: true,
+    steps: [
+      { frameId: 'now', label: 'Maintenant', projected: false },
+      { frameId: 'next-season', label: 'Automne', projected: true },
+    ],
+    fallback: null,
+  });
+  assert.deepEqual(overlay.climateTimeline.decisionChangingRegions, [
+    {
+      regionId: 'delta',
+      currentRiskLevel: 'stable',
+      previewRiskLevel: 'critical',
+      currentAnomaly: null,
+      previewAnomaly: 'storm',
+      changeType: 'risk-increases',
+      decisionHint: 'agir avant la bascule si la province porte une action sensible',
+      tone: 'warning',
+    },
+    {
+      regionId: 'sunreach',
+      currentRiskLevel: 'critical',
+      previewRiskLevel: 'strained',
+      currentAnomaly: 'heatwave',
+      previewAnomaly: null,
+      changeType: 'risk-decreases',
+      decisionHint: 'attendre la fenêtre prévue peut réduire le coût',
+      tone: 'positive',
+    },
+  ]);
+  assert.equal(overlay.climateTimeline.clarity.copy, '2 province(s) changent assez pour peser sur une décision.');
+  assert.equal(overlay.climateTimeline.clarity.disasterLevels[2].decisionWeight, 'priorité stratégique');
 });

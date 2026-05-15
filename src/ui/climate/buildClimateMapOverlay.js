@@ -1219,6 +1219,102 @@ function buildClimateMapLayers(regions, stateEntries, catastropheEntries, season
   };
 }
 
+
+function getClimateRiskRank(riskLevel) {
+  return { stable: 0, strained: 1, critical: 2 }[riskLevel] ?? 0;
+}
+
+function buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonLabels) {
+  const previewImpacts = seasonPreview?.active ? normalizePreviewImpacts(normalizedOptions, seasonPreview) : {};
+  const frames = [
+    {
+      frameId: 'now',
+      label: 'Maintenant',
+      active: !seasonPreview?.active,
+      projected: false,
+      seasonLabels: [...new Set(regions.map((region) => region.seasonLabel))].sort(),
+      summary: `${regions.length} provinces lisibles au climat actuel`,
+    },
+  ];
+
+  if (seasonPreview?.active) {
+    frames.push({
+      frameId: 'next-season',
+      label: seasonPreview.label,
+      active: true,
+      projected: true,
+      season: seasonPreview.season,
+      seasonLabel: seasonLabels[seasonPreview.season] ?? seasonPreview.label,
+      summary: `${seasonPreview.label}: prévision légère, sans simulation complète`,
+    });
+  }
+
+  const decisionChangingRegions = seasonPreview?.active
+    ? regions.map((region) => {
+      const previewImpact = previewImpacts[region.regionId] ?? {};
+      const previewRiskLevel = String(previewImpact.riskLevel ?? previewImpact.strategicImpact ?? region.strategicImpact).trim()
+        || region.strategicImpact;
+      const previewAnomaly = previewImpact.anomaly === undefined ? region.anomaly : previewImpact.anomaly;
+      const riskDelta = getClimateRiskRank(previewRiskLevel) - getClimateRiskRank(region.strategicImpact);
+      const anomalyChanged = region.anomaly !== previewAnomaly;
+
+      if (riskDelta === 0 && !anomalyChanged) {
+        return null;
+      }
+
+      return {
+        regionId: region.regionId,
+        currentRiskLevel: region.strategicImpact,
+        previewRiskLevel,
+        currentAnomaly: region.anomaly,
+        previewAnomaly,
+        changeType: riskDelta > 0 ? 'risk-increases' : riskDelta < 0 ? 'risk-decreases' : 'anomaly-changes',
+        decisionHint: riskDelta > 0
+          ? 'agir avant la bascule si la province porte une action sensible'
+          : riskDelta < 0
+            ? 'attendre la fenêtre prévue peut réduire le coût'
+            : 'vérifier l’anomalie avant d’engager récoltes ou routes',
+        tone: riskDelta > 0 ? 'warning' : riskDelta < 0 ? 'positive' : 'info',
+      };
+    }).filter(Boolean)
+    : [];
+
+  return {
+    mode: seasonPreview?.active ? 'now-next-scrubber' : 'static-current-climate',
+    compact: true,
+    control: {
+      controlId: 'climate-timeline-scrubber',
+      label: seasonPreview?.active ? `Maintenant → ${seasonPreview.label}` : 'Climat actuel',
+      enabled: Boolean(seasonPreview?.active),
+      steps: frames.map((frame) => ({
+        frameId: frame.frameId,
+        label: frame.label,
+        projected: frame.projected,
+      })),
+      fallback: seasonPreview?.active ? null : 'Aucune prévision disponible: affichage statique des saisons, anomalies et désastres actuels.',
+    },
+    frames,
+    decisionChangingRegions,
+    clarity: {
+      anomalyLevels: [
+        { level: 'none', label: 'aucune anomalie', decisionWeight: 'normal' },
+        { level: 'warning', label: 'anomalie active', decisionWeight: 'surveiller récoltes/routes' },
+        { level: 'danger', label: 'anomalie forte', decisionWeight: 'éviter dépenses fragiles' },
+      ],
+      disasterLevels: [
+        { level: 'minor', label: 'désastre mineur', decisionWeight: 'coût local' },
+        { level: 'major', label: 'désastre majeur', decisionWeight: 'planifier mitigation' },
+        { level: 'critical', label: 'désastre critique', decisionWeight: 'priorité stratégique' },
+      ],
+      copy: decisionChangingRegions.length > 0
+        ? `${decisionChangingRegions.length} province(s) changent assez pour peser sur une décision.`
+        : seasonPreview?.active
+          ? 'Prévision stable: aucun changement majeur de risque ou anomalie.'
+          : 'Fallback statique: aucune donnée de prévision fournie.',
+    },
+  };
+}
+
 function buildLegend(stateEntries, catastropheEntries, seasonLabels, seasonPreview) {
   const seasonLegend = [...new Set(stateEntries
     .filter((entry) => entry.kind === 'season')
@@ -1354,6 +1450,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       };
     });
 
+  const climateTimeline = buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonLabels);
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
   const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
@@ -1378,6 +1475,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     catastropheZones: buildCatastropheZones(catastropheEntries, readabilityProfile),
     regionalRiskMode: buildRegionalRiskMode(regions),
     mapLayers: buildClimateMapLayers(regions, stateEntries, catastropheEntries, seasonPreview, regionGeometryById),
+    climateTimeline,
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
     selectedClimateMitigationChoices,
