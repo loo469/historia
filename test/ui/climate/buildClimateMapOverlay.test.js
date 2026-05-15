@@ -1806,3 +1806,117 @@ test('buildClimateMapOverlay links urgent alerts to default aftermath when no ex
     { regionId: 'citadel', resilienceState: 'recovering', label: 'récupération en cours' },
   ]);
 });
+
+test('buildClimateMapOverlay builds a safe climate window calendar from aftermath and resilience', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        delta: {
+          strategicImpact: 'critical',
+          anomaly: 'flood',
+          confidenceBand: 'extreme',
+          timeWindow: 'tour actuel',
+          playerImpact: 'route fluviale et récolte touchées',
+        },
+      },
+    },
+    climateAftermathEvents: [
+      {
+        eventId: 'flood-aftermath',
+        affectedRegionIds: ['delta'],
+        observedImpact: 'route coupée',
+        severity: 'major',
+        appliedMitigation: 'digues renforcées',
+        confidenceBand: 'probable',
+        resilienceState: 'recovering',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateSafeWindowCalendar.windows.map((window) => ({
+    label: window.label,
+    state: window.state,
+    affectedRegionIds: window.affectedRegionIds,
+    aftermathEventId: window.aftermathEventId,
+    confidenceBand: window.confidenceBand,
+    recommendation: window.actionTradeoff.recommendation,
+  })), [
+    {
+      label: 'tour actuel',
+      state: 'critical',
+      affectedRegionIds: ['delta'],
+      aftermathEventId: 'flood-aftermath',
+      confidenceBand: 'probable',
+      recommendation: 'renforcer d’abord',
+    },
+    {
+      label: 'prochain tour',
+      state: 'risky',
+      affectedRegionIds: ['delta'],
+      aftermathEventId: 'flood-aftermath',
+      confidenceBand: 'probable',
+      recommendation: 'attendre',
+    },
+    {
+      label: 'saison suivante',
+      state: 'safe',
+      affectedRegionIds: ['delta'],
+      aftermathEventId: 'flood-aftermath',
+      confidenceBand: 'probable',
+      recommendation: 'agir maintenant',
+    },
+  ]);
+});
+
+test('buildClimateMapOverlay accepts explicit uncertain safe climate windows', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'ridge', season: 'spring', temperatureC: 29, precipitationLevel: 18, droughtIndex: 68, anomaly: 'drought' },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'dry-aftermath',
+        regionId: 'ridge',
+        observedImpact: 'sols fragiles',
+        severity: 'moderate',
+        missingMitigation: 'réservoir non renforcé',
+        confidenceBand: 'uncertain',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'dry-aftermath',
+        windowId: 'dry-aftermath:wait',
+        label: 'attendre pluie confirmée',
+        state: 'risky',
+        affectedRegionIds: ['ridge'],
+        confidenceBand: 'uncertain',
+        actionTradeoff: {
+          recommendation: 'attendre',
+          reinforceFirst: 'réservoir avant reprise agricole',
+        },
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climateSafeWindowCalendar.windows, [
+    {
+      windowId: 'dry-aftermath:wait',
+      label: 'attendre pluie confirmée',
+      state: 'risky',
+      affectedRegionIds: ['ridge'],
+      resilienceMarkerIds: ['dry-aftermath:ridge'],
+      aftermathEventId: 'dry-aftermath',
+      confidenceBand: 'uncertain',
+      actionTradeoff: {
+        now: 'possible mais avec coût ou rechute probable',
+        wait: 'attendre améliore la lisibilité de la reprise',
+        reinforceFirst: 'réservoir avant reprise agricole',
+        recommendation: 'attendre',
+      },
+    },
+  ]);
+});

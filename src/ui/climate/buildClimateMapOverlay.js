@@ -1388,6 +1388,147 @@ function normalizeAftermathEvent(event, index, alertsByRegion) {
   };
 }
 
+
+function normalizeSafeWindowState(value, fallback = 'risky') {
+  const state = String(value ?? fallback).trim().toLowerCase();
+
+  if (['safe', 'risky', 'critical'].includes(state)) {
+    return state;
+  }
+
+  return fallback;
+}
+
+function inferSafeWindowState(event, marker, alert, offset) {
+  if (offset === 0 && (event.severity === 'critical' || event.severity === 'major' || alert?.urgencyRank === 1)) {
+    return 'critical';
+  }
+
+  if (event.resilienceState === 'recovering' || event.resilienceState === 'resilient') {
+    return offset >= 2 || event.severity === 'minor' ? 'safe' : 'risky';
+  }
+
+  if (marker?.resilienceState === 'regressing' || event.resilienceState === 'regressing') {
+    return offset <= 1 ? 'critical' : 'risky';
+  }
+
+  return offset >= 2 ? 'risky' : 'critical';
+}
+
+function buildSafeWindowTradeoff(windowState, confidenceBand) {
+  if (windowState === 'safe') {
+    return {
+      now: 'reprendre avec coût réduit',
+      wait: 'attendre conserve la marge mais retarde le gain',
+      reinforceFirst: 'utile seulement si la confiance reste incertaine',
+      recommendation: confidenceBand === 'uncertain' ? 'renforcer d’abord' : 'agir maintenant',
+    };
+  }
+
+  if (windowState === 'risky') {
+    return {
+      now: 'possible mais avec coût ou rechute probable',
+      wait: 'attendre améliore la lisibilité de la reprise',
+      reinforceFirst: 'réduit le risque avant reprise',
+      recommendation: confidenceBand === 'extreme' ? 'renforcer d’abord' : 'attendre',
+    };
+  }
+
+  return {
+    now: 'éviter sauf urgence stratégique',
+    wait: 'attendre la stabilisation limite les pertes',
+    reinforceFirst: 'priorité avant toute reprise',
+    recommendation: 'renforcer d’abord',
+  };
+}
+
+function buildDefaultSafeWindowsForEvent(event, markers, alertsByRegion) {
+  const windows = ['tour actuel', 'prochain tour', 'saison suivante'];
+
+  return windows.map((label, offset) => {
+    const marker = markers.find((candidate) => event.affectedRegionIds.includes(candidate.regionId)) ?? null;
+    const alert = event.sourceAlertId ? alertsByRegion.get(event.sourceAlertId) : null;
+    const windowState = inferSafeWindowState(event, marker, alert, offset);
+    const confidenceBand = event.confidenceBand ?? alert?.confidenceBand ?? 'uncertain';
+
+    return {
+      windowId: `${event.eventId}:window:${offset + 1}`,
+      label,
+      state: windowState,
+      affectedRegionIds: [...event.affectedRegionIds],
+      resilienceMarkerIds: markers
+        .filter((candidate) => event.affectedRegionIds.includes(candidate.regionId))
+        .map((candidate) => candidate.markerId),
+      aftermathEventId: event.eventId,
+      confidenceBand,
+      actionTradeoff: buildSafeWindowTradeoff(windowState, confidenceBand),
+    };
+  });
+}
+
+function normalizeSafeWindowOverride(window, index, event, markers) {
+  const state = normalizeSafeWindowState(window.state ?? window.safety ?? window.riskState);
+  const confidenceBand = normalizeConfidenceBand(window.confidenceBand) ?? event.confidenceBand ?? 'uncertain';
+
+  return {
+    windowId: String(window.windowId ?? `${event.eventId}:window:${index + 1}`).trim(),
+    label: String(window.label ?? window.turnLabel ?? `fenêtre ${index + 1}`).trim(),
+    state,
+    affectedRegionIds: requireArray(window.affectedRegionIds ?? window.regionIds ?? event.affectedRegionIds, 'ClimateMapOverlay safeWindow affectedRegionIds')
+      .map((regionId) => String(regionId).trim())
+      .filter(Boolean),
+    resilienceMarkerIds: requireArray(
+      window.resilienceMarkerIds ?? markers.map((marker) => marker.markerId),
+      'ClimateMapOverlay safeWindow resilienceMarkerIds',
+    ).map((markerId) => String(markerId).trim()).filter(Boolean),
+    aftermathEventId: String(window.aftermathEventId ?? event.eventId).trim(),
+    confidenceBand,
+    actionTradeoff: {
+      ...buildSafeWindowTradeoff(state, confidenceBand),
+      ...requireObject(window.actionTradeoff ?? {}, 'ClimateMapOverlay safeWindow actionTradeoff'),
+    },
+  };
+}
+
+function buildClimateSafeWindowCalendar(climateAftermathRecap, climateAlerts, normalizedOptions) {
+  const alertsByRegion = new Map(climateAlerts.map((alert) => [alert.regionId, alert]));
+  const explicitWindows = Array.isArray(normalizedOptions.climateSafeWindows)
+    ? normalizedOptions.climateSafeWindows
+    : Array.isArray(normalizedOptions.safeClimateWindows)
+      ? normalizedOptions.safeClimateWindows
+      : null;
+
+  if (climateAftermathRecap.events.length === 0) {
+    return {
+      title: 'Calendrier fenêtres climat sûres',
+      fallback: 'Aucun récap post-catastrophe exploitable pour planifier une fenêtre sûre.',
+      windows: [],
+      summary: 'Aucune fenêtre climatique à afficher.',
+    };
+  }
+
+  const windows = climateAftermathRecap.events.flatMap((event) => {
+    const markers = climateAftermathRecap.resilienceMarkers
+      .filter((marker) => event.affectedRegionIds.includes(marker.regionId));
+    const eventOverrides = explicitWindows?.filter((window) => (window.aftermathEventId ?? event.eventId) === event.eventId) ?? [];
+
+    return eventOverrides.length > 0
+      ? eventOverrides.map((window, index) => normalizeSafeWindowOverride(window, index, event, markers))
+      : buildDefaultSafeWindowsForEvent(event, markers, alertsByRegion);
+  }).sort((left, right) => {
+    const rank = { critical: 0, risky: 1, safe: 2 };
+
+    return (rank[left.state] ?? 1) - (rank[right.state] ?? 1) || left.windowId.localeCompare(right.windowId);
+  });
+
+  return {
+    title: 'Calendrier fenêtres climat sûres',
+    fallback: null,
+    windows,
+    summary: `${windows.length} fenêtre(s) pour planifier reprise, attente ou renfort.`,
+  };
+}
+
 function buildClimateAftermathRecap(regions, climateAlerts, normalizedOptions) {
   const alertsByRegion = new Map(climateAlerts.map((alert) => [alert.regionId, alert]));
   const explicitEvents = Array.isArray(normalizedOptions.climateAftermathEvents)
@@ -1943,6 +2084,11 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
 
   const climateTimeline = buildClimateTimeline(regions, seasonPreview, normalizedOptions, seasonLabels);
   const climateAftermathRecap = buildClimateAftermathRecap(regions, climateTimeline.climateAlerts, normalizedOptions);
+  const climateSafeWindowCalendar = buildClimateSafeWindowCalendar(
+    climateAftermathRecap,
+    climateTimeline.climateAlerts,
+    normalizedOptions,
+  );
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
   const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
@@ -1976,7 +2122,10 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       climateAftermathRecap.resilienceMarkers,
     ),
     climateTimeline,
-    ...(climateAftermathRecap.events.length > 0 ? { climateAftermathRecap } : {}),
+    ...(climateAftermathRecap.events.length > 0 ? {
+      climateAftermathRecap,
+      climateSafeWindowCalendar,
+    } : {}),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
     selectedClimateMitigationChoices,
