@@ -1561,3 +1561,133 @@ test('buildClimateMapOverlay ranks climate alerts by urgency and keeps static fa
     'Fallback statique: aucune prévision exploitable pour classer les alertes.',
   );
 });
+
+test('buildClimateMapOverlay adds mitigation previews for urgent climate alerts', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'citadel', season: 'spring', temperatureC: 18, precipitationLevel: 40, droughtIndex: 20 },
+    { regionId: 'granary', season: 'spring', temperatureC: 20, precipitationLevel: 35, droughtIndex: 25 },
+    { regionId: 'watch', season: 'spring', temperatureC: 21, precipitationLevel: 30, droughtIndex: 30 },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        citadel: {
+          strategicImpact: 'critical',
+          anomaly: 'storm',
+          confidenceBand: 'extreme',
+          timeWindow: 'tour actuel',
+          playerImpact: 'priorité capitale et route fragile',
+        },
+        granary: {
+          strategicImpact: 'strained',
+          anomaly: null,
+          confidenceBand: 'probable',
+          timeWindow: '2 tours',
+          playerImpact: 'réserve de grains à préparer',
+        },
+        watch: {
+          strategicImpact: 'stable',
+          anomaly: 'frost',
+          confidenceBand: 'uncertain',
+          timeWindow: 'fin de saison',
+          playerImpact: 'signal à confirmer avant dépense',
+        },
+      },
+    },
+  });
+
+  const urgentAlert = overlay.climateTimeline.climateAlerts.find((alert) => alert.regionId === 'citadel');
+  assert.deepEqual(urgentAlert.mitigationPreviews.map((preview) => ({
+    mode: preview.mode,
+    expectedTiming: preview.expectedTiming,
+    riskImpact: preview.riskImpact,
+    confidenceBand: preview.confidenceBand,
+    urgencyRank: preview.urgencyRank,
+    collateralCost: preview.collateralCost,
+  })), [
+    {
+      mode: 'immediate-mitigation',
+      expectedTiming: 'tour actuel',
+      riskImpact: 'réduit le risque critique vers tendu',
+      confidenceBand: 'extreme',
+      urgencyRank: 1,
+      collateralCost: 'high',
+    },
+    {
+      mode: 'delayed-mitigation',
+      expectedTiming: 'prochain tour',
+      riskImpact: 'réduction partielle si la fenêtre reste ouverte',
+      confidenceBand: 'uncertain',
+      urgencyRank: 2,
+      collateralCost: 'medium',
+    },
+    {
+      mode: 'no-action',
+      expectedTiming: 'tour actuel',
+      riskImpact: 'aucune réduction: risque inchangé ou aggravé',
+      confidenceBand: 'extreme',
+      urgencyRank: 4,
+      collateralCost: 'none',
+    },
+  ]);
+
+  const delayedAlert = overlay.climateTimeline.climateAlerts.find((alert) => alert.regionId === 'granary');
+  assert.deepEqual(delayedAlert.mitigationPreviews.map((preview) => preview.mode), [
+    'reserve-prep',
+    'no-action',
+  ]);
+  assert.equal(delayedAlert.mitigationPreviews[0].riskImpact, 'réduit le risque attendu sans déplacer toute la priorité');
+
+  const monitorAlert = overlay.climateTimeline.climateAlerts.find((alert) => alert.regionId === 'watch');
+  assert.deepEqual(monitorAlert.mitigationPreviews.map((preview) => ({
+    mode: preview.mode,
+    collateralCost: preview.collateralCost,
+    confidenceBand: preview.confidenceBand,
+  })), [
+    { mode: 'confirm-first', collateralCost: 'low', confidenceBand: 'uncertain' },
+  ]);
+});
+
+test('buildClimateMapOverlay preserves explicit mitigation previews without merging confidence urgency and cost', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 40, droughtIndex: 20 },
+  ], {
+    seasonPreview: {
+      season: 'summer',
+      impactsByRegion: {
+        delta: {
+          strategicImpact: 'critical',
+          anomaly: 'flood',
+          confidenceBand: 'probable',
+          timeWindow: '2 tours',
+          playerImpact: 'route et récolte exposées',
+          mitigationPreviews: [
+            {
+              mode: 'raise-dikes',
+              label: 'renforcer digues',
+              expectedTiming: 'avant crue',
+              riskImpact: 'réduit inondation vers risque tendu',
+              confidenceBand: 'probable',
+              collateralCost: 'medium',
+              playerImpact: 'mobilise ouvriers mais protège la route',
+            },
+          ],
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(overlay.climateTimeline.climateAlerts[0].mitigationPreviews, [
+    {
+      previewId: 'delta:mitigation:raise-dikes',
+      mode: 'raise-dikes',
+      label: 'renforcer digues',
+      expectedTiming: 'avant crue',
+      riskImpact: 'réduit inondation vers risque tendu',
+      confidenceBand: 'probable',
+      urgencyRank: 1,
+      collateralCost: 'medium',
+      playerImpact: 'mobilise ouvriers mais protège la route',
+    },
+  ]);
+});
