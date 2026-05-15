@@ -1788,6 +1788,94 @@ function buildLogisticsRecoveryPlanner(routeFeature, cityFeatures, resourceFeatu
   };
 }
 
+
+function buildRecoveryCheckpoints(routeFeature) {
+  const planner = routeFeature.recoveryPlanner;
+  const chosenOption = planner.options.find((option) => option.id === planner.recommendedOptionId) ?? planner.options[0];
+  const hasResidualRisk = chosenOption.reDisruptionRisk !== 'low' || routeFeature.riskLevel >= 35;
+  const hasNewBottleneck = routeFeature.bottleneckResourceId !== null;
+  const capacityPartial = routeFeature.capacityRemaining > 0 && routeFeature.capacityRemaining < routeFeature.totalCapacity;
+  const stableReturn = routeFeature.disruptionReplay.trajectory === 'recovering' && !hasResidualRisk && !hasNewBottleneck;
+  const baseSignals = [
+    ...(chosenOption.estimatedDelayTurns > 1 ? ['délai'] : []),
+    ...(hasNewBottleneck ? ['nouveau goulot'] : []),
+    ...(chosenOption.reDisruptionRisk === 'high' ? ['re-perturbation'] : []),
+    ...(chosenOption.affectedResourceIds.length === 0 ? ['stock insuffisant'] : []),
+  ];
+
+  const checkpoints = [
+    {
+      id: `${planner.id}:repair-started`,
+      stage: 'repair-started',
+      label: 'Réparation lancée',
+      status: chosenOption.estimatedDelayTurns === 0 ? 'complete' : 'in-progress',
+      expectedTurn: 0,
+      linkedOptionId: chosenOption.id,
+      signal: chosenOption.action === 'prioritize-stock' ? 'priorité engagée' : 'ordre engagé',
+      detail: `${chosenOption.label}: coût ${chosenOption.relativeCost}, délai ${chosenOption.estimatedDelayTurns} tour(s).`,
+    },
+    {
+      id: `${planner.id}:partial-capacity`,
+      stage: 'partial-capacity',
+      label: 'Capacité partielle',
+      status: capacityPartial || routeFeature.capacityRemaining > 0 ? 'in-progress' : 'blocked',
+      expectedTurn: Math.max(1, Math.min(2, chosenOption.estimatedDelayTurns || 1)),
+      linkedOptionId: chosenOption.id,
+      signal: capacityPartial ? 'capacité partielle' : 'capacité à confirmer',
+      detail: `${routeFeature.capacityRemaining}/${routeFeature.totalCapacity} capacité restante visible après replay.`,
+    },
+    {
+      id: `${planner.id}:residual-risk`,
+      stage: 'residual-risk',
+      label: 'Risque résiduel',
+      status: hasResidualRisk || hasNewBottleneck ? 'watch' : 'complete',
+      expectedTurn: Math.max(1, chosenOption.estimatedDelayTurns),
+      linkedOptionId: chosenOption.id,
+      signal: hasNewBottleneck ? `surveiller ${routeFeature.bottleneckResourceId}` : `risque ${chosenOption.reDisruptionRisk}`,
+      detail: hasResidualRisk
+        ? `Risque de re-perturbation ${chosenOption.reDisruptionRisk}; revoir si ${baseSignals.join(', ') || 'le stress remonte'}.`
+        : 'Risque résiduel bas avec les données visibles.',
+    },
+    {
+      id: `${planner.id}:stable-return`,
+      stage: 'stable-return',
+      label: 'Retour stable',
+      status: stableReturn ? 'complete' : routeFeature.disruptionReplay.trajectory === 'worsening' ? 'revise' : 'pending',
+      expectedTurn: chosenOption.estimatedDelayTurns + 1,
+      linkedOptionId: chosenOption.id,
+      signal: stableReturn ? 'stable' : routeFeature.disruptionReplay.trajectory === 'worsening' ? 'échec' : 'à confirmer',
+      detail: stableReturn
+        ? `${routeFeature.label} peut revenir en flux stable.`
+        : `${routeFeature.label} doit être révisée si le replay reste ${routeFeature.disruptionReplay.trajectory}.`,
+    },
+  ];
+
+  const blockingSignals = checkpoints
+    .filter((checkpoint) => ['blocked', 'watch', 'revise'].includes(checkpoint.status))
+    .map((checkpoint) => checkpoint.signal);
+
+  return {
+    id: `recovery-checkpoints:${routeFeature.routeId}`,
+    targetType: 'route',
+    targetId: routeFeature.routeId,
+    linkedPlannerId: planner.id,
+    linkedOptionId: chosenOption.id,
+    status: checkpoints.some((checkpoint) => checkpoint.status === 'revise')
+      ? 'needs-revision'
+      : checkpoints.some((checkpoint) => checkpoint.status === 'blocked')
+        ? 'blocked'
+        : checkpoints.some((checkpoint) => checkpoint.status === 'watch')
+          ? 'stagnating'
+          : checkpoints.every((checkpoint) => checkpoint.status === 'complete')
+            ? 'progressing'
+            : 'progressing',
+    summary: `${routeFeature.label}: checkpoints liés à ${chosenOption.label}.`,
+    blockingSignals,
+    dataCompleteness: planner.dataCompleteness,
+    checkpoints,
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -1850,10 +1938,18 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
     };
   });
   const resourceLayer = buildResourceLayer(cityOverlays);
-  const logisticsFeaturesWithPlanners = logisticsFeatures.map((feature) => ({
-    ...feature,
-    recoveryPlanner: buildLogisticsRecoveryPlanner(feature, cityFeatures, resourceLayer.features),
-  }));
+  const logisticsFeaturesWithPlanners = logisticsFeatures.map((feature) => {
+    const recoveryPlanner = buildLogisticsRecoveryPlanner(feature, cityFeatures, resourceLayer.features);
+    const featureWithPlanner = {
+      ...feature,
+      recoveryPlanner,
+    };
+
+    return {
+      ...featureWithPlanner,
+      recoveryCheckpoints: buildRecoveryCheckpoints(featureWithPlanner),
+    };
+  });
 
   return {
     cities: {
@@ -1879,6 +1975,12 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },
         { key: 'prioritize-stock', label: 'Prioriser convoi/stock', tone: 'positive' },
+      ],
+      recoveryCheckpointLegend: [
+        { key: 'repair-started', label: 'Réparation lancée', tone: 'neutral' },
+        { key: 'partial-capacity', label: 'Capacité partielle', tone: 'caution' },
+        { key: 'residual-risk', label: 'Risque résiduel', tone: 'warning' },
+        { key: 'stable-return', label: 'Retour stable', tone: 'positive' },
       ],
       replayLegend: [
         { key: 'recovering', label: 'Récupère', tone: 'positive' },
