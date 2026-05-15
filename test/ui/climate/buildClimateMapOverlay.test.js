@@ -2041,3 +2041,128 @@ test('buildClimateMapOverlay keeps uncertain readiness recommendations conservat
     },
   ]);
 });
+
+test('buildClimateMapOverlay summarizes cross-region climate priorities from readiness windows', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+    { regionId: 'ridge', season: 'spring', temperatureC: 29, precipitationLevel: 18, droughtIndex: 68, anomaly: 'drought' },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'delta-ready',
+        regionId: 'delta',
+        observedImpact: 'route stabilisée',
+        severity: 'minor',
+        appliedMitigation: 'digues inspectées',
+        confidenceBand: 'probable',
+        resilienceState: 'resilient',
+      },
+      {
+        eventId: 'ridge-risk',
+        regionId: 'ridge',
+        observedImpact: 'sols fragiles',
+        severity: 'moderate',
+        missingMitigation: 'réservoir non renforcé',
+        confidenceBand: 'uncertain',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'delta-ready',
+        windowId: 'delta-ready:now',
+        label: 'tour actuel',
+        state: 'safe',
+        affectedRegionIds: ['delta'],
+        confidenceBand: 'probable',
+      },
+      {
+        aftermathEventId: 'ridge-risk',
+        windowId: 'ridge-risk:later',
+        label: 'prochain tour',
+        state: 'safe',
+        affectedRegionIds: ['ridge'],
+        confidenceBand: 'uncertain',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climatePrioritySummary.priorities.map((priority) => ({
+    regionIds: priority.regionIds,
+    priority: priority.priority,
+    windowId: priority.windowId,
+    readinessRecommendationId: priority.readinessRecommendationId,
+    confidenceBand: priority.confidenceBand,
+    resourceConflicts: priority.resourceConflicts,
+    reason: priority.reason,
+  })), [
+    {
+      regionIds: ['delta'],
+      priority: 'act-now',
+      windowId: 'delta-ready:now',
+      readinessRecommendationId: 'delta-ready:now:readiness',
+      confidenceBand: 'probable',
+      resourceConflicts: [],
+      reason: 'fenêtre exploitable avec prérequis readiness validés',
+    },
+    {
+      regionIds: ['ridge'],
+      priority: 'prepare-first',
+      windowId: 'ridge-risk:later',
+      readinessRecommendationId: 'ridge-risk:later:readiness',
+      confidenceBand: 'uncertain',
+      resourceConflicts: ['mitigation', 'local-resilience', 'residual-risk'],
+      reason: 'prévision incertaine: confirmer et renforcer avant engagement',
+    },
+  ]);
+  assert.equal(overlay.climatePrioritySummary.summary, '1 à agir, 1 à préparer, 0 à reporter, 0 à éviter.');
+});
+
+test('buildClimateMapOverlay keeps cross-region climate priority overrides conservative', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'delta-risk',
+        regionId: 'delta',
+        observedImpact: 'route encore instable',
+        severity: 'major',
+        missingMitigation: 'réserve absente',
+        confidenceBand: 'probable',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'delta-risk',
+        windowId: 'delta-risk:now',
+        label: 'tour actuel',
+        state: 'risky',
+        affectedRegionIds: ['delta'],
+        confidenceBand: 'probable',
+      },
+    ],
+    climatePrioritySummary: [
+      {
+        windowId: 'delta-risk:now',
+        priority: 'defer',
+        resourceConflicts: ['reserve', 'window-timing'],
+        reason: 'réserve partagée avec une autre région plus prête',
+      },
+    ],
+  });
+
+  assert.deepEqual(overlay.climatePrioritySummary.priorities, [
+    {
+      priorityId: 'delta-risk:now:readiness:priority',
+      regionIds: ['delta'],
+      priority: 'defer',
+      windowId: 'delta-risk:now',
+      readinessRecommendationId: 'delta-risk:now:readiness',
+      confidenceBand: 'probable',
+      resourceConflicts: ['reserve', 'window-timing'],
+      reason: 'réserve partagée avec une autre région plus prête',
+    },
+  ]);
+});

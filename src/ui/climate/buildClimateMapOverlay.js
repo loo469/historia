@@ -1672,6 +1672,147 @@ function buildClimateRecoveryReadiness(climateAftermathRecap, climateSafeWindowC
   };
 }
 
+function classifyClimatePriority(recommendation, window) {
+  if (recommendation.status === 'ready' && recommendation.confidenceBand !== 'uncertain') {
+    return 'act-now';
+  }
+
+  if (recommendation.status === 'discouraged') {
+    return window?.state === 'critical' || recommendation.confidenceBand === 'uncertain' ? 'avoid' : 'defer';
+  }
+
+  if (recommendation.confidenceBand === 'uncertain') {
+    return 'prepare-first';
+  }
+
+  return window?.state === 'safe' ? 'prepare-first' : 'defer';
+}
+
+function describeClimatePriorityReason(priority, recommendation, window) {
+  if (priority === 'act-now') {
+    return 'fenêtre exploitable avec prérequis readiness validés';
+  }
+
+  if (priority === 'prepare-first') {
+    return recommendation.confidenceBand === 'uncertain'
+      ? 'prévision incertaine: confirmer et renforcer avant engagement'
+      : 'préparer les prérequis manquants avant d’utiliser la fenêtre';
+  }
+
+  if (priority === 'defer') {
+    return `reporter: ${window?.label ?? 'fenêtre'} reste moins favorable ou trop coûteuse`;
+  }
+
+  return 'éviter pour ce tour: risque résiduel ou fenêtre critique trop exposée';
+}
+
+function buildClimateResourceConflicts(recommendation, window) {
+  const conflicts = [];
+  const prerequisites = recommendation.prerequisites ?? {};
+
+  if (String(prerequisites.reserve ?? '').includes('renforcée') || String(prerequisites.reserve ?? '').includes('requise')) {
+    conflicts.push('reserve');
+  }
+
+  if (String(prerequisites.mitigationActive ?? '').startsWith('manquante')) {
+    conflicts.push('mitigation');
+  }
+
+  if (String(prerequisites.localResilience ?? '').includes('consolider')) {
+    conflicts.push('local-resilience');
+  }
+
+  if (window?.state !== 'safe') {
+    conflicts.push('window-timing');
+  }
+
+  if (String(prerequisites.residualRisk ?? '').includes('élevé') || String(prerequisites.residualRisk ?? '').includes('incertain')) {
+    conflicts.push('residual-risk');
+  }
+
+  return [...new Set(conflicts)];
+}
+
+function normalizeClimatePriorityOverride(override, basePriority) {
+  const priority = String(override.priority ?? basePriority.priority).trim().toLowerCase();
+
+  return {
+    ...basePriority,
+    ...override,
+    priorityId: String(override.priorityId ?? basePriority.priorityId).trim(),
+    regionIds: requireArray(override.regionIds ?? basePriority.regionIds, 'ClimateMapOverlay climatePriority regionIds')
+      .map((regionId) => String(regionId).trim())
+      .filter(Boolean),
+    priority: ['act-now', 'prepare-first', 'defer', 'avoid'].includes(priority) ? priority : basePriority.priority,
+    windowId: String(override.windowId ?? basePriority.windowId).trim(),
+    readinessRecommendationId: String(override.readinessRecommendationId ?? basePriority.readinessRecommendationId).trim(),
+    resourceConflicts: requireArray(
+      override.resourceConflicts ?? basePriority.resourceConflicts,
+      'ClimateMapOverlay climatePriority resourceConflicts',
+    ).map((conflict) => String(conflict).trim()).filter(Boolean),
+    confidenceBand: normalizeConfidenceBand(override.confidenceBand) ?? basePriority.confidenceBand,
+    reason: String(override.reason ?? basePriority.reason).trim(),
+  };
+}
+
+function buildClimatePrioritySummary(climateSafeWindowCalendar, climateRecoveryReadiness, normalizedOptions) {
+  const windowsById = new Map(climateSafeWindowCalendar.windows.map((window) => [window.windowId, window]));
+  const explicitPriorities = Array.isArray(normalizedOptions.climatePrioritySummary)
+    ? normalizedOptions.climatePrioritySummary
+    : Array.isArray(normalizedOptions.climateCrossRegionPriorities)
+      ? normalizedOptions.climateCrossRegionPriorities
+      : [];
+
+  if (climateRecoveryReadiness.recommendations.length === 0) {
+    return {
+      title: 'Synthèse priorités climat inter-régions',
+      fallback: 'Aucune recommandation de readiness climat à agréger.',
+      priorities: [],
+      resourceConflicts: [],
+      summary: 'Aucune priorité climatique inter-régions.',
+    };
+  }
+
+  const priorities = climateRecoveryReadiness.recommendations.map((recommendation) => {
+    const window = windowsById.get(recommendation.windowId);
+    const priority = classifyClimatePriority(recommendation, window);
+    const basePriority = {
+      priorityId: `${recommendation.recommendationId}:priority`,
+      regionIds: window?.affectedRegionIds ? [...window.affectedRegionIds] : [],
+      priority,
+      windowId: recommendation.windowId,
+      readinessRecommendationId: recommendation.recommendationId,
+      confidenceBand: recommendation.confidenceBand,
+      resourceConflicts: buildClimateResourceConflicts(recommendation, window),
+      reason: describeClimatePriorityReason(priority, recommendation, window),
+    };
+    const override = explicitPriorities.find((item) => (
+      item.windowId ?? item.readinessRecommendationId ?? basePriority.windowId
+    ) === basePriority.windowId || item.readinessRecommendationId === basePriority.readinessRecommendationId);
+
+    return override ? normalizeClimatePriorityOverride(override, basePriority) : basePriority;
+  }).sort((left, right) => {
+    const rank = { 'act-now': 0, 'prepare-first': 1, defer: 2, avoid: 3 };
+
+    return (rank[left.priority] ?? 2) - (rank[right.priority] ?? 2) || left.priorityId.localeCompare(right.priorityId);
+  });
+
+  const resourceConflicts = [...new Set(priorities.flatMap((priority) => priority.resourceConflicts))];
+  const counts = priorities.reduce((acc, priority) => {
+    acc[priority.priority] = (acc[priority.priority] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    title: 'Synthèse priorités climat inter-régions',
+    fallback: null,
+    priorities,
+    resourceConflicts,
+    summary: `${counts['act-now'] ?? 0} à agir, ${counts['prepare-first'] ?? 0} à préparer, ${counts.defer ?? 0} à reporter, ${counts.avoid ?? 0} à éviter.`,
+  };
+}
+
+
 function buildClimateAftermathRecap(regions, climateAlerts, normalizedOptions) {
   const alertsByRegion = new Map(climateAlerts.map((alert) => [alert.regionId, alert]));
   const explicitEvents = Array.isArray(normalizedOptions.climateAftermathEvents)
@@ -2237,6 +2378,11 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
     climateSafeWindowCalendar,
     normalizedOptions,
   );
+  const climatePrioritySummary = buildClimatePrioritySummary(
+    climateSafeWindowCalendar,
+    climateRecoveryReadiness,
+    normalizedOptions,
+  );
   const selectedClimateImpactComparison = buildSelectedClimateImpactComparison(regions, normalizedOptions, seasonPreview);
   const selectedClimateTimingRecommendation = buildSelectedClimateTimingRecommendation(selectedClimateImpactComparison);
   const selectedClimateMitigationChoices = buildSelectedClimateMitigationChoices(
@@ -2274,6 +2420,7 @@ export function buildClimateMapOverlay(climateStates, options = {}) {
       climateAftermathRecap,
       climateSafeWindowCalendar,
       climateRecoveryReadiness,
+      climatePrioritySummary,
     } : {}),
     selectedClimateImpactComparison,
     selectedClimateTimingRecommendation,
