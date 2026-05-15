@@ -1756,3 +1756,76 @@ test('buildIntrigueMapOverlay exposes safe-map heat decay playback and redacted 
   assert.match(masked.safeMapMasking.safeLabel, /données absentes ou confidentielles/);
   assert.deepEqual(masked.safeMapMasking.maskedDetails, ['identité cellule', 'relais opérationnel', 'objectif précis', 'cause du signal']);
 });
+
+test('buildIntrigueMapOverlay exposes fog-safe confidence states and verification hints', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-confirmed',
+      factionId: 'shadow-league',
+      codename: 'Torch',
+      locationId: 'confirmed-zone',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 74,
+    }),
+    new Cellule({
+      id: 'cell-suspected',
+      factionId: 'shadow-league',
+      codename: 'Lantern',
+      locationId: 'suspected-zone',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+    new Cellule({
+      id: 'cell-stale',
+      factionId: 'shadow-league',
+      codename: 'Ash',
+      locationId: 'stale-zone',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 18,
+    }),
+    new Cellule({
+      id: 'cell-masked-confidence',
+      factionId: 'shadow-league',
+      codename: 'Blank',
+      locationId: 'masked-zone',
+      memberIds: ['ag-4'],
+      assetIds: ['asset-4'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-suspected',
+      celluleId: 'cell-suspected',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe patrol timings',
+      theaterId: 'suspected-zone',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 80,
+      progress: 5,
+      heat: 10,
+      phase: 'planning',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry]));
+
+  assert.equal(byLocation.get('confirmed-zone').confidenceState.state, 'confirmed');
+  assert.equal(byLocation.get('confirmed-zone').safeVerificationHint.action, 'observe-locally');
+  assert.match(byLocation.get('confirmed-zone').safeVerificationHint.safeMapLabel, /danger non confirmé/);
+
+  assert.equal(byLocation.get('suspected-zone').confidenceState.state, 'suspected');
+  assert.equal(byLocation.get('suspected-zone').safeVerificationHint.action, 'limit-coverage');
+  assert.match(byLocation.get('suspected-zone').confidenceState.safeCopy, /danger réel non confirmé/);
+
+  assert.equal(byLocation.get('stale-zone').confidenceState.state, 'stale');
+  assert.equal(byLocation.get('stale-zone').safeVerificationHint.action, 'wait');
+  assert.equal(byLocation.get('stale-zone').confidenceState.dangerInterpretation, 'incertitude élevée, pas danger faible');
+
+  assert.equal(byLocation.get('masked-zone').confidenceState.state, 'masked');
+  assert.equal(byLocation.get('masked-zone').safeVerificationHint.action, 'ignore');
+  assert.match(byLocation.get('masked-zone').safeVerificationHint.reason, /ne pas transformer l’absence de données/);
+});

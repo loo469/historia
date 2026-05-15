@@ -2154,6 +2154,75 @@ function buildSuspicionHeatDecayPlayback({ locationCellules, locationOperations,
   };
 }
 
+function buildFogSafeConfidenceState({ locationCellules, locationOperations, presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount }) {
+  const activeOperation = locationOperations.some((operation) => operation.phase === 'execution' || operation.heat >= 70);
+  const hasVisibleExposure = exposedCellCount > 0;
+  const hasProbableSignal = sabotageRiskScore > 0 || ['medium', 'high'].includes(presenceLevel) || locationOperations.length > 0;
+  const hasOldSignal = locationCellules.some((cellule) => cellule.exposure > 0 || cellule.status === 'dormant');
+  const state = hasVisibleExposure || riskLevel === 'high' || activeOperation
+    ? 'confirmed'
+    : hasProbableSignal
+      ? 'suspected'
+      : hasOldSignal
+        ? 'stale'
+        : 'masked';
+
+  const copyByState = {
+    confirmed: 'Confiance confirmée: pression visible, détails sensibles encore expurgés.',
+    suspected: 'Confiance suspecte: signal probable à vérifier, danger réel non confirmé.',
+    stale: 'Confiance ancienne: indice à revérifier, ne pas lire comme danger faible.',
+    masked: 'Confiance masquée: données absentes ou confidentielles, ne pas inférer un danger faible.',
+  };
+
+  return {
+    state,
+    label: state === 'confirmed'
+      ? 'Confirmé'
+      : state === 'suspected'
+        ? 'Suspect'
+        : state === 'stale'
+          ? 'Ancien'
+          : 'Masqué',
+    dangerInterpretation: state === 'masked' || state === 'stale'
+      ? 'incertitude élevée, pas danger faible'
+      : riskLevel === 'none'
+        ? 'danger non confirmé'
+        : `danger ${riskLevel}`,
+    safeCopy: copyByState[state],
+  };
+}
+
+function buildSafeVerificationHint({ confidenceState, safeMapMasking }) {
+  const hintByState = {
+    confirmed: {
+      action: 'observe-locally',
+      label: 'Observer localement',
+      reason: 'Confirmer la tendance visible sans nommer cellule, relais, cible ou cause.',
+    },
+    suspected: {
+      action: 'limit-coverage',
+      label: 'Limiter couverture',
+      reason: 'Réduire le rayon de vérification pour éviter une exposition inutile sur un signal probable.',
+    },
+    stale: {
+      action: 'wait',
+      label: 'Attendre un signal frais',
+      reason: 'Indice ancien: attendre ou revérifier avant toute action directe.',
+    },
+    masked: {
+      action: 'ignore',
+      label: 'Ignorer pour l’instant',
+      reason: 'Information masquée ou confidentielle: ne pas transformer l’absence de données en faux signal rassurant.',
+    },
+  };
+  const hint = hintByState[confidenceState.state] ?? hintByState.masked;
+
+  return {
+    ...hint,
+    safeMapLabel: `${hint.label}: ${safeMapMasking.redactedLabel.toLowerCase()}, ${confidenceState.dangerInterpretation}.`,
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2257,20 +2326,33 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         sleeperCellCount,
         sabotageRiskScore,
       });
+      const suspicionHeatDecayPlayback = buildSuspicionHeatDecayPlayback({
+        locationCellules,
+        locationOperations,
+        sabotageRiskScore,
+      });
+      const safeMapMasking = buildSafeMapMasking({
+        presenceLevel,
+        riskLevel,
+        sabotageRiskScore,
+        exposedCellCount,
+        locationOperations,
+      });
+      const confidenceState = buildFogSafeConfidenceState({
+        locationCellules,
+        locationOperations,
+        presenceLevel,
+        riskLevel,
+        sabotageRiskScore,
+        exposedCellCount,
+      });
+      const safeVerificationHint = buildSafeVerificationHint({ confidenceState, safeMapMasking });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
-          suspicionHeatDecayPlayback: buildSuspicionHeatDecayPlayback({
-            locationCellules,
-            locationOperations,
-            sabotageRiskScore,
-          }),
-          safeMapMasking: buildSafeMapMasking({
-            presenceLevel,
-            riskLevel,
-            sabotageRiskScore,
-            exposedCellCount,
-            locationOperations,
-          }),
+          suspicionHeatDecayPlayback,
+          safeMapMasking,
+          confidenceState,
+          safeVerificationHint,
         }
         : {};
 
