@@ -2011,3 +2011,83 @@ test('buildIntrigueMapOverlay replays fog-safe incidents and evidence trail mark
     reason: 'Mode sûr: lien de preuve non affiché car les données sont absentes ou confidentielles.',
   }]);
 });
+
+test('buildIntrigueMapOverlay exposes fog-safe intelligence provenance panels', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-observed-prov',
+      factionId: 'shadow-league',
+      codename: 'Torch',
+      locationId: 'observed-prov',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 78,
+    }),
+    new Cellule({
+      id: 'cell-inferred-prov',
+      factionId: 'shadow-league',
+      codename: 'Lantern',
+      locationId: 'inferred-prov',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+    new Cellule({
+      id: 'cell-rumor-prov',
+      factionId: 'shadow-league',
+      codename: 'Ash',
+      locationId: 'rumor-prov',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 18,
+    }),
+    new Cellule({
+      id: 'cell-unknown-prov',
+      factionId: 'shadow-league',
+      codename: 'Blank',
+      locationId: 'unknown-prov',
+      memberIds: ['ag-4'],
+      assetIds: ['asset-4'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-inferred-prov',
+      celluleId: 'cell-inferred-prov',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Probe road rumor',
+      theaterId: 'inferred-prov',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 80,
+      progress: 5,
+      heat: 10,
+      phase: 'planning',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.intelligenceProvenancePanel]));
+
+  assert.equal(byLocation.get('observed-prov').provenanceType, 'observed');
+  assert.equal(byLocation.get('observed-prov').sourceLabel, 'Observation directe expurgée');
+  assert.equal(byLocation.get('observed-prov').confirmationMethod, 'exposition visible confirmée');
+  assert.equal(byLocation.get('observed-prov').nextVerificationStep.action, 'observe-locally');
+  assert.match(byLocation.get('observed-prov').hiddenDetailPolicy, /Ne révèle jamais cellule, relais, cible/);
+
+  assert.equal(byLocation.get('inferred-prov').provenanceType, 'inferred');
+  assert.equal(byLocation.get('inferred-prov').sourceLabel, 'Déduction par signaux visibles');
+  assert.equal(byLocation.get('inferred-prov').confirmationMethod, 'corrélation chaleur/progression visible');
+  assert.equal(byLocation.get('inferred-prov').nextVerificationStep.action, 'limit-coverage');
+  assert.deepEqual(byLocation.get('inferred-prov').evidenceStates, ['suspected-evidence']);
+
+  assert.equal(byLocation.get('rumor-prov').provenanceType, 'rumor');
+  assert.equal(byLocation.get('rumor-prov').sourceLabel, 'Rumeur ou indice ancien');
+  assert.equal(byLocation.get('rumor-prov').nextVerificationStep.action, 'wait');
+  assert.match(byLocation.get('rumor-prov').credibilityReason, /indice à revérifier/);
+
+  assert.equal(byLocation.get('unknown-prov').provenanceType, 'unknown');
+  assert.equal(byLocation.get('unknown-prov').sourceLabel, 'Source inconnue ou confidentielle');
+  assert.equal(byLocation.get('unknown-prov').confirmationMethod, 'aucune méthode affichable en mode sûr');
+  assert.equal(byLocation.get('unknown-prov').nextVerificationStep.action, 'ignore');
+  assert.match(byLocation.get('unknown-prov').safeMapSummary, /Provenance généralisée/);
+});

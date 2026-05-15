@@ -2384,6 +2384,51 @@ function buildEvidenceTrailMarkers({ locationId, locationName, confidenceState, 
   }];
 }
 
+function buildIntelligenceProvenancePanel({ confidenceState, safeVerificationHint, verificationPathPreviews, incidentReplay, evidenceTrailMarkers, safeMapMasking, locationOperations, exposedCellCount }) {
+  const provenanceType = confidenceState.state === 'confirmed'
+    ? 'observed'
+    : confidenceState.state === 'suspected'
+      ? 'inferred'
+      : confidenceState.state === 'stale'
+        ? 'rumor'
+        : 'unknown';
+  const sourceLabelByType = {
+    observed: 'Observation directe expurgée',
+    inferred: 'Déduction par signaux visibles',
+    rumor: 'Rumeur ou indice ancien',
+    unknown: 'Source inconnue ou confidentielle',
+  };
+  const methodByType = {
+    observed: exposedCellCount > 0 ? 'exposition visible confirmée' : 'pression active confirmée',
+    inferred: locationOperations.length > 0 ? 'corrélation chaleur/progression visible' : 'corrélation de présence locale',
+    rumor: 'ancien signal à revérifier avant action',
+    unknown: 'aucune méthode affichable en mode sûr',
+  };
+  const recommendedPath = verificationPathPreviews.find((path) => path.recommended) ?? verificationPathPreviews[0] ?? null;
+  const evidenceStates = [...new Set(evidenceTrailMarkers.map((marker) => marker.state))];
+
+  return {
+    provenanceType,
+    sourceLabel: sourceLabelByType[provenanceType],
+    confirmationMethod: methodByType[provenanceType],
+    credibility: confidenceState.label,
+    credibilityReason: confidenceState.safeCopy,
+    evidenceStates,
+    nextVerificationStep: recommendedPath ? {
+      action: safeVerificationHint.action,
+      label: safeVerificationHint.label,
+      costCue: recommendedPath.costCue,
+      exposureCost: recommendedPath.exposureCost,
+      evidenceNeeded: recommendedPath.evidenceNeeded,
+    } : null,
+    safeMapSummary: safeMapMasking.state === 'masked-information'
+      ? 'Provenance généralisée: les détails non autorisés restent masqués.'
+      : `${safeMapMasking.redactedLabel}: provenance limitée aux signaux visibles.`,
+    hiddenDetailPolicy: 'Ne révèle jamais cellule, relais, cible, objectif précis ou cause cachée.',
+    incidentSummary: incidentReplay.summary,
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2528,6 +2573,16 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         locationOperations,
         relatedLocationIds,
       });
+      const intelligenceProvenancePanel = buildIntelligenceProvenancePanel({
+        confidenceState,
+        safeVerificationHint,
+        verificationPathPreviews,
+        incidentReplay,
+        evidenceTrailMarkers,
+        safeMapMasking,
+        locationOperations,
+        exposedCellCount,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2537,6 +2592,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           verificationPathPreviews,
           incidentReplay,
           evidenceTrailMarkers,
+          intelligenceProvenancePanel,
         }
         : {};
 
