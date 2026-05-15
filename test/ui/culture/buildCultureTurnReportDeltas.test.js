@@ -162,6 +162,25 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
     explanation: 'archive-routes → amplifier → expansion',
     uncertainRecommendationIds: [],
   });
+  assert.deepEqual(report.commitmentBundles, {
+    state: 'compatible',
+    summary: '1 bundle d’engagement culturel, 0 incompatibilité.',
+    bundles: [
+      {
+        bundleId: 'culture-commitment:expansion',
+        label: 'expansion prudente',
+        trajectory: 'expansion',
+        state: 'safe',
+        safeRecommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
+        uncertainRecommendationIds: [],
+        actions: ['amplifier'],
+        markerIds: ['river-gate:culture-aurora:event:event-archive-opening'],
+        explanation: 'archive-routes → amplifier → expansion prudente',
+      },
+    ],
+    incompatibilities: [],
+    dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
+  });
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -194,6 +213,13 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
       tensions: [],
       explanation: 'Aucun signal récent → recommandation → cohérence.',
       uncertainRecommendationIds: [],
+    },
+    commitmentBundles: {
+      state: 'quiet',
+      summary: 'Aucun bundle d’engagement culturel disponible.',
+      bundles: [],
+      incompatibilities: [],
+      dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
   });
 });
@@ -440,4 +466,95 @@ test('buildCultureTurnReportDeltas summarizes coherence tensions between active 
   ]);
   assert.match(report.recommendationCoherence.explanation, /archive-routes → amplifier → expansion/);
   assert.deepEqual(report.recommendationCoherence.uncertainRecommendationIds, ['mist:momentum:fragile:stabilization']);
+});
+
+test('buildCultureTurnReportDeltas groups compatible and incompatible cultural commitment bundles', () => {
+  const report = buildCultureTurnReportDeltas({
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'explorer',
+        consequencePreview: {
+          confidence: 'high',
+          opportunity: 'archives ouvertes',
+          summary: 'explorer: archives ouvertes.',
+          visibleMarkerIds: ['river-gate:culture-aurora:event:event-archive-opening'],
+        },
+      },
+    },
+    previousMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'emerging',
+      influenceScore: 70,
+      discoveries: ['archive-routes'],
+    },
+    activeRecommendations: [
+      {
+        recommendationId: 'ember:momentum:volatile:stabilization',
+        regionId: 'ember-ford',
+        cultureName: 'Ember Guild',
+        action: 'apaiser',
+        tone: 'tension',
+        level: 'volatile',
+        discoveryId: 'ash-treaty',
+        confidence: 'medium',
+        supportKey: 'envoy',
+        markerIds: ['ember-marker'],
+        rank: 2,
+      },
+      {
+        recommendationId: 'mist:momentum:fragile:stabilization',
+        regionId: 'mist-hills',
+        cultureName: 'Mist Circle',
+        action: 'enquêter',
+        tone: 'tension',
+        level: 'fragile',
+        discoveryId: 'fog-index',
+        confidence: 'low',
+        supportKey: 'survey-team',
+        markerIds: ['mist-marker'],
+        rank: 3,
+      },
+      {
+        recommendationId: 'harbor:momentum:surge:stabilization',
+        regionId: 'harbor',
+        cultureName: 'Harbor Compact',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'harbor-forum',
+        confidence: 'high',
+        supportKey: 'amplifier',
+        expiresSoon: true,
+        markerIds: ['harbor-marker'],
+        rank: 4,
+      },
+    ],
+  });
+
+  assert.equal(report.commitmentBundles.state, 'needs-choice');
+  assert.deepEqual(report.commitmentBundles.bundles.map((bundle) => [bundle.label, bundle.state, bundle.actions]), [
+    ['apaisement local', 'safe', ['apaiser']],
+    ['enquête', 'uncertain', ['enquêter']],
+    ['expansion prudente', 'safe', ['amplifier']],
+  ]);
+  assert.deepEqual(report.commitmentBundles.incompatibilities.map((incompatibility) => [incompatibility.type, incompatibility.severity]), [
+    ['same-support-required', 'choice'],
+    ['contradictory-narrative-timing', 'sequence'],
+    ['low-confidence', 'uncertain'],
+    ['expiring-opportunity', 'urgent'],
+  ]);
+  assert.match(report.commitmentBundles.dependencyExplanation, /apaisement local: ash-treaty → apaiser/);
+  assert.deepEqual(report.commitmentBundles.bundles[1].uncertainRecommendationIds, ['mist:momentum:fragile:stabilization']);
 });
