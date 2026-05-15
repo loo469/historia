@@ -215,6 +215,13 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     activeFrame: null,
     fallbackMessage: 'Aucun historique de pression disponible pour le replay.',
   });
+  assert.deepEqual(shell.frontRecoveryRecommendations, {
+    empty: true,
+    fallbackMessage: 'Recommandations indisponibles sans historique de pression du front.',
+    safestActionCode: null,
+    opportunisticActionCode: null,
+    recommendations: [],
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -605,6 +612,41 @@ test('StrategicMapShell builds a scrub-ready front pressure timeline replay', ()
     },
     fallbackMessage: null,
   });
+  assert.deepEqual(shell.frontRecoveryRecommendations, {
+    empty: false,
+    fallbackMessage: null,
+    safestActionCode: 'consolidate-support',
+    opportunisticActionCode: 'limited-probe',
+    recommendations: [
+      {
+        actionCode: 'consolidate-support',
+        label: 'Consolider le soutien',
+        stance: 'sûre',
+        reason: 'le replay montre un blocage qui empêche la pression de retomber',
+        risk: 'faible à moyen: stabilise le front mais retarde l’exploitation',
+        safest: true,
+        opportunistic: false,
+      },
+      {
+        actionCode: 'reinforce-front',
+        label: 'Renforcer le front',
+        stance: 'défensive',
+        reason: 'le replay indique une perte de pression favorable ou une remontée adverse',
+        risk: 'moyen: consomme des ressources mais évite une rupture',
+        safest: false,
+        opportunistic: false,
+      },
+      {
+        actionCode: 'limited-probe',
+        label: 'Sonder prudemment la brèche',
+        stance: 'opportuniste',
+        reason: 'le replay montre un gain, mais la pression adjacente exige une reprise limitée',
+        risk: 'moyen à élevé: opportunité réelle mais soutien fragile',
+        safest: false,
+        opportunistic: true,
+      },
+    ],
+  });
 });
 
 test('StrategicMapShell reports incomplete front pressure replay history', () => {
@@ -620,6 +662,23 @@ test('StrategicMapShell reports incomplete front pressure replay history', () =>
   assert.equal(shell.frontPressureReplay.empty, false);
   assert.equal(shell.frontPressureReplay.incomplete, true);
   assert.equal(shell.frontPressureReplay.fallbackMessage, 'Historique incomplet: un seul état disponible pour ce front.');
+  assert.deepEqual(shell.frontRecoveryRecommendations, {
+    empty: false,
+    fallbackMessage: 'Historique incomplet: attendre ou consolider avant une reprise risquée.',
+    safestActionCode: 'hold-and-observe',
+    opportunisticActionCode: null,
+    recommendations: [
+      {
+        actionCode: 'hold-and-observe',
+        label: 'Attendre et observer',
+        stance: 'sûre',
+        reason: 'un seul état de replay ne suffit pas pour distinguer gain, perte ou pression adjacente',
+        risk: 'faible, mais l’initiative reste limitée',
+        safest: true,
+        opportunistic: false,
+      },
+    ],
+  });
 });
 
 test('StrategicMapShell projects intrigue presence and sabotage risk into the map overlay slot', () => {
