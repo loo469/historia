@@ -1689,3 +1689,70 @@ test('buildIntrigueMapOverlay rejects invalid inputs', () => {
   assert.throws(() => buildIntrigueMapOverlay([], [], { styleByRisk: [] }), /styleByRisk must be an object/);
   assert.throws(() => buildIntrigueMapOverlay([], [], { locationNames: [] }), /locationNames must be an object/);
 });
+
+test('buildIntrigueMapOverlay exposes safe-map heat decay playback and redacted labels', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-active',
+      factionId: 'shadow-league',
+      codename: 'Ember',
+      locationId: 'ashlands',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 42,
+    }),
+    new Cellule({
+      id: 'cell-masked',
+      factionId: 'shadow-league',
+      codename: 'Still',
+      locationId: 'quiet-plains',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-active',
+      celluleId: 'cell-active',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Disrupt road watches',
+      theaterId: 'ashlands',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 15,
+      progress: 80,
+      heat: 82,
+      phase: 'execution',
+    }),
+  ], {
+    safeMapMode: true,
+    locationNames: { ashlands: 'Ashlands', 'quiet-plains': 'Quiet Plains' },
+  });
+
+  const active = overlay.find((entry) => entry.locationId === 'ashlands');
+  const masked = overlay.find((entry) => entry.locationId === 'quiet-plains');
+
+  assert.equal(active.suspicionHeatDecayPlayback.state, 'active-risk');
+  assert.deepEqual(active.suspicionHeatDecayPlayback.frames.map((frame) => frame.state), [
+    'active-risk',
+    'decaying-risk',
+    'decaying-risk',
+    'decaying-risk',
+  ]);
+  assert.deepEqual(active.suspicionHeatDecayPlayback.frames.map((frame) => frame.projectedHeat), [82, 70, 58, 46]);
+  assert.equal(active.safeMapMasking.redactedLabel, 'Risque actif visible');
+  assert.equal(active.safeMapMasking.safeLabel, 'Indice intrigue low, risque high: détails sensibles expurgés.');
+  assert.deepEqual(active.safeMapMasking.maskedDetails, ['identité cellule', 'relais opérationnel', 'objectif précis']);
+
+  assert.equal(masked.suspicionHeatDecayPlayback.state, 'masked');
+  assert.deepEqual(masked.suspicionHeatDecayPlayback.frames.map((frame) => frame.label), [
+    'T+0: information masquée',
+    'T+1: information masquée',
+    'T+2: information masquée',
+    'T+3: information masquée',
+  ]);
+  assert.equal(masked.safeMapMasking.redactedLabel, 'Information masquée');
+  assert.match(masked.safeMapMasking.safeLabel, /données absentes ou confidentielles/);
+  assert.deepEqual(masked.safeMapMasking.maskedDetails, ['identité cellule', 'relais opérationnel', 'objectif précis', 'cause du signal']);
+});
