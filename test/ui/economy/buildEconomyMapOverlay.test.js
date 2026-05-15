@@ -1305,6 +1305,9 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     relativeCost: option.relativeCost,
     expectedImpact: option.expectedImpact,
     riskIfIgnored: option.riskIfIgnored,
+    previewStatus: option.logisticsImpactPreview.status,
+    previewTiming: option.logisticsImpactPreview.timing,
+    throughputDelta: option.logisticsImpactPreview.throughputDelta,
   })), [
     {
       id: 'intervention:route-coast:convoy-priority',
@@ -1313,6 +1316,9 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       relativeCost: 'moyen',
       expectedImpact: 'Soulage le goulet grain avant saturation.',
       riskIfIgnored: 'Ignorer Coast Road (land) peut bloquer le goulet grain.',
+      previewStatus: 'improved',
+      previewTiming: 'immediate',
+      throughputDelta: 3,
     },
     {
       id: 'intervention:route-coast:stabilization',
@@ -1321,6 +1327,9 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       relativeCost: 'élevé',
       expectedImpact: 'Réduit le risque actuel (47/100) et sécurise les flux existants.',
       riskIfIgnored: 'Ignorer Coast Road (land) peut bloquer le goulet grain.',
+      previewStatus: 'conditional-benefit',
+      previewTiming: 'delayed',
+      throughputDelta: 2,
     },
     {
       id: 'intervention:city:city-harbor:reporter-expansion',
@@ -1329,6 +1338,9 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       relativeCost: 'faible',
       expectedImpact: 'Préserve 27 stock utile pour une route plus contrainte.',
       riskIfIgnored: 'Dépenser trop tôt peut disperser le surplus de Harbor ★.',
+      previewStatus: 'conditional-benefit',
+      previewTiming: 'delayed',
+      throughputDelta: 1,
     },
     {
       id: 'intervention:city:city-mill:support-city',
@@ -1337,6 +1349,25 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       relativeCost: 'moyen',
       expectedImpact: 'Réduit la tension économique de Mill.',
       riskIfIgnored: 'Mill garde une tension qui concurrence les routes prioritaires.',
+      previewStatus: 'conditional-benefit',
+      previewTiming: 'delayed',
+      throughputDelta: 1,
     },
   ]);
+});
+
+
+test('buildEconomyMapOverlay exposes an explicit no-benefit logistics preview when no decision helps', () => {
+  const overlay = buildEconomyMapOverlay([], []);
+
+  assert.deepEqual(overlay.interventionComparison.options, []);
+  assert.deepEqual(overlay.interventionComparison.emptyPreview, {
+    status: 'no-meaningful-improvement',
+    timing: 'none',
+    throughputDelta: 0,
+    bottleneckPressure: 'unchanged',
+    convoyPriority: 'unchanged',
+    summary: 'Aucune décision ne change le débit, les goulets ou la priorité convoi avec les données actuelles.',
+    condition: 'Attendre un stress, une ressource manquante ou une route priorisable.',
+  });
 });

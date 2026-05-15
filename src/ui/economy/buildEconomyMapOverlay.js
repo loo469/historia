@@ -1503,6 +1503,57 @@ function buildCityInterventionOptions(cityOverlays, cityFeatures) {
     .filter((option) => option.action !== 'reporter-expansion' || option.impactScore >= 4);
 }
 
+
+function buildLogisticsImpactPreview(option) {
+  const netImpact = option.impactScore - option.costScore;
+
+  if (netImpact <= 0) {
+    return {
+      status: 'no-meaningful-improvement',
+      timing: 'none',
+      throughputDelta: 0,
+      bottleneckPressure: 'unchanged',
+      convoyPriority: 'unchanged',
+      summary: `${option.label}: aucun gain net lisible avant engagement.`,
+      condition: 'Revoir seulement si le coût baisse ou si la tension augmente.',
+    };
+  }
+
+  if (option.action === 'convoy-priority') {
+    return {
+      status: 'improved',
+      timing: 'immediate',
+      throughputDelta: Math.min(3, Math.max(1, netImpact)),
+      bottleneckPressure: 'reduced-now',
+      convoyPriority: 'raised',
+      summary: `${option.label}: soulagement immédiat, priorité convoi relevée avant saturation.`,
+      condition: 'Bénéfice immédiat si la capacité convoi est disponible ce tour.',
+    };
+  }
+
+  if (option.action === 'stabilization' || option.action === 'support-city') {
+    return {
+      status: 'conditional-benefit',
+      timing: 'delayed',
+      throughputDelta: Math.min(2, Math.max(1, Math.ceil(netImpact / 3))),
+      bottleneckPressure: option.action === 'stabilization' ? 'reduced-after-stabilization' : 'indirectly-reduced',
+      convoyPriority: 'unchanged-until-ready',
+      summary: `${option.label}: bénéfice différé, la pression baisse après sécurisation.`,
+      condition: 'Valable si la dépense peut être tenue sans retirer la priorité convoi existante.',
+    };
+  }
+
+  return {
+    status: 'conditional-benefit',
+    timing: 'delayed',
+    throughputDelta: Math.min(2, Math.max(1, Math.ceil(netImpact / 4))),
+    bottleneckPressure: option.action === 'reporter-expansion' ? 'preserved' : 'unchanged-until-expanded',
+    convoyPriority: 'unchanged',
+    summary: `${option.label}: effet utile mais non immédiat sur le débit logistique.`,
+    condition: 'À confirmer après résolution des goulets et tensions prioritaires.',
+  };
+}
+
 function buildInterventionComparison(cityOverlays, layers) {
   const options = [
     ...buildRouteInterventionOptions(layers.logistics.features),
@@ -1515,6 +1566,7 @@ function buildInterventionComparison(cityOverlays, layers) {
     .slice(0, 6)
     .map((option, index) => ({
       ...option,
+      logisticsImpactPreview: buildLogisticsImpactPreview(option),
       recommended: index === 0,
       rank: index + 1,
     }));
@@ -1526,6 +1578,15 @@ function buildInterventionComparison(cityOverlays, layers) {
       : `${options.length} interventions comparées; recommandation: ${options[0].label} sur ${options[0].targetLabel}.`,
     options,
     recommendedOptionId: options[0]?.id ?? null,
+    emptyPreview: options.length === 0 ? {
+      status: 'no-meaningful-improvement',
+      timing: 'none',
+      throughputDelta: 0,
+      bottleneckPressure: 'unchanged',
+      convoyPriority: 'unchanged',
+      summary: 'Aucune décision ne change le débit, les goulets ou la priorité convoi avec les données actuelles.',
+      condition: 'Attendre un stress, une ressource manquante ou une route priorisable.',
+    } : null,
     legend: [
       { key: 'relativeCost', label: 'Coût relatif', description: 'Charge locale estimée sans simulation globale.' },
       { key: 'expectedImpact', label: 'Effet aval attendu', description: 'Effet lisible dérivé des routes, stocks et priorités existantes.' },
