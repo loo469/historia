@@ -1876,6 +1876,126 @@ function buildRecoveryCheckpoints(routeFeature) {
   };
 }
 
+
+function classifyRecoveryRisk(checkpoints) {
+  if (checkpoints.status === 'needs-revision') {
+    return 'échec probable';
+  }
+
+  if (checkpoints.status === 'blocked') {
+    return 'révision conseillée';
+  }
+
+  if (checkpoints.status === 'stagnating' || checkpoints.blockingSignals.length > 0) {
+    return 'à surveiller';
+  }
+
+  return 'stable';
+}
+
+function getRecoveryCause(checkpoints, routeFeature) {
+  const signals = checkpoints.blockingSignals.join(' ').toLowerCase();
+
+  if (signals.includes('délai')) {
+    return 'délai';
+  }
+
+  if (signals.includes('goulot') || signals.includes('surveiller')) {
+    return 'goulot persistant';
+  }
+
+  if (signals.includes('stock')) {
+    return 'stock insuffisant';
+  }
+
+  if (signals.includes('re-perturbation') || routeFeature.recoveryPlanner.options[0]?.reDisruptionRisk === 'high') {
+    return 're-perturbation';
+  }
+
+  return checkpoints.dataCompleteness === 'complete' ? 'dépendance externe' : 'données partielles';
+}
+
+function getRecoveryAction(classification, cause, routeFeature) {
+  if (classification === 'stable') {
+    return 'continuer';
+  }
+
+  if (cause === 'goulot persistant') {
+    return routeFeature.bottleneckResourceId === null ? 'renforcer' : 'prioriser stock';
+  }
+
+  if (cause === 'stock insuffisant') {
+    return 'prioriser stock';
+  }
+
+  if (cause === 'délai' || cause === 're-perturbation') {
+    return 'rerouter';
+  }
+
+  if (classification === 'échec probable') {
+    return 'abandonner temporairement';
+  }
+
+  return 'renforcer';
+}
+
+function buildAtRiskRecoverySummary(logisticsFeatures) {
+  const entries = logisticsFeatures.map((feature) => {
+    const checkpoints = feature.recoveryCheckpoints;
+    const classification = classifyRecoveryRisk(checkpoints);
+    const cause = getRecoveryCause(checkpoints, feature);
+    const action = getRecoveryAction(classification, cause, feature);
+    const watchCheckpoint = checkpoints.checkpoints.find((checkpoint) => ['blocked', 'watch', 'revise'].includes(checkpoint.status))
+      ?? checkpoints.checkpoints.at(-1);
+
+    return {
+      id: `recovery-risk:${feature.routeId}`,
+      targetType: 'route',
+      targetId: feature.routeId,
+      label: feature.label,
+      classification,
+      cause,
+      action,
+      linkedCheckpointId: watchCheckpoint?.id ?? null,
+      linkedPlannerId: checkpoints.linkedPlannerId,
+      linkedOptionId: checkpoints.linkedOptionId,
+      severity: classification === 'échec probable'
+        ? 'critical'
+        : classification === 'révision conseillée'
+          ? 'high'
+          : classification === 'à surveiller'
+            ? 'medium'
+            : 'low',
+      reason: classification === 'stable'
+        ? `${feature.label}: reprise stable, continuer le plan choisi.`
+        : `${feature.label}: ${classification} à cause de ${cause}; action courte: ${action}.`,
+    };
+  }).sort((left, right) => {
+    const rank = { critical: 0, high: 1, medium: 2, low: 3 };
+
+    return rank[left.severity] - rank[right.severity]
+      || left.label.localeCompare(right.label);
+  });
+  const riskyEntries = entries.filter((entry) => entry.classification !== 'stable');
+
+  return {
+    id: 'logistics-recovery-risk-summary',
+    title: 'Synthèse reprises logistiques à risque',
+    summary: riskyEntries.length === 0
+      ? 'Toutes les reprises logistiques suivent le plan visible.'
+      : `${riskyEntries.length} reprise(s) demandent une décision après checkpoints.`,
+    entries,
+    atRiskCount: riskyEntries.length,
+    recommendedEntryId: riskyEntries[0]?.id ?? entries[0]?.id ?? null,
+    legend: [
+      { key: 'stable', label: 'Stable', tone: 'positive' },
+      { key: 'à surveiller', label: 'À surveiller', tone: 'warning' },
+      { key: 'révision conseillée', label: 'Révision conseillée', tone: 'danger' },
+      { key: 'échec probable', label: 'Échec probable', tone: 'critical' },
+    ],
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -1971,6 +2091,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       features: logisticsFeaturesWithPlanners,
       stressFilters: buildRouteStressFilters(logisticsFeaturesWithPlanners),
       recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeaturesWithPlanners),
+      atRiskRecoverySummary: buildAtRiskRecoverySummary(logisticsFeaturesWithPlanners),
       recoveryPlannerLegend: [
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },

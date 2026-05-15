@@ -1445,6 +1445,35 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     'residual-risk',
     'stable-return',
   ]);
+  assert.deepEqual(overlay.layers.logistics.atRiskRecoverySummary, {
+    id: 'logistics-recovery-risk-summary',
+    title: 'Synthèse reprises logistiques à risque',
+    summary: '1 reprise(s) demandent une décision après checkpoints.',
+    entries: [
+      {
+        id: 'recovery-risk:route-coast',
+        targetType: 'route',
+        targetId: 'route-coast',
+        label: 'Coast Road (land)',
+        classification: 'à surveiller',
+        cause: 'goulot persistant',
+        action: 'prioriser stock',
+        linkedCheckpointId: 'recovery-planner:route-coast:residual-risk',
+        linkedPlannerId: 'recovery-planner:route-coast',
+        linkedOptionId: 'recovery:route-coast:prioritize-stock',
+        severity: 'medium',
+        reason: 'Coast Road (land): à surveiller à cause de goulot persistant; action courte: prioriser stock.',
+      },
+    ],
+    atRiskCount: 1,
+    recommendedEntryId: 'recovery-risk:route-coast',
+    legend: [
+      { key: 'stable', label: 'Stable', tone: 'positive' },
+      { key: 'à surveiller', label: 'À surveiller', tone: 'warning' },
+      { key: 'révision conseillée', label: 'Révision conseillée', tone: 'danger' },
+      { key: 'échec probable', label: 'Échec probable', tone: 'critical' },
+    ],
+  });
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
     targetId: marker.targetId,
