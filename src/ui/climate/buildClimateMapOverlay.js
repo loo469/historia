@@ -1881,6 +1881,54 @@ function describeClimateBundleExpectedEffect(bundle) {
   return 'intervention différée: évite de verrouiller une fenêtre trop contradictoire';
 }
 
+function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview) {
+  const minimalItems = followUpQueue.filter((item) => item.classification === 'urgent');
+  const safeItems = minimalItems.length > 0
+    ? minimalItems
+    : followUpQueue.filter((item) => item.classification === 'prudent').slice(0, 1).concat(
+      followUpQueue.some((item) => item.classification === 'prudent') ? [] : followUpQueue.filter((item) => item.classification === 'deferrable').slice(0, 1),
+    );
+  const ambitiousItems = followUpQueue.filter((item) => item.classification !== 'deferrable');
+  const conflictSignals = [
+    ...(bundle.resourceConflicts.includes('mitigation') ? ['mitigation'] : []),
+    ...(bundle.resourceConflicts.includes('reserve') ? ['reserve'] : []),
+    ...(preview.coolingOffTurns > 1 || bundle.resourceConflicts.includes('window-timing') ? ['cooling-off-timing'] : []),
+    ...(preview.reboundRegionIds.length > 0 || bundle.resourceConflicts.includes('residual-risk') ? ['regional-residual-risk'] : []),
+  ];
+  const buildBundle = (kind, items) => ({
+    compatibilityBundleId: `${bundle.bundleId}:compat:${kind}`,
+    kind,
+    followUpIds: items.map((item) => item.followUpId),
+    regionIds: items.map((item) => item.regionId),
+    safety: kind === 'minimal-safe' ? 'safe' : (conflictSignals.length > 0 ? 'fragile' : 'safe'),
+    conflictSignals: kind === 'minimal-safe'
+      ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
+      : conflictSignals,
+    reason: kind === 'minimal-safe'
+      ? 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat'
+      : 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
+  });
+  const minimalSafeBundle = buildBundle('minimal-safe', safeItems);
+  const ambitiousFragileBundle = buildBundle('ambitious-fragile', ambitiousItems.length > 0 ? ambitiousItems : followUpQueue);
+  const pendingIfMinimal = followUpQueue
+    .filter((item) => !minimalSafeBundle.followUpIds.includes(item.followUpId))
+    .map((item) => ({
+      followUpId: item.followUpId,
+      regionId: item.regionId,
+      reason: item.classification === 'deferrable'
+        ? 'différable sans rebond immédiat'
+        : 'à laisser après confirmation de la fenêtre de cooling-off',
+    }));
+
+  return {
+    recommendedMinimalBundleId: minimalSafeBundle.compatibilityBundleId,
+    ambitiousFragileBundleId: ambitiousFragileBundle.compatibilityBundleId,
+    bundles: [minimalSafeBundle, ambitiousFragileBundle],
+    pendingIfMinimal,
+    summary: `${followUpQueue.length} suivi(s), ${pendingIfMinimal.length} laissé(s) en attente si bundle minimal.`,
+  };
+}
+
 function buildClimateBundleFollowUpQueue(bundle, preview) {
   const reboundRegionSet = new Set(preview.reboundRegionIds);
   const conflicts = new Set(bundle.resourceConflicts);
@@ -1958,9 +2006,12 @@ function buildClimateBundleAfterActionPreview(bundle) {
       : `${coolingOffTurns} tour(s) de cooling-off; aucun rebond régional probable si la réserve reste disponible.`,
   };
 
+  const followUpQueue = buildClimateBundleFollowUpQueue(bundle, preview);
+
   return {
     ...preview,
-    followUpQueue: buildClimateBundleFollowUpQueue(bundle, preview),
+    followUpQueue,
+    followUpCompatibility: buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview),
   };
 }
 
@@ -2001,6 +2052,7 @@ function normalizeClimateBundleAfterActionPreview(preview, basePreview) {
         nextAction: String(normalizedItem.nextAction).trim(),
       };
     }),
+    followUpCompatibility: normalizedPreview.followUpCompatibility ?? basePreview.followUpCompatibility,
   };
 }
 
