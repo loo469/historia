@@ -1559,6 +1559,113 @@ function buildAtlasMilitaryCommitmentConflictResolver(commitment, commitmentConf
   };
 }
 
+
+function getAtlasMilitaryAuditStatusForDecision(decision) {
+  if (decision === 'exécuter') return 'appliqué';
+  if (decision === 'différer') return 'reporté';
+  if (decision === 'remplacer' || decision === 'bloquer') return 'annulé';
+  return 'à revoir';
+}
+
+function buildAtlasMilitaryPostResolutionOrderAudit(commitment, commitmentConflicts, commitmentCoverage, commitmentWarnings, commitmentResolver) {
+  if (!commitment || commitment.empty || !commitment.stages.length) {
+    return {
+      rows: [],
+      summary: 'Audit post-résolution vide: aucun ordre contesté à vérifier.',
+      empty: true,
+    };
+  }
+
+  const auditByProvince = new Map();
+  const pushAuditRow = (label, status, cause, nextCorrection, priority = 0) => {
+    if (!label) return;
+    const previous = auditByProvince.get(label);
+    const candidate = {
+      auditId: `post-resolution:${label}:${status}`,
+      provinceLabel: label,
+      status,
+      tone: status === 'appliqué' ? 'applied' : status === 'reporté' ? 'delayed' : status === 'annulé' ? 'cancelled' : 'review',
+      cause,
+      nextCorrection,
+      priority,
+    };
+    if (!previous || candidate.priority > previous.priority) {
+      auditByProvince.set(label, candidate);
+    }
+  };
+
+  const targetLabel = commitment.selectedOption?.targetProvinceLabel ?? commitment.selectedOption?.target ?? null;
+  const resolverDecision = commitmentResolver?.recommendations?.[0]?.decision ?? 'exécuter';
+  pushAuditRow(
+    targetLabel,
+    getAtlasMilitaryAuditStatusForDecision(resolverDecision),
+    commitmentResolver?.recommendations?.[0]?.reason ?? 'ordre résolu sans conflit bloquant',
+    commitmentResolver?.recommendations?.[0]?.risk ?? 'prochaine correction: surveiller le front couvert',
+    commitmentResolver?.recommendations?.[0]?.priority ?? 32,
+  );
+
+  for (const conflict of commitmentConflicts?.conflicts ?? []) {
+    const status = conflict.severity === 'haute' ? 'annulé' : 'reporté';
+    pushAuditRow(
+      conflict.provinceLabel,
+      status,
+      conflict.explanation,
+      conflict.decision,
+      conflict.priority,
+    );
+  }
+
+  for (const warning of commitmentWarnings?.warnings ?? []) {
+    pushAuditRow(
+      warning.label,
+      warning.tone === 'critical' ? 'annulé' : 'à revoir',
+      warning.degradation,
+      warning.action,
+      warning.urgencyScore,
+    );
+  }
+
+  for (const front of commitmentCoverage?.uncoveredFronts ?? []) {
+    pushAuditRow(
+      front.label,
+      'à revoir',
+      front.reason,
+      'prochaine correction: ajouter couverture ou reporter l’ordre secondaire',
+      front.pressure,
+    );
+  }
+
+  const rows = [...auditByProvince.values()]
+    .sort((left, right) => right.priority - left.priority || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 4);
+
+  return {
+    rows,
+    summary: rows.length > 0
+      ? `${rows.length} province${rows.length > 1 ? 's' : ''} auditée${rows.length > 1 ? 's' : ''} après résolution des ordres.`
+      : 'Audit post-résolution clair: aucun report, annulation ou correction restante.',
+    empty: rows.length === 0,
+  };
+}
+
+function renderAtlasMilitaryPostResolutionOrderAudit(audit) {
+  const height = audit.empty ? 8 : 7 + (audit.rows.length * 4.9);
+  return `
+    <g class="atlas-military-post-resolution-audit" aria-label="Audit post-résolution des ordres contestés: ${audit.summary}">
+      <rect class="atlas-military-post-resolution-audit__panel" x="44" y="44" width="36" height="${height}" rx="2.4"></rect>
+      <text class="atlas-military-post-resolution-audit__title" x="46" y="47.2">Audit post-résolution</text>
+      ${audit.empty ? `<text class="atlas-military-post-resolution-audit__empty" x="46" y="50.6">${audit.summary}</text>` : audit.rows.map((row, index) => `
+        <g class="atlas-military-post-resolution-row atlas-military-post-resolution-row--${row.tone}" data-atlas-post-resolution-audit="${row.auditId}" aria-label="${row.provinceLabel}: ${row.status}; cause principale: ${row.cause}; ${row.nextCorrection}">
+          <rect x="46" y="${49.1 + index * 4.9}" width="5" height="3" rx="0.8"></rect>
+          <text class="atlas-military-post-resolution-row__status" x="52" y="${50.1 + index * 4.9}">${row.status} · ${row.provinceLabel}</text>
+          <text class="atlas-military-post-resolution-row__cause" x="52" y="${51.7 + index * 4.9}">${row.cause}</text>
+          <text class="atlas-military-post-resolution-row__next" x="52" y="${53.3 + index * 4.9}">${row.nextCorrection}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryCommitmentConflictResolver(resolver) {
   const height = resolver.empty ? 8 : 8 + (resolver.recommendations.length * 5.2);
   return `
@@ -2543,6 +2650,7 @@ function renderAtlasMilitaryLayer(shell) {
   const commitmentPriority = buildAtlasMilitaryCommitmentDebtPriorities(commitmentDebt, commitmentCoverage, stagedCommitment);
   const commitmentWarnings = buildAtlasMilitaryCommitmentNextTurnWarnings(commitmentPriority, commitmentDebt, commitmentCoverage, stagedCommitment);
   const commitmentResolver = buildAtlasMilitaryCommitmentConflictResolver(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentPriority, commitmentWarnings);
+  const postResolutionAudit = buildAtlasMilitaryPostResolutionOrderAudit(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentWarnings, commitmentResolver);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -2575,6 +2683,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentDebtPriorities(commitmentPriority)}
       ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
       ${renderAtlasMilitaryCommitmentConflictResolver(commitmentResolver)}
+      ${renderAtlasMilitaryPostResolutionOrderAudit(postResolutionAudit)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
