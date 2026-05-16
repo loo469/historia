@@ -18084,6 +18084,49 @@ function renderEconomyRecoveryDebtLedger(economyView) {
 }
 
 
+function renderEconomyRecoveryRepaymentPriorities(economyView) {
+  const view = economyView.overlay.layers?.logistics?.recoveryDebtRepaymentPriorities ?? null;
+
+  if (!view) {
+    return '';
+  }
+
+  return `
+    <section class="economy-repayment-priorities" aria-label="Priorités de remboursement de dette logistique">
+      <div class="economy-repayment-priorities__header">
+        <span>Priorités remboursement</span>
+        <strong>${view.title}</strong>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="economy-repayment-priorities__list">
+        ${view.priorities.map((priority) => `
+          <li class="economy-repayment-priorities__item economy-repayment-priorities__item--${priority.tone}">
+            <div>
+              <b>#${priority.rank} · ${priority.label}</b>
+              <small>${priority.corridor}</small>
+            </div>
+            <p>${priority.blockingImpact}</p>
+            <p>${priority.expectedGain}</p>
+            <strong>${priority.nextAction}</strong>
+          </li>
+        `).join('')}
+      </ol>
+      ${view.waitable.length > 0 ? `
+        <div class="economy-repayment-priorities__wait">
+          <span>Peut attendre</span>
+          <small>${view.waitable.map((priority) => `${priority.label}: ${priority.blockingImpact}`).join(' · ')}</small>
+        </div>
+      ` : ''}
+      <footer>
+        <span>Décision</span>
+        <strong>${view.nextAction}</strong>
+        <small>${view.decisionJustification}</small>
+      </footer>
+    </section>
+  `;
+}
+
+
 function renderEconomySidePanel(economyView, cultureView) {
   const culturePanel = renderCultureSidePanel(cultureView);
 
@@ -18143,6 +18186,7 @@ function renderEconomySidePanel(economyView, cultureView) {
       ${renderEconomyKpiStrip(economyView)}
       ${renderEconomyFocusPanel(economyView)}
       ${renderEconomyRecoveryDebtLedger(economyView)}
+      ${renderEconomyRecoveryRepaymentPriorities(economyView)}
       ${selectedRoute && selectedRouteStress ? `
         <article class="economy-route-stress-panel economy-route-stress-panel--${selectedRouteStress.tone}">
           <div class="economy-route-stress-panel__header">

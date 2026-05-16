@@ -12756,7 +12756,6 @@ button { font: inherit; }
 .economy-recovery-debt__entry--warning { border-color: rgba(245, 158, 11, 0.3); }
 .economy-recovery-debt__entry--positive { border-color: rgba(74, 222, 128, 0.22); }
 
-
 .atlas-military-post-resolution-audit__panel {
   fill: rgba(15, 23, 42, 0.8);
   stroke: rgba(125, 211, 252, 0.46);
@@ -12790,4 +12789,76 @@ button { font: inherit; }
 .atlas-military-post-resolution-audit__empty {
   fill: #fde68a;
   font-size: 0.76px;
+}
+.economy-repayment-priorities {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(8, 15, 28, 0.78), rgba(15, 23, 42, 0.5));
+  border: 1px solid rgba(103, 232, 249, 0.16);
+}
+.economy-repayment-priorities__header,
+.economy-repayment-priorities footer {
+  display: grid;
+  gap: 3px;
+}
+.economy-repayment-priorities__header span,
+.economy-repayment-priorities footer span,
+.economy-repayment-priorities__wait span {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.economy-repayment-priorities__header strong,
+.economy-repayment-priorities footer strong { color: #f8fafc; }
+.economy-repayment-priorities p,
+.economy-repayment-priorities small {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.economy-repayment-priorities__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.economy-repayment-priorities__item {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.economy-repayment-priorities__item div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.economy-repayment-priorities__item b,
+.economy-repayment-priorities__item strong { color: #f8fafc; }
+.economy-repayment-priorities__item > strong {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.12);
+  color: #cffafe;
+  font-size: 11px;
+}
+.economy-repayment-priorities__item--critical { border-color: rgba(251, 113, 133, 0.36); }
+.economy-repayment-priorities__item--warning { border-color: rgba(245, 158, 11, 0.32); }
+.economy-repayment-priorities__item--positive { border-color: rgba(74, 222, 128, 0.22); }
+.economy-repayment-priorities__wait {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(22, 101, 52, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.18);
 }
