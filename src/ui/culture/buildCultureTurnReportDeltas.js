@@ -576,6 +576,64 @@ function buildCulturalFollowUpPrompts(bundles, incompatibilities) {
   };
 }
 
+function buildCulturalPromptChoiceEntry(prompt, bundles, timingWindows) {
+  const bundle = bundles.find((candidate) => candidate.bundleId === prompt.bundleId);
+  const window = timingWindows.find((candidate) => candidate.timingId === prompt.timingId);
+  const role = prompt.state === 'compatible'
+    ? 'best-safe'
+    : prompt.state === 'risky'
+      ? 'risky-useful'
+      : 'wait';
+  const narrativeImpact = role === 'best-safe'
+    ? `${prompt.label} garde ${bundle?.label ?? 'l’engagement'} lisible et transforme ${prompt.clusterLabel} en suivi narratif immédiat.`
+    : role === 'risky-useful'
+      ? `${prompt.label} peut préserver le momentum de ${prompt.clusterLabel}, mais le choix doit absorber le risque: ${prompt.riskReason ?? 'précondition fragile'}.`
+      : `${prompt.label} reste en attente: ${prompt.riskReason ?? 'conditions prématurées'} sans devenir recommandation forte.`;
+  const lostMomentumRisk = window?.status === 'soon-lost'
+    ? 'ne rien choisir peut perdre la fenêtre au prochain tour'
+    : window?.status === 'immediate'
+      ? 'ne rien choisir dilue le momentum actif et laisse les signaux concurrents reprendre la priorité'
+      : 'ne rien choisir conserve le suivi, mais reporte l’arbitrage narratif';
+
+  return {
+    comparisonId: `${prompt.promptId}:choice-comparison`,
+    promptId: prompt.promptId,
+    role,
+    label: role === 'best-safe' ? 'meilleur suivi sûr' : role === 'risky-useful' ? 'suivi risqué mais utile' : 'suivi à attendre',
+    clusterLabel: prompt.clusterLabel,
+    promptLabel: prompt.label,
+    narrativeImpact,
+    lostMomentumRisk,
+    recommendationIds: prompt.recommendationIds,
+  };
+}
+
+function buildCulturalPromptChoiceComparison(followUpPrompts, bundles, timingWindows) {
+  const entries = followUpPrompts.prompts.map((prompt) => buildCulturalPromptChoiceEntry(prompt, bundles, timingWindows));
+  const hasSafe = entries.some((entry) => entry.role === 'best-safe');
+  const hasRisky = entries.some((entry) => entry.role === 'risky-useful');
+  const state = entries.length === 0
+    ? 'quiet'
+    : hasSafe
+      ? 'ready'
+      : hasRisky
+        ? 'risky'
+        : 'wait';
+
+  return {
+    state,
+    summary: entries.length === 0
+      ? 'Aucun arbitrage de prompt culturel disponible.'
+      : `${entries.length} choix de prompt culturel comparé${entries.length > 1 ? 's' : ''}.`,
+    entries,
+    noChoiceRisk: entries.length === 0
+      ? 'Aucun momentum culturel à arbitrer.'
+      : entries.find((entry) => entry.role === 'risky-useful')?.lostMomentumRisk
+        ?? entries.find((entry) => entry.role === 'best-safe')?.lostMomentumRisk
+        ?? 'ne rien choisir garde les prompts prématurés en attente sans renforcer le récit',
+  };
+}
+
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = []) {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
@@ -676,6 +734,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     });
 
   const followUpPrompts = buildCulturalFollowUpPrompts(bundles, incompatibilities);
+  const promptChoiceComparison = buildCulturalPromptChoiceComparison(followUpPrompts, bundles, timingWindows);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -689,6 +748,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
       ? 'Aucune fenêtre de timing culturel active.'
       : `${timingWindows.length} fenêtre${timingWindows.length > 1 ? 's' : ''} de timing culturel après bundle.`,
     followUpPrompts,
+    promptChoiceComparison,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -783,6 +843,12 @@ export function buildCultureTurnReportDeltas({
           state: 'quiet',
           summary: 'Aucun prompt de suivi culturel après timing.',
           prompts: [],
+        },
+        promptChoiceComparison: {
+          state: 'quiet',
+          summary: 'Aucun arbitrage de prompt culturel disponible.',
+          entries: [],
+          noChoiceRisk: 'Aucun momentum culturel à arbitrer.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },

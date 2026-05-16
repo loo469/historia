@@ -226,6 +226,24 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         },
       ],
     },
+    promptChoiceComparison: {
+      state: 'ready',
+      summary: '1 choix de prompt culturel comparé.',
+      entries: [
+        {
+          comparisonId: 'culture-commitment:expansion:timing:river-gate:follow-up:choice-comparison',
+          promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+          role: 'best-safe',
+          label: 'meilleur suivi sûr',
+          clusterLabel: 'Compact d’Aurora',
+          promptLabel: 'Ouvrir le récit d’expansion',
+          narrativeImpact: 'Ouvrir le récit d’expansion garde expansion prudente lisible et transforme Compact d’Aurora en suivi narratif immédiat.',
+          lostMomentumRisk: 'ne rien choisir dilue le momentum actif et laisse les signaux concurrents reprendre la priorité',
+          recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
+        },
+      ],
+      noChoiceRisk: 'ne rien choisir dilue le momentum actif et laisse les signaux concurrents reprendre la priorité',
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -272,6 +290,12 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         state: 'quiet',
         summary: 'Aucun prompt de suivi culturel après timing.',
         prompts: [],
+      },
+      promptChoiceComparison: {
+        state: 'quiet',
+        summary: 'Aucun arbitrage de prompt culturel disponible.',
+        entries: [],
+        noChoiceRisk: 'Aucun momentum culturel à arbitrer.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
@@ -626,4 +650,12 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   ]);
   assert.match(report.commitmentBundles.followUpPrompts.prompts[0].reasonNow, /fenêtre recommandée/);
   assert.match(report.commitmentBundles.followUpPrompts.prompts[2].riskReason, /conditions culturelles|timing narratif/);
+  assert.equal(report.commitmentBundles.promptChoiceComparison.state, 'risky');
+  assert.deepEqual(report.commitmentBundles.promptChoiceComparison.entries.map((entry) => [entry.clusterLabel, entry.role, entry.label]), [
+    ['Compact d’Aurora', 'risky-useful', 'suivi risqué mais utile'],
+    ['Harbor Compact', 'risky-useful', 'suivi risqué mais utile'],
+    ['Ember Guild', 'wait', 'suivi à attendre'],
+  ]);
+  assert.match(report.commitmentBundles.promptChoiceComparison.entries[0].narrativeImpact, /préserver le momentum/);
+  assert.match(report.commitmentBundles.promptChoiceComparison.noChoiceRisk, /momentum|fenêtre/);
 });
