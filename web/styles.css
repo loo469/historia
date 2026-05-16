@@ -1860,6 +1860,56 @@ button { font: inherit; }
 .culture-turn-report__choice-entry--best-safe { border-color: rgba(74, 222, 128, 0.34); }
 .culture-turn-report__choice-entry--risky-useful { border-color: rgba(251, 191, 36, 0.44); }
 .culture-turn-report__choice-entry--wait { border-color: rgba(148, 163, 184, 0.26); }
+.culture-turn-report__history {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(14, 165, 233, 0.12);
+}
+.culture-turn-report__history summary {
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+}
+.culture-turn-report__history summary span {
+  color: #93c5fd;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__history summary strong {
+  color: #f8fafc;
+  font-size: 12px;
+}
+.culture-turn-report__history > small { color: var(--muted); }
+.culture-turn-report__history-current,
+.culture-turn-report__history-groups {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+.culture-turn-report__history-pill,
+.culture-turn-report__history-group {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.38);
+  border: 1px solid rgba(147, 197, 253, 0.18);
+}
+.culture-turn-report__history-pill b,
+.culture-turn-report__history-group b { color: #dbeafe; }
+.culture-turn-report__history-pill small,
+.culture-turn-report__history-group small { color: var(--muted); }
+.culture-turn-report__history-group em {
+  color: #93c5fd;
+  font-style: normal;
+  font-size: 11px;
+}
+.culture-turn-report__history-pill--repeated,
+.culture-turn-report__history-group--repeat { border-color: rgba(251, 191, 36, 0.44); }
+.culture-turn-report__history-pill--new { border-color: rgba(74, 222, 128, 0.24); }
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

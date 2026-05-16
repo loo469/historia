@@ -6248,6 +6248,34 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucun prompt compatible, risqué ou à attendre à comparer.</small>'}
       </div>
+      <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
+        <summary>
+          <span>Historique culturel</span>
+          <strong>${report.commitmentBundles?.promptHistoryDrawer?.summary ?? 'Aucun historique de prompt culturel à afficher.'}</strong>
+        </summary>
+        <small>${report.commitmentBundles?.promptHistoryDrawer?.emptyHint ?? 'Historique limité aux décisions récentes pour garder le drawer lisible.'} Limite: ${report.commitmentBundles?.promptHistoryDrawer?.displayLimit ?? 5} entrées.</small>
+        ${(report.commitmentBundles?.promptHistoryDrawer?.currentEntries ?? []).length > 0 ? `
+          <div class="culture-turn-report__history-current">
+            ${report.commitmentBundles.promptHistoryDrawer.currentEntries.map((entry) => `
+              <span class="culture-turn-report__history-pill culture-turn-report__history-pill--${entry.repeatState}">
+                <b>${entry.promptLabel}</b>
+                <small>${entry.clusterLabel} · ${entry.repeatState === 'repeated' ? 'déjà proche' : 'nouveau'} · ${entry.repeatReason}</small>
+              </span>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${(report.commitmentBundles?.promptHistoryDrawer?.groups ?? []).length > 0 ? `
+          <div class="culture-turn-report__history-groups">
+            ${report.commitmentBundles.promptHistoryDrawer.groups.map((group) => `
+              <article class="culture-turn-report__history-group ${group.hasRepeat ? 'culture-turn-report__history-group--repeat' : ''}">
+                <b>${group.clusterLabel}</b>
+                <em>${group.theme}</em>
+                <small>${group.entries.length} entrée${group.entries.length > 1 ? 's' : ''}${group.hasRepeat ? ' · répétition possible' : ''}</small>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucune décision précédente à regrouper pour cette sélection.</small>'}
+      </details>
     </div>
   `;
 }
