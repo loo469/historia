@@ -1749,6 +1749,68 @@ function renderAtlasMilitaryNextTurnCarryOverQueue(queue) {
   `;
 }
 
+
+function getAtlasMilitaryTimelineDecisionImpact(item) {
+  if (item.sourceStatus === 'appliqué') return 'ordre maintenu';
+  if (item.kind === 'obligatoire' || item.sourceStatus === 'annulé') return 'conflit non résolu';
+  if (item.kind === 'opportuniste' || item.sourceStatus === 'à revoir') return 'ordre à revoir';
+  return 'surveillance maintenue';
+}
+
+function buildAtlasMilitaryCarryOverOutcomeTimeline(carryOverQueue) {
+  const items = carryOverQueue?.items ?? [];
+  if (!items.length) {
+    return {
+      timelines: [],
+      summary: 'Timeline carry-over vide: aucune province contestée à suivre.',
+      empty: true,
+    };
+  }
+
+  const timelines = items.slice(0, 3).map((item) => {
+    const entries = [
+      { step: 'résultat', label: item.sourceStatus, emphasis: item.sourceStatus !== 'appliqué' },
+      { step: 'décision', label: getAtlasMilitaryTimelineDecisionImpact(item), emphasis: item.kind !== 'à surveiller' },
+      { step: 'prochain', label: item.kind, emphasis: item.kind === 'obligatoire' },
+    ];
+    return {
+      timelineId: `carry-over-timeline:${item.provinceLabel}`,
+      provinceLabel: item.provinceLabel,
+      tone: item.tone,
+      impact: getAtlasMilitaryTimelineDecisionImpact(item),
+      condition: item.condition,
+      entries,
+    };
+  });
+
+  return {
+    timelines,
+    summary: `${timelines.length} timeline${timelines.length > 1 ? 's' : ''} compacte${timelines.length > 1 ? 's' : ''} de province contestée.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryCarryOverOutcomeTimeline(timeline) {
+  const height = timeline.empty ? 7 : 6.5 + (timeline.timelines.length * 5.4);
+  return `
+    <g class="atlas-military-outcome-timeline" aria-label="Timeline des décisions de provinces contestées: ${timeline.summary}">
+      <rect class="atlas-military-outcome-timeline__panel" x="82" y="44" width="15" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-outcome-timeline__title" x="83" y="46.8">Timeline</text>
+      ${timeline.empty ? `<text class="atlas-military-outcome-timeline__empty" x="83" y="50">${timeline.summary}</text>` : timeline.timelines.map((row, index) => `
+        <g class="atlas-military-outcome-timeline-row atlas-military-outcome-timeline-row--${row.tone}" data-atlas-outcome-timeline="${row.timelineId}" aria-label="${row.provinceLabel}: ${row.impact}; condition prochain tour: ${row.condition}">
+          <text class="atlas-military-outcome-timeline-row__province" x="83" y="${49.5 + index * 5.4}">${row.provinceLabel}</text>
+          ${row.entries.map((entry, entryIndex) => `
+            <g class="atlas-military-outcome-timeline-entry ${entry.emphasis ? 'is-decision-changing' : ''}" aria-label="${entry.step}: ${entry.label}">
+              <circle cx="${83.4 + entryIndex * 4.1}" cy="${51.3 + index * 5.4}" r="0.6"></circle>
+              <text x="${84.2 + entryIndex * 4.1}" y="${52 + index * 5.4}">${entry.label}</text>
+            </g>
+          `).join('')}
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryCommitmentConflictResolver(resolver) {
   const height = resolver.empty ? 8 : 8 + (resolver.recommendations.length * 5.2);
   return `
@@ -2735,6 +2797,7 @@ function renderAtlasMilitaryLayer(shell) {
   const commitmentResolver = buildAtlasMilitaryCommitmentConflictResolver(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentPriority, commitmentWarnings);
   const postResolutionAudit = buildAtlasMilitaryPostResolutionOrderAudit(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentWarnings, commitmentResolver);
   const nextTurnCarryOverQueue = buildAtlasMilitaryNextTurnCarryOverQueue(postResolutionAudit, shell);
+  const carryOverOutcomeTimeline = buildAtlasMilitaryCarryOverOutcomeTimeline(nextTurnCarryOverQueue);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -2769,6 +2832,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentConflictResolver(commitmentResolver)}
       ${renderAtlasMilitaryPostResolutionOrderAudit(postResolutionAudit)}
       ${renderAtlasMilitaryNextTurnCarryOverQueue(nextTurnCarryOverQueue)}
+      ${renderAtlasMilitaryCarryOverOutcomeTimeline(carryOverOutcomeTimeline)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
