@@ -6066,6 +6066,22 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucun cluster culturel actif ne force un engagement ce tour.</small>'}
       </div>
+      <div class="culture-turn-report__follow-up culture-turn-report__follow-up--${report.commitmentBundles?.followUpPrompts?.state ?? 'quiet'}" aria-label="Prompts de suivi culturel après choix de timing">
+        <span>Suivis après décision</span>
+        <strong>${report.commitmentBundles?.followUpPrompts?.summary ?? 'Aucun prompt de suivi culturel après timing.'}</strong>
+        ${(report.commitmentBundles?.followUpPrompts?.prompts ?? []).length > 0 ? `
+          <div class="culture-turn-report__follow-up-list">
+            ${report.commitmentBundles.followUpPrompts.prompts.map((prompt) => `
+              <article class="culture-turn-report__follow-up-prompt culture-turn-report__follow-up-prompt--${prompt.state}" data-culture-follow-up-prompt="${prompt.promptId}">
+                <b>${prompt.label}</b>
+                <em>${prompt.clusterLabel} · ${prompt.state === 'compatible' ? 'compatible' : prompt.state === 'risky' ? 'risqué' : 'prématuré'}</em>
+                <small>${prompt.reasonNow}</small>
+                <small>${prompt.nextStep}${prompt.riskReason ? ` · ${prompt.riskReason}` : ''}</small>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucun suivi narratif à proposer tant qu’aucune fenêtre n’est recommandée ou choisie.</small>'}
+      </div>
     </div>
   `;
 }

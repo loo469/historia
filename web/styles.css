@@ -1776,6 +1776,48 @@ button { font: inherit; }
 .culture-turn-report__timing-window--immediate { border-color: rgba(34, 211, 238, 0.28); }
 .culture-turn-report__timing-window--wait { border-color: rgba(148, 163, 184, 0.2); }
 .culture-turn-report__timing-window--soon-lost { border-color: rgba(251, 191, 36, 0.4); }
+.culture-turn-report__follow-up {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(125, 211, 252, 0.1);
+}
+.culture-turn-report__follow-up > span {
+  color: #c4b5fd;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__follow-up > strong {
+  color: #f8fafc;
+  font-size: 12px;
+}
+.culture-turn-report__follow-up > small { color: var(--muted); }
+.culture-turn-report__follow-up-list {
+  display: grid;
+  gap: 6px;
+}
+.culture-turn-report__follow-up-prompt {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.34);
+  border: 1px solid rgba(196, 181, 253, 0.18);
+}
+.culture-turn-report__follow-up-prompt b { color: #f5f3ff; }
+.culture-turn-report__follow-up-prompt em {
+  color: #c4b5fd;
+  font-style: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.culture-turn-report__follow-up-prompt small { color: var(--muted); }
+.culture-turn-report__follow-up-prompt--compatible { border-color: rgba(74, 222, 128, 0.28); }
+.culture-turn-report__follow-up-prompt--risky { border-color: rgba(251, 191, 36, 0.42); }
+.culture-turn-report__follow-up-prompt--premature { border-color: rgba(148, 163, 184, 0.24); }
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
