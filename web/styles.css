@@ -10948,6 +10948,7 @@ button { font: inherit; }
 .atlas-military-commitment-resolver,
 .atlas-military-post-resolution-audit,
 .atlas-military-carry-over-queue,
+.atlas-military-outcome-timeline,
 .atlas-military-warning-relief,
 .atlas-military-best-order,
 .atlas-military-fallback-order,
@@ -13048,3 +13049,44 @@ button { font: inherit; }
 .economy-repayment-scenario__option b { color: #e0f2fe; }
 .economy-repayment-scenario__option--warning { border-color: rgba(245, 158, 11, 0.34); }
 .economy-repayment-scenario__option--positive { border-color: rgba(74, 222, 128, 0.28); }
+
+
+.atlas-military-outcome-timeline__panel {
+  fill: rgba(15, 23, 42, 0.76);
+  stroke: rgba(125, 211, 252, 0.42);
+  stroke-width: 0.3;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-outcome-timeline__title,
+.atlas-military-outcome-timeline-row text,
+.atlas-military-outcome-timeline__empty {
+  fill: #e0f2fe;
+  font-size: 0.92px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.26;
+}
+.atlas-military-outcome-timeline-row__province {
+  fill: #bae6fd;
+  font-size: 0.86px;
+}
+.atlas-military-outcome-timeline-entry circle {
+  fill: rgba(148, 163, 184, 0.78);
+  stroke: rgba(224, 242, 254, 0.72);
+  stroke-width: 0.16;
+}
+.atlas-military-outcome-timeline-entry text {
+  fill: #cbd5e1;
+  font-size: 0.42px;
+}
+.atlas-military-outcome-timeline-entry.is-decision-changing circle {
+  fill: rgba(251, 191, 36, 0.9);
+}
+.atlas-military-outcome-timeline-row--required .atlas-military-outcome-timeline-entry.is-decision-changing circle {
+  fill: rgba(248, 113, 113, 0.9);
+}
+.atlas-military-outcome-timeline__empty {
+  fill: #94a3b8;
+  font-size: 0.68px;
+}
