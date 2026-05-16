@@ -2749,6 +2749,38 @@ function buildVerificationOutcomeRecap({ locationId, locationName, verificationC
   };
 }
 
+function buildRecheckAgeIndicator({ index, enoughBudget, verificationAuditTrail }) {
+  const hasResidualRisk = verificationAuditTrail.lastChange === 'residual-risk';
+  if (hasResidualRisk && enoughBudget && index === 0) {
+    return {
+      state: 'urgent',
+      label: 'Urgent',
+      priority: 3,
+      reliabilityCue: 'Signal visible ancien ou résiduel: re-vérification prochaine recommandée.',
+      origin: 'unknown-origin',
+      fallback: 'Origine non datée: priorité estimée depuis la provenance visible et le budget restant.',
+    };
+  }
+  if (hasResidualRisk || !enoughBudget) {
+    return {
+      state: 'watch',
+      label: 'À surveiller',
+      priority: 2,
+      reliabilityCue: 'Fiabilité à surveiller: attendre un créneau sûr ou du budget visible.',
+      origin: 'unknown-origin',
+      fallback: 'Origine non datée: vieillissement affiché comme surveillance prudente.',
+    };
+  }
+  return {
+    state: 'fresh',
+    label: 'Frais',
+    priority: 1,
+    reliabilityCue: 'Signal encore frais: re-vérification non urgente.',
+    origin: 'unknown-origin',
+    fallback: 'Origine non datée: indicateur borné au statut de fiabilité visible.',
+  };
+}
+
 function buildIntrigueRecheckQueue({ locationId, locationName, verificationOutcomeRecap, verificationAuditTrail, intelligenceProvenancePanel, exposureBudgetForPriorityVerifications }) {
   if (verificationOutcomeRecap.state === 'masked-recap') {
     return {
@@ -2777,12 +2809,15 @@ function buildIntrigueRecheckQueue({ locationId, locationName, verificationOutco
     .filter((uncertainty) => !/Aucun conflit/.test(uncertainty))
     .map((uncertainty, index) => {
       const enoughBudget = remainingBudget >= 3;
+      const ageIndicator = buildRecheckAgeIndicator({ index, enoughBudget, verificationAuditTrail });
       return {
         queueId: `${locationId}:recheck:${index + 1}`,
         uncertainty,
         status: enoughBudget ? 'queued-for-safe-window' : 'wait-for-budget',
         safeWindow: enoughBudget ? 'prochain créneau de faible exposition' : 'après récupération de budget d’exposition visible',
         triggerCondition: baseTrigger,
+        ageIndicator,
+        priorityLabel: ageIndicator.label,
         recommendedCheck: retainedCheck ? {
           checkId: retainedCheck.checkId,
           label: retainedCheck.label,
@@ -2818,6 +2853,9 @@ function buildIntrigueRecheckQueue({ locationId, locationName, verificationOutco
     provenanceLink,
     retainedResultIds: verificationOutcomeRecap.retainedVerifications.map((verification) => verification.checkId),
     delayedResultIds: verificationOutcomeRecap.delayedVerifications.map((verification) => verification.checkId),
+    ageingSummary: entries.length > 0
+      ? entries.map((entry) => `${entry.ageIndicator.label}: ${entry.uncertainty}`).join(' | ')
+      : 'Aucun vieillissement d’incertitude à afficher.',
     summary: entries.length > 0
       ? `${entries.length} incertitude(s) à re-vérifier plus tard sans dépasser le budget visible.`
       : 'Aucune re-vérification planifiée: les incertitudes restantes ne justifient pas une relance sûre.',
