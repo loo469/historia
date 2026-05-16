@@ -1689,7 +1689,8 @@ function getAtlasMilitaryCarryOverDependencies(row, shell) {
     : null;
   if (exposedCellule) dependencies.push('renseignement');
   if (province?.contested && (province.supplyLevel === 'strained' || row.status !== 'appliqué')) dependencies.push('météo');
-  return dependencies.length > 0 ? dependencies : ['aucune dépendance visible'];
+  if ((province?.loyalty ?? 100) <= 42) dependencies.push('culture');
+  return dependencies.length > 0 ? dependencies : ['blocage inconnu'];
 }
 
 function buildAtlasMilitaryNextTurnCarryOverQueue(postResolutionAudit, shell) {
@@ -1828,6 +1829,34 @@ function getAtlasMilitaryCarryOverConfidence(item, timelineRow) {
   return { level: 'haute', label: 'Confiance haute', risk: 'risque: simple surveillance' };
 }
 
+
+function getAtlasMilitaryCrossDomainBlockerBadge(item) {
+  const dependencies = item?.dependencies ?? [];
+  if (dependencies.includes('logistique')) {
+    return { type: 'logistics', label: 'logistique/capacité', action: 'renfort valide seulement après capacité confirmée' };
+  }
+  if (dependencies.includes('météo')) {
+    return { type: 'climate', label: 'météo/climat', action: 'attendre fenêtre météo avant ordre exposé' };
+  }
+  if (dependencies.includes('renseignement')) {
+    return { type: 'intel', label: 'renseignement/incertitude', action: 'vérifier visibilité avant engagement' };
+  }
+  if (dependencies.includes('culture')) {
+    return { type: 'culture', label: 'engagement culturel/narratif', action: 'ordre valide si récit local stabilisé' };
+  }
+  return { type: 'unknown', label: 'blocage inconnu', action: item?.kind === 'à surveiller' ? 'surveiller sans nouvel ordre' : 'vérifier le bloqueur avant action' };
+}
+
+function getAtlasMilitaryUsefulActionAgainstBlocker(item, blockerBadge, blockingDecision) {
+  if (!item) return 'attendre: données masquées';
+  if (blockerBadge.type === 'unknown') return blockerBadge.action;
+  if (item.kind !== 'obligatoire') return `action utile: ${blockingDecision}`;
+  if (blockerBadge.type === 'logistics' && blockingDecision.startsWith('renfort')) return blockerBadge.action;
+  if (blockerBadge.type === 'intel' || blockerBadge.type === 'climate') return blockerBadge.action;
+  if (blockerBadge.type === 'culture') return blockerBadge.action;
+  return `action utile: ${blockingDecision}`;
+}
+
 function getAtlasMilitaryBlockingHandoffDecision(item, confidence) {
   if (!item) return 'attente: visibilité insuffisante';
   if (item.kind === 'obligatoire' && item.dependencies?.includes('logistique')) return 'renfort: sécuriser logistique';
@@ -1853,11 +1882,15 @@ function buildAtlasMilitaryCarryOverConfidenceHandoff(carryOverQueue, outcomeTim
     const timelineRow = timelineByProvince.get(item.provinceLabel) ?? null;
     const confidence = getAtlasMilitaryCarryOverConfidence(item, timelineRow);
     const blockingDecision = getAtlasMilitaryBlockingHandoffDecision(item, confidence);
+    const blockerBadge = getAtlasMilitaryCrossDomainBlockerBadge(item);
+    const usefulAction = getAtlasMilitaryUsefulActionAgainstBlocker(item, blockerBadge, blockingDecision);
     return {
       handoffId: `carry-over-confidence:${item.provinceLabel}`,
       provinceLabel: item.provinceLabel,
       confidence,
       blockingDecision,
+      blockerBadge,
+      usefulAction,
       risk: confidence.risk,
       detail: timelineRow?.impact ?? item.nextStep ?? 'détail masqué par brouillard',
       tone: confidence.level === 'haute' ? 'high' : confidence.level === 'moyenne' ? 'medium' : confidence.level === 'fragile' ? 'fragile' : 'low',
@@ -1880,11 +1913,12 @@ function renderAtlasMilitaryCarryOverConfidenceHandoff(handoff) {
       <rect class="atlas-military-confidence-handoff__panel" x="82" y="66" width="15" height="${height}" rx="2.1"></rect>
       <text class="atlas-military-confidence-handoff__title" x="83" y="68.8">Confiance</text>
       ${handoff.empty ? `<text class="atlas-military-confidence-handoff__empty" x="83" y="72">${handoff.summary}</text>` : handoff.handoffs.map((row, index) => `
-        <g class="atlas-military-confidence-handoff-row atlas-military-confidence-handoff-row--${row.tone}" data-atlas-confidence-handoff="${row.handoffId}" aria-label="${row.provinceLabel}: ${row.confidence.label}; ${row.risk}; décision bloquante ${row.blockingDecision}">
+        <g class="atlas-military-confidence-handoff-row atlas-military-confidence-handoff-row--${row.tone} atlas-military-confidence-handoff-row--${row.blockerBadge.type}" data-atlas-confidence-handoff="${row.handoffId}" aria-label="${row.provinceLabel}: ${row.confidence.label}; bloqueur ${row.blockerBadge.label}; ${row.risk}; décision bloquante ${row.blockingDecision}; ${row.usefulAction}">
           <circle cx="83.6" cy="${71 + index * 4.8}" r="0.85"></circle>
-          <text class="atlas-military-confidence-handoff-row__province" x="85" y="${70.4 + index * 4.8}">${row.provinceLabel}</text>
-          <text class="atlas-military-confidence-handoff-row__decision" x="85" y="${71.9 + index * 4.8}">${row.blockingDecision}</text>
-          <text class="atlas-military-confidence-handoff-row__risk" x="85" y="${73.4 + index * 4.8}">${row.confidence.label} · ${row.risk}</text>
+          <rect class="atlas-military-confidence-handoff-row__badge" x="85" y="${69.1 + index * 4.8}" width="5.1" height="1.1" rx="0.35"></rect>
+          <text class="atlas-military-confidence-handoff-row__province" x="90.5" y="${70.1 + index * 4.8}">${row.provinceLabel}</text>
+          <text class="atlas-military-confidence-handoff-row__decision" x="85" y="${71.7 + index * 4.8}">${row.blockerBadge.label}</text>
+          <text class="atlas-military-confidence-handoff-row__risk" x="85" y="${73.2 + index * 4.8}">${row.usefulAction}</text>
         </g>
       `).join('')}
     </g>
