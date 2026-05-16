@@ -294,6 +294,29 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       repetitionSafeguard: 'Aucune répétition récente détectée: garder les prompts frais en priorité.',
       emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
     },
+    promptFreshnessFilter: {
+      state: 'fresh',
+      summary: '1 recommandation culturelle classée par fraîcheur.',
+      preferredPromptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+      entries: [
+        {
+          freshnessId: 'culture-commitment:expansion:timing:river-gate:follow-up:freshness',
+          promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+          promptLabel: 'Ouvrir le récit d’expansion',
+          clusterLabel: 'Compact d’Aurora',
+          role: 'best-safe',
+          freshnessState: 'fresh',
+          score: 5,
+          explanation: 'recommandation fraîche: aucun choix récent similaire dans l’historique lisible',
+          rotation: {
+            confirm: 'confirmer si le contexte narratif a changé',
+            defer: 'différer si aucun nouveau signal ne justifie ce prompt',
+            replace: 'aucune alternative plus fraîche visible',
+          },
+        },
+      ],
+      fallback: 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.',
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -356,6 +379,13 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         groups: [],
         repetitionSafeguard: 'Aucun prompt courant à protéger contre la répétition.',
         emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
+      },
+      promptFreshnessFilter: {
+        state: 'quiet',
+        summary: 'Aucun filtre de fraîcheur culturel actif.',
+        preferredPromptId: null,
+        entries: [],
+        fallback: 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
@@ -742,4 +772,12 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   assert.match(report.commitmentBundles.promptHistoryDrawer.currentEntries[1].rotation.replace, /Ember Guild/);
   assert.match(report.commitmentBundles.promptHistoryDrawer.repetitionSafeguard, /Rotation courte/);
   assert.equal(report.commitmentBundles.promptHistoryDrawer.groups[0].hasRepeat, true);
+  assert.equal(report.commitmentBundles.promptFreshnessFilter.state, 'fresh');
+  assert.deepEqual(report.commitmentBundles.promptFreshnessFilter.entries.map((entry) => [entry.clusterLabel, entry.freshnessState]), [
+    ['Ember Guild', 'fresh'],
+    ['Harbor Compact', 'defer'],
+    ['Compact d’Aurora', 'seen'],
+  ]);
+  assert.match(report.commitmentBundles.promptFreshnessFilter.entries[0].explanation, /fraîche/);
+  assert.match(report.commitmentBundles.promptFreshnessFilter.fallback, /Historique suffisant|Historique court/);
 });

@@ -779,6 +779,57 @@ function buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory 
   };
 }
 
+function buildCulturalPromptFreshnessFilter(promptChoiceComparison, promptHistoryDrawer) {
+  const freshnessEntries = promptChoiceComparison.entries
+    .map((entry) => {
+      const historyEntry = promptHistoryDrawer.currentEntries.find((candidate) => candidate.promptId === entry.promptId);
+      const freshnessState = historyEntry?.repeatState === 'repeated'
+        ? 'seen'
+        : historyEntry?.repeatState === 'near-repeat'
+          ? 'defer'
+          : 'fresh';
+      const explanation = freshnessState === 'fresh'
+        ? 'recommandation fraîche: aucun choix récent similaire dans l’historique lisible'
+        : freshnessState === 'seen'
+          ? `déjà vue: ${historyEntry.repeatReason}`
+          : `à différer: ${historyEntry.repeatReason}`;
+      const score = (freshnessState === 'fresh' ? 3 : freshnessState === 'defer' ? 2 : 1)
+        + (entry.role === 'best-safe' ? 2 : entry.role === 'risky-useful' ? 1 : 0);
+
+      return {
+        freshnessId: `${entry.promptId}:freshness`,
+        promptId: entry.promptId,
+        promptLabel: entry.promptLabel,
+        clusterLabel: entry.clusterLabel,
+        role: entry.role,
+        freshnessState,
+        score,
+        explanation,
+        rotation: historyEntry?.rotation ?? null,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.clusterLabel.localeCompare(right.clusterLabel));
+  const preferred = freshnessEntries.find((entry) => entry.freshnessState === 'fresh') ?? freshnessEntries[0] ?? null;
+
+  return {
+    state: freshnessEntries.length === 0
+      ? 'quiet'
+      : preferred?.freshnessState === 'fresh'
+        ? 'fresh'
+        : preferred?.freshnessState === 'defer'
+          ? 'mixed'
+          : 'stale',
+    summary: freshnessEntries.length === 0
+      ? 'Aucun filtre de fraîcheur culturel actif.'
+      : `${freshnessEntries.length} recommandation${freshnessEntries.length > 1 ? 's' : ''} culturelle${freshnessEntries.length > 1 ? 's' : ''} classée${freshnessEntries.length > 1 ? 's' : ''} par fraîcheur.`,
+    preferredPromptId: preferred?.promptId ?? null,
+    entries: freshnessEntries,
+    fallback: promptHistoryDrawer.groups.length < 2
+      ? 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.'
+      : 'Historique suffisant: favoriser les alternatives non répétitives avant les prompts déjà vus.',
+  };
+}
+
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province') {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
@@ -881,6 +932,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
   const followUpPrompts = buildCulturalFollowUpPrompts(bundles, incompatibilities);
   const promptChoiceComparison = buildCulturalPromptChoiceComparison(followUpPrompts, bundles, timingWindows);
   const promptHistoryDrawer = buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory, regionId);
+  const promptFreshnessFilter = buildCulturalPromptFreshnessFilter(promptChoiceComparison, promptHistoryDrawer);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -896,6 +948,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     followUpPrompts,
     promptChoiceComparison,
     promptHistoryDrawer,
+    promptFreshnessFilter,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -1007,6 +1060,13 @@ export function buildCultureTurnReportDeltas({
           groups: [],
           repetitionSafeguard: 'Aucun prompt courant à protéger contre la répétition.',
           emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
+        },
+        promptFreshnessFilter: {
+          state: 'quiet',
+          summary: 'Aucun filtre de fraîcheur culturel actif.',
+          preferredPromptId: null,
+          entries: [],
+          fallback: 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },
