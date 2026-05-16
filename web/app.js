@@ -5831,6 +5831,22 @@ function renderCultureTurnReport(report) {
           `).join('')}
         </ul>
       ` : '<span>Culture stable: aucun événement, découverte ou tension nouvelle à remonter.</span>'}
+      <div class="culture-turn-report__timing culture-turn-report__timing--${report.commitmentBundles?.state ?? 'quiet'}" aria-label="Fenêtres de timing culturel après bundle">
+        <span>Timing après bundle</span>
+        <strong>${report.commitmentBundles?.timingSummary ?? 'Aucune fenêtre de timing culturel active.'}</strong>
+        ${(report.commitmentBundles?.timingWindows ?? []).length > 0 ? `
+          <div class="culture-turn-report__timing-list">
+            ${report.commitmentBundles.timingWindows.slice(0, 4).map((window) => `
+              <article class="culture-turn-report__timing-window culture-turn-report__timing-window--${window.status}" data-culture-timing-window="${window.timingId}">
+                <b>${window.clusterLabel}</b>
+                <em>${window.label}</em>
+                <small>${window.timingLabel}</small>
+                <small>Si retard: ${window.delayEffect}</small>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucun cluster culturel actif ne force un engagement ce tour.</small>'}
+      </div>
     </div>
   `;
 }
