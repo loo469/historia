@@ -11105,6 +11105,34 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
     ...(reboundView?.coolingOffTurns > 1 ? ['cooling-off-timing'] : []),
     ...(queueView.items.some((item) => item.classification !== 'deferrable') ? ['regional-residual-risk'] : []),
   ];
+  const describeRiskDelta = (item) => {
+    if (item.classification === 'urgent') {
+      return {
+        state: 'worsening-probable',
+        label: 'aggravation probable',
+        cause: 'catastrophe/risque régional résiduel',
+      };
+    }
+    if (item.classification === 'prudent') {
+      return {
+        state: 'stable-risk',
+        label: 'risque stable',
+        cause: reboundView?.coolingOffTurns > 1 ? 'saison: cooling-off encore actif' : 'ressource: readiness à confirmer',
+      };
+    }
+    if (item.classification === 'deferrable') {
+      return {
+        state: 'reduced',
+        label: 'risque réduit',
+        cause: 'ressource: réserve conservée et signal stable',
+      };
+    }
+    return {
+      state: 'unknown',
+      label: 'delta inconnu',
+      cause: 'données insuffisantes pour éviter une précision excessive',
+    };
+  };
   const makeBundle = (kind, items) => ({
     bundleId: `follow-up-compat:${kind}`,
     kind,
@@ -11114,6 +11142,7 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
     conflictSignals: kind === 'minimal-safe'
       ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
       : conflictSignals,
+    riskDeltas: items.map((item) => ({ followUpId: item.followUpId, label: item.label, ...describeRiskDelta(item) })),
     recommendation: kind === 'minimal-safe'
       ? 'Bundle minimal sûr: jouer seulement les suivis qui empêchent le rebound immédiat.'
       : 'Bundle ambitieux fragile: couvre plus large mais peut rouvrir réserve, mitigation ou timing.',
@@ -11156,6 +11185,7 @@ function renderAtlasClimateFollowUpCompatibilityBundles(view) {
             <b>${bundle.kind === 'minimal-safe' ? 'Minimal sûr' : 'Ambitieux fragile'}</b>
             <span>${bundle.labels.join(' → ') || 'aucun suivi'}</span>
             <small><b>Conflits</b> · ${bundle.conflictSignals.length > 0 ? bundle.conflictSignals.join(', ') : 'aucun conflit bloquant'}</small>
+            <small><b>Delta risque</b> · ${bundle.riskDeltas.length > 0 ? bundle.riskDeltas.map((delta) => `${delta.label}: ${delta.state}, ${delta.cause}`).join(' | ') : 'delta inconnu: données insuffisantes'}</small>
             <small><b>Recommandation</b> · ${bundle.recommendation}</small>
           </li>
         `).join('')}
