@@ -343,6 +343,7 @@ function normalizeCoherenceRecommendation(recommendation, index) {
     markerIds: recommendation.markerIds ?? [],
     expiresSoon: recommendation.expiresSoon === true,
     timingLabel: recommendation.timingLabel ?? recommendation.timingWindow ?? recommendation.window ?? null,
+    timingChoiceState: recommendation.timingChoiceState ?? recommendation.choiceState ?? (recommendation.chosen === true ? 'chosen' : 'recommended'),
   };
 }
 
@@ -472,6 +473,9 @@ function buildCulturalTimingWindow(bundle, clusterMembers) {
   const regionIds = [...new Set(clusterMembers.map((member) => member.regionId))];
   const timingLabel = clusterMembers.find((member) => member.timingLabel)?.timingLabel
     ?? (expiresSoon ? 'cette fenêtre risque de se fermer au prochain tour' : status === 'immediate' ? 'agir maintenant conserve le momentum' : 'attendre stabilise la lecture');
+  const choiceState = clusterMembers.some((member) => member.timingChoiceState === 'chosen' || member.timingChoiceState === 'committed')
+    ? 'chosen'
+    : 'recommended';
   const delayEffect = expiresSoon
     ? 'retarder peut faire perdre le momentum et transformer l’opportunité en tension à réévaluer'
     : status === 'immediate'
@@ -488,6 +492,7 @@ function buildCulturalTimingWindow(bundle, clusterMembers) {
     status,
     label: status === 'soon-lost' ? 'fenêtre bientôt perdue' : status === 'immediate' ? 'action immédiate' : 'attendre',
     timingLabel,
+    choiceState,
     recommendationIds: clusterMembers.map((member) => member.recommendationId),
     delayEffect,
   };
@@ -506,6 +511,69 @@ function buildCulturalTimingWindows(bundle, members) {
       const order = { 'soon-lost': 3, immediate: 2, wait: 1 };
       return (order[right.status] ?? 0) - (order[left.status] ?? 0) || left.clusterLabel.localeCompare(right.clusterLabel);
     });
+}
+
+function buildCulturalFollowUpPrompt(window, bundle, incompatibilities) {
+  const relatedIncompatibilities = incompatibilities.filter((incompatibility) =>
+    (incompatibility.recommendationIds ?? []).some((recommendationId) => window.recommendationIds.includes(recommendationId)));
+  const hasBlockingIncompatibility = relatedIncompatibilities.some((incompatibility) => incompatibility.severity === 'choice' || incompatibility.severity === 'sequence');
+  const hasUncertainty = bundle.state === 'uncertain'
+    || bundle.uncertainRecommendationIds.some((recommendationId) => window.recommendationIds.includes(recommendationId));
+  const promptState = window.status === 'wait' || hasUncertainty
+    ? 'premature'
+    : window.status === 'soon-lost' || hasBlockingIncompatibility
+      ? 'risky'
+      : 'compatible';
+  const trajectoryCopy = {
+    apaisement: 'Préparer la médiation locale',
+    consolidation: 'Ancrer le soutien régional',
+    enquête: 'Lancer une vérification culturelle',
+    expansion: 'Ouvrir le récit d’expansion',
+    attente: 'Planifier une observation courte',
+  };
+  const nextStepCopy = {
+    compatible: 'enchaîner avec un suivi narratif court et mesurable',
+    risky: 'sécuriser le prérequis avant d’engager le suivi complet',
+    premature: 'attendre un signal plus net avant de promettre un résultat culturel',
+  };
+  const reason = window.choiceState === 'chosen'
+    ? `fenêtre choisie: ${window.timingLabel}`
+    : `fenêtre recommandée: ${window.timingLabel}`;
+
+  return {
+    promptId: `${window.timingId}:follow-up`,
+    timingId: window.timingId,
+    bundleId: bundle.bundleId,
+    clusterLabel: window.clusterLabel,
+    state: promptState,
+    label: trajectoryCopy[bundle.trajectory] ?? 'Préparer le suivi culturel',
+    reasonNow: `${reason}; engagement actif ${bundle.label}`,
+    nextStep: nextStepCopy[promptState],
+    riskReason: promptState === 'compatible'
+      ? null
+      : hasUncertainty
+        ? 'conditions culturelles encore fragiles'
+        : relatedIncompatibilities[0]?.reason ?? window.delayEffect,
+    recommendationIds: window.recommendationIds,
+  };
+}
+
+function buildCulturalFollowUpPrompts(bundles, incompatibilities) {
+  const prompts = bundles
+    .flatMap((bundle) => bundle.timingWindows.map((window) => buildCulturalFollowUpPrompt(window, bundle, incompatibilities)))
+    .sort((left, right) => {
+      const stateOrder = { risky: 3, compatible: 2, premature: 1 };
+      return (stateOrder[right.state] ?? 0) - (stateOrder[left.state] ?? 0) || left.clusterLabel.localeCompare(right.clusterLabel);
+    })
+    .slice(0, 3);
+
+  return {
+    state: prompts.length === 0 ? 'quiet' : prompts.some((prompt) => prompt.state === 'risky') ? 'mixed' : prompts.every((prompt) => prompt.state === 'premature') ? 'premature' : 'ready',
+    summary: prompts.length === 0
+      ? 'Aucun prompt de suivi culturel après timing.'
+      : `${prompts.length} prompt${prompts.length > 1 ? 's' : ''} de suivi culturel après timing.`,
+    prompts,
+  };
 }
 
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = []) {
@@ -607,6 +675,8 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
       return (order[right.status] ?? 0) - (order[left.status] ?? 0) || left.clusterLabel.localeCompare(right.clusterLabel);
     });
 
+  const followUpPrompts = buildCulturalFollowUpPrompts(bundles, incompatibilities);
+
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
     summary: bundles.length === 0
@@ -618,6 +688,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     timingSummary: timingWindows.length === 0
       ? 'Aucune fenêtre de timing culturel active.'
       : `${timingWindows.length} fenêtre${timingWindows.length > 1 ? 's' : ''} de timing culturel après bundle.`,
+    followUpPrompts,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -708,6 +779,11 @@ export function buildCultureTurnReportDeltas({
         incompatibilities: [],
         timingWindows: [],
         timingSummary: 'Aucune fenêtre de timing culturel active.',
+        followUpPrompts: {
+          state: 'quiet',
+          summary: 'Aucun prompt de suivi culturel après timing.',
+          prompts: [],
+        },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },
     };

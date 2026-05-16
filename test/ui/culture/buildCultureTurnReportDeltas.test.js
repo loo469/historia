@@ -185,6 +185,7 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
             status: 'immediate',
             label: 'action immédiate',
             timingLabel: 'agir maintenant conserve le momentum',
+            choiceState: 'recommended',
             recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
             delayEffect: 'retarder baisse la priorité du bundle et peut donner la main aux signaux concurrents',
           },
@@ -201,11 +202,30 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         status: 'immediate',
         label: 'action immédiate',
         timingLabel: 'agir maintenant conserve le momentum',
+        choiceState: 'recommended',
         recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
         delayEffect: 'retarder baisse la priorité du bundle et peut donner la main aux signaux concurrents',
       },
     ],
     timingSummary: '1 fenêtre de timing culturel après bundle.',
+    followUpPrompts: {
+      state: 'ready',
+      summary: '1 prompt de suivi culturel après timing.',
+      prompts: [
+        {
+          promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+          timingId: 'culture-commitment:expansion:timing:river-gate',
+          bundleId: 'culture-commitment:expansion',
+          clusterLabel: 'Compact d’Aurora',
+          state: 'compatible',
+          label: 'Ouvrir le récit d’expansion',
+          reasonNow: 'fenêtre recommandée: agir maintenant conserve le momentum; engagement actif expansion prudente',
+          nextStep: 'enchaîner avec un suivi narratif court et mesurable',
+          riskReason: null,
+          recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
+        },
+      ],
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -248,6 +268,11 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
       incompatibilities: [],
       timingWindows: [],
       timingSummary: 'Aucune fenêtre de timing culturel active.',
+      followUpPrompts: {
+        state: 'quiet',
+        summary: 'Aucun prompt de suivi culturel après timing.',
+        prompts: [],
+      },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
   });
@@ -593,4 +618,12 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
     ['Mist Circle', 'wait', 'attendre'],
   ]);
   assert.match(report.commitmentBundles.timingWindows[0].delayEffect, /perdre le momentum/);
+  assert.equal(report.commitmentBundles.followUpPrompts.state, 'mixed');
+  assert.deepEqual(report.commitmentBundles.followUpPrompts.prompts.map((prompt) => [prompt.clusterLabel, prompt.state, prompt.label]), [
+    ['Compact d’Aurora', 'risky', 'Ouvrir le récit d’expansion'],
+    ['Harbor Compact', 'risky', 'Ouvrir le récit d’expansion'],
+    ['Ember Guild', 'premature', 'Préparer la médiation locale'],
+  ]);
+  assert.match(report.commitmentBundles.followUpPrompts.prompts[0].reasonNow, /fenêtre recommandée/);
+  assert.match(report.commitmentBundles.followUpPrompts.prompts[2].riskReason, /conditions culturelles|timing narratif/);
 });
