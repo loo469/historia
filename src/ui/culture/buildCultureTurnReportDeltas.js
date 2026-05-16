@@ -830,6 +830,65 @@ function buildCulturalPromptFreshnessFilter(promptChoiceComparison, promptHistor
   };
 }
 
+function buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promptHistoryDrawer) {
+  const entries = promptFreshnessFilter.entries.map((entry) => {
+    const historyEntry = promptHistoryDrawer.currentEntries.find((candidate) => candidate.promptId === entry.promptId);
+    const alternative = promptFreshnessFilter.entries.find((candidate) => candidate.promptId !== entry.promptId && candidate.freshnessState === 'fresh') ?? null;
+    const rotationState = entry.freshnessState === 'fresh'
+      ? 'available-now'
+      : entry.freshnessState === 'defer'
+        ? 'deferred-freshness'
+        : alternative
+          ? 'review-soon'
+          : 'excluded-context';
+    const factor = entry.freshnessState === 'fresh'
+      ? 'compatibilité'
+      : entry.freshnessState === 'defer'
+        ? 'historique récent'
+        : alternative
+          ? 'thème'
+          : 'contexte manquant';
+    const factorExplanation = rotationState === 'available-now'
+      ? `${entry.clusterLabel}: compatible maintenant et sans répétition récente.`
+      : rotationState === 'deferred-freshness'
+        ? `${entry.clusterLabel}: historique récent trop proche, à revoir après rotation.`
+        : rotationState === 'review-soon'
+          ? `${entry.clusterLabel}: déjà vu, mais le thème peut revenir après une alternative fraîche.`
+          : `${entry.clusterLabel}: écarté faute d’alternative fraîche ou de contexte distinct.`;
+
+    return {
+      previewId: `${entry.promptId}:rotation-preview`,
+      promptId: entry.promptId,
+      promptLabel: entry.promptLabel,
+      clusterLabel: entry.clusterLabel,
+      rotationState,
+      factor,
+      factorExplanation,
+      alternativePromptId: entry.freshnessState === 'fresh' ? null : alternative?.promptId ?? null,
+      alternativeLabel: entry.freshnessState === 'fresh' ? null : alternative?.promptLabel ?? historyEntry?.rotation?.replace ?? 'aucune alternative fraîche visible',
+    };
+  });
+
+  return {
+    state: entries.length === 0
+      ? 'quiet'
+      : entries.some((entry) => entry.rotationState === 'available-now')
+        ? 'ready'
+        : entries.some((entry) => entry.rotationState === 'review-soon' || entry.rotationState === 'deferred-freshness')
+          ? 'scheduled'
+          : 'blocked',
+    summary: entries.length === 0
+      ? 'Aucun aperçu de rotation culturelle disponible.'
+      : `${entries.length} recommandation${entries.length > 1 ? 's' : ''} culturelle${entries.length > 1 ? 's' : ''} planifiée${entries.length > 1 ? 's' : ''} pour rotation.`,
+    entries,
+    fallback: entries.length === 0 || promptHistoryDrawer.groups.length < 2
+      ? 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.'
+      : entries.some((entry) => entry.alternativePromptId)
+        ? 'Rotation lisible: proposer une alternative fraîche avant de réintroduire les prompts différés.'
+        : 'Fallback stable: aucune alternative fraîche sûre, garder le classement actuel et réévaluer au prochain tour.',
+  };
+}
+
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province') {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
@@ -933,6 +992,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
   const promptChoiceComparison = buildCulturalPromptChoiceComparison(followUpPrompts, bundles, timingWindows);
   const promptHistoryDrawer = buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory, regionId);
   const promptFreshnessFilter = buildCulturalPromptFreshnessFilter(promptChoiceComparison, promptHistoryDrawer);
+  const recommendationRotationPreview = buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promptHistoryDrawer);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -949,6 +1009,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     promptChoiceComparison,
     promptHistoryDrawer,
     promptFreshnessFilter,
+    recommendationRotationPreview,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -1067,6 +1128,12 @@ export function buildCultureTurnReportDeltas({
           preferredPromptId: null,
           entries: [],
           fallback: 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.',
+        },
+        recommendationRotationPreview: {
+          state: 'quiet',
+          summary: 'Aucun aperçu de rotation culturelle disponible.',
+          entries: [],
+          fallback: 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },
