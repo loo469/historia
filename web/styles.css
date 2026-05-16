@@ -13479,3 +13479,42 @@ button { font: inherit; }
 .atlas-military-blocker-checklist-row--intel .atlas-military-blocker-checklist-row__badge { fill: rgba(168, 85, 247, 0.8); }
 .atlas-military-blocker-checklist-row--culture .atlas-military-blocker-checklist-row__badge { fill: rgba(244, 114, 182, 0.8); }
 .atlas-military-blocker-checklist-row--unknown .atlas-military-blocker-checklist-row__badge { fill: rgba(148, 163, 184, 0.8); }
+.economy-next-recovery-action {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border-radius: 15px;
+  background: rgba(12, 74, 110, 0.3);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+.economy-next-recovery-action div {
+  display: grid;
+  gap: 3px;
+}
+.economy-next-recovery-action span {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.economy-next-recovery-action strong { color: #f8fafc; }
+.economy-next-recovery-action p,
+.economy-next-recovery-action small,
+.economy-next-recovery-action li {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.economy-next-recovery-action ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.economy-next-recovery-action b {
+  justify-self: start;
+  color: #fecaca;
+  font-size: 11px;
+}
+.economy-next-recovery-action--action-concrète { border-color: rgba(74, 222, 128, 0.34); }
+.economy-next-recovery-action--à-arbitrer { border-color: rgba(245, 158, 11, 0.38); }
+.economy-next-recovery-action--surveiller { border-color: rgba(148, 163, 184, 0.24); }

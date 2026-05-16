@@ -18820,6 +18820,22 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
         <strong>${view.title}</strong>
       </div>
       <p>${view.summary}</p>
+      ${view.nextRecoveryActionSummary ? `
+        <article class="economy-next-recovery-action economy-next-recovery-action--${view.nextRecoveryActionSummary.status.replaceAll(' ', '-')}">
+          <div>
+            <span>${view.nextRecoveryActionSummary.status}</span>
+            <strong>${view.nextRecoveryActionSummary.primaryAction}</strong>
+          </div>
+          <p>${view.nextRecoveryActionSummary.summary}</p>
+          <small>${view.nextRecoveryActionSummary.alternativeAction}</small>
+          ${view.nextRecoveryActionSummary.affectedDestinations.length ? `
+            <ul>
+              ${view.nextRecoveryActionSummary.affectedDestinations.map((destination) => `<li>${destination.label} · ${destination.corridor}</li>`).join('')}
+            </ul>
+          ` : ''}
+          ${view.nextRecoveryActionSummary.overloadWarning ? `<b>${view.nextRecoveryActionSummary.overloadWarning}</b>` : ''}
+        </article>
+      ` : ''}
       ${view.outcomeRecaps?.length ? `
         <div class="economy-repayment-outcomes" aria-label="Récapitulatif résultat après résolution de goulot">
           ${view.outcomeRecaps.map((recap) => `

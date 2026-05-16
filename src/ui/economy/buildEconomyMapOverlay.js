@@ -2628,6 +2628,58 @@ function buildRepaymentOutcomeRecaps(tradeOffComparisons) {
   });
 }
 
+
+function buildNextRecoveryActionSummary(outcomeRecaps, warningGroups) {
+  if (outcomeRecaps.length === 0) {
+    return {
+      id: 'logistics-next-recovery-action-summary',
+      status: 'surveiller',
+      title: 'Prochaine action de récupération',
+      summary: 'Aucun goulot critique ne demande une action immédiate avec les données disponibles.',
+      primaryAction: 'attendre / surveiller les prochains recaps de récupération',
+      alternativeAction: 'conserver la capacité de reprise tant qu’aucune dette prioritaire n’est confirmée',
+      affectedDestinations: [],
+      linkedOutcomeRecapId: null,
+      linkedWarningGroupKey: null,
+      overloadWarning: null,
+    };
+  }
+
+  const ranked = [...outcomeRecaps].sort((left, right) => Number(left.secondaryOverload) - Number(right.secondaryOverload)
+    || Number(left.status !== 'résolution nette') - Number(right.status !== 'résolution nette')
+    || right.capacityFreed - left.capacityFreed
+    || String(left.warningGroupKey).localeCompare(String(right.warningGroupKey)));
+  const selected = ranked[0];
+  const warningGroup = warningGroups.find((group) => group.key === selected.warningGroupKey) ?? null;
+  const affectedDestinations = warningGroup?.details.map((detail) => ({
+    targetId: detail.targetId,
+    label: detail.label,
+    corridor: detail.corridor,
+  })) ?? [];
+  const overCapacity = selected.secondaryOverload || selected.status === 'résolution partielle';
+
+  return {
+    id: 'logistics-next-recovery-action-summary',
+    status: overCapacity ? 'à arbitrer' : 'action concrète',
+    title: 'Prochaine action de récupération',
+    summary: `${selected.summary} Destinations affectées: ${affectedDestinations.length || 'aucune donnée détaillée'}.`,
+    primaryAction: overCapacity
+      ? `Sécuriser ${selected.warningGroupKey} sans déplacer la surcharge: ${selected.displacedRisk}.`
+      : `Appliquer l’option liée à ${selected.warningGroupKey}: ${selected.capacityFreed} capacité libérée, délai ${selected.probableDelay}.`,
+    alternativeAction: selected.secondaryOverload
+      ? 'Alternative prudente: différer le remboursement complet et réserver de la capacité pour la route ou ville concurrente.'
+      : selected.status === 'résolution partielle'
+        ? 'Alternative prudente: attendre un renfort de capacité avant de pousser la reprise suivante.'
+        : 'Alternative prudente: surveiller un tour si la capacité libérée est nécessaire ailleurs.',
+    affectedDestinations,
+    linkedOutcomeRecapId: selected.id,
+    linkedWarningGroupKey: selected.warningGroupKey,
+    overloadWarning: overCapacity
+      ? 'Cette action peut dépasser la capacité disponible ou recréer un bottleneck secondaire.'
+      : null,
+  };
+}
+
 function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
@@ -2659,6 +2711,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
   const warningGroups = buildRepaymentBottleneckWarningGroups(scenarios);
   const tradeOffComparisons = buildRepaymentTradeOffComparisons(scenarios, warningGroups);
   const outcomeRecaps = buildRepaymentOutcomeRecaps(tradeOffComparisons);
+  const nextRecoveryActionSummary = buildNextRecoveryActionSummary(outcomeRecaps, warningGroups);
 
   return {
     id: 'logistics-recovery-repayment-scenarios',
@@ -2676,6 +2729,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     topTradeOffComparisonId: tradeOffComparisons[0]?.id ?? null,
     outcomeRecaps,
     topOutcomeRecapId: outcomeRecaps[0]?.id ?? null,
+    nextRecoveryActionSummary,
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },
