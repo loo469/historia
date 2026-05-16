@@ -1656,6 +1656,28 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     { role: 'minimale sûre', cost: 2, delay: 'ce tour', residualRisk: 'aucun goulot critique restant' },
   ]);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.tradeOffComparisons[0].choices[1].overloadShiftRisk, /déplacer la surcharge/);
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.topOutcomeRecapId, 'outcome-recap:stock:stock:recovery-repayment:route-coast:complete');
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.outcomeRecaps.map((recap) => ({
+    warningGroupKey: recap.warningGroupKey,
+    selectedOptionId: recap.selectedOptionId,
+    status: recap.status,
+    capacityFreed: recap.capacityFreed,
+    remainingDebt: recap.remainingDebt,
+    probableDelay: recap.probableDelay,
+    secondaryOverload: recap.secondaryOverload,
+  })), [
+    {
+      warningGroupKey: 'stock:stock',
+      selectedOptionId: 'tradeoff:stock:stock:recovery-repayment:route-coast:complete',
+      status: 'résolution avec surcharge secondaire',
+      capacityFreed: 2,
+      remainingDebt: 'aucun goulot critique restant',
+      probableDelay: 'ce tour',
+      secondaryOverload: true,
+    },
+  ]);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.outcomeRecaps[0].summary, /dette restante aucun goulot critique restant/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.outcomeRecaps[0].displacedRisk, /déplacer la surcharge/);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,

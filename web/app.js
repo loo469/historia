@@ -18619,6 +18619,21 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
         <strong>${view.title}</strong>
       </div>
       <p>${view.summary}</p>
+      ${view.outcomeRecaps?.length ? `
+        <div class="economy-repayment-outcomes" aria-label="Récapitulatif résultat après résolution de goulot">
+          ${view.outcomeRecaps.map((recap) => `
+            <article class="economy-repayment-outcome economy-repayment-outcome--${recap.status.replaceAll(' ', '-')}">
+              <div>
+                <span>${recap.status}</span>
+                <strong>${recap.summary}</strong>
+              </div>
+              <small>Capacité libérée ${recap.capacityFreed} · dette restante ${recap.remainingDebt ?? 'inconnue'} · délai ${recap.probableDelay}</small>
+              <p>${recap.displacedRisk}</p>
+              ${recap.secondaryOverload ? '<b>Surcharge secondaire possible</b>' : ''}
+            </article>
+          `).join('')}
+        </div>
+      ` : ''}
       ${view.tradeOffComparisons?.length ? `
         <div class="economy-repayment-tradeoffs" aria-label="Comparaison des options de résolution de goulot">
           ${view.tradeOffComparisons.map((comparison) => `
