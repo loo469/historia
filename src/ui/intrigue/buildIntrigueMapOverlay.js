@@ -2654,6 +2654,101 @@ function buildVerificationConflictResolver({ locationId, locationName, intellige
   };
 }
 
+function buildVerificationOutcomeRecap({ locationId, locationName, verificationConflictResolver, exposureBudgetForPriorityVerifications, verificationAuditTrail, intrigueSignalTriageQueue }) {
+  const budgetEntries = exposureBudgetForPriorityVerifications.entries ?? [];
+  const findBudgetEntry = (check) => check
+    ? budgetEntries.find((entry) => entry.checkId === check.checkId) ?? null
+    : null;
+  const launchedBudgetEntry = findBudgetEntry(verificationConflictResolver.launchNow);
+  const delayedBudgetEntry = findBudgetEntry(verificationConflictResolver.defer);
+  const consumedExposure = launchedBudgetEntry?.exposureCost ?? 0;
+  const priorityExposureCeiling = 12;
+  const budgetRemaining = exposureBudgetForPriorityVerifications.state === 'masked-budget'
+    ? null
+    : Math.max(0, priorityExposureCeiling - consumedExposure);
+  const firstTriageEntry = intrigueSignalTriageQueue[0] ?? null;
+
+  if (verificationConflictResolver.state === 'masked-conflict') {
+    return {
+      state: 'masked-recap',
+      locationId,
+      locationName,
+      summary: 'Récapitulatif masqué: le resolver ne confirme aucune décision exploitable sans provenance visible.',
+      retainedVerifications: [],
+      delayedVerifications: [],
+      abandonedVerifications: [],
+      exposureConsumed: 0,
+      exposureBudgetRemaining: null,
+      remainingUncertainties: [
+        'Provenance insuffisante: conserver une lecture agrégée sous fog-of-war.',
+        'Aucun coût d’exposition n’est affiché tant que le contrôle prioritaire reste masqué.',
+      ],
+      nextSafeVerification: null,
+      sourceResolverState: verificationConflictResolver.state,
+      safeMapPolicy: 'Récapitulatif dérivé du resolver D11; aucune cellule, relais, cible, méthode sensible ou cause cachée n’est révélée.',
+    };
+  }
+
+  const retainedVerifications = verificationConflictResolver.launchNow ? [{
+    checkId: verificationConflictResolver.launchNow.checkId,
+    label: verificationConflictResolver.launchNow.label,
+    exposureBand: verificationConflictResolver.launchNow.exposureBand,
+    exposureCost: consumedExposure,
+    outcome: 'retained',
+    reason: verificationConflictResolver.launchNow.reason ?? 'Contrôle retenu par le resolver comme option visible la moins exposée.',
+  }] : [];
+  const delayedVerifications = verificationConflictResolver.defer ? [{
+    checkId: verificationConflictResolver.defer.checkId,
+    label: verificationConflictResolver.defer.label,
+    exposureBand: verificationConflictResolver.defer.exposureBand,
+    exposureCost: delayedBudgetEntry?.exposureCost ?? null,
+    outcome: 'delayed',
+    reason: verificationConflictResolver.defer.reason,
+  }] : [];
+  const abandonedVerifications = verificationConflictResolver.abandonIfNeeded ? [{
+    label: verificationConflictResolver.abandonIfNeeded.label,
+    outcome: 'abandoned-if-no-new-signal',
+    reason: verificationConflictResolver.abandonIfNeeded.reason,
+  }] : [];
+  const remainingUncertainties = [
+    verificationAuditTrail.lastChange === 'residual-risk'
+      ? 'Risque résiduel visible: la cause précise et les relais restent masqués.'
+      : 'Risque faible ou non confirmé: ne pas convertir l’absence de preuve en certitude.',
+    delayedVerifications.length > 0
+      ? 'Un contrôle large reste différé car il consommerait trop d’exposition visible.'
+      : 'Aucun conflit d’exposition restant dans les contrôles visibles.',
+    firstTriageEntry?.residualRisk === 'visible-residual-risk'
+      ? 'La file de triage garde une incertitude visible à revalider sans cible cachée.'
+      : null,
+  ].filter(Boolean);
+  const nextSafeVerification = retainedVerifications[0] ? {
+    action: exposureBudgetForPriorityVerifications.nextLeastExposureCheck?.action ?? firstTriageEntry?.nextLeastExposureCheck?.action ?? 'monitor',
+    checkId: retainedVerifications[0].checkId,
+    label: retainedVerifications[0].label,
+    exposureBand: retainedVerifications[0].exposureBand,
+    evidenceNeeded: exposureBudgetForPriorityVerifications.nextLeastExposureCheck?.evidenceNeeded ?? firstTriageEntry?.nextLeastExposureCheck?.evidenceNeeded ?? 'Signal visible supplémentaire requis.',
+  } : null;
+
+  return {
+    state: verificationConflictResolver.state === 'conflict-detected' ? 'resolved-with-deferrals' : 'resolved-cleanly',
+    locationId,
+    locationName,
+    summary: retainedVerifications.length > 0
+      ? `Resolver appliqué: ${retainedVerifications.length} vérification retenue, ${delayedVerifications.length} retardée, ${abandonedVerifications.length} abandonnée sous condition.`
+      : 'Resolver appliqué: aucune vérification immédiate retenue.',
+    retainedVerifications,
+    delayedVerifications,
+    abandonedVerifications,
+    exposureConsumed: consumedExposure,
+    exposureBudgetRemaining: budgetRemaining,
+    exposureBudgetCeiling: priorityExposureCeiling,
+    remainingUncertainties,
+    nextSafeVerification,
+    sourceResolverState: verificationConflictResolver.state,
+    safeMapPolicy: 'Récapitulatif du résultat D12 uniquement; il réutilise budget, triage et resolver visibles sans révéler cellule, relais, cible, méthode sensible ou cause cachée.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2841,6 +2936,14 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         intrigueSignalTriageQueue,
         exposureBudgetForPriorityVerifications,
       });
+      const verificationOutcomeRecap = buildVerificationOutcomeRecap({
+        locationId,
+        locationName,
+        verificationConflictResolver,
+        exposureBudgetForPriorityVerifications,
+        verificationAuditTrail,
+        intrigueSignalTriageQueue,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2855,6 +2958,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           intrigueSignalTriageQueue,
           exposureBudgetForPriorityVerifications,
           verificationConflictResolver,
+          verificationOutcomeRecap,
         }
         : {};
 

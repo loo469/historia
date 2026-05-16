@@ -2360,3 +2360,62 @@ test('buildIntrigueMapOverlay resolves fog-safe verification exposure conflicts'
   assert.match(masked.summary, /budget ou provenance insuffisant/);
   assert.match(masked.safeMapPolicy, /Aucune cible, relais, méthode sensible ou vérité cachée/);
 });
+
+test('buildIntrigueMapOverlay recaps verification resolver outcomes without leaking fog-of-war details', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-outcome-recap',
+      factionId: 'shadow-league',
+      codename: 'Outcome',
+      locationId: 'outcome-recap',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 92,
+    }),
+    new Cellule({
+      id: 'cell-outcome-masked',
+      factionId: 'shadow-league',
+      codename: 'Hidden',
+      locationId: 'outcome-masked',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-outcome-recap',
+      celluleId: 'cell-outcome-recap',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Verify visible aftermath',
+      theaterId: 'outcome-recap',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 92,
+      progress: 80,
+      heat: 86,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.verificationOutcomeRecap]));
+  const recap = byLocation.get('outcome-recap');
+  const masked = byLocation.get('outcome-masked');
+
+  assert.equal(recap.state, 'resolved-with-deferrals');
+  assert.equal(recap.sourceResolverState, 'conflict-detected');
+  assert.equal(recap.retainedVerifications[0].checkId, 'observe-local-confirmation');
+  assert.equal(recap.retainedVerifications[0].outcome, 'retained');
+  assert.equal(recap.delayedVerifications[0].checkId, 'broad-coverage-now');
+  assert.equal(recap.delayedVerifications[0].outcome, 'delayed');
+  assert.equal(recap.exposureConsumed, 8);
+  assert.equal(recap.exposureBudgetRemaining, 4);
+  assert.equal(recap.nextSafeVerification.checkId, 'observe-local-confirmation');
+  assert.match(recap.remainingUncertainties.join(' '), /cause précise et les relais restent masqués/);
+  assert.match(recap.safeMapPolicy, /sans révéler cellule, relais, cible, méthode sensible ou cause cachée/);
+
+  assert.equal(masked.state, 'masked-recap');
+  assert.deepEqual(masked.retainedVerifications, []);
+  assert.equal(masked.exposureBudgetRemaining, null);
+  assert.equal(masked.nextSafeVerification, null);
+  assert.match(masked.remainingUncertainties.join(' '), /Provenance insuffisante/);
+});
