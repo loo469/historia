@@ -656,27 +656,77 @@ function normalizeCulturalPromptHistoryEntry(entry, index) {
   };
 }
 
+function tokenizePromptText(value) {
+  return normalizeText(value, '')
+    .toLowerCase()
+    .replace(/[’']/g, ' ')
+    .split(/[^a-zà-ÿ0-9]+/i)
+    .filter((token) => token.length > 3);
+}
+
+function findPromptHistoryRepeat(entry, historyEntries) {
+  const entryTokens = new Set(tokenizePromptText(`${entry.promptLabel} ${entry.clusterLabel}`));
+  return historyEntries
+    .map((historyEntry) => {
+      const historyTokens = tokenizePromptText(`${historyEntry.promptLabel} ${historyEntry.theme} ${historyEntry.clusterLabel}`);
+      const overlap = historyTokens.filter((token) => entryTokens.has(token)).length;
+      const exact = historyEntry.promptLabel === entry.promptLabel && historyEntry.clusterLabel === entry.clusterLabel;
+      const sameTerritory = historyEntry.clusterLabel === entry.clusterLabel;
+      const sameTheme = historyEntry.theme === entry.promptLabel || historyEntry.promptLabel === entry.promptLabel;
+      const repeatState = exact || (sameTerritory && sameTheme)
+        ? 'repeated'
+        : sameTerritory || overlap >= 2
+          ? 'near-repeat'
+          : 'new';
+
+      return { historyEntry, repeatState, overlap };
+    })
+    .filter((candidate) => candidate.repeatState !== 'new')
+    .sort((left, right) => {
+      const rank = { repeated: 2, 'near-repeat': 1 };
+      return (rank[right.repeatState] ?? 0) - (rank[left.repeatState] ?? 0) || right.overlap - left.overlap;
+    })[0] ?? null;
+}
+
+function buildPromptRotation(entry, repeatMatch, freshAlternative) {
+  if (!repeatMatch) {
+    return {
+      confirm: 'confirmer si le contexte narratif a changé',
+      defer: 'différer si aucun nouveau signal ne justifie ce prompt',
+      replace: freshAlternative ? `remplacer par ${freshAlternative.promptLabel}` : 'aucune alternative plus fraîche visible',
+    };
+  }
+
+  return {
+    confirm: repeatMatch.repeatState === 'repeated'
+      ? 'confirmer seulement si la répétition est intentionnelle'
+      : 'confirmer si la variante ajoute une nuance culturelle claire',
+    defer: 'différer pour éviter la fatigue de répétition',
+    replace: freshAlternative ? `remplacer par ${freshAlternative.promptLabel} (${freshAlternative.clusterLabel})` : 'remplacer par une alternative culturelle plus fraîche dès qu’un signal apparaît',
+  };
+}
+
 function buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory = [], regionId = 'province') {
   const historyEntries = promptHistory
     .map((entry, index) => normalizeCulturalPromptHistoryEntry(entry, index))
     .filter(Boolean)
     .sort((left, right) => (right.turn ?? 0) - (left.turn ?? 0))
     .slice(0, 5);
-  const currentEntries = promptChoiceComparison.entries.map((entry) => {
-    const repeatedMatch = historyEntries.find((historyEntry) =>
-      historyEntry.clusterLabel === entry.clusterLabel
-      || (historyEntry.promptLabel === entry.promptLabel && historyEntry.clusterLabel === entry.clusterLabel)
-      || (historyEntry.theme === entry.promptLabel && historyEntry.clusterLabel === entry.clusterLabel));
+  const repeatMatches = promptChoiceComparison.entries.map((entry) => findPromptHistoryRepeat(entry, historyEntries));
+  const currentEntries = promptChoiceComparison.entries.map((entry, index) => {
+    const repeatMatch = repeatMatches[index];
+    const freshAlternative = promptChoiceComparison.entries.find((candidate, candidateIndex) => candidateIndex !== index && !repeatMatches[candidateIndex]);
 
     return {
       promptId: entry.promptId,
       promptLabel: entry.promptLabel,
       clusterLabel: entry.clusterLabel,
       role: entry.role,
-      repeatState: repeatedMatch ? 'repeated' : 'new',
-      repeatReason: repeatedMatch
-        ? `ressemble à ${repeatedMatch.promptLabel} (${repeatedMatch.clusterLabel})${repeatedMatch.turn ? ` vu au tour ${repeatedMatch.turn}` : ''}`
+      repeatState: repeatMatch?.repeatState ?? 'new',
+      repeatReason: repeatMatch
+        ? `${repeatMatch.repeatState === 'repeated' ? 'répète' : 'quasi-équivalent à'} ${repeatMatch.historyEntry.promptLabel} (${repeatMatch.historyEntry.clusterLabel})${repeatMatch.historyEntry.turn ? ` vu au tour ${repeatMatch.historyEntry.turn}` : ''}`
         : 'aucune décision récente similaire dans la limite affichée',
+      rotation: buildPromptRotation(entry, repeatMatch, freshAlternative),
       narrativeImpact: entry.narrativeImpact,
     };
   });
@@ -704,13 +754,13 @@ function buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory 
       hasRepeat: false,
     };
     existing.entries.push(entry);
-    existing.hasRepeat = existing.hasRepeat || entry.repeatState === 'repeated';
+    existing.hasRepeat = existing.hasRepeat || entry.repeatState === 'repeated' || entry.repeatState === 'near-repeat';
     map.set(key, existing);
     return map;
   }, new Map()).values()].slice(0, 4);
 
   return {
-    state: groups.length === 0 ? 'quiet' : groups.some((group) => group.hasRepeat) ? 'repeat-warning' : 'ready',
+    state: groups.length === 0 ? 'quiet' : currentEntries.some((entry) => entry.repeatState === 'repeated') ? 'repeat-warning' : currentEntries.some((entry) => entry.repeatState === 'near-repeat') ? 'near-repeat' : 'ready',
     summary: groups.length === 0
       ? 'Aucun historique de prompt culturel à afficher.'
       : `${groups.length} groupe${groups.length > 1 ? 's' : ''} d’historique culturel limité${groups.length > 1 ? 's' : ''} à comparer.`,
@@ -718,6 +768,11 @@ function buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory 
     regionId,
     currentEntries,
     groups,
+    repetitionSafeguard: currentEntries.length === 0
+      ? 'Aucun prompt courant à protéger contre la répétition.'
+      : currentEntries.some((entry) => entry.repeatState !== 'new')
+        ? 'Rotation courte disponible: confirmer, différer ou remplacer les prompts répétés.'
+        : 'Aucune répétition récente détectée: garder les prompts frais en priorité.',
     emptyHint: historyEntries.length === 0
       ? 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.'
       : 'Historique limité aux décisions récentes pour garder le drawer lisible.',
@@ -950,6 +1005,7 @@ export function buildCultureTurnReportDeltas({
           regionId,
           currentEntries: [],
           groups: [],
+          repetitionSafeguard: 'Aucun prompt courant à protéger contre la répétition.',
           emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',

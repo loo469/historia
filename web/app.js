@@ -6254,12 +6254,14 @@ function renderCultureTurnReport(report) {
           <strong>${report.commitmentBundles?.promptHistoryDrawer?.summary ?? 'Aucun historique de prompt culturel à afficher.'}</strong>
         </summary>
         <small>${report.commitmentBundles?.promptHistoryDrawer?.emptyHint ?? 'Historique limité aux décisions récentes pour garder le drawer lisible.'} Limite: ${report.commitmentBundles?.promptHistoryDrawer?.displayLimit ?? 5} entrées.</small>
+        <small>${report.commitmentBundles?.promptHistoryDrawer?.repetitionSafeguard ?? 'Aucun prompt courant à protéger contre la répétition.'}</small>
         ${(report.commitmentBundles?.promptHistoryDrawer?.currentEntries ?? []).length > 0 ? `
           <div class="culture-turn-report__history-current">
             ${report.commitmentBundles.promptHistoryDrawer.currentEntries.map((entry) => `
               <span class="culture-turn-report__history-pill culture-turn-report__history-pill--${entry.repeatState}">
                 <b>${entry.promptLabel}</b>
-                <small>${entry.clusterLabel} · ${entry.repeatState === 'repeated' ? 'déjà proche' : 'nouveau'} · ${entry.repeatReason}</small>
+                <small>${entry.clusterLabel} · ${entry.repeatState === 'repeated' ? 'répété' : entry.repeatState === 'near-repeat' ? 'quasi équivalent' : 'nouveau'} · ${entry.repeatReason}</small>
+                <small>Rotation: confirmer — ${entry.rotation?.confirm ?? 'confirmer si utile'} · différer — ${entry.rotation?.defer ?? 'différer'} · remplacer — ${entry.rotation?.replace ?? 'aucune alternative'}</small>
               </span>
             `).join('')}
           </div>
