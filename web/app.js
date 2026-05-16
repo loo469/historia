@@ -1950,6 +1950,98 @@ function renderAtlasMilitaryBlockerResolutionChecklist(checklist) {
   `;
 }
 
+
+function getAtlasMilitaryClosureImpactScore(item) {
+  const blockerImpact = {
+    logistics: 32,
+    intel: 26,
+    climate: 22,
+    culture: 18,
+    unknown: 4,
+  };
+  const orderImpact = item.checklist.orderState === 'ordre préparé'
+    ? 18
+    : item.checklist.orderState === 'ordre différé'
+      ? 12
+      : item.checklist.orderState === 'vérification requise'
+        ? 6
+        : 0;
+  const delayRisk = item.checklist.waitingState.includes('attendre') ? 10 : 4;
+  return (item.priority ?? 0) + (blockerImpact[item.blockerBadge.type] ?? 0) + orderImpact + delayRisk;
+}
+
+function getAtlasMilitaryClosureReason(item) {
+  if (item.blockerBadge.type === 'logistics') return 'impact tactique direct + capacité';
+  if (item.blockerBadge.type === 'intel') return 'réduit incertitude avant engagement';
+  if (item.blockerBadge.type === 'climate') return 'évite retard météo critique';
+  if (item.blockerBadge.type === 'culture') return 'stabilise engagement local';
+  return 'données insuffisantes: vérifier sans ordre caché';
+}
+
+function buildAtlasMilitaryNextBestClosureRecommendation(checklist) {
+  const items = checklist?.items ?? [];
+  if (!items.length || checklist?.empty) {
+    return {
+      options: [],
+      primary: null,
+      summary: 'Prochaine fermeture indécise: aucun blocker actionnable visible.',
+      empty: true,
+    };
+  }
+
+  const options = items
+    .filter((item) => item.checklist.orderState !== 'ordre en veille')
+    .map((item) => ({
+      closureId: `next-best-closure:${item.provinceLabel}`,
+      provinceLabel: item.provinceLabel,
+      blockerLabel: item.blockerBadge.label,
+      blockerType: item.blockerBadge.type,
+      orderState: item.checklist.orderState,
+      reason: getAtlasMilitaryClosureReason(item),
+      nextAction: item.checklist.immediateAction,
+      waitState: item.checklist.waitingState,
+      score: getAtlasMilitaryClosureImpactScore(item),
+      promoted: item.blockerBadge.type !== 'unknown',
+    }))
+    .filter((item) => item.promoted || items.length === 1)
+    .sort((left, right) => right.score - left.score || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 3);
+
+  if (!options.length) {
+    return {
+      options: [],
+      primary: null,
+      summary: 'Prochaine fermeture indécise: données visibles insuffisantes, aucune promotion sûre.',
+      empty: true,
+    };
+  }
+
+  return {
+    options,
+    primary: options[0],
+    summary: `${options[0].provinceLabel}: fermer ${options[0].blockerLabel} en premier (${options[0].reason}).`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryNextBestClosureRecommendation(recommendation) {
+  const height = recommendation.empty ? 7 : 6 + (recommendation.options.length * 4.4);
+  return `
+    <g class="atlas-military-next-best-closure" aria-label="Prochaine fermeture recommandée pour blockers de provinces contestées: ${recommendation.summary}">
+      <rect class="atlas-military-next-best-closure__panel" x="43" y="86" width="20" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-next-best-closure__title" x="44.2" y="88.6">À fermer</text>
+      ${recommendation.empty ? `<text class="atlas-military-next-best-closure__empty" x="44.2" y="91.8">${recommendation.summary}</text>` : recommendation.options.map((row, index) => `
+        <g class="atlas-military-next-best-closure-row atlas-military-next-best-closure-row--${row.blockerType} ${index === 0 ? 'is-primary' : 'is-alternative'}" data-atlas-next-best-closure="${row.closureId}" aria-label="${index === 0 ? 'Recommandation principale' : 'Alternative'} ${row.provinceLabel}: fermer ${row.blockerLabel}; raison ${row.reason}; action minimale ${row.nextAction}; état ${row.orderState}">
+          <circle cx="44.7" cy="${91 + index * 4.4}" r="0.72"></circle>
+          <text class="atlas-military-next-best-closure-row__province" x="46" y="${90.5 + index * 4.4}">${index === 0 ? '1' : index + 1}. ${row.provinceLabel}</text>
+          <text class="atlas-military-next-best-closure-row__reason" x="46" y="${92 + index * 4.4}">${row.reason}</text>
+          <text class="atlas-military-next-best-closure-row__action" x="46" y="${93.4 + index * 4.4}">${row.nextAction}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function getAtlasMilitaryBlockingHandoffDecision(item, confidence) {
   if (!item) return 'attente: visibilité insuffisante';
   if (item.kind === 'obligatoire' && item.dependencies?.includes('logistique')) return 'renfort: sécuriser logistique';
@@ -3008,6 +3100,7 @@ function renderAtlasMilitaryLayer(shell) {
   const carryOverOutcomeTimeline = buildAtlasMilitaryCarryOverOutcomeTimeline(nextTurnCarryOverQueue);
   const carryOverConfidenceHandoff = buildAtlasMilitaryCarryOverConfidenceHandoff(nextTurnCarryOverQueue, carryOverOutcomeTimeline);
   const blockerResolutionChecklist = buildAtlasMilitaryBlockerResolutionChecklist(carryOverConfidenceHandoff);
+  const nextBestClosureRecommendation = buildAtlasMilitaryNextBestClosureRecommendation(blockerResolutionChecklist);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -3045,6 +3138,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCarryOverOutcomeTimeline(carryOverOutcomeTimeline)}
       ${renderAtlasMilitaryCarryOverConfidenceHandoff(carryOverConfidenceHandoff)}
       ${renderAtlasMilitaryBlockerResolutionChecklist(blockerResolutionChecklist)}
+      ${renderAtlasMilitaryNextBestClosureRecommendation(nextBestClosureRecommendation)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
