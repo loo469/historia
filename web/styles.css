@@ -10905,6 +10905,7 @@ button { font: inherit; }
 .atlas-military-warning-stack,
 .atlas-military-commitment-resolver,
 .atlas-military-post-resolution-audit,
+.atlas-military-carry-over-queue,
 .atlas-military-warning-relief,
 .atlas-military-best-order,
 .atlas-military-fallback-order,
@@ -12861,4 +12862,39 @@ button { font: inherit; }
   border-radius: 12px;
   background: rgba(22, 101, 52, 0.12);
   border: 1px solid rgba(74, 222, 128, 0.18);
+}
+
+
+.atlas-military-carry-over-queue__panel {
+  fill: rgba(30, 41, 59, 0.82);
+  stroke: rgba(196, 181, 253, 0.48);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-carry-over-queue__title,
+.atlas-military-carry-over-item text,
+.atlas-military-carry-over-queue__empty {
+  fill: #ede9fe;
+  font-size: 1.04px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.3;
+}
+.atlas-military-carry-over-item rect {
+  fill: rgba(148, 163, 184, 0.74);
+  stroke: rgba(237, 233, 254, 0.75);
+  stroke-width: 0.2;
+}
+.atlas-military-carry-over-item--required rect { fill: rgba(248, 113, 113, 0.86); }
+.atlas-military-carry-over-item--opportunistic rect { fill: rgba(251, 191, 36, 0.8); }
+.atlas-military-carry-over-item--watch rect { fill: rgba(96, 165, 250, 0.78); }
+.atlas-military-carry-over-item__condition {
+  fill: #ddd6fe;
+  font-size: 0.76px;
+}
+.atlas-military-carry-over-item__dependencies,
+.atlas-military-carry-over-queue__empty {
+  fill: #fde68a;
+  font-size: 0.74px;
 }

@@ -1666,6 +1666,89 @@ function renderAtlasMilitaryPostResolutionOrderAudit(audit) {
   `;
 }
 
+
+function getAtlasMilitaryCarryOverKind(status) {
+  if (status === 'annulé' || status === 'reporté') return 'obligatoire';
+  if (status === 'à revoir') return 'opportuniste';
+  return 'à surveiller';
+}
+
+function getAtlasMilitaryCarryOverCondition(row) {
+  if (row.status === 'annulé') return 'résolu si le front critique ou le blocage transversal est levé';
+  if (row.status === 'reporté') return 'résolu si la province redevient couverte par un ordre prioritaire';
+  if (row.status === 'à revoir') return 'résolu si la pression reste stable après reconnaissance';
+  return 'résolu si aucun nouveau conflit voisin n’apparaît';
+}
+
+function getAtlasMilitaryCarryOverDependencies(row, shell) {
+  const province = (shell?.provinces ?? []).find((candidate) => candidate.label === row.provinceLabel) ?? null;
+  const dependencies = [];
+  if (province?.supplyLevel === 'collapsed' || province?.supplyLevel === 'strained') dependencies.push('logistique');
+  const exposedCellule = province
+    ? intrigueCellules.find((cellule) => cellule.locationId === province.provinceId && cellule.exposure >= 60)
+    : null;
+  if (exposedCellule) dependencies.push('renseignement');
+  if (province?.contested && (province.supplyLevel === 'strained' || row.status !== 'appliqué')) dependencies.push('météo');
+  return dependencies.length > 0 ? dependencies : ['aucune dépendance visible'];
+}
+
+function buildAtlasMilitaryNextTurnCarryOverQueue(postResolutionAudit, shell) {
+  const auditRows = postResolutionAudit?.rows ?? [];
+  if (!auditRows.length) {
+    return {
+      items: [],
+      summary: 'File prochain tour vide: aucun résultat contesté à reporter.',
+      empty: true,
+    };
+  }
+
+  const items = auditRows.map((row) => {
+    const kind = getAtlasMilitaryCarryOverKind(row.status);
+    const dependencies = getAtlasMilitaryCarryOverDependencies(row, shell);
+    return {
+      carryId: `carry-over:${row.provinceLabel}:${kind}`,
+      provinceLabel: row.provinceLabel,
+      kind,
+      tone: kind === 'obligatoire' ? 'required' : kind === 'opportuniste' ? 'opportunistic' : 'watch',
+      sourceStatus: row.status,
+      condition: getAtlasMilitaryCarryOverCondition(row),
+      dependencies,
+      nextStep: kind === 'obligatoire'
+        ? row.nextCorrection
+        : kind === 'opportuniste'
+          ? `option: ${row.nextCorrection}`
+          : `surveiller: ${row.cause}`,
+      priority: (row.priority ?? 0) + (kind === 'obligatoire' ? 30 : kind === 'opportuniste' ? 12 : 0),
+    };
+  })
+    .sort((left, right) => right.priority - left.priority || left.provinceLabel.localeCompare(right.provinceLabel))
+    .slice(0, 4);
+
+  return {
+    items,
+    summary: `${items.length} suivi${items.length > 1 ? 's' : ''} reporté${items.length > 1 ? 's' : ''} vers le prochain tour.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryNextTurnCarryOverQueue(queue) {
+  const height = queue.empty ? 8 : 7 + (queue.items.length * 5.1);
+  return `
+    <g class="atlas-military-carry-over-queue" aria-label="File de carry-over militaire prochain tour: ${queue.summary}">
+      <rect class="atlas-military-carry-over-queue__panel" x="44" y="68" width="36" height="${height}" rx="2.4"></rect>
+      <text class="atlas-military-carry-over-queue__title" x="46" y="71.2">Carry-over prochain tour</text>
+      ${queue.empty ? `<text class="atlas-military-carry-over-queue__empty" x="46" y="74.6">${queue.summary}</text>` : queue.items.map((item, index) => `
+        <g class="atlas-military-carry-over-item atlas-military-carry-over-item--${item.tone}" data-atlas-carry-over-queue="${item.carryId}" aria-label="${item.provinceLabel}: suivi ${item.kind}, depuis ${item.sourceStatus}; condition: ${item.condition}; dépendances: ${item.dependencies.join(', ')}">
+          <rect x="46" y="${73.1 + index * 5.1}" width="5.2" height="3.1" rx="0.8"></rect>
+          <text class="atlas-military-carry-over-item__kind" x="52.2" y="${74.2 + index * 5.1}">${item.kind} · ${item.provinceLabel}</text>
+          <text class="atlas-military-carry-over-item__condition" x="52.2" y="${75.8 + index * 5.1}">${item.condition}</text>
+          <text class="atlas-military-carry-over-item__dependencies" x="52.2" y="${77.4 + index * 5.1}">${item.dependencies.join(' · ')}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryCommitmentConflictResolver(resolver) {
   const height = resolver.empty ? 8 : 8 + (resolver.recommendations.length * 5.2);
   return `
@@ -2651,6 +2734,7 @@ function renderAtlasMilitaryLayer(shell) {
   const commitmentWarnings = buildAtlasMilitaryCommitmentNextTurnWarnings(commitmentPriority, commitmentDebt, commitmentCoverage, stagedCommitment);
   const commitmentResolver = buildAtlasMilitaryCommitmentConflictResolver(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentPriority, commitmentWarnings);
   const postResolutionAudit = buildAtlasMilitaryPostResolutionOrderAudit(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentWarnings, commitmentResolver);
+  const nextTurnCarryOverQueue = buildAtlasMilitaryNextTurnCarryOverQueue(postResolutionAudit, shell);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -2684,6 +2768,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
       ${renderAtlasMilitaryCommitmentConflictResolver(commitmentResolver)}
       ${renderAtlasMilitaryPostResolutionOrderAudit(postResolutionAudit)}
+      ${renderAtlasMilitaryNextTurnCarryOverQueue(nextTurnCarryOverQueue)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
