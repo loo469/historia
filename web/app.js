@@ -1470,6 +1470,114 @@ function renderAtlasMilitaryCommitmentNextTurnWarnings(warningSummary) {
 }
 
 
+
+function pickAtlasMilitaryResolverSource(commitmentConflicts, commitmentPriority, commitmentWarnings) {
+  const blockingWarning = (commitmentWarnings?.warnings ?? [])
+    .find((warning) => warning.tone === 'critical' || warning.debtTone === 'absent') ?? null;
+  if (blockingWarning) {
+    return {
+      decision: 'bloquer',
+      tone: 'block',
+      label: blockingWarning.label,
+      reason: `${blockingWarning.frontRoute} reste exposé: ${blockingWarning.degradation}`,
+      risk: blockingWarning.action,
+      priority: blockingWarning.urgencyScore,
+    };
+  }
+
+  const replacementConflict = (commitmentConflicts?.conflicts ?? [])
+    .find((conflict) => conflict.severity === 'haute') ?? null;
+  if (replacementConflict) {
+    return {
+      decision: 'remplacer',
+      tone: 'replace',
+      label: replacementConflict.provinceLabel,
+      reason: replacementConflict.explanation,
+      risk: replacementConflict.decision,
+      priority: replacementConflict.priority,
+    };
+  }
+
+  const delayConflict = (commitmentConflicts?.conflicts ?? [])
+    .find((conflict) => conflict.label.includes('stabilisée')) ?? null;
+  if (delayConflict) {
+    return {
+      decision: 'différer',
+      tone: 'defer',
+      label: delayConflict.provinceLabel,
+      reason: delayConflict.explanation,
+      risk: delayConflict.decision,
+      priority: delayConflict.priority,
+    };
+  }
+
+  const topPriority = (commitmentPriority?.priorities ?? [])[0] ?? null;
+  if (topPriority && topPriority.tone === 'high') {
+    return {
+      decision: 'différer',
+      tone: 'defer',
+      label: topPriority.label,
+      reason: topPriority.reason,
+      risk: `risque restant: ${topPriority.delayLabel}`,
+      priority: topPriority.urgencyScore,
+    };
+  }
+
+  return null;
+}
+
+function buildAtlasMilitaryCommitmentConflictResolver(commitment, commitmentConflicts, commitmentCoverage, commitmentPriority, commitmentWarnings) {
+  if (!commitment || commitment.empty || !commitment.stages.length) {
+    return {
+      recommendations: [],
+      summary: 'Aucun conflit: aucun engagement, ordre de province ou suivi de récupération préparé.',
+      empty: true,
+    };
+  }
+
+  const source = pickAtlasMilitaryResolverSource(commitmentConflicts, commitmentPriority, commitmentWarnings);
+  const targetLabel = commitment.selectedOption?.targetProvinceLabel ?? commitment.selectedOption?.target ?? 'province ciblée';
+  const fallback = {
+    decision: 'exécuter',
+    tone: 'execute',
+    label: targetLabel,
+    reason: `${targetLabel} reste cohérente avec ${commitment.stages.length} étape${commitment.stages.length > 1 ? 's' : ''} préparée${commitment.stages.length > 1 ? 's' : ''}.`,
+    risk: (commitmentCoverage?.uncoveredFronts?.length ?? 0) > 0
+      ? `risque restant: ${commitmentCoverage.uncoveredFronts[0].label} à surveiller`
+      : 'risque restant: aucun conflit visible',
+    priority: 36,
+  };
+
+  const recommendation = source ?? fallback;
+  return {
+    recommendations: [{
+      resolverId: `resolver:${recommendation.decision}:${recommendation.label}`,
+      ...recommendation,
+    }],
+    summary: `${recommendation.decision}: ${recommendation.reason}; ${recommendation.risk}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryCommitmentConflictResolver(resolver) {
+  const height = resolver.empty ? 8 : 8 + (resolver.recommendations.length * 5.2);
+  return `
+    <g class="atlas-military-commitment-resolver" aria-label="Résolveur des engagements militaires superposés: ${resolver.summary}">
+      <rect class="atlas-military-commitment-resolver__panel" x="3" y="44" width="38" height="${height}" rx="2.4"></rect>
+      <text class="atlas-military-commitment-resolver__title" x="5" y="47.4">Résolveur engagements</text>
+      ${resolver.empty ? `<text class="atlas-military-commitment-resolver__empty" x="5" y="50.8">${resolver.summary}</text>` : resolver.recommendations.map((recommendation, index) => `
+        <g class="atlas-military-resolver-row atlas-military-resolver-row--${recommendation.tone}" data-atlas-commitment-resolver="${recommendation.resolverId}" aria-label="Décision recommandée ${recommendation.decision}: ${recommendation.reason}; ${recommendation.risk}">
+          <rect x="5" y="${49.4 + index * 5.2}" width="4.9" height="3.2" rx="0.9"></rect>
+          <text class="atlas-military-resolver-row__decision" x="11" y="${50.5 + index * 5.2}">${recommendation.decision} · ${recommendation.label}</text>
+          <text class="atlas-military-resolver-row__reason" x="11" y="${52.1 + index * 5.2}">${recommendation.reason}</text>
+          <text class="atlas-military-resolver-row__risk" x="11" y="${53.7 + index * 5.2}">${recommendation.risk}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
+
 function getAtlasMilitaryWarningDegradationScore(warning) {
   if (warning.debtTone === 'absent') return 24;
   if (warning.debtTone === 'threat') return 18;
@@ -2434,6 +2542,7 @@ function renderAtlasMilitaryLayer(shell) {
   const commitmentDebt = buildAtlasMilitaryCommitmentDebtSummary(commitmentCoverage, stagedCommitment, shell);
   const commitmentPriority = buildAtlasMilitaryCommitmentDebtPriorities(commitmentDebt, commitmentCoverage, stagedCommitment);
   const commitmentWarnings = buildAtlasMilitaryCommitmentNextTurnWarnings(commitmentPriority, commitmentDebt, commitmentCoverage, stagedCommitment);
+  const commitmentResolver = buildAtlasMilitaryCommitmentConflictResolver(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentPriority, commitmentWarnings);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -2465,6 +2574,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCommitmentDebtSummary(commitmentDebt)}
       ${renderAtlasMilitaryCommitmentDebtPriorities(commitmentPriority)}
       ${renderAtlasMilitaryCommitmentNextTurnWarnings(commitmentWarnings)}
+      ${renderAtlasMilitaryCommitmentConflictResolver(commitmentResolver)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `

@@ -10819,6 +10819,7 @@ button { font: inherit; }
 .atlas-military-commitment-priority,
 .atlas-military-commitment-warning,
 .atlas-military-warning-stack,
+.atlas-military-commitment-resolver,
 .atlas-military-warning-relief,
 .atlas-military-best-order,
 .atlas-military-fallback-order,
@@ -12500,3 +12501,38 @@ button { font: inherit; }
 .province-node__action-affordance--available { border-color: rgba(74, 222, 128, 0.42); color: #bbf7d0; }
 .province-node__action-affordance--discouraged,
 .province-node__action-affordance--blocked { border-color: rgba(251, 191, 36, 0.48); color: #fde68a; }
+
+.atlas-military-commitment-resolver__panel {
+  fill: rgba(49, 46, 129, 0.78);
+  stroke: rgba(165, 180, 252, 0.42);
+  stroke-width: 0.35;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-commitment-resolver__title,
+.atlas-military-resolver-row text,
+.atlas-military-commitment-resolver__empty {
+  fill: #e0e7ff;
+  font-size: 1.12px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.88);
+  stroke-width: 0.32;
+}
+.atlas-military-resolver-row rect {
+  fill: rgba(129, 140, 248, 0.68);
+  stroke: rgba(224, 231, 255, 0.78);
+  stroke-width: 0.22;
+}
+.atlas-military-resolver-row--execute rect { fill: rgba(74, 222, 128, 0.78); }
+.atlas-military-resolver-row--defer rect { fill: rgba(251, 191, 36, 0.78); }
+.atlas-military-resolver-row--replace rect { fill: rgba(168, 85, 247, 0.76); }
+.atlas-military-resolver-row--block rect { fill: rgba(248, 113, 113, 0.88); }
+.atlas-military-resolver-row__reason {
+  fill: #c7d2fe;
+  font-size: 0.82px;
+}
+.atlas-military-resolver-row__risk,
+.atlas-military-commitment-resolver__empty {
+  fill: #fde68a;
+  font-size: 0.8px;
+}
