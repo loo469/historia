@@ -369,6 +369,32 @@ function renderOperationalCommitmentChecklist(shell) {
   `;
 }
 
+
+function renderOperationalCommitmentConflictResolver(shell) {
+  const resolver = shell.operationalCommitmentConflictResolver;
+  const decisions = resolver.decisions.map((decision) => {
+    const related = decision.relatedItems.map((item) => `${item.source}: ${item.label} (${item.status})`).join(' · ');
+    return `
+      <li class="commitment-resolver-decision commitment-resolver-decision--${escapeHtml(decision.decision)}">
+        <span>${escapeHtml(decision.provinceLabel)} · ${escapeHtml(decision.conflictType)} · ${decision.signalCount} signaux</span>
+        <strong>${escapeHtml(decision.decision)} — ${escapeHtml(decision.recommendedAction)}</strong>
+        <small>${escapeHtml(decision.tacticalReason)}</small>
+        <em>${escapeHtml(decision.remainingRisk)}</em>
+        <kbd>${escapeHtml(decision.keyboardHint)}</kbd>
+        <small>${escapeHtml(related)}</small>
+      </li>
+    `;
+  }).join('');
+
+  return `
+    <section class="commitment-resolver" aria-label="Résolveur de conflits des engagements de province">
+      <h2>Résolveur commitment</h2>
+      <p>${escapeHtml(resolver.fallbackMessage ?? resolver.summary)}</p>
+      ${resolver.empty ? '<small class="commitment-resolver-empty">Aucun conflit d’engagement détecté.</small>' : `<ol>${decisions}</ol>`}
+    </section>
+  `;
+}
+
 function renderProvinceActionQueueValidation(shell) {
   const validation = shell.keyboardActionPlanner.actionQueueValidation;
   const entries = validation.entries.map((entry) => {
@@ -571,6 +597,18 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
     .commitment-risk-summary article > span { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
     .commitment-risk-summary li { display:grid; gap:2px; border:1px solid rgba(148,163,184,0.16); border-radius:10px; padding:6px 8px; }
     .commitment-risk-summary small { color:#cbd5e1; }
+    .commitment-resolver { display:grid; gap:10px; }
+    .commitment-resolver p, .commitment-resolver-empty { margin:0; color:#cbd5e1; font-size:12px; }
+    .commitment-resolver ol { display:grid; gap:6px; margin:0; padding:0; }
+    .commitment-resolver-decision { display:grid; gap:4px; border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:8px 10px; }
+    .commitment-resolver-decision--exécuter { border-color:rgba(74,222,128,0.44); background:rgba(22,101,52,0.10); }
+    .commitment-resolver-decision--différer { border-color:rgba(251,191,36,0.42); background:rgba(120,53,15,0.10); }
+    .commitment-resolver-decision--remplacer { border-color:rgba(96,165,250,0.44); background:rgba(30,64,175,0.10); }
+    .commitment-resolver-decision--bloquer { border-color:rgba(248,113,113,0.44); background:rgba(127,29,29,0.10); }
+    .commitment-resolver-decision strong { color:#bfdbfe; font-size:12px; }
+    .commitment-resolver-decision small, .commitment-resolver-decision em { color:#cbd5e1; font-size:11px; }
+    .commitment-resolver-decision em { font-style:normal; color:#bae6fd; }
+    .commitment-resolver-decision kbd { justify-self:start; border:1px solid rgba(148,163,184,0.24); border-radius:8px; padding:3px 6px; color:#fde68a; background:rgba(15,23,42,0.52); font-size:11px; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 8px; border-bottom:1px solid rgba(148, 163, 184, 0.14); text-align:left; }
     th { color:#93c5fd; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
@@ -620,6 +658,7 @@ export function buildStrategicMapPreviewHtml(generatedMap, options = {}) {
         ${renderFrontRecoveryRecommendations(shell)}
         ${renderOperationalPrioritySummary(shell)}
         ${renderOperationalCommitmentChecklist(shell)}
+        ${renderOperationalCommitmentConflictResolver(shell)}
         <section>
           <h2>Lecture</h2>
           <ul>

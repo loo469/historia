@@ -54,6 +54,11 @@ test('buildStrategicMapPreviewHtml renders a screenshot-ready preview from the g
   assert.match(html, /Risques bloquants/);
   assert.match(html, /soutien adjacent à rétablir/);
   assert.match(html, /peut être engagé maintenant/);
+  assert.match(html, /Résolveur de conflits des engagements de province/);
+  assert.match(html, /Résolveur commitment/);
+  assert.match(html, /prérequis bloquant/);
+  assert.match(html, /Corriger soutien adjacent à rétablir/);
+  assert.match(html, /Focus Porte du Fleuve/);
   assert.match(html, /class="province is-contested is-occupied is-selected is-queued is-recently-affected"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /Porte du Fleuve/);
