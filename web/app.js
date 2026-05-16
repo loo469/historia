@@ -1811,6 +1811,86 @@ function renderAtlasMilitaryCarryOverOutcomeTimeline(timeline) {
   `;
 }
 
+
+function getAtlasMilitaryCarryOverConfidence(item, timelineRow) {
+  if (!item || !timelineRow) return { level: 'fog-safe', label: 'Confiance brouillard', risk: 'données carry-over incomplètes' };
+  const hasBlockingDependency = (item.dependencies ?? []).some((dependency) => ['logistique', 'renseignement', 'météo'].includes(dependency));
+  if (item.kind === 'obligatoire' || timelineRow.impact === 'conflit non résolu') {
+    return {
+      level: hasBlockingDependency ? 'fragile' : 'basse',
+      label: hasBlockingDependency ? 'Confiance fragile' : 'Confiance basse',
+      risk: hasBlockingDependency ? `risque: dépendance ${item.dependencies.join('/')}` : 'risque: conflit militaire non résolu',
+    };
+  }
+  if (item.kind === 'opportuniste' || timelineRow.impact === 'ordre à revoir') {
+    return { level: 'moyenne', label: 'Confiance moyenne', risk: 'risque: fenêtre tactique à confirmer' };
+  }
+  return { level: 'haute', label: 'Confiance haute', risk: 'risque: simple surveillance' };
+}
+
+function getAtlasMilitaryBlockingHandoffDecision(item, confidence) {
+  if (!item) return 'attente: visibilité insuffisante';
+  if (item.kind === 'obligatoire' && item.dependencies?.includes('logistique')) return 'renfort: sécuriser logistique';
+  if (item.kind === 'obligatoire' && item.dependencies?.includes('renseignement')) return 'attente: confirmer renseignement';
+  if (item.kind === 'obligatoire' && item.dependencies?.includes('météo')) return 'repli: éviter fenêtre météo';
+  if (item.kind === 'obligatoire') return 'ordre: résoudre blocage';
+  if (item.kind === 'opportuniste' || confidence?.level === 'moyenne') return 'attente: revoir ordre';
+  return 'ordre: maintenir surveillance';
+}
+
+function buildAtlasMilitaryCarryOverConfidenceHandoff(carryOverQueue, outcomeTimeline) {
+  const items = carryOverQueue?.items ?? [];
+  const timelineByProvince = new Map((outcomeTimeline?.timelines ?? []).map((timeline) => [timeline.provinceLabel, timeline]));
+  if (!items.length || outcomeTimeline?.empty) {
+    return {
+      handoffs: [],
+      summary: 'Handoff confiance vide: aucun carry-over visible ou informations sous brouillard.',
+      empty: true,
+    };
+  }
+
+  const handoffs = items.slice(0, 3).map((item) => {
+    const timelineRow = timelineByProvince.get(item.provinceLabel) ?? null;
+    const confidence = getAtlasMilitaryCarryOverConfidence(item, timelineRow);
+    const blockingDecision = getAtlasMilitaryBlockingHandoffDecision(item, confidence);
+    return {
+      handoffId: `carry-over-confidence:${item.provinceLabel}`,
+      provinceLabel: item.provinceLabel,
+      confidence,
+      blockingDecision,
+      risk: confidence.risk,
+      detail: timelineRow?.impact ?? item.nextStep ?? 'détail masqué par brouillard',
+      tone: confidence.level === 'haute' ? 'high' : confidence.level === 'moyenne' ? 'medium' : confidence.level === 'fragile' ? 'fragile' : 'low',
+      priority: (item.priority ?? 0) + (confidence.level === 'fragile' ? 24 : confidence.level === 'basse' ? 18 : confidence.level === 'moyenne' ? 8 : 0),
+    };
+  })
+    .sort((left, right) => right.priority - left.priority || left.provinceLabel.localeCompare(right.provinceLabel));
+
+  return {
+    handoffs,
+    summary: `${handoffs.length} handoff${handoffs.length > 1 ? 's' : ''} confiance/risque prêt${handoffs.length > 1 ? 's' : ''} pour décision prochain tour.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryCarryOverConfidenceHandoff(handoff) {
+  const height = handoff.empty ? 7 : 6.5 + (handoff.handoffs.length * 4.8);
+  return `
+    <g class="atlas-military-confidence-handoff" aria-label="Handoff confiance et risque des provinces contestées: ${handoff.summary}">
+      <rect class="atlas-military-confidence-handoff__panel" x="82" y="66" width="15" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-confidence-handoff__title" x="83" y="68.8">Confiance</text>
+      ${handoff.empty ? `<text class="atlas-military-confidence-handoff__empty" x="83" y="72">${handoff.summary}</text>` : handoff.handoffs.map((row, index) => `
+        <g class="atlas-military-confidence-handoff-row atlas-military-confidence-handoff-row--${row.tone}" data-atlas-confidence-handoff="${row.handoffId}" aria-label="${row.provinceLabel}: ${row.confidence.label}; ${row.risk}; décision bloquante ${row.blockingDecision}">
+          <circle cx="83.6" cy="${71 + index * 4.8}" r="0.85"></circle>
+          <text class="atlas-military-confidence-handoff-row__province" x="85" y="${70.4 + index * 4.8}">${row.provinceLabel}</text>
+          <text class="atlas-military-confidence-handoff-row__decision" x="85" y="${71.9 + index * 4.8}">${row.blockingDecision}</text>
+          <text class="atlas-military-confidence-handoff-row__risk" x="85" y="${73.4 + index * 4.8}">${row.confidence.label} · ${row.risk}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryCommitmentConflictResolver(resolver) {
   const height = resolver.empty ? 8 : 8 + (resolver.recommendations.length * 5.2);
   return `
@@ -2798,6 +2878,7 @@ function renderAtlasMilitaryLayer(shell) {
   const postResolutionAudit = buildAtlasMilitaryPostResolutionOrderAudit(stagedCommitment, commitmentConflicts, commitmentCoverage, commitmentWarnings, commitmentResolver);
   const nextTurnCarryOverQueue = buildAtlasMilitaryNextTurnCarryOverQueue(postResolutionAudit, shell);
   const carryOverOutcomeTimeline = buildAtlasMilitaryCarryOverOutcomeTimeline(nextTurnCarryOverQueue);
+  const carryOverConfidenceHandoff = buildAtlasMilitaryCarryOverConfidenceHandoff(nextTurnCarryOverQueue, carryOverOutcomeTimeline);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -2833,6 +2914,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryPostResolutionOrderAudit(postResolutionAudit)}
       ${renderAtlasMilitaryNextTurnCarryOverQueue(nextTurnCarryOverQueue)}
       ${renderAtlasMilitaryCarryOverOutcomeTimeline(carryOverOutcomeTimeline)}
+      ${renderAtlasMilitaryCarryOverConfidenceHandoff(carryOverConfidenceHandoff)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
