@@ -18529,6 +18529,29 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
         <strong>${view.title}</strong>
       </div>
       <p>${view.summary}</p>
+      ${view.tradeOffComparisons?.length ? `
+        <div class="economy-repayment-tradeoffs" aria-label="Comparaison des options de résolution de goulot">
+          ${view.tradeOffComparisons.map((comparison) => `
+            <details class="economy-repayment-tradeoff" ${comparison.id === view.topTradeOffComparisonId ? 'open' : ''}>
+              <summary>
+                <span>${comparison.source}</span>
+                <strong>${comparison.recommendation}</strong>
+              </summary>
+              <div class="economy-repayment-tradeoff__choices">
+                ${comparison.choices.map((choice) => `
+                  <article class="economy-repayment-tradeoff__choice economy-repayment-tradeoff__choice--${choice.role.replaceAll(' ', '-')}">
+                    <b>${choice.role}</b>
+                    <strong>${choice.label}</strong>
+                    <small>Coût ${choice.cost} · libère ${choice.capacityFreed} · délai ${choice.delay}</small>
+                    <p>${choice.residualRisk}</p>
+                    <span>${choice.overloadShiftRisk}</span>
+                  </article>
+                `).join('')}
+              </div>
+            </details>
+          `).join('')}
+        </div>
+      ` : ''}
       ${view.warningGroups?.length ? `
         <div class="economy-repayment-bottlenecks" aria-label="Goulots de remboursement groupés">
           ${view.warningGroups.map((group) => `

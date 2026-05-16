@@ -1630,6 +1630,32 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
   ]);
   assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.topWarningGroupKey, 'stock:stock');
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.warningGroups[0].quickRead, /réduit le risque/);
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.topTradeOffComparisonId, 'tradeoff-comparison:stock:stock');
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.tradeOffComparisons.map((comparison) => ({
+    id: comparison.id,
+    warningGroupKey: comparison.warningGroupKey,
+    minimalSafeOptionId: comparison.minimalSafeOptionId,
+    fastFragileOptionId: comparison.fastFragileOptionId,
+    avoidOptionId: comparison.avoidOptionId,
+  })), [
+    {
+      id: 'tradeoff-comparison:stock:stock',
+      warningGroupKey: 'stock:stock',
+      minimalSafeOptionId: 'tradeoff:stock:stock:recovery-repayment:route-coast:complete',
+      fastFragileOptionId: 'tradeoff:stock:stock:recovery-repayment:route-coast:partial',
+      avoidOptionId: 'tradeoff:stock:stock:recovery-repayment:route-coast:partial',
+    },
+  ]);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.tradeOffComparisons[0].choices.map((choice) => ({
+    role: choice.role,
+    cost: choice.cost,
+    delay: choice.delay,
+    residualRisk: choice.residualRisk,
+  })), [
+    { role: 'rapide fragile', cost: 1, delay: 'ce tour + reprise suivante', residualRisk: '1 capacité encore bloquée' },
+    { role: 'minimale sûre', cost: 2, delay: 'ce tour', residualRisk: 'aucun goulot critique restant' },
+  ]);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.tradeOffComparisons[0].choices[1].overloadShiftRisk, /déplacer la surcharge/);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
