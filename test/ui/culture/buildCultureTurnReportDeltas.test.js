@@ -257,6 +257,11 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
           role: 'best-safe',
           repeatState: 'new',
           repeatReason: 'aucune décision récente similaire dans la limite affichée',
+          rotation: {
+            confirm: 'confirmer si le contexte narratif a changé',
+            defer: 'différer si aucun nouveau signal ne justifie ce prompt',
+            replace: 'aucune alternative plus fraîche visible',
+          },
           narrativeImpact: 'Ouvrir le récit d’expansion garde expansion prudente lisible et transforme Compact d’Aurora en suivi narratif immédiat.',
         },
       ],
@@ -273,6 +278,11 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
               role: 'best-safe',
               repeatState: 'new',
               repeatReason: 'aucune décision récente similaire dans la limite affichée',
+              rotation: {
+                confirm: 'confirmer si le contexte narratif a changé',
+                defer: 'différer si aucun nouveau signal ne justifie ce prompt',
+                replace: 'aucune alternative plus fraîche visible',
+              },
               narrativeImpact: 'Ouvrir le récit d’expansion garde expansion prudente lisible et transforme Compact d’Aurora en suivi narratif immédiat.',
               source: 'current',
               theme: 'Ouvrir le récit d’expansion',
@@ -281,6 +291,7 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
           hasRepeat: false,
         },
       ],
+      repetitionSafeguard: 'Aucune répétition récente détectée: garder les prompts frais en priorité.',
       emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
     },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
@@ -343,6 +354,7 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         regionId: 'quiet-field',
         currentEntries: [],
         groups: [],
+        repetitionSafeguard: 'Aucun prompt courant à protéger contre la répétition.',
         emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
@@ -722,9 +734,12 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   assert.equal(report.commitmentBundles.promptHistoryDrawer.displayLimit, 5);
   assert.deepEqual(report.commitmentBundles.promptHistoryDrawer.currentEntries.map((entry) => [entry.clusterLabel, entry.repeatState]), [
     ['Compact d’Aurora', 'repeated'],
-    ['Harbor Compact', 'new'],
+    ['Harbor Compact', 'near-repeat'],
     ['Ember Guild', 'new'],
   ]);
   assert.match(report.commitmentBundles.promptHistoryDrawer.currentEntries[0].repeatReason, /tour 7/);
+  assert.match(report.commitmentBundles.promptHistoryDrawer.currentEntries[0].rotation.defer, /fatigue/);
+  assert.match(report.commitmentBundles.promptHistoryDrawer.currentEntries[1].rotation.replace, /Ember Guild/);
+  assert.match(report.commitmentBundles.promptHistoryDrawer.repetitionSafeguard, /Rotation courte/);
   assert.equal(report.commitmentBundles.promptHistoryDrawer.groups[0].hasRepeat, true);
 });

@@ -1909,6 +1909,7 @@ button { font: inherit; }
 }
 .culture-turn-report__history-pill--repeated,
 .culture-turn-report__history-group--repeat { border-color: rgba(251, 191, 36, 0.44); }
+.culture-turn-report__history-pill--near-repeat { border-color: rgba(244, 114, 182, 0.38); }
 .culture-turn-report__history-pill--new { border-color: rgba(74, 222, 128, 0.24); }
 .hero-stats {
   display: grid;
