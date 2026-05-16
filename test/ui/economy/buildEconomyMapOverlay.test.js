@@ -1678,6 +1678,20 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
   ]);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.outcomeRecaps[0].summary, /dette restante aucun goulot critique restant/);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.outcomeRecaps[0].displacedRisk, /déplacer la surcharge/);
+  assert.deepEqual({
+    status: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.status,
+    linkedOutcomeRecapId: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.linkedOutcomeRecapId,
+    linkedWarningGroupKey: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.linkedWarningGroupKey,
+    affectedDestinations: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.affectedDestinations.map((destination) => destination.targetId),
+  }, {
+    status: 'à arbitrer',
+    linkedOutcomeRecapId: 'outcome-recap:stock:stock:recovery-repayment:route-coast:complete',
+    linkedWarningGroupKey: 'stock:stock',
+    affectedDestinations: ['route-coast'],
+  });
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.primaryAction, /sans déplacer la surcharge/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.alternativeAction, /Alternative prudente/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.overloadWarning, /recréer un bottleneck/);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
