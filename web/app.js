@@ -6330,6 +6330,22 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucun prompt compatible, risqué ou à attendre à comparer.</small>'}
       </div>
+      <div class="culture-turn-report__freshness culture-turn-report__freshness--${report.commitmentBundles?.promptFreshnessFilter?.state ?? 'quiet'}" aria-label="Filtre de fraîcheur des recommandations culturelles">
+        <span>Fraîcheur culturelle</span>
+        <strong>${report.commitmentBundles?.promptFreshnessFilter?.summary ?? 'Aucun filtre de fraîcheur culturel actif.'}</strong>
+        <small>${report.commitmentBundles?.promptFreshnessFilter?.fallback ?? 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.'}</small>
+        ${(report.commitmentBundles?.promptFreshnessFilter?.entries ?? []).length > 0 ? `
+          <div class="culture-turn-report__freshness-list">
+            ${report.commitmentBundles.promptFreshnessFilter.entries.map((entry) => `
+              <article class="culture-turn-report__freshness-entry culture-turn-report__freshness-entry--${entry.freshnessState}" data-culture-freshness="${entry.freshnessId}">
+                <b>${entry.promptLabel}</b>
+                <em>${entry.clusterLabel} · ${entry.freshnessState === 'fresh' ? 'frais' : entry.freshnessState === 'defer' ? 'à différer' : 'déjà vu'}</em>
+                <small>${entry.explanation}</small>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucune recommandation culturelle à classer par fraîcheur.</small>'}
+      </div>
       <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
         <summary>
           <span>Historique culturel</span>
