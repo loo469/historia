@@ -1914,6 +1914,50 @@ function describeClimateFollowUpRiskDelta(item, bundle, preview) {
   };
 }
 
+function describeClimateFollowUpCooldownReadiness(item, preview) {
+  if (item.riskDelta.state === 'reduced' && item.classification === 'deferrable') {
+    return {
+      state: 'ready-now',
+      label: 'prêt maintenant',
+      availableInTurns: 0,
+      linkedRiskDelta: item.riskDelta.state,
+      reason: item.riskDelta.cause,
+      waitingAction: 'jouer si utile, sinon garder une veille légère sans relancer le bundle',
+    };
+  }
+
+  if (item.riskDelta.state === 'stable-risk' || item.classification === 'prudent') {
+    return {
+      state: 'soon-safe',
+      label: 'bientôt sûr',
+      availableInTurns: Math.max(1, preview.coolingOffTurns - 1),
+      linkedRiskDelta: item.riskDelta.state,
+      reason: item.riskDelta.cause,
+      waitingAction: 'attendre la fin du cooling-off et préserver la readiness locale',
+    };
+  }
+
+  if (item.riskDelta.state === 'worsening-probable' || item.classification === 'urgent') {
+    return {
+      state: 'still-risky',
+      label: 'encore risqué',
+      availableInTurns: preview.coolingOffTurns,
+      linkedRiskDelta: item.riskDelta.state,
+      reason: item.riskDelta.cause,
+      waitingAction: 'ne pas empiler: sécuriser réserve ou mitigation avant engagement',
+    };
+  }
+
+  return {
+    state: 'unknown',
+    label: 'inconnu',
+    availableInTurns: null,
+    linkedRiskDelta: item.riskDelta.state,
+    reason: 'données insuffisantes pour dater une fenêtre sûre',
+    waitingAction: 'surveiller sans promettre de fenêtre précise',
+  };
+}
+
 function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview) {
   const minimalItems = followUpQueue.filter((item) => item.classification === 'urgent');
   const safeItems = minimalItems.length > 0
@@ -1934,6 +1978,11 @@ function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview
       regionId: item.regionId,
       ...item.riskDelta,
     }));
+    const cooldownCalendar = items.map((item) => ({
+      followUpId: item.followUpId,
+      regionId: item.regionId,
+      ...item.cooldownReadiness,
+    }));
     return {
       compatibilityBundleId: `${bundle.bundleId}:compat:${kind}`,
       kind,
@@ -1944,6 +1993,7 @@ function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview
         ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
         : conflictSignals,
       riskDeltas,
+      cooldownCalendar,
       reason: kind === 'minimal-safe'
         ? 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat'
         : 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
@@ -2006,9 +2056,14 @@ function buildClimateBundleFollowUpQueue(bundle, preview) {
       nextAction,
     };
 
-    return {
+    const itemWithRiskDelta = {
       ...item,
       riskDelta: describeClimateFollowUpRiskDelta(item, bundle, preview),
+    };
+
+    return {
+      ...itemWithRiskDelta,
+      cooldownReadiness: describeClimateFollowUpCooldownReadiness(itemWithRiskDelta, preview),
     };
   }).sort((left, right) => {
     const rank = { urgent: 0, prudent: 1, deferrable: 2 };
@@ -2097,6 +2152,14 @@ function normalizeClimateBundleAfterActionPreview(preview, basePreview) {
         ignoredReboundRisk: String(normalizedItem.ignoredReboundRisk).trim(),
         nextAction: String(normalizedItem.nextAction).trim(),
         riskDelta: normalizedItem.riskDelta ?? { state: 'unknown', label: 'delta inconnu', cause: 'données insuffisantes' },
+        cooldownReadiness: normalizedItem.cooldownReadiness ?? {
+          state: 'unknown',
+          label: 'inconnu',
+          availableInTurns: null,
+          linkedRiskDelta: 'unknown',
+          reason: 'données insuffisantes pour dater une fenêtre sûre',
+          waitingAction: 'surveiller sans promettre de fenêtre précise',
+        },
       };
     }),
     followUpCompatibility: normalizedPreview.followUpCompatibility ?? basePreview.followUpCompatibility,
