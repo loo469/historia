@@ -17828,6 +17828,53 @@ function renderEconomyFocusPanel(economyView) {
   `;
 }
 
+
+function renderEconomyRecoveryDebtLedger(economyView) {
+  const ledger = economyView.overlay.layers?.logistics?.recoveryDebtLedger ?? null;
+
+  if (!ledger) {
+    return '';
+  }
+
+  const entries = ledger.entries.slice(0, 3);
+  const statusClass = ledger.status.replaceAll(' ', '-');
+
+  return `
+    <section class="economy-recovery-debt economy-recovery-debt--${statusClass}" aria-label="Ledger dette capacité logistique après reprises">
+      <div class="economy-recovery-debt__header">
+        <span>Dette recovery</span>
+        <strong>${ledger.title}</strong>
+        <b>${ledger.status}</b>
+      </div>
+      <p>${ledger.summary}</p>
+      <div class="economy-recovery-debt__totals">
+        <span><b>${ledger.totals.debt}</b>dette</span>
+        <span><b>${ledger.totals.cost}</b>coût</span>
+        <span><b>${ledger.totals.available}</b>capacité</span>
+      </div>
+      <ol class="economy-recovery-debt__list">
+        ${entries.map((entry) => `
+          <li class="economy-recovery-debt__entry economy-recovery-debt__entry--${entry.tone}">
+            <div>
+              <strong>${entry.label}</strong>
+              <small>${entry.corridor}</small>
+            </div>
+            <span>${entry.status}</span>
+            <p>${entry.justification}</p>
+            <small>Prochaine action: ${entry.nextAction}</small>
+          </li>
+        `).join('')}
+      </ol>
+      <footer>
+        <span>Décision</span>
+        <strong>${ledger.recommendedNextAction}</strong>
+        <small>${ledger.decisionJustification}</small>
+      </footer>
+    </section>
+  `;
+}
+
+
 function renderEconomySidePanel(economyView, cultureView) {
   const culturePanel = renderCultureSidePanel(cultureView);
 
@@ -17886,6 +17933,7 @@ function renderEconomySidePanel(economyView, cultureView) {
       </section>
       ${renderEconomyKpiStrip(economyView)}
       ${renderEconomyFocusPanel(economyView)}
+      ${renderEconomyRecoveryDebtLedger(economyView)}
       ${selectedRoute && selectedRouteStress ? `
         <article class="economy-route-stress-panel economy-route-stress-panel--${selectedRouteStress.tone}">
           <div class="economy-route-stress-panel__header">

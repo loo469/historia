@@ -1528,6 +1528,32 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
       { key: 'à reporter', label: 'À reporter' },
     ],
   });
+  assert.equal(overlay.layers.logistics.recoveryDebtLedger.id, 'logistics-recovery-debt-ledger');
+  assert.equal(overlay.layers.logistics.recoveryDebtLedger.status, 'en dette');
+  assert.equal(overlay.layers.logistics.recoveryDebtLedger.recommendedEntryId, 'recovery-debt:route-coast');
+  assert.equal(overlay.layers.logistics.recoveryDebtLedger.recommendedNextAction, 'ajouter du stock avant le prochain bundle');
+  assert.match(overlay.layers.logistics.recoveryDebtLedger.summary, /route\(s\)\/corridor\(s\) en dette/);
+  assert.match(overlay.layers.logistics.recoveryDebtLedger.decisionJustification, /Coast Road \(land\).*dépasse stock/);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtLedger.entries.map((entry) => ({
+    id: entry.id,
+    targetId: entry.targetId,
+    status: entry.status,
+    tone: entry.tone,
+    debtAmount: entry.debtAmount,
+    debtResources: entry.debtResources,
+    nextAction: entry.nextAction,
+  })), [
+    {
+      id: 'recovery-debt:route-coast',
+      targetId: 'route-coast',
+      status: 'en dette',
+      tone: 'critical',
+      debtAmount: 2,
+      debtResources: ['stock'],
+      nextAction: 'ajouter du stock avant le prochain bundle',
+    },
+  ]);
+
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
     targetId: marker.targetId,

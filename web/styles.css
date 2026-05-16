@@ -12578,3 +12578,94 @@ button { font: inherit; }
   fill: #fde68a;
   font-size: 0.8px;
 }
+.economy-recovery-debt {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.76), rgba(2, 6, 23, 0.54));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.economy-recovery-debt--en-dette { border-color: rgba(251, 113, 133, 0.36); }
+.economy-recovery-debt--à-la-limite { border-color: rgba(245, 158, 11, 0.34); }
+.economy-recovery-debt--sous-capacité { border-color: rgba(74, 222, 128, 0.24); }
+.economy-recovery-debt__header,
+.economy-recovery-debt footer {
+  display: grid;
+  gap: 3px;
+}
+.economy-recovery-debt__header span,
+.economy-recovery-debt footer span {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.economy-recovery-debt__header strong,
+.economy-recovery-debt footer strong { color: #f8fafc; }
+.economy-recovery-debt__header b {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.14);
+  color: #fde68a;
+  font-size: 11px;
+}
+.economy-recovery-debt p,
+.economy-recovery-debt small {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.economy-recovery-debt__totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.economy-recovery-debt__totals span {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.34);
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.economy-recovery-debt__totals b { color: #e0f2fe; font-size: 15px; }
+.economy-recovery-debt__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.economy-recovery-debt__entry {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border-radius: 13px;
+  background: rgba(8, 15, 28, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+.economy-recovery-debt__entry div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.economy-recovery-debt__entry strong { color: #f8fafc; }
+.economy-recovery-debt__entry > span {
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 11px;
+}
+.economy-recovery-debt__entry--critical { border-color: rgba(251, 113, 133, 0.34); }
+.economy-recovery-debt__entry--warning { border-color: rgba(245, 158, 11, 0.3); }
+.economy-recovery-debt__entry--positive { border-color: rgba(74, 222, 128, 0.22); }
