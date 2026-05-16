@@ -1881,6 +1881,39 @@ function describeClimateBundleExpectedEffect(bundle) {
   return 'intervention différée: évite de verrouiller une fenêtre trop contradictoire';
 }
 
+function describeClimateFollowUpRiskDelta(item, bundle, preview) {
+  const conflicts = new Set(bundle.resourceConflicts);
+  if (preview.reboundRisk === 'low' && item.classification === 'deferrable') {
+    return {
+      state: 'reduced',
+      label: 'risque réduit',
+      cause: 'ressource: réserve conservée et signal régional stable',
+    };
+  }
+
+  if (item.classification === 'urgent' || preview.reboundRisk === 'high') {
+    return {
+      state: 'worsening-probable',
+      label: 'aggravation probable si ignoré',
+      cause: conflicts.has('residual-risk') ? 'catastrophe/risque régional résiduel' : 'ressource: conflit de réserve ou mitigation',
+    };
+  }
+
+  if (item.classification === 'prudent' || conflicts.has('window-timing')) {
+    return {
+      state: 'stable-risk',
+      label: 'risque stable sous surveillance',
+      cause: preview.coolingOffTurns > 1 ? 'saison: timing de cooling-off encore actif' : 'ressource: readiness à confirmer',
+    };
+  }
+
+  return {
+    state: 'unknown',
+    label: 'delta inconnu',
+    cause: 'données insuffisantes pour estimer le delta sans sur-promettre',
+  };
+}
+
 function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview) {
   const minimalItems = followUpQueue.filter((item) => item.classification === 'urgent');
   const safeItems = minimalItems.length > 0
@@ -1895,19 +1928,27 @@ function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview
     ...(preview.coolingOffTurns > 1 || bundle.resourceConflicts.includes('window-timing') ? ['cooling-off-timing'] : []),
     ...(preview.reboundRegionIds.length > 0 || bundle.resourceConflicts.includes('residual-risk') ? ['regional-residual-risk'] : []),
   ];
-  const buildBundle = (kind, items) => ({
-    compatibilityBundleId: `${bundle.bundleId}:compat:${kind}`,
-    kind,
-    followUpIds: items.map((item) => item.followUpId),
-    regionIds: items.map((item) => item.regionId),
-    safety: kind === 'minimal-safe' ? 'safe' : (conflictSignals.length > 0 ? 'fragile' : 'safe'),
-    conflictSignals: kind === 'minimal-safe'
-      ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
-      : conflictSignals,
-    reason: kind === 'minimal-safe'
-      ? 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat'
-      : 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
-  });
+  const buildBundle = (kind, items) => {
+    const riskDeltas = items.map((item) => ({
+      followUpId: item.followUpId,
+      regionId: item.regionId,
+      ...item.riskDelta,
+    }));
+    return {
+      compatibilityBundleId: `${bundle.bundleId}:compat:${kind}`,
+      kind,
+      followUpIds: items.map((item) => item.followUpId),
+      regionIds: items.map((item) => item.regionId),
+      safety: kind === 'minimal-safe' ? 'safe' : (conflictSignals.length > 0 ? 'fragile' : 'safe'),
+      conflictSignals: kind === 'minimal-safe'
+        ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
+        : conflictSignals,
+      riskDeltas,
+      reason: kind === 'minimal-safe'
+        ? 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat'
+        : 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
+    };
+  };
   const minimalSafeBundle = buildBundle('minimal-safe', safeItems);
   const ambitiousFragileBundle = buildBundle('ambitious-fragile', ambitiousItems.length > 0 ? ambitiousItems : followUpQueue);
   const pendingIfMinimal = followUpQueue
@@ -1955,7 +1996,7 @@ function buildClimateBundleFollowUpQueue(bundle, preview) {
         ? 'placer une vérification de readiness au prochain tour sûr'
         : 'différer et garder seulement une veille météo';
 
-    return {
+    const item = {
       followUpId: `${bundle.bundleId}:${regionId}:follow-up`,
       bundleId: bundle.bundleId,
       regionId,
@@ -1963,6 +2004,11 @@ function buildClimateBundleFollowUpQueue(bundle, preview) {
       reason,
       ignoredReboundRisk,
       nextAction,
+    };
+
+    return {
+      ...item,
+      riskDelta: describeClimateFollowUpRiskDelta(item, bundle, preview),
     };
   }).sort((left, right) => {
     const rank = { urgent: 0, prudent: 1, deferrable: 2 };
@@ -2050,6 +2096,7 @@ function normalizeClimateBundleAfterActionPreview(preview, basePreview) {
         reason: String(normalizedItem.reason).trim(),
         ignoredReboundRisk: String(normalizedItem.ignoredReboundRisk).trim(),
         nextAction: String(normalizedItem.nextAction).trim(),
+        riskDelta: normalizedItem.riskDelta ?? { state: 'unknown', label: 'delta inconnu', cause: 'données insuffisantes' },
       };
     }),
     followUpCompatibility: normalizedPreview.followUpCompatibility ?? basePreview.followUpCompatibility,

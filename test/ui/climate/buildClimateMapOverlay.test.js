@@ -2318,6 +2318,11 @@ test('buildClimateMapOverlay supports explicit prudent climate bundle overrides'
             reason: 'rebond élevé après bundle fragile ou déconseillé',
             ignoredReboundRisk: 'retour en alerte probable si aucun suivi n’est joué',
             nextAction: 'jouer le suivi minimal avant tout autre bundle climat',
+            riskDelta: {
+              state: 'worsening-probable',
+              label: 'aggravation probable si ignoré',
+              cause: 'catastrophe/risque régional résiduel',
+            },
           },
         ],
       },
@@ -2389,6 +2394,11 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
         reason: 'signal stable: suivi léger suffit après cooling-off',
         ignoredReboundRisk: 'rebond faible sauf nouveau signal saisonnier',
         nextAction: 'différer et garder seulement une veille météo',
+        riskDelta: {
+          state: 'reduced',
+          label: 'risque réduit',
+          cause: 'ressource: réserve conservée et signal régional stable',
+        },
       },
     ],
   });
@@ -2409,6 +2419,11 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
         reason: 'fenêtre encore sensible: vérifier avant nouvelle mitigation',
         ignoredReboundRisk: 'pression régionale peut remonter si la réserve disparaît',
         nextAction: 'placer une vérification de readiness au prochain tour sûr',
+        riskDelta: {
+          state: 'stable-risk',
+          label: 'risque stable sous surveillance',
+          cause: 'saison: timing de cooling-off encore actif',
+        },
       },
     ],
   });
@@ -2423,6 +2438,15 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
         regionIds: ['ridge'],
         safety: 'safe',
         conflictSignals: ['cooling-off-timing', 'regional-residual-risk'],
+        riskDeltas: [
+          {
+            followUpId: 'climate-bundle:prepare:ridge:follow-up',
+            regionId: 'ridge',
+            state: 'stable-risk',
+            label: 'risque stable sous surveillance',
+            cause: 'saison: timing de cooling-off encore actif',
+          },
+        ],
         reason: 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat',
       },
       {
@@ -2432,8 +2456,17 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
         regionIds: ['ridge'],
         safety: 'fragile',
         conflictSignals: ['mitigation', 'cooling-off-timing', 'regional-residual-risk'],
+        riskDeltas: [
+          {
+            followUpId: 'climate-bundle:prepare:ridge:follow-up',
+            regionId: 'ridge',
+            state: 'stable-risk',
+            label: 'risque stable sous surveillance',
+            cause: 'saison: timing de cooling-off encore actif',
+          },
+        ],
         reason: 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
-      },
+      }
     ],
     pendingIfMinimal: [],
     summary: '1 suivi(s), 0 laissé(s) en attente si bundle minimal.',
