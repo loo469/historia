@@ -18229,6 +18229,50 @@ function renderEconomyRecoveryRepaymentPriorities(economyView) {
 }
 
 
+function renderEconomyRecoveryRepaymentScenarios(economyView) {
+  const view = economyView.overlay.layers?.logistics?.recoveryDebtRepaymentScenarioPreviews ?? null;
+
+  if (!view) {
+    return '';
+  }
+
+  return `
+    <section class="economy-repayment-scenarios" aria-label="Scénarios de reprise après remboursement logistique">
+      <div class="economy-repayment-scenarios__header">
+        <span>Scénarios reprise</span>
+        <strong>${view.title}</strong>
+      </div>
+      <p>${view.summary}</p>
+      <div class="economy-repayment-scenarios__list">
+        ${view.scenarios.map((scenario) => `
+          <article class="economy-repayment-scenario">
+            <div class="economy-repayment-scenario__title">
+              <strong>#${scenario.rank} · ${scenario.label}</strong>
+              <small>${scenario.corridor}</small>
+            </div>
+            <p>${scenario.summary}</p>
+            <div class="economy-repayment-scenario__options">
+              ${scenario.options.map((option) => `
+                <div class="economy-repayment-scenario__option economy-repayment-scenario__option--${option.tone}">
+                  <b>${option.label}</b>
+                  <span>Capacité ${option.capacityConsumed} · bloqué ${option.remainingBlocked}</span>
+                  <p>${option.probableEffect}</p>
+                  <small>${option.blockedAfter}</small>
+                </div>
+              `).join('')}
+            </div>
+            <footer>
+              <span>Action minimale viable</span>
+              <strong>${scenario.minimalViableAction}</strong>
+            </footer>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+
 function renderEconomySidePanel(economyView, cultureView) {
   const culturePanel = renderCultureSidePanel(cultureView);
 
@@ -18289,6 +18333,7 @@ function renderEconomySidePanel(economyView, cultureView) {
       ${renderEconomyFocusPanel(economyView)}
       ${renderEconomyRecoveryDebtLedger(economyView)}
       ${renderEconomyRecoveryRepaymentPriorities(economyView)}
+      ${renderEconomyRecoveryRepaymentScenarios(economyView)}
       ${selectedRoute && selectedRouteStress ? `
         <article class="economy-route-stress-panel economy-route-stress-panel--${selectedRouteStress.tone}">
           <div class="economy-route-stress-panel__header">

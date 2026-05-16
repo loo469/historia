@@ -23,6 +23,14 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(webAppSource, /view\.waitable/);
   assert.match(webAppSource, /renderEconomyRecoveryRepaymentPriorities\(economyView\)/);
 
+  assert.match(webAppSource, /function renderEconomyRecoveryRepaymentScenarios/);
+  assert.match(webAppSource, /recoveryDebtRepaymentScenarioPreviews/);
+  assert.match(webAppSource, /Scénarios de reprise après remboursement logistique/);
+  assert.match(webAppSource, /option\.capacityConsumed/);
+  assert.match(webAppSource, /option\.remainingBlocked/);
+  assert.match(webAppSource, /scenario\.minimalViableAction/);
+  assert.match(webAppSource, /renderEconomyRecoveryRepaymentScenarios\(economyView\)/);
+
   assert.match(stylesSource, /\.economy-recovery-debt/);
   assert.match(stylesSource, /\.economy-recovery-debt--en-dette/);
   assert.match(stylesSource, /\.economy-recovery-debt__totals/);
@@ -31,4 +39,8 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(stylesSource, /\.economy-repayment-priorities/);
   assert.match(stylesSource, /\.economy-repayment-priorities__item--critical/);
   assert.match(stylesSource, /\.economy-repayment-priorities__wait/);
+
+  assert.match(stylesSource, /\.economy-repayment-scenarios/);
+  assert.match(stylesSource, /\.economy-repayment-scenario__option--warning/);
+  assert.match(stylesSource, /\.economy-repayment-scenario__option--positive/);
 });
