@@ -11509,6 +11509,42 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
       waitingAction: 'surveiller sans promettre de date précise',
     };
   };
+  const describeReadinessRecap = (item) => {
+    const riskDelta = describeRiskDelta(item);
+    const cooldown = describeCooldownReadiness(item);
+    const state = conflictSignals.includes('regional-residual-risk') && cooldown.state === 'ready-now'
+      ? 'regional-fragility-conflict'
+      : cooldown.state;
+    return {
+      followUpId: item.followUpId,
+      label: item.label,
+      state,
+      reason: cooldown.reason,
+      linkedCooldownState: cooldown.state,
+      linkedRiskDelta: riskDelta.state,
+      residualRisk: riskDelta.state === 'reduced'
+        ? 'résiduel faible: réserve et saison sous contrôle'
+        : riskDelta.state === 'stable-risk'
+          ? 'résiduel modéré: cooling-off ou ressource à confirmer'
+          : riskDelta.state === 'worsening-probable'
+            ? 'résiduel élevé: catastrophe, mythe ou région fragile possible'
+            : 'résiduel inconnu: données partielles',
+      safeAction: cooldown.state === 'ready-now'
+        ? item.nextAction
+        : cooldown.state === 'soon-safe'
+          ? cooldown.waitingAction
+          : cooldown.state === 'still-risky'
+            ? 'sécuriser ressource/mitigation puis relire le delta'
+            : 'attendre un signal saison/catastrophe fiable',
+      avoidAction: cooldown.state === 'ready-now'
+        ? 'éviter de dépenser la réserve sur un second bundle immédiat'
+        : cooldown.state === 'soon-safe'
+          ? 'éviter de forcer avant la fin du cooling-off'
+          : cooldown.state === 'still-risky'
+            ? 'éviter empilement mitigation + réserve dans le même tour'
+            : 'éviter de promettre une fenêtre sûre sans données',
+    };
+  };
   const makeBundle = (kind, items) => ({
     bundleId: `follow-up-compat:${kind}`,
     kind,
@@ -11520,6 +11556,7 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
       : conflictSignals,
     riskDeltas: items.map((item) => ({ followUpId: item.followUpId, label: item.label, ...describeRiskDelta(item) })),
     cooldownCalendar: items.map((item) => ({ followUpId: item.followUpId, itemLabel: item.label, linkedRiskDelta: describeRiskDelta(item).state, ...describeCooldownReadiness(item) })),
+    readinessRecaps: items.map(describeReadinessRecap),
     recommendation: kind === 'minimal-safe'
       ? 'Bundle minimal sûr: jouer seulement les suivis qui empêchent le rebound immédiat.'
       : 'Bundle ambitieux fragile: couvre plus large mais peut rouvrir réserve, mitigation ou timing.',
@@ -11544,6 +11581,56 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
   };
 }
 
+function buildAtlasSelectedClimateFollowUpReadinessRecap(compatibilityView) {
+  if (!compatibilityView || compatibilityView.state === 'empty') {
+    return {
+      state: 'empty',
+      summary: 'Aucun follow-up climatique sélectionné pour le récap readiness.',
+    };
+  }
+
+  const selectedBundle = compatibilityView.bundles.find((bundle) => bundle.kind === 'minimal-safe') ?? compatibilityView.bundles[0];
+  const selectedRecap = selectedBundle?.readinessRecaps?.[0] ?? null;
+  if (!selectedRecap) {
+    return {
+      state: 'empty',
+      summary: 'Données partielles: aucun récap readiness exploitable.',
+    };
+  }
+
+  return {
+    state: selectedRecap.state,
+    selectedLabel: selectedRecap.label,
+    reason: selectedRecap.reason,
+    residualRisk: selectedRecap.residualRisk,
+    safeAction: selectedRecap.safeAction,
+    avoidAction: selectedRecap.avoidAction,
+    linkedCooldownState: selectedRecap.linkedCooldownState,
+    linkedRiskDelta: selectedRecap.linkedRiskDelta,
+    summary: `${selectedRecap.label}: ${selectedRecap.state}, lié au cooldown ${selectedRecap.linkedCooldownState} et au delta ${selectedRecap.linkedRiskDelta}.`,
+  };
+}
+
+function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-follow-up-readiness-recap map-world-climate-follow-up-readiness-recap--${view.state}" aria-label="Récapitulatif readiness du follow-up climatique sélectionné">
+      <div class="map-world-climate-follow-up-readiness-recap__header">
+        <strong>Readiness follow-up</strong>
+        <span>${view.state}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Raison statut</b> · ${view.reason}</small>
+      <small><b>Risque résiduel</b> · ${view.residualRisk}</small>
+      <small><b>Action sûre</b> · ${view.safeAction}</small>
+      <small><b>Action à éviter</b> · ${view.avoidAction}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateFollowUpCompatibilityBundles(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -11565,6 +11652,7 @@ function renderAtlasClimateFollowUpCompatibilityBundles(view) {
             <small><b>Delta risque</b> · ${bundle.riskDeltas.length > 0 ? bundle.riskDeltas.map((delta) => `${delta.label}: ${delta.state}, ${delta.cause}`).join(' | ') : 'delta inconnu: données insuffisantes'}</small>
             <small><b>Calendrier cooldown</b> · ${bundle.cooldownCalendar.length > 0 ? bundle.cooldownCalendar.map((entry) => `${entry.itemLabel}: ${entry.state === 'unknown' ? entry.label : `${entry.label}, T+${entry.availableInTurns}`}, ${entry.reason}`).join(' | ') : 'inconnu: données insuffisantes'}</small>
             <small><b>Action attente</b> · ${bundle.cooldownCalendar.length > 0 ? bundle.cooldownCalendar.map((entry) => entry.waitingAction).join(' | ') : 'surveiller sans promettre de date précise'}</small>
+            <small><b>Récap readiness</b> · ${bundle.readinessRecaps.length > 0 ? bundle.readinessRecaps.map((recap) => `${recap.label}: ${recap.state}, ${recap.residualRisk}`).join(' | ') : 'données partielles'}</small>
             <small><b>Recommandation</b> · ${bundle.recommendation}</small>
           </li>
         `).join('')}
@@ -19706,6 +19794,7 @@ function render() {
     atlasClimateReboundFollowUpQueue,
     atlasClimateReboundAfterActionBundle,
   );
+  const atlasSelectedClimateFollowUpReadinessRecap = buildAtlasSelectedClimateFollowUpReadinessRecap(atlasClimateFollowUpCompatibilityBundles);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -19758,6 +19847,7 @@ function render() {
           ${renderAtlasClimateReboundAfterActionBundle(atlasClimateReboundAfterActionBundle)}
           ${renderAtlasClimateReboundFollowUpQueue(atlasClimateReboundFollowUpQueue)}
           ${renderAtlasClimateFollowUpCompatibilityBundles(atlasClimateFollowUpCompatibilityBundles)}
+          ${renderAtlasSelectedClimateFollowUpReadinessRecap(atlasSelectedClimateFollowUpReadinessRecap)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

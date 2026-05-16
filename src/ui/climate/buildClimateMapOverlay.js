@@ -1914,6 +1914,49 @@ function describeClimateFollowUpRiskDelta(item, bundle, preview) {
   };
 }
 
+function describeClimateFollowUpReadinessRecap(item, cooldownReadiness, bundle, preview) {
+  const conflicts = new Set(bundle.resourceConflicts);
+  const state = conflicts.has('residual-risk') && cooldownReadiness.state === 'ready-now'
+    ? 'regional-fragility-conflict'
+    : cooldownReadiness.state;
+  const residualRisk = item.riskDelta.state === 'reduced'
+    ? 'résiduel faible: conserver la réserve et surveiller la saison'
+    : item.riskDelta.state === 'stable-risk'
+      ? 'résiduel modéré: cooling-off ou readiness encore à confirmer'
+      : item.riskDelta.state === 'worsening-probable'
+        ? 'résiduel élevé: catastrophe, mythe ou région fragile peut relancer l’alerte'
+        : 'résiduel inconnu: données partielles ou saison non renseignée';
+  const safeAction = state === 'ready-now'
+    ? item.nextAction
+    : state === 'soon-safe'
+      ? cooldownReadiness.waitingAction
+      : state === 'still-risky'
+        ? 'sécuriser ressource/mitigation puis relire le delta avant engagement'
+        : state === 'regional-fragility-conflict'
+          ? 'isoler la région fragile avant de jouer ce follow-up'
+          : 'attendre un signal saison/catastrophe plus fiable';
+  const avoidAction = state === 'ready-now'
+    ? 'éviter de consommer la réserve sur un second bundle immédiat'
+    : state === 'soon-safe'
+      ? 'éviter de forcer le follow-up avant la fin du cooling-off'
+      : state === 'still-risky'
+        ? 'éviter tout empilement mitigation + réserve dans le même tour'
+        : state === 'regional-fragility-conflict'
+          ? 'éviter de traiter la région comme stable tant que le conflit persiste'
+          : 'éviter de promettre une fenêtre sûre sans données';
+
+  return {
+    state,
+    reason: cooldownReadiness.reason,
+    linkedCooldownState: cooldownReadiness.state,
+    linkedRiskDelta: item.riskDelta.state,
+    residualRisk,
+    safeAction,
+    avoidAction,
+    dataConfidence: preview.reboundRisk === 'low' ? 'probable' : preview.reboundRisk === 'high' ? 'fragile' : 'partial',
+  };
+}
+
 function describeClimateFollowUpCooldownReadiness(item, preview) {
   if (item.riskDelta.state === 'reduced' && item.classification === 'deferrable') {
     return {
@@ -1983,6 +2026,11 @@ function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview
       regionId: item.regionId,
       ...item.cooldownReadiness,
     }));
+    const readinessRecaps = items.map((item) => ({
+      followUpId: item.followUpId,
+      regionId: item.regionId,
+      ...item.readinessRecap,
+    }));
     return {
       compatibilityBundleId: `${bundle.bundleId}:compat:${kind}`,
       kind,
@@ -1994,6 +2042,7 @@ function buildClimateFollowUpCompatibilityBundles(bundle, followUpQueue, preview
         : conflictSignals,
       riskDeltas,
       cooldownCalendar,
+      readinessRecaps,
       reason: kind === 'minimal-safe'
         ? 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat'
         : 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
@@ -2061,9 +2110,12 @@ function buildClimateBundleFollowUpQueue(bundle, preview) {
       riskDelta: describeClimateFollowUpRiskDelta(item, bundle, preview),
     };
 
+    const cooldownReadiness = describeClimateFollowUpCooldownReadiness(itemWithRiskDelta, preview);
+
     return {
       ...itemWithRiskDelta,
-      cooldownReadiness: describeClimateFollowUpCooldownReadiness(itemWithRiskDelta, preview),
+      cooldownReadiness,
+      readinessRecap: describeClimateFollowUpReadinessRecap(itemWithRiskDelta, cooldownReadiness, bundle, preview),
     };
   }).sort((left, right) => {
     const rank = { urgent: 0, prudent: 1, deferrable: 2 };
@@ -2159,6 +2211,16 @@ function normalizeClimateBundleAfterActionPreview(preview, basePreview) {
           linkedRiskDelta: 'unknown',
           reason: 'données insuffisantes pour dater une fenêtre sûre',
           waitingAction: 'surveiller sans promettre de fenêtre précise',
+        },
+        readinessRecap: normalizedItem.readinessRecap ?? {
+          state: 'unknown',
+          reason: 'données insuffisantes pour dater une fenêtre sûre',
+          linkedCooldownState: 'unknown',
+          linkedRiskDelta: 'unknown',
+          residualRisk: 'résiduel inconnu: données partielles ou saison non renseignée',
+          safeAction: 'attendre un signal saison/catastrophe plus fiable',
+          avoidAction: 'éviter de promettre une fenêtre sûre sans données',
+          dataConfidence: 'partial',
         },
       };
     }),
