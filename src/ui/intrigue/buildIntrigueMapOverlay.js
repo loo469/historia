@@ -2749,6 +2749,82 @@ function buildVerificationOutcomeRecap({ locationId, locationName, verificationC
   };
 }
 
+function buildIntrigueRecheckQueue({ locationId, locationName, verificationOutcomeRecap, verificationAuditTrail, intelligenceProvenancePanel, exposureBudgetForPriorityVerifications }) {
+  if (verificationOutcomeRecap.state === 'masked-recap') {
+    return {
+      state: 'masked-recheck-queue',
+      locationId,
+      locationName,
+      entries: [],
+      blockedRechecks: [{
+        reason: 'Ne pas relancer: provenance ou budget encore masqué, risque de transformer une absence de preuve en indice caché.',
+        triggerCondition: 'Attendre une provenance visible ou un nouveau signal cartographique autorisé.',
+      }],
+      budgetLink: 'masked-budget',
+      provenanceLink: intelligenceProvenancePanel.sourceLabel,
+      summary: 'File de re-vérification masquée: aucune relance sûre tant que provenance et budget restent insuffisants.',
+      safeMapPolicy: 'Planification D13 uniquement; aucune cellule, relais, cible, méthode sensible ou cause cachée n’est révélée.',
+    };
+  }
+
+  const remainingBudget = verificationOutcomeRecap.exposureBudgetRemaining ?? 0;
+  const provenanceLink = `${intelligenceProvenancePanel.provenanceType}:${verificationAuditTrail.lastChange}`;
+  const retainedCheck = verificationOutcomeRecap.retainedVerifications[0] ?? null;
+  const baseTrigger = verificationAuditTrail.lastChange === 'residual-risk'
+    ? 'Relancer seulement si le risque résiduel reste visible après le prochain passage sûr.'
+    : 'Relancer seulement si un nouveau signal visible augmente la confiance sans élargir la couverture.';
+  const entries = verificationOutcomeRecap.remainingUncertainties
+    .filter((uncertainty) => !/Aucun conflit/.test(uncertainty))
+    .map((uncertainty, index) => {
+      const enoughBudget = remainingBudget >= 3;
+      return {
+        queueId: `${locationId}:recheck:${index + 1}`,
+        uncertainty,
+        status: enoughBudget ? 'queued-for-safe-window' : 'wait-for-budget',
+        safeWindow: enoughBudget ? 'prochain créneau de faible exposition' : 'après récupération de budget d’exposition visible',
+        triggerCondition: baseTrigger,
+        recommendedCheck: retainedCheck ? {
+          checkId: retainedCheck.checkId,
+          label: retainedCheck.label,
+          exposureBand: retainedCheck.exposureBand,
+        } : verificationOutcomeRecap.nextSafeVerification,
+        budgetRemaining: remainingBudget,
+        provenanceLink,
+        resultLink: verificationOutcomeRecap.sourceResolverState,
+      };
+    });
+  const delayedBlocks = verificationOutcomeRecap.delayedVerifications.map((verification) => ({
+    checkId: verification.checkId,
+    label: verification.label,
+    reason: 'Ne pas relancer maintenant: le resolver a retardé ce contrôle car il augmente trop l’exposition.',
+    exposureBand: verification.exposureBand,
+    triggerCondition: 'Reconsidérer seulement si le budget restant augmente et si une provenance visible confirme le besoin.',
+  }));
+  const abandonedBlocks = verificationOutcomeRecap.abandonedVerifications.map((verification) => ({
+    label: verification.label,
+    reason: verification.reason,
+    exposureBand: 'avoid',
+    triggerCondition: 'Ne relancer qu’en présence d’un nouveau signal visible, jamais sur information cachée.',
+  }));
+
+  return {
+    state: entries.length > 0 ? 'rechecks-planned' : 'no-recheck-needed',
+    locationId,
+    locationName,
+    entries,
+    blockedRechecks: [...delayedBlocks, ...abandonedBlocks],
+    budgetLink: exposureBudgetForPriorityVerifications.state,
+    budgetRemaining: remainingBudget,
+    provenanceLink,
+    retainedResultIds: verificationOutcomeRecap.retainedVerifications.map((verification) => verification.checkId),
+    delayedResultIds: verificationOutcomeRecap.delayedVerifications.map((verification) => verification.checkId),
+    summary: entries.length > 0
+      ? `${entries.length} incertitude(s) à re-vérifier plus tard sans dépasser le budget visible.`
+      : 'Aucune re-vérification planifiée: les incertitudes restantes ne justifient pas une relance sûre.',
+    safeMapPolicy: 'File de re-vérification D13 dérivée du récap D12, du budget restant et de la provenance visible; elle ne révèle jamais cellule, relais, cible, méthode sensible ou cause cachée.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -2944,6 +3020,14 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         verificationAuditTrail,
         intrigueSignalTriageQueue,
       });
+      const intrigueRecheckQueue = buildIntrigueRecheckQueue({
+        locationId,
+        locationName,
+        verificationOutcomeRecap,
+        verificationAuditTrail,
+        intelligenceProvenancePanel,
+        exposureBudgetForPriorityVerifications,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -2959,6 +3043,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           exposureBudgetForPriorityVerifications,
           verificationConflictResolver,
           verificationOutcomeRecap,
+          intrigueRecheckQueue,
         }
         : {};
 

@@ -2419,3 +2419,64 @@ test('buildIntrigueMapOverlay recaps verification resolver outcomes without leak
   assert.equal(masked.nextSafeVerification, null);
   assert.match(masked.remainingUncertainties.join(' '), /Provenance insuffisante/);
 });
+
+test('buildIntrigueMapOverlay plans fog-safe recheck queues for unresolved intrigue uncertainties', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-recheck-queue',
+      factionId: 'shadow-league',
+      codename: 'Queue',
+      locationId: 'recheck-queue',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 92,
+    }),
+    new Cellule({
+      id: 'cell-recheck-masked',
+      factionId: 'shadow-league',
+      codename: 'Masked Queue',
+      locationId: 'recheck-masked',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-recheck-queue',
+      celluleId: 'cell-recheck-queue',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Keep uncertainty visible',
+      theaterId: 'recheck-queue',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 92,
+      progress: 80,
+      heat: 86,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.intrigueRecheckQueue]));
+  const queue = byLocation.get('recheck-queue');
+  const masked = byLocation.get('recheck-masked');
+
+  assert.equal(queue.state, 'rechecks-planned');
+  assert.equal(queue.budgetRemaining, 4);
+  assert.equal(queue.budgetLink, 'visible-budget');
+  assert.equal(queue.provenanceLink, 'observed:residual-risk');
+  assert.equal(queue.entries[0].status, 'queued-for-safe-window');
+  assert.equal(queue.entries[0].safeWindow, 'prochain créneau de faible exposition');
+  assert.equal(queue.entries[0].recommendedCheck.checkId, 'observe-local-confirmation');
+  assert.match(queue.entries[0].triggerCondition, /risque résiduel reste visible/);
+  assert.equal(queue.blockedRechecks[0].checkId, 'broad-coverage-now');
+  assert.match(queue.blockedRechecks[0].reason, /augmente trop l’exposition/);
+  assert.deepEqual(queue.retainedResultIds, ['observe-local-confirmation']);
+  assert.deepEqual(queue.delayedResultIds, ['broad-coverage-now']);
+  assert.match(queue.safeMapPolicy, /budget restant et de la provenance visible/);
+
+  assert.equal(masked.state, 'masked-recheck-queue');
+  assert.deepEqual(masked.entries, []);
+  assert.equal(masked.blockedRechecks.length, 1);
+  assert.match(masked.blockedRechecks[0].triggerCondition, /provenance visible/);
+  assert.match(masked.safeMapPolicy, /aucune cellule, relais, cible, méthode sensible ou cause cachée/);
+});
