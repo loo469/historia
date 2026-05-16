@@ -2631,3 +2631,90 @@ test('buildIntrigueMapOverlay proposes fog-safe escalation prompts for ageing in
   assert.equal(masked.blockedPrompts[0].action, 'do-not-escalate');
   assert.match(masked.summary, /attendre une provenance visible/);
 });
+
+test('buildIntrigueMapOverlay recaps fog-safe outcomes for escalation prompt choices', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-outcome-now',
+      factionId: 'shadow-league',
+      codename: 'Outcome Now',
+      locationId: 'outcome-now',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 92,
+    }),
+    new Cellule({
+      id: 'cell-outcome-budget',
+      factionId: 'shadow-league',
+      codename: 'Outcome Budget',
+      locationId: 'outcome-budget',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 99,
+    }),
+    new Cellule({
+      id: 'cell-outcome-masked',
+      factionId: 'shadow-league',
+      codename: 'Outcome Masked',
+      locationId: 'outcome-masked',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-outcome-now',
+      celluleId: 'cell-outcome-now',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Escalation outcome recap',
+      theaterId: 'outcome-now',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 92,
+      progress: 80,
+      heat: 86,
+      phase: 'execution',
+    }),
+    new OperationClandestine({
+      id: 'op-outcome-budget',
+      celluleId: 'cell-outcome-budget',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Blocked budget outcome recap',
+      theaterId: 'outcome-budget',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 99,
+      progress: 94,
+      heat: 99,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.intrigueEscalationOutcomeRecap]));
+  const active = byLocation.get('outcome-now');
+  const budget = byLocation.get('outcome-budget');
+  const masked = byLocation.get('outcome-masked');
+
+  assert.equal(active.state, 'budget-blocked-outcomes');
+  assert.equal(active.choices[0].action, 'verify-now');
+  assert.match(active.choices[0].expectedEffect, /Résout ou réduit l’incertitude/);
+  assert.match(active.choices[0].priorityEffect, /priorité baisse/);
+  assert.match(active.choices[0].ageEffect, /remis à zéro/);
+  assert.match(active.choices[0].budgetEffect, /budget restant 4/);
+  assert.match(active.choices[0].confidenceEffect, /sans confirmer de vérité cachée/);
+  assert.equal(active.choices[1].action, 'wait-for-budget');
+  assert.equal(active.choices[1].blockedBy, 'insufficient-budget');
+  assert.match(active.blockedChoices[0].expectedEffect, /Abandon provisoire/);
+  assert.equal(active.blockedChoices[0].blockedBy, 'over-exposure-risk');
+  assert.match(active.safeMapPolicy, /ne révèle jamais cible, cellule, relais, cause, méthode ou vérité cachée/);
+
+  assert.equal(budget.state, 'budget-blocked-outcomes');
+  assert.ok(budget.choices.some((choice) => choice.blockedBy === 'insufficient-budget'));
+  assert.match(budget.summary, /bloquées par budget/);
+
+  assert.equal(masked.state, 'masked-outcome-recap');
+  assert.deepEqual(masked.choices, []);
+  assert.equal(masked.blockedChoices[0].blockedBy, 'unknown-provenance');
+  assert.match(masked.summary, /provenance reste insuffisante/);
+});

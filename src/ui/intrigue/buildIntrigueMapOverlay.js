@@ -2958,6 +2958,123 @@ function buildIntrigueEscalationPrompts({ locationId, locationName, intrigueRech
   };
 }
 
+function buildIntrigueEscalationOutcomeRecap({ locationId, locationName, intrigueEscalationPrompts }) {
+  if (intrigueEscalationPrompts.state === 'masked-escalation') {
+    return {
+      state: 'masked-outcome-recap',
+      locationId,
+      locationName,
+      choices: [],
+      blockedChoices: intrigueEscalationPrompts.blockedPrompts.map((prompt) => ({
+        action: prompt.action,
+        label: prompt.label,
+        expectedEffect: 'Aucun effet appliqué: garder la carte en attente de provenance visible.',
+        priorityEffect: 'priorité non modifiée',
+        ageEffect: 'âge non interprété',
+        budgetEffect: 'budget préservé',
+        confidenceEffect: 'confiance inchangée',
+        blockedBy: 'unknown-provenance',
+        safeReason: prompt.reason,
+      })),
+      summary: 'Récap masqué: aucune issue d’escalade n’est évaluée tant que la provenance reste insuffisante.',
+      safeMapPolicy: 'Récap D16 limité aux effets visibles sur priorité, âge, budget et confiance; aucune cible, cellule, relais, cause ou vérité cachée n’est révélée.',
+    };
+  }
+
+  const choices = intrigueEscalationPrompts.prompts.map((prompt) => {
+    if (prompt.action === 'verify-now') {
+      return {
+        promptId: prompt.promptId,
+        action: prompt.action,
+        label: prompt.label,
+        expectedEffect: 'Résout ou réduit l’incertitude prioritaire si le contrôle visible confirme assez de signal.',
+        priorityEffect: 'priorité baisse après résolution; reste haute si le signal demeure ambigu',
+        ageEffect: 'âge remis à zéro pour le prochain suivi visible',
+        budgetEffect: prompt.exposureCostCue,
+        confidenceEffect: 'confiance attendue en hausse prudente, sans confirmer de vérité cachée',
+        blockedBy: null,
+        safeReason: prompt.reason,
+      };
+    }
+    if (prompt.action === 'delegate-light-observation') {
+      return {
+        promptId: prompt.promptId,
+        action: prompt.action,
+        label: prompt.label,
+        expectedEffect: 'Peut rafraîchir l’incertitude sans convertir le panneau en rapport complet.',
+        priorityEffect: 'priorité surveillée; escalade directe évitée tant que le signal ne se durcit pas',
+        ageEffect: 'âge ralenti par observation légère, pas supprimé',
+        budgetEffect: prompt.exposureCostCue,
+        confidenceEffect: 'confiance légèrement clarifiée ou maintenue si les données restent partielles',
+        blockedBy: null,
+        safeReason: prompt.reason,
+      };
+    }
+    if (prompt.action === 'wait-for-budget') {
+      return {
+        promptId: prompt.promptId,
+        action: prompt.action,
+        label: prompt.label,
+        expectedEffect: 'Retarde la décision pour éviter une surexposition visible.',
+        priorityEffect: 'priorité conservée mais non aggravée par une action coûteuse',
+        ageEffect: 'âge continue de monter jusqu’à récupération de budget',
+        budgetEffect: prompt.exposureCostCue,
+        confidenceEffect: 'confiance inchangée; aucune conclusion cachée inférée',
+        blockedBy: 'insufficient-budget',
+        safeReason: prompt.reason,
+      };
+    }
+    return {
+      promptId: prompt.promptId,
+      action: prompt.action,
+      label: prompt.label,
+      expectedEffect: 'Maintient l’incertitude au calme avec surveillance minimale.',
+      priorityEffect: 'priorité stable',
+      ageEffect: 'âge observé sans escalade',
+      budgetEffect: prompt.exposureCostCue,
+      confidenceEffect: 'confiance stable avec données partielles préservées',
+      blockedBy: prompt.originFallback?.includes('Origine non datée') ? 'unknown-origin' : null,
+      safeReason: prompt.reason,
+    };
+  });
+
+  const blockedChoices = intrigueEscalationPrompts.blockedPrompts.map((prompt) => ({
+    action: prompt.action,
+    label: prompt.label,
+    expectedEffect: 'Abandon provisoire: évite de payer une relance dont le risque visible dépasse le gain probable.',
+    priorityEffect: 'priorité mise en pause jusqu’à nouveau signal visible',
+    ageEffect: 'âge gelé comme dette de suivi, pas comme preuve',
+    budgetEffect: prompt.exposureCostCue,
+    confidenceEffect: 'confiance non augmentée; aucune vérité cachée déduite',
+    blockedBy: /exposition|trop élevée|éviter|avoid/i.test(`${prompt.reason} ${prompt.exposureCostCue}`)
+      ? 'over-exposure-risk'
+      : 'unknown-provenance',
+    safeReason: prompt.reason,
+  }));
+  const blockedBudgetCount = choices.filter((choice) => choice.blockedBy === 'insufficient-budget').length;
+  const activeChoiceCount = choices.filter((choice) => !choice.blockedBy).length;
+
+  return {
+    state: blockedBudgetCount > 0
+      ? 'budget-blocked-outcomes'
+      : activeChoiceCount > 0
+        ? 'outcomes-available'
+        : blockedChoices.length > 0
+          ? 'blocked-outcomes-only'
+          : 'calm-outcomes',
+    locationId,
+    locationName,
+    choices,
+    blockedChoices,
+    summary: blockedBudgetCount > 0
+      ? 'Certaines issues restent bloquées par budget: attendre évite une surexposition sans révéler de secret.'
+      : activeChoiceCount > 0
+        ? 'Issues d’escalade résumées par priorité, âge, budget et confiance visibles.'
+        : 'Aucune issue active: conserver les états calmes ou les données partielles.',
+    safeMapPolicy: 'Récap D16 dérivé uniquement des prompts D15 visibles; il ne révèle jamais cible, cellule, relais, cause, méthode ou vérité cachée.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -3166,6 +3283,11 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         locationName,
         intrigueRecheckQueue,
       });
+      const intrigueEscalationOutcomeRecap = buildIntrigueEscalationOutcomeRecap({
+        locationId,
+        locationName,
+        intrigueEscalationPrompts,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -3183,6 +3305,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           verificationOutcomeRecap,
           intrigueRecheckQueue,
           intrigueEscalationPrompts,
+          intrigueEscalationOutcomeRecap,
         }
         : {};
 
