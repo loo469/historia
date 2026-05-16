@@ -2293,6 +2293,82 @@ test('buildClimateMapOverlay supports explicit prudent climate bundle overrides'
       resourceConflicts: ['reserve', 'window-timing', 'residual-risk'],
       reason: 'ne pas combiner avec une reprise agricole ce tour',
       confidenceNote: 'prudence maintenue malgré confiance probable',
+      afterActionPreview: {
+        expectedEffect: 'intervention différée: évite de verrouiller une fenêtre trop contradictoire',
+        coolingOffTurns: 3,
+        coolingOffState: 'do-not-reintervene',
+        reboundRisk: 'high',
+        reboundRegionIds: ['delta'],
+        minimalAction: 'ne rien empiler: attendre une fenêtre moins contradictoire',
+        summary: '3 tour(s) de cooling-off; rebond probable sur delta.',
+      },
     },
   ]);
+});
+
+test('buildClimateMapOverlay previews rebound and cooling-off after prudent climate bundles', () => {
+  const overlay = buildClimateMapOverlay([
+    { regionId: 'delta', season: 'spring', temperatureC: 18, precipitationLevel: 70, droughtIndex: 12 },
+    { regionId: 'ridge', season: 'spring', temperatureC: 29, precipitationLevel: 18, droughtIndex: 68, anomaly: 'drought' },
+  ], {
+    climateAftermathEvents: [
+      {
+        eventId: 'delta-ready',
+        regionId: 'delta',
+        observedImpact: 'route stabilisée',
+        severity: 'minor',
+        appliedMitigation: 'digues inspectées',
+        confidenceBand: 'probable',
+        resilienceState: 'resilient',
+      },
+      {
+        eventId: 'ridge-risk',
+        regionId: 'ridge',
+        observedImpact: 'sols fragiles',
+        severity: 'moderate',
+        missingMitigation: 'réservoir non renforcé',
+        confidenceBand: 'uncertain',
+        resilienceState: 'strained',
+      },
+    ],
+    climateSafeWindows: [
+      {
+        aftermathEventId: 'delta-ready',
+        windowId: 'delta-ready:now',
+        label: 'tour actuel',
+        state: 'safe',
+        affectedRegionIds: ['delta'],
+        confidenceBand: 'probable',
+      },
+      {
+        aftermathEventId: 'ridge-risk',
+        windowId: 'ridge-risk:later',
+        label: 'prochain tour',
+        state: 'safe',
+        affectedRegionIds: ['ridge'],
+        confidenceBand: 'uncertain',
+      },
+    ],
+  });
+
+  const [secureNowBundle, prepareBundle] = overlay.climateActionBundleAssistant.bundles;
+
+  assert.deepEqual(secureNowBundle.afterActionPreview, {
+    expectedEffect: 'pression climatique abaissée immédiatement sans rouvrir de conflit majeur',
+    coolingOffTurns: 1,
+    coolingOffState: 'observe-next-turn',
+    reboundRisk: 'low',
+    reboundRegionIds: [],
+    minimalAction: 'garder une réserve locale et relire les marqueurs de rebond au tour suivant',
+    summary: '1 tour(s) de cooling-off; aucun rebond régional probable si la réserve reste disponible.',
+  });
+  assert.deepEqual(prepareBundle.afterActionPreview, {
+    expectedEffect: 'readiness renforcée avant engagement direct, sans répéter le calendrier saisonnier',
+    coolingOffTurns: 2,
+    coolingOffState: 'verify-before-reintervention',
+    reboundRisk: 'probable',
+    reboundRegionIds: ['ridge'],
+    minimalAction: 'sécuriser une readiness minimale avant toute mitigation supplémentaire',
+    summary: '2 tour(s) de cooling-off; rebond probable sur ridge.',
+  });
 });

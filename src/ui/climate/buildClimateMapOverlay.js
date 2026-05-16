@@ -1863,11 +1863,91 @@ function describeClimateBundleReason(kind, viability, conflicts) {
   return 'déconseillé: reporter évite de sur-vendre une fenêtre contradictoire ou trop risquée';
 }
 
+function describeClimateBundleExpectedEffect(bundle) {
+  if (bundle.kind === 'secure-now') {
+    return bundle.viability === 'viable'
+      ? 'pression climatique abaissée immédiatement sans rouvrir de conflit majeur'
+      : 'pression abaissée mais fenêtre encore sensible aux arbitrages de ressources';
+  }
+
+  if (bundle.kind === 'prepare') {
+    return 'readiness renforcée avant engagement direct, sans répéter le calendrier saisonnier';
+  }
+
+  if (bundle.kind === 'monitor') {
+    return 'surveillance maintenue: pas de dépense lourde tant que le signal reste stable';
+  }
+
+  return 'intervention différée: évite de verrouiller une fenêtre trop contradictoire';
+}
+
+function buildClimateBundleAfterActionPreview(bundle) {
+  const conflicts = new Set(bundle.resourceConflicts);
+  const reboundRegionIds = conflicts.has('residual-risk') || conflicts.has('window-timing') || bundle.viability !== 'viable'
+    ? bundle.regionIds
+    : [];
+  const coolingOffTurns = bundle.kind === 'secure-now'
+    ? (bundle.viability === 'viable' ? 1 : 2)
+    : bundle.kind === 'prepare'
+      ? 2
+      : bundle.kind === 'monitor'
+        ? 1
+        : 3;
+  const coolingOffState = bundle.viability === 'viable'
+    ? 'observe-next-turn'
+    : bundle.viability === 'fragile'
+      ? 'verify-before-reintervention'
+      : 'do-not-reintervene';
+  const minimalAction = bundle.kind === 'secure-now'
+    ? 'garder une réserve locale et relire les marqueurs de rebond au tour suivant'
+    : bundle.kind === 'prepare'
+      ? 'sécuriser une readiness minimale avant toute mitigation supplémentaire'
+      : bundle.kind === 'monitor'
+        ? 'poser une veille légère et n’agir que si le risque remonte'
+        : 'ne rien empiler: attendre une fenêtre moins contradictoire';
+
+  return {
+    expectedEffect: describeClimateBundleExpectedEffect(bundle),
+    coolingOffTurns,
+    coolingOffState,
+    reboundRisk: reboundRegionIds.length > 0 ? (bundle.viability === 'discouraged' ? 'high' : 'probable') : 'low',
+    reboundRegionIds,
+    minimalAction,
+    summary: reboundRegionIds.length > 0
+      ? `${coolingOffTurns} tour(s) de cooling-off; rebond probable sur ${reboundRegionIds.join(', ')}.`
+      : `${coolingOffTurns} tour(s) de cooling-off; aucun rebond régional probable si la réserve reste disponible.`,
+  };
+}
+
+function normalizeClimateBundleAfterActionPreview(preview, basePreview) {
+  if (preview === undefined) {
+    return basePreview;
+  }
+
+  const normalizedPreview = requireObject(preview, 'ClimateMapOverlay climateActionBundle afterActionPreview');
+
+  return {
+    ...basePreview,
+    ...normalizedPreview,
+    expectedEffect: String(normalizedPreview.expectedEffect ?? basePreview.expectedEffect).trim(),
+    coolingOffTurns: Number.isFinite(normalizedPreview.coolingOffTurns) && normalizedPreview.coolingOffTurns >= 0
+      ? normalizedPreview.coolingOffTurns
+      : basePreview.coolingOffTurns,
+    coolingOffState: String(normalizedPreview.coolingOffState ?? basePreview.coolingOffState).trim(),
+    reboundRisk: String(normalizedPreview.reboundRisk ?? basePreview.reboundRisk).trim(),
+    reboundRegionIds: requireArray(
+      normalizedPreview.reboundRegionIds ?? basePreview.reboundRegionIds,
+      'ClimateMapOverlay climateActionBundle afterActionPreview reboundRegionIds',
+    ).map((regionId) => String(regionId).trim()).filter(Boolean),
+    minimalAction: String(normalizedPreview.minimalAction ?? basePreview.minimalAction).trim(),
+    summary: String(normalizedPreview.summary ?? basePreview.summary).trim(),
+  };
+}
+
 function normalizeClimateBundleOverride(override, baseBundle) {
   const kind = String(override.kind ?? override.bundleKind ?? baseBundle.kind).trim().toLowerCase();
   const viability = String(override.viability ?? baseBundle.viability).trim().toLowerCase();
-
-  return {
+  const normalizedBundle = {
     ...baseBundle,
     ...override,
     bundleId: String(override.bundleId ?? baseBundle.bundleId).trim(),
@@ -1885,6 +1965,14 @@ function normalizeClimateBundleOverride(override, baseBundle) {
     ).map((conflict) => String(conflict).trim()).filter(Boolean),
     reason: String(override.reason ?? baseBundle.reason).trim(),
     confidenceNote: String(override.confidenceNote ?? baseBundle.confidenceNote).trim(),
+  };
+
+  return {
+    ...normalizedBundle,
+    afterActionPreview: normalizeClimateBundleAfterActionPreview(
+      override.afterActionPreview,
+      buildClimateBundleAfterActionPreview(normalizedBundle),
+    ),
   };
 }
 
@@ -1929,9 +2017,13 @@ function buildClimateActionBundleAssistant(climatePrioritySummary, normalizedOpt
         ? 'prudence: au moins une prévision reste incertaine'
         : 'confiance cohérente avec les prévisions disponibles',
     };
+    const baseBundleWithPreview = {
+      ...baseBundle,
+      afterActionPreview: buildClimateBundleAfterActionPreview(baseBundle),
+    };
     const override = explicitBundles.find((bundle) => (bundle.kind ?? bundle.bundleKind ?? baseBundle.kind) === kind);
 
-    return override ? normalizeClimateBundleOverride(override, baseBundle) : baseBundle;
+    return override ? normalizeClimateBundleOverride(override, baseBundleWithPreview) : baseBundleWithPreview;
   }).sort((left, right) => {
     const rank = { 'secure-now': 0, prepare: 1, monitor: 2, postpone: 3 };
 

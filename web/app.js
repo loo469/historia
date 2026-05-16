@@ -10587,6 +10587,67 @@ function buildAtlasClimateCheapestSafeRecoveryCommitment(recoveryProjectionView)
   };
 }
 
+function buildAtlasClimateReboundAfterActionBundle(view) {
+  if (!view || view.state === 'neutral' || !view.cheapestSafeCommitment) {
+    return {
+      state: 'empty',
+      summary: 'Aucun bundle climatique actif à prévisualiser après action.',
+      reboundProvinceLabels: [],
+    };
+  }
+
+  const commitment = view.cheapestSafeCommitment;
+  const rebound = view.climateRiskReboundAfterTopPayoff ?? null;
+  const reboundProvinceLabels = [commitment.deadlineCovered, ...(view.nextClimateCommitment?.remainsAfterCommitment ?? [])]
+    .filter(Boolean)
+    .filter((label, index, all) => all.indexOf(label) === index)
+    .slice(0, 3);
+  const coolingOffTurns = view.remainingDeadlinePressure?.state === 'clear'
+    ? 1
+    : view.remainingDeadlinePressure?.deadlineStillThreatened
+      ? 2
+      : 1;
+  const reboundRisk = rebound?.state === 'rebound-likely' || view.remainingDeadlinePressure?.deadlineStillThreatened
+    ? 'probable'
+    : reboundProvinceLabels.length > 1
+      ? 'watch'
+      : 'low';
+
+  return {
+    state: reboundRisk === 'probable' ? 'risky' : 'ready',
+    bundleLabel: commitment.action,
+    expectedEffect: `${commitment.pressureReduced}; ${commitment.safeBecause}`,
+    coolingOffTurns,
+    coolingOffState: coolingOffTurns > 1 ? 'vérifier avant réintervention' : 'observer le prochain tour',
+    reboundRisk,
+    reboundProvinceLabels,
+    minimalAction: view.safestClimateFollowThroughAfterDeadlineTradeoff?.recommendation
+      ?? view.remainingDeadlinePressure?.nextAction
+      ?? 'Garder une réserve minimale et relire la fenêtre avant toute nouvelle action.',
+    summary: `Après bundle: ${coolingOffTurns} tour(s) de cooling-off, risque de rebond ${reboundRisk}${reboundProvinceLabels.length > 0 ? ` sur ${reboundProvinceLabels.join(' → ')}` : ''}.`,
+  };
+}
+
+function renderAtlasClimateReboundAfterActionBundle(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-post-bundle-rebound map-world-climate-post-bundle-rebound--${view.state}" aria-label="Aperçu rebond climat après bundle d’action prudent">
+      <div class="map-world-climate-post-bundle-rebound__header">
+        <strong>Après bundle climat</strong>
+        <span>${view.coolingOffTurns} tour(s) cooling-off</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Effet attendu</b> · ${view.expectedEffect}</small>
+      <small><b>État cooling-off</b> · ${view.coolingOffState}</small>
+      <small><b>Rebond probable</b> · ${view.reboundProvinceLabels.length > 0 ? view.reboundProvinceLabels.join(' → ') : 'aucune province prioritaire'}</small>
+      <small><b>Action minimale</b> · ${view.minimalAction}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'neutral' || !view.cheapestSafeCommitment) {
     return '';
@@ -18511,6 +18572,7 @@ function render() {
   const atlasClimateFirstRecoveryPressureReliefExplanation = buildAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateRecoveryCollateralReliefRanking);
   const atlasClimateRecoveryPlanProjection = buildAtlasClimateRecoveryPlanProjection(atlasClimateFirstRecoveryPressureReliefExplanation, atlasClimateRecoveryCollateralReliefRanking);
   const atlasClimateCheapestSafeRecoveryCommitment = buildAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateRecoveryPlanProjection);
+  const atlasClimateReboundAfterActionBundle = buildAtlasClimateReboundAfterActionBundle(atlasClimateCheapestSafeRecoveryCommitment);
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -18560,6 +18622,7 @@ function render() {
           ${renderAtlasClimateFirstRecoveryPressureReliefExplanation(atlasClimateFirstRecoveryPressureReliefExplanation)}
           ${renderAtlasClimateRecoveryPlanProjection(atlasClimateRecoveryPlanProjection)}
           ${renderAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateCheapestSafeRecoveryCommitment)}
+          ${renderAtlasClimateReboundAfterActionBundle(atlasClimateReboundAfterActionBundle)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
