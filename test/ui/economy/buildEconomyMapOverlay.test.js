@@ -1581,6 +1581,7 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
 
   assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.id, 'logistics-recovery-repayment-scenarios');
   assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.topScenarioId, 'recovery-repayment-scenario:route-coast');
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.warningCount, 2);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.summary, /partiel et complet/);
   assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios.map((scenario) => ({
     id: scenario.id,
@@ -1600,10 +1601,14 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     capacityConsumed: option.capacityConsumed,
     remainingBlocked: option.remainingBlocked,
     status: option.status,
+    warningSeverity: option.sideEffectWarning?.severity ?? null,
+    warningSource: option.sideEffectWarning?.source ?? null,
   })), [
-    { mode: 'partial', capacityConsumed: 1, remainingBlocked: 1, status: 'blocage résiduel' },
-    { mode: 'complete', capacityConsumed: 2, remainingBlocked: 0, status: 'reprise sécurisée' },
+    { mode: 'partial', capacityConsumed: 1, remainingBlocked: 1, status: 'blocage résiduel', warningSeverity: 'danger', warningSource: 'stock' },
+    { mode: 'complete', capacityConsumed: 2, remainingBlocked: 0, status: 'reprise sécurisée', warningSeverity: 'costly', warningSource: 'stock' },
   ]);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios[0].options[0].sideEffectWarning.text, /capacité reste bloquée/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios[0].options[1].sideEffectWarning.nextArbitrage, /route ou ville concurrente/);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,

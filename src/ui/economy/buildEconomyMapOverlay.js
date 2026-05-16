@@ -2346,15 +2346,58 @@ function buildRecoveryDebtRepaymentPriorities(logisticsFeatures, recoveryDebtLed
 }
 
 
-function buildRepaymentScenarioOption(priority, debtEntry, mode) {
+function getRepaymentSideEffectSource(priority, debtEntry, routeFeature) {
+  if (debtEntry?.debtResources?.includes('stock')) {
+    return 'stock';
+  }
+
+  if (debtEntry?.debtResources?.includes('labor')) {
+    return 'main-d’œuvre';
+  }
+
+  if (debtEntry?.debtResources?.includes('convoy') || routeFeature?.bottleneckIntensity === 'critical') {
+    return 'route';
+  }
+
+  if (priority.repaymentScore >= 90) {
+    return 'priorité concurrente';
+  }
+
+  return routeFeature?.cityIds?.length ? 'ville' : 'capacité de reprise';
+}
+
+function buildRepaymentSideEffectWarning(priority, debtEntry, routeFeature, option) {
+  const source = getRepaymentSideEffectSource(priority, debtEntry, routeFeature);
+
+  if (option.remainingBlocked > 0) {
+    return {
+      severity: 'danger',
+      source,
+      text: `${source}: ${option.remainingBlocked} capacité reste bloquée après ${option.label.toLowerCase()}.`,
+      nextArbitrage: `Arbitrer ${priority.nextAction} avant de lancer un second remboursement.`,
+    };
+  }
+
+  if (option.capacityConsumed >= Math.max(2, routeFeature?.capacityRemaining ?? 0) || priority.repaymentScore >= 90) {
+    return {
+      severity: 'costly',
+      source,
+      text: `${source}: ${option.label.toLowerCase()} consomme ${option.capacityConsumed} capacité de reprise ce tour.`,
+      nextArbitrage: 'Confirmer que cette capacité ne manque pas à une route ou ville concurrente.',
+    };
+  }
+
+  return null;
+}
+
+function buildRepaymentScenarioOption(priority, debtEntry, routeFeature, mode) {
   const debtAmount = Math.max(0, debtEntry?.debtAmount ?? priority.debtAmount ?? 0);
   const fullCapacity = Math.max(1, debtAmount || Math.ceil((debtEntry?.costTotal ?? 1) / 2));
   const capacityConsumed = mode === 'complete' ? fullCapacity : Math.max(1, Math.ceil(fullCapacity / 2));
   const remainingBlocked = Math.max(0, debtAmount - capacityConsumed);
   const label = mode === 'complete' ? 'Remboursement complet' : 'Remboursement partiel';
   const status = remainingBlocked === 0 ? 'reprise sécurisée' : 'blocage résiduel';
-
-  return {
+  const option = {
     id: `${priority.id}:${mode}`,
     mode,
     label,
@@ -2369,14 +2412,20 @@ function buildRepaymentScenarioOption(priority, debtEntry, mode) {
       ? 'Aucun blocage majeur restant sur cette dette prioritaire.'
       : `${remainingBlocked} capacité encore bloquée; ${priority.blockingImpact}`,
   };
+
+  return {
+    ...option,
+    sideEffectWarning: buildRepaymentSideEffectWarning(priority, debtEntry, routeFeature, option),
+  };
 }
 
-function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities) {
+function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
     const debtEntry = recoveryDebtLedger.entries.find((entry) => entry.id === priority.debtEntryId) ?? null;
-    const partial = buildRepaymentScenarioOption(priority, debtEntry, 'partial');
-    const complete = buildRepaymentScenarioOption(priority, debtEntry, 'complete');
+    const routeFeature = logisticsFeatures.find((feature) => feature.routeId === priority.targetId) ?? null;
+    const partial = buildRepaymentScenarioOption(priority, debtEntry, routeFeature, 'partial');
+    const complete = buildRepaymentScenarioOption(priority, debtEntry, routeFeature, 'complete');
     const minimalViableAction = partial.remainingBlocked === 0
       ? partial.label
       : `${priority.nextAction}: couvrir au moins ${partial.capacityConsumed} capacité maintenant, puis planifier ${partial.remainingBlocked} au prochain tour`;
@@ -2393,6 +2442,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
       options: [partial, complete],
       ledgerLink: debtEntry?.id ?? priority.debtEntryId,
       priorityLink: priority.id,
+      sideEffectWarningCount: [partial, complete].filter((option) => option.sideEffectWarning).length,
       summary: `${priority.label}: partiel consomme ${partial.capacityConsumed} et laisse ${partial.remainingBlocked} bloqué; complet consomme ${complete.capacityConsumed} et laisse ${complete.remainingBlocked} bloqué.`,
     };
   });
@@ -2406,6 +2456,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     scenarios,
     topScenarioId: scenarios[0]?.id ?? null,
     minimalViableAction: scenarios[0]?.minimalViableAction ?? 'continuer la surveillance',
+    warningCount: scenarios.reduce((count, scenario) => count + scenario.sideEffectWarningCount, 0),
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },
@@ -2516,7 +2567,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       recoveryCapacityBudget,
       recoveryDebtLedger,
       recoveryDebtRepaymentPriorities,
-      recoveryDebtRepaymentScenarioPreviews: buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, recoveryDebtRepaymentPriorities),
+      recoveryDebtRepaymentScenarioPreviews: buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, recoveryDebtRepaymentPriorities, logisticsFeaturesWithPlanners),
       recoveryPlannerLegend: [
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },
