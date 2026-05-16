@@ -1818,6 +1818,48 @@ button { font: inherit; }
 .culture-turn-report__follow-up-prompt--compatible { border-color: rgba(74, 222, 128, 0.28); }
 .culture-turn-report__follow-up-prompt--risky { border-color: rgba(251, 191, 36, 0.42); }
 .culture-turn-report__follow-up-prompt--premature { border-color: rgba(148, 163, 184, 0.24); }
+.culture-turn-report__choice {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(167, 139, 250, 0.12);
+}
+.culture-turn-report__choice > span {
+  color: #f0abfc;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__choice > strong {
+  color: #f8fafc;
+  font-size: 12px;
+}
+.culture-turn-report__choice > small { color: var(--muted); }
+.culture-turn-report__choice-list {
+  display: grid;
+  gap: 6px;
+}
+.culture-turn-report__choice-entry {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(49, 46, 129, 0.24);
+  border: 1px solid rgba(240, 171, 252, 0.18);
+}
+.culture-turn-report__choice-entry b { color: #fae8ff; }
+.culture-turn-report__choice-entry em {
+  color: #f0abfc;
+  font-style: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.culture-turn-report__choice-entry small { color: var(--muted); }
+.culture-turn-report__choice-entry--best-safe { border-color: rgba(74, 222, 128, 0.34); }
+.culture-turn-report__choice-entry--risky-useful { border-color: rgba(251, 191, 36, 0.44); }
+.culture-turn-report__choice-entry--wait { border-color: rgba(148, 163, 184, 0.26); }
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

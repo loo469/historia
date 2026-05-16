@@ -6167,6 +6167,23 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucun suivi narratif à proposer tant qu’aucune fenêtre n’est recommandée ou choisie.</small>'}
       </div>
+      <div class="culture-turn-report__choice culture-turn-report__choice--${report.commitmentBundles?.promptChoiceComparison?.state ?? 'quiet'}" aria-label="Arbitrage entre prompts culturels">
+        <span>Arbitrage des prompts</span>
+        <strong>${report.commitmentBundles?.promptChoiceComparison?.summary ?? 'Aucun arbitrage de prompt culturel disponible.'}</strong>
+        <small>Si aucun choix: ${report.commitmentBundles?.promptChoiceComparison?.noChoiceRisk ?? 'Aucun momentum culturel à arbitrer.'}</small>
+        ${(report.commitmentBundles?.promptChoiceComparison?.entries ?? []).length > 0 ? `
+          <div class="culture-turn-report__choice-list">
+            ${report.commitmentBundles.promptChoiceComparison.entries.map((entry) => `
+              <article class="culture-turn-report__choice-entry culture-turn-report__choice-entry--${entry.role}" data-culture-prompt-choice="${entry.comparisonId}">
+                <b>${entry.label}</b>
+                <em>${entry.clusterLabel} · ${entry.promptLabel}</em>
+                <small>${entry.narrativeImpact}</small>
+                <small>Risque d’inaction: ${entry.lostMomentumRisk}</small>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucun prompt compatible, risqué ou à attendre à comparer.</small>'}
+      </div>
     </div>
   `;
 }
