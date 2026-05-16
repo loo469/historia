@@ -2863,6 +2863,101 @@ function buildIntrigueRecheckQueue({ locationId, locationName, verificationOutco
   };
 }
 
+function buildIntrigueEscalationPrompts({ locationId, locationName, intrigueRecheckQueue }) {
+  if (intrigueRecheckQueue.state === 'masked-recheck-queue') {
+    return {
+      state: 'masked-escalation',
+      locationId,
+      locationName,
+      prompts: [],
+      blockedPrompts: intrigueRecheckQueue.blockedRechecks.map((block) => ({
+        action: 'do-not-escalate',
+        label: 'Ne pas escalader',
+        reason: block.reason,
+        triggerCondition: block.triggerCondition,
+      })),
+      summary: 'Escalade masquée: attendre une provenance visible avant toute relance.',
+      safeMapPolicy: 'Prompts D15 bornés au statut visible; aucune cible, cellule, relais, cause ou vérité cachée n’est révélée.',
+    };
+  }
+
+  const prompts = intrigueRecheckQueue.entries.map((entry) => {
+    const ageState = entry.ageIndicator?.state ?? 'fresh';
+    const hasBudget = entry.status !== 'wait-for-budget' && entry.budgetRemaining >= 3;
+    if (ageState === 'urgent' && hasBudget) {
+      return {
+        promptId: `${entry.queueId}:escalate`,
+        action: 'verify-now',
+        label: 'Vérifier maintenant',
+        urgency: 'urgent',
+        reason: 'Attendre devient plus risqué que consommer une vérification prudente.',
+        exposureCostCue: `Exposition probable ${entry.recommendedCheck?.exposureBand ?? 'modérée'}, budget restant ${entry.budgetRemaining}.`,
+        triggerCondition: entry.triggerCondition,
+        provenanceLink: entry.provenanceLink,
+        originFallback: entry.ageIndicator.fallback,
+      };
+    }
+    if (ageState === 'watch') {
+      const enoughForObservation = entry.budgetRemaining >= 5;
+      return {
+        promptId: `${entry.queueId}:observe`,
+        action: enoughForObservation ? 'delegate-light-observation' : 'wait-for-budget',
+        label: enoughForObservation ? 'Observation légère' : 'Budget insuffisant',
+        urgency: enoughForObservation ? 'watch' : 'budget-insufficient',
+        reason: enoughForObservation
+          ? 'Déléguer une observation légère sans élargir la couverture ni confirmer de vérité cachée.'
+          : 'Ne pas escalader tant que le budget visible ne couvre pas une relance prudente.',
+        exposureCostCue: enoughForObservation
+          ? `Exposition probable basse à ${entry.recommendedCheck?.exposureBand ?? 'modérée'}, budget restant ${entry.budgetRemaining}.`
+          : `Budget restant ${entry.budgetRemaining}: relance différée pour éviter une exposition excessive.`,
+        triggerCondition: entry.triggerCondition,
+        provenanceLink: entry.provenanceLink,
+        originFallback: entry.ageIndicator.fallback,
+      };
+    }
+    return {
+      promptId: `${entry.queueId}:calm`,
+      action: 'hold-calm',
+      label: 'Calme',
+      urgency: 'fresh',
+      reason: 'Incertitude encore fraîche: surveiller sans escalade immédiate.',
+      exposureCostCue: `Aucune exposition supplémentaire recommandée, budget restant ${entry.budgetRemaining}.`,
+      triggerCondition: entry.triggerCondition,
+      provenanceLink: entry.provenanceLink,
+      originFallback: entry.ageIndicator?.fallback ?? 'Origine non datée: conserver un état calme par défaut.',
+    };
+  });
+  const blockedPrompts = intrigueRecheckQueue.blockedRechecks.map((block) => ({
+    action: 'abandon-provisionally',
+    label: 'Abandon provisoire',
+    reason: block.reason,
+    exposureCostCue: `Relance ${block.exposureBand ?? 'évitable'}: exposition trop élevée ou non justifiée par la provenance visible.`,
+    triggerCondition: block.triggerCondition,
+  }));
+  const urgentCount = prompts.filter((prompt) => prompt.urgency === 'urgent').length;
+  const blockedByBudgetCount = prompts.filter((prompt) => prompt.urgency === 'budget-insufficient').length;
+
+  return {
+    state: urgentCount > 0
+      ? 'escalation-needed'
+      : blockedByBudgetCount > 0
+        ? 'budget-limited'
+        : prompts.length > 0
+          ? 'calm-or-watch'
+          : 'no-escalation-needed',
+    locationId,
+    locationName,
+    prompts,
+    blockedPrompts,
+    summary: urgentCount > 0
+      ? `${urgentCount} incertitude(s) vieillissante(s): vérifier maintenant devient plus sûr que continuer d’attendre.`
+      : blockedByBudgetCount > 0
+        ? 'Escalade retenue: budget visible insuffisant pour vérifier sans surexposition.'
+        : 'Aucune escalade urgente: surveillance prudente ou maintien au calme.',
+    safeMapPolicy: 'Prompts D15 dérivés uniquement de l’âge visible, du budget restant et de la provenance; ils ne révèlent jamais cible, cellule, relais, cause ou vérité cachée.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -3066,6 +3161,11 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         intelligenceProvenancePanel,
         exposureBudgetForPriorityVerifications,
       });
+      const intrigueEscalationPrompts = buildIntrigueEscalationPrompts({
+        locationId,
+        locationName,
+        intrigueRecheckQueue,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -3082,6 +3182,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           verificationConflictResolver,
           verificationOutcomeRecap,
           intrigueRecheckQueue,
+          intrigueEscalationPrompts,
         }
         : {};
 
