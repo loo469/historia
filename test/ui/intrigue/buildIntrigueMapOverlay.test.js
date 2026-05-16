@@ -2304,3 +2304,59 @@ test('buildIntrigueMapOverlay exposes fog-safe exposure budgets for priority ver
   assert.equal(maskedBudget.nextLeastExposureCheck, undefined);
   assert.match(maskedBudget.summary, /données de provenance ou de confiance insuffisantes/);
 });
+
+test('buildIntrigueMapOverlay resolves fog-safe verification exposure conflicts', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-conflict-resolver',
+      factionId: 'shadow-league',
+      codename: 'Resolver',
+      locationId: 'conflict-resolver',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 90,
+    }),
+    new Cellule({
+      id: 'cell-masked-resolver',
+      factionId: 'shadow-league',
+      codename: 'Unknown',
+      locationId: 'masked-resolver',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-conflict-resolver',
+      celluleId: 'cell-conflict-resolver',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Contest a visible route',
+      theaterId: 'conflict-resolver',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 90,
+      progress: 78,
+      heat: 82,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.verificationConflictResolver]));
+  const conflict = byLocation.get('conflict-resolver');
+  const masked = byLocation.get('masked-resolver');
+
+  assert.equal(conflict.state, 'conflict-detected');
+  assert.equal(conflict.launchNow.checkId, 'observe-local-confirmation');
+  assert.equal(conflict.defer.checkId, 'broad-coverage-now');
+  assert.equal(conflict.defer.exposureBand, 'high');
+  assert.equal(conflict.abandonIfNeeded, null);
+  assert.equal(conflict.provenanceLink, 'observed:residual-risk');
+  assert.match(conflict.consequence, /priorité à la vérification la moins exposée/);
+  assert.match(conflict.safeMapPolicy, /ne révèle jamais cible, relais, méthode sensible ou vérité cachée/);
+
+  assert.equal(masked.state, 'masked-conflict');
+  assert.equal(masked.launchNow, null);
+  assert.equal(masked.defer, null);
+  assert.match(masked.summary, /budget ou provenance insuffisant/);
+  assert.match(masked.safeMapPolicy, /Aucune cible, relais, méthode sensible ou vérité cachée/);
+});
