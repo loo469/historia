@@ -11085,6 +11085,86 @@ function renderAtlasClimateReboundFollowUpQueue(view) {
   `;
 }
 
+function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
+  if (!queueView || queueView.state === 'empty' || queueView.items.length === 0) {
+    return {
+      state: 'empty',
+      bundles: [],
+      pendingIfMinimal: [],
+      summary: 'Aucun bundle compatible de suivis climat à afficher.',
+    };
+  }
+
+  const urgentItems = queueView.items.filter((item) => item.classification === 'urgent');
+  const prudentItems = queueView.items.filter((item) => item.classification === 'prudent');
+  const minimalItems = urgentItems.length > 0 ? urgentItems : (prudentItems[0] ? [prudentItems[0]] : [queueView.items[0]]);
+  const ambitiousItems = queueView.items.filter((item) => item.classification !== 'deferrable');
+  const conflictSignals = [
+    ...(queueView.items.some((item) => /réserve/i.test(item.ignoredReboundRisk)) ? ['reserve'] : []),
+    ...(queueView.items.some((item) => /readiness|mitigation/i.test(item.nextAction)) ? ['mitigation'] : []),
+    ...(reboundView?.coolingOffTurns > 1 ? ['cooling-off-timing'] : []),
+    ...(queueView.items.some((item) => item.classification !== 'deferrable') ? ['regional-residual-risk'] : []),
+  ];
+  const makeBundle = (kind, items) => ({
+    bundleId: `follow-up-compat:${kind}`,
+    kind,
+    itemIds: items.map((item) => item.followUpId),
+    labels: items.map((item) => item.label),
+    safety: kind === 'minimal-safe' ? 'safe' : (conflictSignals.length > 0 ? 'fragile' : 'safe'),
+    conflictSignals: kind === 'minimal-safe'
+      ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
+      : conflictSignals,
+    recommendation: kind === 'minimal-safe'
+      ? 'Bundle minimal sûr: jouer seulement les suivis qui empêchent le rebound immédiat.'
+      : 'Bundle ambitieux fragile: couvre plus large mais peut rouvrir réserve, mitigation ou timing.',
+  });
+  const minimalBundle = makeBundle('minimal-safe', minimalItems);
+  const ambitiousBundle = makeBundle('ambitious-fragile', ambitiousItems.length > 0 ? ambitiousItems : queueView.items);
+  const pendingIfMinimal = queueView.items
+    .filter((item) => !minimalBundle.itemIds.includes(item.followUpId))
+    .map((item) => ({
+      label: item.label,
+      classification: item.classification,
+      reason: item.classification === 'deferrable'
+        ? 'peut attendre sans rebound immédiat'
+        : 'à reprendre après confirmation du cooling-off',
+    }));
+
+  return {
+    state: ambitiousBundle.safety === 'fragile' ? 'fragile' : 'ready',
+    bundles: [minimalBundle, ambitiousBundle],
+    pendingIfMinimal,
+    summary: `Compatibilité suivis: minimal sûr ${minimalBundle.labels.join(' → ')}, ambitieux ${ambitiousBundle.safety}; ${pendingIfMinimal.length} attente${pendingIfMinimal.length > 1 ? 's' : ''} si minimal.`,
+  };
+}
+
+function renderAtlasClimateFollowUpCompatibilityBundles(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-follow-up-compat map-world-climate-follow-up-compat--${view.state}" aria-label="Bundles compatibles pour les suivis climatiques">
+      <div class="map-world-climate-follow-up-compat__header">
+        <strong>Compatibilité suivis climat</strong>
+        <span>${view.bundles.length} bundles</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-follow-up-compat__list">
+        ${view.bundles.map((bundle) => `
+          <li class="map-world-climate-follow-up-compat__item map-world-climate-follow-up-compat__item--${bundle.kind}">
+            <b>${bundle.kind === 'minimal-safe' ? 'Minimal sûr' : 'Ambitieux fragile'}</b>
+            <span>${bundle.labels.join(' → ') || 'aucun suivi'}</span>
+            <small><b>Conflits</b> · ${bundle.conflictSignals.length > 0 ? bundle.conflictSignals.join(', ') : 'aucun conflit bloquant'}</small>
+            <small><b>Recommandation</b> · ${bundle.recommendation}</small>
+          </li>
+        `).join('')}
+      </ol>
+      <small><b>À laisser en attente si minimal</b> · ${view.pendingIfMinimal.length > 0 ? view.pendingIfMinimal.map((item) => `${item.label}: ${item.reason}`).join(' | ') : 'rien à reporter'}</small>
+    </section>
+  `;
+}
+
 function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'neutral' || !view.cheapestSafeCommitment) {
     return '';
@@ -19151,6 +19231,10 @@ function render() {
     atlasClimateReboundAfterActionBundle,
     atlasClimateCheapestSafeRecoveryCommitment,
   );
+  const atlasClimateFollowUpCompatibilityBundles = buildAtlasClimateFollowUpCompatibilityBundles(
+    atlasClimateReboundFollowUpQueue,
+    atlasClimateReboundAfterActionBundle,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -19202,6 +19286,7 @@ function render() {
           ${renderAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateCheapestSafeRecoveryCommitment)}
           ${renderAtlasClimateReboundAfterActionBundle(atlasClimateReboundAfterActionBundle)}
           ${renderAtlasClimateReboundFollowUpQueue(atlasClimateReboundFollowUpQueue)}
+          ${renderAtlasClimateFollowUpCompatibilityBundles(atlasClimateFollowUpCompatibilityBundles)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">

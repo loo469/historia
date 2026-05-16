@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import { buildClimateMapOverlay } from '../../../src/ui/climate/buildClimateMapOverlay.js';
 import { ClimateState } from '../../../src/domain/climate/ClimateState.js';
 
+function stripFollowUpCompatibility(preview) {
+  const { followUpCompatibility, ...rest } = preview;
+  return rest;
+}
+
 test('buildClimateMapOverlay combines seasons, anomalies, and catastrophes into stable regional entries', () => {
   const overlay = buildClimateMapOverlay([
     new ClimateState({
@@ -2283,7 +2288,10 @@ test('buildClimateMapOverlay supports explicit prudent climate bundle overrides'
     ],
   });
 
-  assert.deepEqual(overlay.climateActionBundleAssistant.bundles, [
+  assert.deepEqual(overlay.climateActionBundleAssistant.bundles.map((bundle) => ({
+    ...bundle,
+    afterActionPreview: stripFollowUpCompatibility(bundle.afterActionPreview),
+  })), [
     {
       bundleId: 'climate-bundle:postpone',
       kind: 'postpone',
@@ -2364,7 +2372,7 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
 
   const [secureNowBundle, prepareBundle] = overlay.climateActionBundleAssistant.bundles;
 
-  assert.deepEqual(secureNowBundle.afterActionPreview, {
+  assert.deepEqual(stripFollowUpCompatibility(secureNowBundle.afterActionPreview), {
     expectedEffect: 'pression climatique abaissée immédiatement sans rouvrir de conflit majeur',
     coolingOffTurns: 1,
     coolingOffState: 'observe-next-turn',
@@ -2384,7 +2392,7 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
       },
     ],
   });
-  assert.deepEqual(prepareBundle.afterActionPreview, {
+  assert.deepEqual(stripFollowUpCompatibility(prepareBundle.afterActionPreview), {
     expectedEffect: 'readiness renforcée avant engagement direct, sans répéter le calendrier saisonnier',
     coolingOffTurns: 2,
     coolingOffState: 'verify-before-reintervention',
@@ -2403,5 +2411,31 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
         nextAction: 'placer une vérification de readiness au prochain tour sûr',
       },
     ],
+  });
+  assert.deepEqual(prepareBundle.afterActionPreview.followUpCompatibility, {
+    recommendedMinimalBundleId: 'climate-bundle:prepare:compat:minimal-safe',
+    ambitiousFragileBundleId: 'climate-bundle:prepare:compat:ambitious-fragile',
+    bundles: [
+      {
+        compatibilityBundleId: 'climate-bundle:prepare:compat:minimal-safe',
+        kind: 'minimal-safe',
+        followUpIds: ['climate-bundle:prepare:ridge:follow-up'],
+        regionIds: ['ridge'],
+        safety: 'safe',
+        conflictSignals: ['cooling-off-timing', 'regional-residual-risk'],
+        reason: 'regroupe seulement les suivis nécessaires sans rouvrir toute la file climat',
+      },
+      {
+        compatibilityBundleId: 'climate-bundle:prepare:compat:ambitious-fragile',
+        kind: 'ambitious-fragile',
+        followUpIds: ['climate-bundle:prepare:ridge:follow-up'],
+        regionIds: ['ridge'],
+        safety: 'fragile',
+        conflictSignals: ['mitigation', 'cooling-off-timing', 'regional-residual-risk'],
+        reason: 'couvre plus de suivis mais peut consommer réserve, mitigation ou timing de refroidissement',
+      },
+    ],
+    pendingIfMinimal: [],
+    summary: '1 suivi(s), 0 laissé(s) en attente si bundle minimal.',
   });
 });
