@@ -2510,6 +2510,76 @@ function buildRepaymentBottleneckWarningGroups(scenarios) {
       || left.source.localeCompare(right.source));
 }
 
+
+function classifyRepaymentTradeOffOption(option) {
+  if (option.remainingBlocked === 0 && option.sideEffectWarning?.severity !== 'danger') {
+    return 'minimale sûre';
+  }
+
+  if (option.remainingBlocked > 0 && option.capacityConsumed <= Math.max(1, option.remainingBlocked)) {
+    return 'rapide fragile';
+  }
+
+  if (option.sideEffectWarning?.severity === 'costly') {
+    return 'à vérifier';
+  }
+
+  return 'à éviter si surcharge déplacée';
+}
+
+function buildRepaymentTradeOffComparisons(scenarios, warningGroups) {
+  return warningGroups.map((group) => {
+    const options = scenarios.flatMap((scenario) => scenario.options
+      .filter((option) => option.sideEffectWarning?.bottleneckKey === group.key)
+      .map((option) => ({ scenario, option })));
+    const ranked = [...options].sort((left, right) => left.option.remainingBlocked - right.option.remainingBlocked
+      || left.option.capacityConsumed - right.option.capacityConsumed
+      || left.scenario.rank - right.scenario.rank);
+    const minimalSafe = ranked.find(({ option }) => option.remainingBlocked === 0 && option.sideEffectWarning?.severity !== 'danger') ?? ranked[0] ?? null;
+    const fastFragile = [...options].sort((left, right) => left.option.capacityConsumed - right.option.capacityConsumed
+      || left.option.remainingBlocked - right.option.remainingBlocked
+      || left.scenario.rank - right.scenario.rank)
+      .find(({ option }) => option.remainingBlocked > 0) ?? options[0] ?? null;
+    const avoid = [...options].sort((left, right) => Number(right.option.sideEffectWarning?.severity === 'danger') - Number(left.option.sideEffectWarning?.severity === 'danger')
+      || right.option.remainingBlocked - left.option.remainingBlocked
+      || right.option.capacityConsumed - left.option.capacityConsumed)[0] ?? null;
+
+    const choices = options.map(({ scenario, option }) => ({
+      id: `tradeoff:${group.key}:${option.id}`,
+      scenarioId: scenario.id,
+      optionId: option.id,
+      label: `${scenario.label} · ${option.label}`,
+      role: classifyRepaymentTradeOffOption(option),
+      cost: option.capacityConsumed,
+      capacityFreed: Math.max(0, (scenario.options.find((candidate) => candidate.mode === 'complete')?.capacityConsumed ?? option.capacityConsumed) - option.remainingBlocked),
+      delay: option.remainingBlocked === 0 ? 'ce tour' : 'ce tour + reprise suivante',
+      residualRisk: option.remainingBlocked === 0 ? 'aucun goulot critique restant' : `${option.remainingBlocked} capacité encore bloquée`,
+      overloadShiftRisk: option.sideEffectWarning?.severity === 'costly'
+        ? 'risque de déplacer la surcharge vers une route ou ville concurrente'
+        : option.sideEffectWarning?.severity === 'danger'
+          ? 'risque persistant sur le goulot partagé'
+          : 'pas de surcharge déplacée signalée',
+      warningGroupKey: group.key,
+    }));
+
+    return {
+      id: `tradeoff-comparison:${group.key}`,
+      warningGroupKey: group.key,
+      source: group.source,
+      summary: choices.length === 0
+        ? `${group.source}: aucune option comparable pour ce goulot.`
+        : `${group.source}: ${choices.length} option(s) comparées pour résoudre le goulot partagé.`,
+      minimalSafeOptionId: minimalSafe ? `tradeoff:${group.key}:${minimalSafe.option.id}` : null,
+      fastFragileOptionId: fastFragile ? `tradeoff:${group.key}:${fastFragile.option.id}` : null,
+      avoidOptionId: avoid ? `tradeoff:${group.key}:${avoid.option.id}` : null,
+      recommendation: minimalSafe
+        ? `${minimalSafe.scenario.label}: ${minimalSafe.option.label} est l'option minimale sûre.`
+        : 'Surveiller le goulot: aucune option sûre n’est disponible avec les données actuelles.',
+      choices,
+    };
+  });
+}
+
 function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
@@ -2539,6 +2609,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
   });
 
   const warningGroups = buildRepaymentBottleneckWarningGroups(scenarios);
+  const tradeOffComparisons = buildRepaymentTradeOffComparisons(scenarios, warningGroups);
 
   return {
     id: 'logistics-recovery-repayment-scenarios',
@@ -2552,6 +2623,8 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     warningCount: scenarios.reduce((count, scenario) => count + scenario.sideEffectWarningCount, 0),
     warningGroups,
     topWarningGroupKey: warningGroups[0]?.key ?? null,
+    tradeOffComparisons,
+    topTradeOffComparisonId: tradeOffComparisons[0]?.id ?? null,
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },

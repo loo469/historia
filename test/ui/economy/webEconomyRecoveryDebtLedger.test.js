@@ -31,6 +31,9 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(webAppSource, /scenario\.minimalViableAction/);
   assert.match(webAppSource, /sideEffectWarning/);
   assert.match(webAppSource, /warningGroups/);
+  assert.match(webAppSource, /tradeOffComparisons/);
+  assert.match(webAppSource, /economy-repayment-tradeoffs/);
+  assert.match(webAppSource, /choice\.overloadShiftRisk/);
   assert.match(webAppSource, /economy-repayment-bottlenecks/);
   assert.match(webAppSource, /group\.bestDecision\?\.nextArbitrage/);
   assert.match(webAppSource, /economy-repayment-scenario__warning/);
@@ -53,4 +56,6 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(stylesSource, /\.economy-repayment-scenario__warning--costly/);
   assert.match(stylesSource, /\.economy-repayment-bottleneck--danger/);
   assert.match(stylesSource, /\.economy-repayment-bottleneck--costly/);
+  assert.match(stylesSource, /\.economy-repayment-tradeoff__choice--minimale-sûre/);
+  assert.match(stylesSource, /\.economy-repayment-tradeoff__choice--rapide-fragile/);
 });
