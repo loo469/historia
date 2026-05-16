@@ -2345,6 +2345,74 @@ function buildRecoveryDebtRepaymentPriorities(logisticsFeatures, recoveryDebtLed
   };
 }
 
+
+function buildRepaymentScenarioOption(priority, debtEntry, mode) {
+  const debtAmount = Math.max(0, debtEntry?.debtAmount ?? priority.debtAmount ?? 0);
+  const fullCapacity = Math.max(1, debtAmount || Math.ceil((debtEntry?.costTotal ?? 1) / 2));
+  const capacityConsumed = mode === 'complete' ? fullCapacity : Math.max(1, Math.ceil(fullCapacity / 2));
+  const remainingBlocked = Math.max(0, debtAmount - capacityConsumed);
+  const label = mode === 'complete' ? 'Remboursement complet' : 'Remboursement partiel';
+  const status = remainingBlocked === 0 ? 'reprise sécurisée' : 'blocage résiduel';
+
+  return {
+    id: `${priority.id}:${mode}`,
+    mode,
+    label,
+    capacityConsumed,
+    remainingBlocked,
+    status,
+    tone: remainingBlocked === 0 ? 'positive' : 'warning',
+    probableEffect: remainingBlocked === 0
+      ? `${priority.label}: ${priority.expectedGain}`
+      : `${priority.label}: réduit la dette de ${capacityConsumed}, mais ${remainingBlocked} capacité reste bloquée sur ${priority.corridor}.`,
+    blockedAfter: remainingBlocked === 0
+      ? 'Aucun blocage majeur restant sur cette dette prioritaire.'
+      : `${remainingBlocked} capacité encore bloquée; ${priority.blockingImpact}`,
+  };
+}
+
+function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities) {
+  const candidates = repaymentPriorities.priorities.slice(0, 3);
+  const scenarios = candidates.map((priority) => {
+    const debtEntry = recoveryDebtLedger.entries.find((entry) => entry.id === priority.debtEntryId) ?? null;
+    const partial = buildRepaymentScenarioOption(priority, debtEntry, 'partial');
+    const complete = buildRepaymentScenarioOption(priority, debtEntry, 'complete');
+    const minimalViableAction = partial.remainingBlocked === 0
+      ? partial.label
+      : `${priority.nextAction}: couvrir au moins ${partial.capacityConsumed} capacité maintenant, puis planifier ${partial.remainingBlocked} au prochain tour`;
+
+    return {
+      id: `recovery-repayment-scenario:${priority.targetId}`,
+      priorityId: priority.id,
+      debtEntryId: priority.debtEntryId,
+      targetId: priority.targetId,
+      label: priority.label,
+      corridor: priority.corridor,
+      rank: priority.rank,
+      minimalViableAction,
+      options: [partial, complete],
+      ledgerLink: debtEntry?.id ?? priority.debtEntryId,
+      priorityLink: priority.id,
+      summary: `${priority.label}: partiel consomme ${partial.capacityConsumed} et laisse ${partial.remainingBlocked} bloqué; complet consomme ${complete.capacityConsumed} et laisse ${complete.remainingBlocked} bloqué.`,
+    };
+  });
+
+  return {
+    id: 'logistics-recovery-repayment-scenarios',
+    title: 'Scénarios remboursement dettes prioritaires',
+    summary: scenarios.length === 0
+      ? 'Aucun scénario de remboursement urgent à prévisualiser.'
+      : `${scenarios.length} scénario(s) de reprise comparent remboursement partiel et complet.`,
+    scenarios,
+    topScenarioId: scenarios[0]?.id ?? null,
+    minimalViableAction: scenarios[0]?.minimalViableAction ?? 'continuer la surveillance',
+    legend: [
+      { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
+      { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },
+    ],
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -2422,6 +2490,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
   const atRiskRecoverySummary = buildAtRiskRecoverySummary(logisticsFeaturesWithPlanners);
   const recoveryCapacityBudget = buildRecoveryCapacityBudget(logisticsFeaturesWithPlanners, atRiskRecoverySummary);
   const recoveryDebtLedger = buildRecoveryDebtLedger(logisticsFeaturesWithPlanners, recoveryCapacityBudget);
+  const recoveryDebtRepaymentPriorities = buildRecoveryDebtRepaymentPriorities(logisticsFeaturesWithPlanners, recoveryDebtLedger);
 
   return {
     cities: {
@@ -2446,7 +2515,8 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       atRiskRecoverySummary,
       recoveryCapacityBudget,
       recoveryDebtLedger,
-      recoveryDebtRepaymentPriorities: buildRecoveryDebtRepaymentPriorities(logisticsFeaturesWithPlanners, recoveryDebtLedger),
+      recoveryDebtRepaymentPriorities,
+      recoveryDebtRepaymentScenarioPreviews: buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, recoveryDebtRepaymentPriorities),
       recoveryPlannerLegend: [
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },

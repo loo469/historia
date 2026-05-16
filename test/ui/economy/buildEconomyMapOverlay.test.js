@@ -1579,6 +1579,32 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentPriorities.priorities[0].blockingImpact, /stock de reprise manquant/);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentPriorities.priorities[0].expectedGain, /Rembourser stock/);
 
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.id, 'logistics-recovery-repayment-scenarios');
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.topScenarioId, 'recovery-repayment-scenario:route-coast');
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.summary, /partiel et complet/);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios.map((scenario) => ({
+    id: scenario.id,
+    priorityId: scenario.priorityId,
+    debtEntryId: scenario.debtEntryId,
+    minimalViableAction: scenario.minimalViableAction,
+  })), [
+    {
+      id: 'recovery-repayment-scenario:route-coast',
+      priorityId: 'recovery-repayment:route-coast',
+      debtEntryId: 'recovery-debt:route-coast',
+      minimalViableAction: 'ajouter du stock avant le prochain bundle: couvrir au moins 1 capacité maintenant, puis planifier 1 au prochain tour',
+    },
+  ]);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios[0].options.map((option) => ({
+    mode: option.mode,
+    capacityConsumed: option.capacityConsumed,
+    remainingBlocked: option.remainingBlocked,
+    status: option.status,
+  })), [
+    { mode: 'partial', capacityConsumed: 1, remainingBlocked: 1, status: 'blocage résiduel' },
+    { mode: 'complete', capacityConsumed: 2, remainingBlocked: 0, status: 'reprise sécurisée' },
+  ]);
+
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
     targetId: marker.targetId,
