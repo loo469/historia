@@ -1857,6 +1857,99 @@ function getAtlasMilitaryUsefulActionAgainstBlocker(item, blockerBadge, blocking
   return `action utile: ${blockingDecision}`;
 }
 
+
+function getAtlasMilitaryBlockerResolutionChecklist(blockerBadge, item, blockingDecision) {
+  const orderState = blockerBadge.type === 'unknown'
+    ? 'vérification requise'
+    : item?.kind === 'obligatoire' && ['climate', 'intel'].includes(blockerBadge.type)
+      ? 'ordre différé'
+      : item?.kind === 'à surveiller'
+        ? 'ordre en veille'
+        : 'ordre préparé';
+  const checklistByType = {
+    logistics: {
+      immediateAction: 'réserver capacité de renfort',
+      missingPrerequisite: 'capacité logistique confirmée',
+      waitingState: 'attendre couloir ravitaillement visible',
+    },
+    climate: {
+      immediateAction: 'mettre ordre en attente météo',
+      missingPrerequisite: 'fenêtre climat sûre',
+      waitingState: 'attendre signal météo stable',
+    },
+    intel: {
+      immediateAction: 'préparer vérification de visibilité',
+      missingPrerequisite: 'renseignement confirmé',
+      waitingState: 'attendre levée incertitude',
+    },
+    culture: {
+      immediateAction: 'aligner ordre avec engagement local',
+      missingPrerequisite: 'récit local stabilisé',
+      waitingState: 'attendre apaisement narratif visible',
+    },
+    unknown: {
+      immediateAction: 'remplacer par vérification',
+      missingPrerequisite: 'bloqueur principal identifié',
+      waitingState: 'attendre cause visible fog-safe',
+    },
+  };
+  const checklist = checklistByType[blockerBadge.type] ?? checklistByType.unknown;
+  return {
+    orderState,
+    immediateAction: checklist.immediateAction,
+    missingPrerequisite: checklist.missingPrerequisite,
+    waitingState: checklist.waitingState,
+    militaryInstruction: orderState === 'ordre préparé' ? blockingDecision : `${orderState}: ${checklist.waitingState}`,
+  };
+}
+
+function buildAtlasMilitaryBlockerResolutionChecklist(handoff) {
+  const handoffs = handoff?.handoffs ?? [];
+  if (!handoffs.length || handoff?.empty) {
+    return {
+      items: [],
+      summary: 'Checklist de résolution vide: aucun bloqueur de province contestée visible.',
+      empty: true,
+    };
+  }
+
+  const items = handoffs.slice(0, 3).map((row) => {
+    const checklist = getAtlasMilitaryBlockerResolutionChecklist(row.blockerBadge, { kind: row.kind }, row.blockingDecision);
+    return {
+      checklistId: `blocker-resolution:${row.provinceLabel}`,
+      provinceLabel: row.provinceLabel,
+      blockerBadge: row.blockerBadge,
+      checklist,
+      tone: row.blockerBadge.type,
+      priority: row.priority ?? 0,
+    };
+  });
+
+  return {
+    items,
+    summary: `${items.length} checklist${items.length > 1 ? 's' : ''} de résolution fog-safe prête${items.length > 1 ? 's' : ''}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryBlockerResolutionChecklist(checklist) {
+  const height = checklist.empty ? 7 : 6.5 + (checklist.items.length * 5.2);
+  return `
+    <g class="atlas-military-blocker-checklist" aria-label="Checklist de résolution des bloqueurs de provinces contestées: ${checklist.summary}">
+      <rect class="atlas-military-blocker-checklist__panel" x="64" y="84" width="33" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-blocker-checklist__title" x="65.5" y="86.8">Checklist bloqueur</text>
+      ${checklist.empty ? `<text class="atlas-military-blocker-checklist__empty" x="65.5" y="90">${checklist.summary}</text>` : checklist.items.map((row, index) => `
+        <g class="atlas-military-blocker-checklist-row atlas-military-blocker-checklist-row--${row.tone}" data-atlas-blocker-checklist="${row.checklistId}" aria-label="${row.provinceLabel}: ${row.blockerBadge.label}; action immédiate ${row.checklist.immediateAction}; prérequis manquant ${row.checklist.missingPrerequisite}; état d'attente ${row.checklist.waitingState}; ordre militaire ${row.checklist.orderState}">
+          <rect class="atlas-military-blocker-checklist-row__badge" x="65.5" y="${88.4 + index * 5.2}" width="4.8" height="3.5" rx="0.8"></rect>
+          <text class="atlas-military-blocker-checklist-row__province" x="71" y="${89.3 + index * 5.2}">${row.provinceLabel} · ${row.checklist.orderState}</text>
+          <text class="atlas-military-blocker-checklist-row__action" x="71" y="${90.8 + index * 5.2}">immédiat: ${row.checklist.immediateAction}</text>
+          <text class="atlas-military-blocker-checklist-row__wait" x="71" y="${92.3 + index * 5.2}">attente: ${row.checklist.waitingState}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function getAtlasMilitaryBlockingHandoffDecision(item, confidence) {
   if (!item) return 'attente: visibilité insuffisante';
   if (item.kind === 'obligatoire' && item.dependencies?.includes('logistique')) return 'renfort: sécuriser logistique';
@@ -1887,6 +1980,7 @@ function buildAtlasMilitaryCarryOverConfidenceHandoff(carryOverQueue, outcomeTim
     return {
       handoffId: `carry-over-confidence:${item.provinceLabel}`,
       provinceLabel: item.provinceLabel,
+      kind: item.kind,
       confidence,
       blockingDecision,
       blockerBadge,
@@ -2913,6 +3007,7 @@ function renderAtlasMilitaryLayer(shell) {
   const nextTurnCarryOverQueue = buildAtlasMilitaryNextTurnCarryOverQueue(postResolutionAudit, shell);
   const carryOverOutcomeTimeline = buildAtlasMilitaryCarryOverOutcomeTimeline(nextTurnCarryOverQueue);
   const carryOverConfidenceHandoff = buildAtlasMilitaryCarryOverConfidenceHandoff(nextTurnCarryOverQueue, carryOverOutcomeTimeline);
+  const blockerResolutionChecklist = buildAtlasMilitaryBlockerResolutionChecklist(carryOverConfidenceHandoff);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -2949,6 +3044,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryNextTurnCarryOverQueue(nextTurnCarryOverQueue)}
       ${renderAtlasMilitaryCarryOverOutcomeTimeline(carryOverOutcomeTimeline)}
       ${renderAtlasMilitaryCarryOverConfidenceHandoff(carryOverConfidenceHandoff)}
+      ${renderAtlasMilitaryBlockerResolutionChecklist(blockerResolutionChecklist)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
