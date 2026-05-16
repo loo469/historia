@@ -13090,3 +13090,25 @@ button { font: inherit; }
   fill: #94a3b8;
   font-size: 0.68px;
 }
+.economy-repayment-scenario__warning {
+  display: grid;
+  gap: 4px;
+  padding: 7px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.economy-repayment-scenario__warning b {
+  color: #f8fafc;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.economy-repayment-scenario__warning span,
+.economy-repayment-scenario__warning small {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.economy-repayment-scenario__warning--danger { border-color: rgba(251, 113, 133, 0.42); }
+.economy-repayment-scenario__warning--costly { border-color: rgba(245, 158, 11, 0.34); }

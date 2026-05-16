@@ -18432,6 +18432,13 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
                   <span>Capacité ${option.capacityConsumed} · bloqué ${option.remainingBlocked}</span>
                   <p>${option.probableEffect}</p>
                   <small>${option.blockedAfter}</small>
+                  ${option.sideEffectWarning ? `
+                    <aside class="economy-repayment-scenario__warning economy-repayment-scenario__warning--${option.sideEffectWarning.severity}">
+                      <b>${option.sideEffectWarning.source}</b>
+                      <span>${option.sideEffectWarning.text}</span>
+                      <small>${option.sideEffectWarning.nextArbitrage}</small>
+                    </aside>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
