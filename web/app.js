@@ -18529,6 +18529,23 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
         <strong>${view.title}</strong>
       </div>
       <p>${view.summary}</p>
+      ${view.warningGroups?.length ? `
+        <div class="economy-repayment-bottlenecks" aria-label="Goulots de remboursement groupés">
+          ${view.warningGroups.map((group) => `
+            <details class="economy-repayment-bottleneck economy-repayment-bottleneck--${group.severity}" ${group.key === view.topWarningGroupKey ? 'open' : ''}>
+              <summary>
+                <span>${group.source}</span>
+                <strong>${group.quickRead}</strong>
+              </summary>
+              <p>${group.bestDecision?.nextArbitrage ?? 'Arbitrage à confirmer avant remboursement.'}</p>
+              <small>${group.scenarioCount} scénario(s), ${group.optionCount} option(s), ${group.maxRemainingBlocked} capacité max encore bloquée.</small>
+              <ul>
+                ${group.details.map((detail) => `<li>${detail.label} · ${detail.corridor}</li>`).join('')}
+              </ul>
+            </details>
+          `).join('')}
+        </div>
+      ` : ''}
       <div class="economy-repayment-scenarios__list">
         ${view.scenarios.map((scenario) => `
           <article class="economy-repayment-scenario">

@@ -2375,6 +2375,7 @@ function buildRepaymentSideEffectWarning(priority, debtEntry, routeFeature, opti
       source,
       text: `${source}: ${option.remainingBlocked} capacité reste bloquée après ${option.label.toLowerCase()}.`,
       nextArbitrage: `Arbitrer ${priority.nextAction} avant de lancer un second remboursement.`,
+      bottleneckKey: `${source}:${debtEntry?.debtResources?.join('+') || routeFeature?.bottleneckResourceId || priority.targetId}`,
     };
   }
 
@@ -2384,6 +2385,7 @@ function buildRepaymentSideEffectWarning(priority, debtEntry, routeFeature, opti
       source,
       text: `${source}: ${option.label.toLowerCase()} consomme ${option.capacityConsumed} capacité de reprise ce tour.`,
       nextArbitrage: 'Confirmer que cette capacité ne manque pas à une route ou ville concurrente.',
+      bottleneckKey: `${source}:${debtEntry?.debtResources?.join('+') || routeFeature?.bottleneckResourceId || priority.targetId}`,
     };
   }
 
@@ -2419,6 +2421,95 @@ function buildRepaymentScenarioOption(priority, debtEntry, routeFeature, mode) {
   };
 }
 
+
+function rankRepaymentWarningOption(option) {
+  const severityRank = option.sideEffectWarning?.severity === 'danger' ? 2 : option.sideEffectWarning ? 1 : 0;
+  return severityRank * 1000 + option.remainingBlocked * 100 + option.capacityConsumed;
+}
+
+function buildRepaymentBottleneckWarningGroups(scenarios) {
+  const groupsByKey = new Map();
+
+  for (const scenario of scenarios) {
+    for (const option of scenario.options) {
+      const warning = option.sideEffectWarning;
+
+      if (!warning) {
+        continue;
+      }
+
+      const key = warning.bottleneckKey ?? `${warning.source}:${scenario.targetId}`;
+      const existing = groupsByKey.get(key) ?? {
+        key,
+        source: warning.source,
+        severity: 'costly',
+        scenarios: [],
+        optionCount: 0,
+        maxRemainingBlocked: 0,
+        totalCapacityConsumed: 0,
+        bestOption: null,
+      };
+
+      existing.severity = existing.severity === 'danger' || warning.severity === 'danger' ? 'danger' : 'costly';
+      existing.optionCount += 1;
+      existing.maxRemainingBlocked = Math.max(existing.maxRemainingBlocked, option.remainingBlocked);
+      existing.totalCapacityConsumed += option.capacityConsumed;
+
+      if (!existing.scenarios.some((entry) => entry.scenarioId === scenario.id)) {
+        existing.scenarios.push({
+          scenarioId: scenario.id,
+          label: scenario.label,
+          corridor: scenario.corridor,
+          targetId: scenario.targetId,
+        });
+      }
+
+      const candidate = {
+        scenarioId: scenario.id,
+        optionId: option.id,
+        label: `${scenario.label} · ${option.label}`,
+        decision: option.label,
+        remainingBlocked: option.remainingBlocked,
+        capacityConsumed: option.capacityConsumed,
+        nextArbitrage: warning.nextArbitrage,
+      };
+
+      if (!existing.bestOption || rankRepaymentWarningOption(option) < rankRepaymentWarningOption(existing.bestOption)) {
+        existing.bestOption = { ...option, ...candidate };
+      }
+
+      groupsByKey.set(key, existing);
+    }
+  }
+
+  return [...groupsByKey.values()]
+    .map((group) => ({
+      key: group.key,
+      source: group.source,
+      severity: group.severity,
+      scenarioCount: group.scenarios.length,
+      optionCount: group.optionCount,
+      maxRemainingBlocked: group.maxRemainingBlocked,
+      totalCapacityConsumed: group.totalCapacityConsumed,
+      bestDecision: group.bestOption ? {
+        scenarioId: group.bestOption.scenarioId,
+        optionId: group.bestOption.optionId,
+        label: group.bestOption.label,
+        decision: group.bestOption.decision,
+        remainingBlocked: group.bestOption.remainingBlocked,
+        capacityConsumed: group.bestOption.capacityConsumed,
+        nextArbitrage: group.bestOption.nextArbitrage,
+      } : null,
+      quickRead: group.bestOption
+        ? `${group.source}: ${group.bestOption.label} réduit le risque avec ${group.bestOption.remainingBlocked} capacité encore bloquée.`
+        : `${group.source}: arbitrage requis avant remboursement.`,
+      details: group.scenarios,
+    }))
+    .sort((left, right) => Number(right.severity === 'danger') - Number(left.severity === 'danger')
+      || right.maxRemainingBlocked - left.maxRemainingBlocked
+      || left.source.localeCompare(right.source));
+}
+
 function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
@@ -2447,6 +2538,8 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     };
   });
 
+  const warningGroups = buildRepaymentBottleneckWarningGroups(scenarios);
+
   return {
     id: 'logistics-recovery-repayment-scenarios',
     title: 'Scénarios remboursement dettes prioritaires',
@@ -2457,6 +2550,8 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     topScenarioId: scenarios[0]?.id ?? null,
     minimalViableAction: scenarios[0]?.minimalViableAction ?? 'continuer la surveillance',
     warningCount: scenarios.reduce((count, scenario) => count + scenario.sideEffectWarningCount, 0),
+    warningGroups,
+    topWarningGroupKey: warningGroups[0]?.key ?? null,
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },

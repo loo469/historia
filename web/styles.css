@@ -13200,3 +13200,38 @@ button { font: inherit; }
   fill: #c4b5fd;
   font-size: 0.5px;
 }
+.economy-repayment-bottlenecks {
+  display: grid;
+  gap: 8px;
+}
+.economy-repayment-bottleneck {
+  padding: 9px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.economy-repayment-bottleneck summary {
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+}
+.economy-repayment-bottleneck summary span {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.economy-repayment-bottleneck summary strong { color: #f8fafc; }
+.economy-repayment-bottleneck p,
+.economy-repayment-bottleneck small,
+.economy-repayment-bottleneck li {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.economy-repayment-bottleneck ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+}
+.economy-repayment-bottleneck--danger { border-color: rgba(251, 113, 133, 0.42); }
+.economy-repayment-bottleneck--costly { border-color: rgba(245, 158, 11, 0.34); }
