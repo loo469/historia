@@ -2243,6 +2243,108 @@ function buildRecoveryDebtLedger(logisticsFeatures, recoveryCapacityBudget) {
   };
 }
 
+
+function getRecoveryDebtRepaymentImpact(entry, routeFeature) {
+  if (entry.status === 'en dette') {
+    if (entry.debtResources.includes('stock')) {
+      return `${entry.label}: stock de reprise manquant, les pénuries aval peuvent rester ouvertes.`;
+    }
+
+    if (entry.debtResources.includes('convoy')) {
+      return `${entry.label}: convoi non réservé, le corridor peut re-bloquer la reprise.`;
+    }
+
+    if (entry.debtResources.includes('labor')) {
+      return `${entry.label}: réparation sous-dotée, délai de reprise prolongé.`;
+    }
+
+    return `${entry.label}: dette ouverte, capacité de reprise cannibalisée sur le corridor.`;
+  }
+
+  if (entry.status === 'à la limite') {
+    return `${entry.label}: marge ${entry.remainingCapacity}, une nouvelle perturbation peut rouvrir la dette.`;
+  }
+
+  return `${entry.label}: peut attendre sans pénalité majeure tant que la capacité reste stable.`;
+}
+
+function getRecoveryDebtRepaymentGain(entry, routeFeature) {
+  if (entry.status === 'en dette') {
+    return entry.debtResources.length > 0
+      ? `Rembourser ${entry.debtResources.join(', ')} libère ${entry.debtAmount} capacité et sécurise ${entry.corridor}.`
+      : `Rembourser la dette libère ${entry.debtAmount} capacité sur ${entry.corridor}.`;
+  }
+
+  if (entry.status === 'à la limite') {
+    return `Créer une réserve évite une nouvelle dette si ${routeFeature?.label ?? entry.label} subit un choc.`;
+  }
+
+  return `Aucun gain urgent: garder ${entry.remainingCapacity} marge pour une dette plus bloquante.`;
+}
+
+function buildRecoveryDebtRepaymentPriorities(logisticsFeatures, recoveryDebtLedger) {
+  const statusScore = { 'en dette': 80, 'à la limite': 35, 'sous capacité': 5 };
+  const priorities = recoveryDebtLedger.entries.map((entry) => {
+    const routeFeature = logisticsFeatures.find((feature) => feature.routeId === entry.targetId) ?? null;
+    const riskScore = Math.ceil((routeFeature?.riskLevel ?? 0) / 10);
+    const bottleneckScore = routeFeature?.bottleneckIntensity === 'critical'
+      ? 16
+      : routeFeature?.bottleneckIntensity === 'high'
+        ? 10
+        : routeFeature?.bottleneckIntensity === 'medium'
+          ? 5
+          : 0;
+    const repaymentScore = (statusScore[entry.status] ?? 0) + (entry.debtAmount * 12) + riskScore + bottleneckScore;
+    const canWait = entry.status === 'sous capacité' || (entry.status === 'à la limite' && repaymentScore < 55);
+
+    return {
+      id: `recovery-repayment:${entry.targetId}`,
+      debtEntryId: entry.id,
+      targetType: entry.targetType,
+      targetId: entry.targetId,
+      label: entry.label,
+      corridor: entry.corridor,
+      rank: 0,
+      status: entry.status,
+      tone: canWait ? 'positive' : entry.tone,
+      repaymentScore,
+      canWait,
+      debtAmount: entry.debtAmount,
+      blockingImpact: getRecoveryDebtRepaymentImpact(entry, routeFeature),
+      expectedGain: getRecoveryDebtRepaymentGain(entry, routeFeature),
+      nextAction: entry.nextAction,
+      reason: canWait
+        ? `${entry.label}: pénalité faible, attendre ne bloque pas la reprise principale.`
+        : `${entry.label}: score ${repaymentScore}, ${entry.status}; traiter maintenant protège ${entry.corridor}.`,
+    };
+  }).sort((left, right) => Number(left.canWait) - Number(right.canWait)
+    || right.repaymentScore - left.repaymentScore
+    || left.label.localeCompare(right.label))
+    .map((priority, index) => ({ ...priority, rank: index + 1 }));
+  const blocking = priorities.filter((priority) => !priority.canWait).slice(0, 3);
+  const waitable = priorities.filter((priority) => priority.canWait);
+
+  return {
+    id: 'logistics-recovery-repayment-priorities',
+    title: 'Priorités remboursement dette logistique',
+    summary: priorities.length === 0
+      ? 'Aucune dette logistique à prioriser.'
+      : blocking.length === 0
+        ? `${waitable.length} dette(s) peuvent attendre sans pénalité majeure.`
+        : `${blocking.length} dette(s) bloquante(s) à rembourser en priorité; ${waitable.length} peuvent attendre.`,
+    priorities: blocking,
+    waitable,
+    topPriorityId: blocking[0]?.id ?? waitable[0]?.id ?? null,
+    nextAction: blocking[0]?.nextAction ?? waitable[0]?.nextAction ?? 'continuer la surveillance',
+    decisionJustification: blocking[0]?.reason ?? waitable[0]?.reason ?? 'Aucune dette restante ne demande de remboursement.',
+    legend: [
+      { key: 'blocking', label: 'Bloquante: rembourser maintenant', tone: 'critical' },
+      { key: 'watch', label: 'À surveiller: réserve utile', tone: 'warning' },
+      { key: 'can-wait', label: 'Peut attendre', tone: 'positive' },
+    ],
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -2319,6 +2421,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
   });
   const atRiskRecoverySummary = buildAtRiskRecoverySummary(logisticsFeaturesWithPlanners);
   const recoveryCapacityBudget = buildRecoveryCapacityBudget(logisticsFeaturesWithPlanners, atRiskRecoverySummary);
+  const recoveryDebtLedger = buildRecoveryDebtLedger(logisticsFeaturesWithPlanners, recoveryCapacityBudget);
 
   return {
     cities: {
@@ -2342,7 +2445,8 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeaturesWithPlanners),
       atRiskRecoverySummary,
       recoveryCapacityBudget,
-      recoveryDebtLedger: buildRecoveryDebtLedger(logisticsFeaturesWithPlanners, recoveryCapacityBudget),
+      recoveryDebtLedger,
+      recoveryDebtRepaymentPriorities: buildRecoveryDebtRepaymentPriorities(logisticsFeaturesWithPlanners, recoveryDebtLedger),
       recoveryPlannerLegend: [
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },

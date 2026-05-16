@@ -1554,6 +1554,31 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     },
   ]);
 
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentPriorities.id, 'logistics-recovery-repayment-priorities');
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentPriorities.topPriorityId, 'recovery-repayment:route-coast');
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentPriorities.nextAction, 'ajouter du stock avant le prochain bundle');
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentPriorities.summary, /dette\(s\) bloquante\(s\) à rembourser en priorité/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentPriorities.decisionJustification, /traiter maintenant protège/);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentPriorities.priorities.map((priority) => ({
+    id: priority.id,
+    targetId: priority.targetId,
+    rank: priority.rank,
+    canWait: priority.canWait,
+    debtAmount: priority.debtAmount,
+    nextAction: priority.nextAction,
+  })), [
+    {
+      id: 'recovery-repayment:route-coast',
+      targetId: 'route-coast',
+      rank: 1,
+      canWait: false,
+      debtAmount: 2,
+      nextAction: 'ajouter du stock avant le prochain bundle',
+    },
+  ]);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentPriorities.priorities[0].blockingImpact, /stock de reprise manquant/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentPriorities.priorities[0].expectedGain, /Rembourser stock/);
+
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
     targetId: marker.targetId,
