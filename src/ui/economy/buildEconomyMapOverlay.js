@@ -2580,6 +2580,54 @@ function buildRepaymentTradeOffComparisons(scenarios, warningGroups) {
   });
 }
 
+
+function buildRepaymentOutcomeRecap(choice, comparison) {
+  if (!choice) {
+    return {
+      id: `outcome-recap:${comparison.id}:none`,
+      warningGroupKey: comparison.warningGroupKey,
+      selectedOptionId: null,
+      status: 'données partielles',
+      capacityFreed: 0,
+      remainingDebt: null,
+      probableDelay: 'à confirmer',
+      displacedRisk: 'aucune option sélectionnable avec les données actuelles',
+      summary: `${comparison.source}: résultat impossible à estimer sans option comparable.`,
+      secondaryOverload: false,
+    };
+  }
+
+  const secondaryOverload = choice.overloadShiftRisk.includes('déplacer la surcharge');
+  const resolvesBottleneck = choice.residualRisk === 'aucun goulot critique restant';
+
+  return {
+    id: `outcome-recap:${comparison.warningGroupKey}:${choice.optionId}`,
+    warningGroupKey: comparison.warningGroupKey,
+    selectedOptionId: choice.id,
+    linkedComparisonId: comparison.id,
+    status: resolvesBottleneck && !secondaryOverload ? 'résolution nette' : resolvesBottleneck ? 'résolution avec surcharge secondaire' : 'résolution partielle',
+    capacityFreed: choice.capacityFreed,
+    remainingDebt: choice.residualRisk,
+    probableDelay: choice.delay,
+    displacedRisk: choice.overloadShiftRisk,
+    summary: resolvesBottleneck
+      ? `${choice.label}: libère ${choice.capacityFreed} capacité; dette restante ${choice.residualRisk}; délai ${choice.delay}.`
+      : `${choice.label}: libère ${choice.capacityFreed} capacité mais conserve ${choice.residualRisk}; délai ${choice.delay}.`,
+    secondaryOverload,
+  };
+}
+
+function buildRepaymentOutcomeRecaps(tradeOffComparisons) {
+  return tradeOffComparisons.map((comparison) => {
+    const selected = comparison.choices.find((choice) => choice.id === comparison.minimalSafeOptionId)
+      ?? comparison.choices.find((choice) => choice.id === comparison.fastFragileOptionId)
+      ?? comparison.choices[0]
+      ?? null;
+
+    return buildRepaymentOutcomeRecap(selected, comparison);
+  });
+}
+
 function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
@@ -2610,6 +2658,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
 
   const warningGroups = buildRepaymentBottleneckWarningGroups(scenarios);
   const tradeOffComparisons = buildRepaymentTradeOffComparisons(scenarios, warningGroups);
+  const outcomeRecaps = buildRepaymentOutcomeRecaps(tradeOffComparisons);
 
   return {
     id: 'logistics-recovery-repayment-scenarios',
@@ -2625,6 +2674,8 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     topWarningGroupKey: warningGroups[0]?.key ?? null,
     tradeOffComparisons,
     topTradeOffComparisonId: tradeOffComparisons[0]?.id ?? null,
+    outcomeRecaps,
+    topOutcomeRecapId: outcomeRecaps[0]?.id ?? null,
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },

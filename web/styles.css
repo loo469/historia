@@ -13336,3 +13336,42 @@ button { font: inherit; }
 .atlas-military-confidence-handoff-row--intel .atlas-military-confidence-handoff-row__badge { fill: rgba(168, 85, 247, 0.8); }
 .atlas-military-confidence-handoff-row--culture .atlas-military-confidence-handoff-row__badge { fill: rgba(244, 114, 182, 0.8); }
 .atlas-military-confidence-handoff-row--unknown .atlas-military-confidence-handoff-row__badge { fill: rgba(148, 163, 184, 0.8); }
+.economy-repayment-outcomes {
+  display: grid;
+  gap: 8px;
+}
+.economy-repayment-outcome {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.46);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.economy-repayment-outcome div {
+  display: grid;
+  gap: 3px;
+}
+.economy-repayment-outcome span {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.economy-repayment-outcome strong { color: #f8fafc; }
+.economy-repayment-outcome small,
+.economy-repayment-outcome p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.economy-repayment-outcome b {
+  justify-self: start;
+  color: #fecaca;
+  font-size: 11px;
+}
+.economy-repayment-outcome--résolution-nette { border-color: rgba(74, 222, 128, 0.34); }
+.economy-repayment-outcome--résolution-avec-surcharge-secondaire { border-color: rgba(245, 158, 11, 0.38); }
+.economy-repayment-outcome--résolution-partielle,
+.economy-repayment-outcome--données-partielles { border-color: rgba(251, 113, 133, 0.38); }
