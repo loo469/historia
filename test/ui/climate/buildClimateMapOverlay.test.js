@@ -2301,6 +2301,17 @@ test('buildClimateMapOverlay supports explicit prudent climate bundle overrides'
         reboundRegionIds: ['delta'],
         minimalAction: 'ne rien empiler: attendre une fenêtre moins contradictoire',
         summary: '3 tour(s) de cooling-off; rebond probable sur delta.',
+        followUpQueue: [
+          {
+            followUpId: 'climate-bundle:postpone:delta:follow-up',
+            bundleId: 'climate-bundle:postpone',
+            regionId: 'delta',
+            classification: 'urgent',
+            reason: 'rebond élevé après bundle fragile ou déconseillé',
+            ignoredReboundRisk: 'retour en alerte probable si aucun suivi n’est joué',
+            nextAction: 'jouer le suivi minimal avant tout autre bundle climat',
+          },
+        ],
       },
     },
   ]);
@@ -2361,6 +2372,17 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
     reboundRegionIds: [],
     minimalAction: 'garder une réserve locale et relire les marqueurs de rebond au tour suivant',
     summary: '1 tour(s) de cooling-off; aucun rebond régional probable si la réserve reste disponible.',
+    followUpQueue: [
+      {
+        followUpId: 'climate-bundle:secure-now:delta:follow-up',
+        bundleId: 'climate-bundle:secure-now',
+        regionId: 'delta',
+        classification: 'deferrable',
+        reason: 'signal stable: suivi léger suffit après cooling-off',
+        ignoredReboundRisk: 'rebond faible sauf nouveau signal saisonnier',
+        nextAction: 'différer et garder seulement une veille météo',
+      },
+    ],
   });
   assert.deepEqual(prepareBundle.afterActionPreview, {
     expectedEffect: 'readiness renforcée avant engagement direct, sans répéter le calendrier saisonnier',
@@ -2370,5 +2392,16 @@ test('buildClimateMapOverlay previews rebound and cooling-off after prudent clim
     reboundRegionIds: ['ridge'],
     minimalAction: 'sécuriser une readiness minimale avant toute mitigation supplémentaire',
     summary: '2 tour(s) de cooling-off; rebond probable sur ridge.',
+    followUpQueue: [
+      {
+        followUpId: 'climate-bundle:prepare:ridge:follow-up',
+        bundleId: 'climate-bundle:prepare',
+        regionId: 'ridge',
+        classification: 'prudent',
+        reason: 'fenêtre encore sensible: vérifier avant nouvelle mitigation',
+        ignoredReboundRisk: 'pression régionale peut remonter si la réserve disparaît',
+        nextAction: 'placer une vérification de readiness au prochain tour sûr',
+      },
+    ],
   });
 });
