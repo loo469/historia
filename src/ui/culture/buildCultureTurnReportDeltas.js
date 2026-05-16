@@ -634,7 +634,97 @@ function buildCulturalPromptChoiceComparison(followUpPrompts, bundles, timingWin
   };
 }
 
-function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = []) {
+function normalizeCulturalPromptHistoryEntry(entry, index) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const promptLabel = normalizeText(entry.promptLabel ?? entry.label ?? entry.title, 'prompt culturel');
+  const clusterLabel = normalizeText(entry.clusterLabel ?? entry.territory ?? entry.regionName ?? entry.regionId, 'territoire culturel');
+  const theme = normalizeText(entry.theme ?? entry.bundleLabel ?? entry.trajectory ?? promptLabel, promptLabel);
+
+  return {
+    historyId: entry.historyId ?? entry.decisionId ?? `culture-prompt-history:${index}`,
+    turn: Number.isFinite(entry.turn) ? entry.turn : null,
+    regionId: normalizeText(entry.regionId ?? entry.locationId, 'province'),
+    clusterLabel,
+    theme,
+    promptLabel,
+    choiceState: entry.choiceState ?? entry.state ?? 'seen',
+    outcome: entry.outcome ?? entry.result ?? 'historique conservé',
+    repeated: entry.repeated === true,
+  };
+}
+
+function buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory = [], regionId = 'province') {
+  const historyEntries = promptHistory
+    .map((entry, index) => normalizeCulturalPromptHistoryEntry(entry, index))
+    .filter(Boolean)
+    .sort((left, right) => (right.turn ?? 0) - (left.turn ?? 0))
+    .slice(0, 5);
+  const currentEntries = promptChoiceComparison.entries.map((entry) => {
+    const repeatedMatch = historyEntries.find((historyEntry) =>
+      historyEntry.clusterLabel === entry.clusterLabel
+      || (historyEntry.promptLabel === entry.promptLabel && historyEntry.clusterLabel === entry.clusterLabel)
+      || (historyEntry.theme === entry.promptLabel && historyEntry.clusterLabel === entry.clusterLabel));
+
+    return {
+      promptId: entry.promptId,
+      promptLabel: entry.promptLabel,
+      clusterLabel: entry.clusterLabel,
+      role: entry.role,
+      repeatState: repeatedMatch ? 'repeated' : 'new',
+      repeatReason: repeatedMatch
+        ? `ressemble à ${repeatedMatch.promptLabel} (${repeatedMatch.clusterLabel})${repeatedMatch.turn ? ` vu au tour ${repeatedMatch.turn}` : ''}`
+        : 'aucune décision récente similaire dans la limite affichée',
+      narrativeImpact: entry.narrativeImpact,
+    };
+  });
+  const combined = [
+    ...currentEntries.map((entry) => ({ ...entry, source: 'current', theme: entry.promptLabel })),
+    ...historyEntries.map((entry) => ({
+      source: 'history',
+      historyId: entry.historyId,
+      turn: entry.turn,
+      promptLabel: entry.promptLabel,
+      clusterLabel: entry.clusterLabel,
+      theme: entry.theme,
+      choiceState: entry.choiceState,
+      outcome: entry.outcome,
+      repeatState: entry.repeated ? 'repeated' : 'seen',
+    })),
+  ];
+  const groups = [...combined.reduce((map, entry) => {
+    const key = `${entry.clusterLabel}:${entry.theme}`;
+    const existing = map.get(key) ?? {
+      groupId: `culture-prompt-history:${key}`,
+      clusterLabel: entry.clusterLabel,
+      theme: entry.theme,
+      entries: [],
+      hasRepeat: false,
+    };
+    existing.entries.push(entry);
+    existing.hasRepeat = existing.hasRepeat || entry.repeatState === 'repeated';
+    map.set(key, existing);
+    return map;
+  }, new Map()).values()].slice(0, 4);
+
+  return {
+    state: groups.length === 0 ? 'quiet' : groups.some((group) => group.hasRepeat) ? 'repeat-warning' : 'ready',
+    summary: groups.length === 0
+      ? 'Aucun historique de prompt culturel à afficher.'
+      : `${groups.length} groupe${groups.length > 1 ? 's' : ''} d’historique culturel limité${groups.length > 1 ? 's' : ''} à comparer.`,
+    displayLimit: 5,
+    regionId,
+    currentEntries,
+    groups,
+    emptyHint: historyEntries.length === 0
+      ? 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.'
+      : 'Historique limité aux décisions récentes pour garder le drawer lisible.',
+  };
+}
+
+function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province') {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
   const bundles = trajectories
@@ -735,6 +825,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
 
   const followUpPrompts = buildCulturalFollowUpPrompts(bundles, incompatibilities);
   const promptChoiceComparison = buildCulturalPromptChoiceComparison(followUpPrompts, bundles, timingWindows);
+  const promptHistoryDrawer = buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory, regionId);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -749,6 +840,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
       : `${timingWindows.length} fenêtre${timingWindows.length > 1 ? 's' : ''} de timing culturel après bundle.`,
     followUpPrompts,
     promptChoiceComparison,
+    promptHistoryDrawer,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -780,6 +872,7 @@ export function buildCultureTurnReportDeltas({
   previousMarker = null,
   momentumFilter = 'all',
   activeRecommendations = [],
+  promptHistory = [],
 } = {}) {
   const regionId = normalizeText(selectedRegionId ?? selectedMarker?.regionId ?? selectedCluster?.regionIds?.[0], 'province');
   const timelineRecap = buildDiscoveryTimelineRecap(localTimeline, selectedMarker, selectedCluster, regionId);
@@ -794,7 +887,7 @@ export function buildCultureTurnReportDeltas({
   });
   const stabilizationRecommendations = buildCultureStabilizationRecommendations(momentumLayer);
   const recommendationCoherence = buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations);
-  const commitmentBundles = buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations);
+  const commitmentBundles = buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations, promptHistory, regionId);
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
@@ -849,6 +942,15 @@ export function buildCultureTurnReportDeltas({
           summary: 'Aucun arbitrage de prompt culturel disponible.',
           entries: [],
           noChoiceRisk: 'Aucun momentum culturel à arbitrer.',
+        },
+        promptHistoryDrawer: {
+          state: 'quiet',
+          summary: 'Aucun historique de prompt culturel à afficher.',
+          displayLimit: 5,
+          regionId,
+          currentEntries: [],
+          groups: [],
+          emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },

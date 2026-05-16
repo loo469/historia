@@ -244,6 +244,45 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       ],
       noChoiceRisk: 'ne rien choisir dilue le momentum actif et laisse les signaux concurrents reprendre la priorité',
     },
+    promptHistoryDrawer: {
+      state: 'ready',
+      summary: '1 groupe d’historique culturel limité à comparer.',
+      displayLimit: 5,
+      regionId: 'river-gate',
+      currentEntries: [
+        {
+          promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+          promptLabel: 'Ouvrir le récit d’expansion',
+          clusterLabel: 'Compact d’Aurora',
+          role: 'best-safe',
+          repeatState: 'new',
+          repeatReason: 'aucune décision récente similaire dans la limite affichée',
+          narrativeImpact: 'Ouvrir le récit d’expansion garde expansion prudente lisible et transforme Compact d’Aurora en suivi narratif immédiat.',
+        },
+      ],
+      groups: [
+        {
+          groupId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion',
+          clusterLabel: 'Compact d’Aurora',
+          theme: 'Ouvrir le récit d’expansion',
+          entries: [
+            {
+              promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+              promptLabel: 'Ouvrir le récit d’expansion',
+              clusterLabel: 'Compact d’Aurora',
+              role: 'best-safe',
+              repeatState: 'new',
+              repeatReason: 'aucune décision récente similaire dans la limite affichée',
+              narrativeImpact: 'Ouvrir le récit d’expansion garde expansion prudente lisible et transforme Compact d’Aurora en suivi narratif immédiat.',
+              source: 'current',
+              theme: 'Ouvrir le récit d’expansion',
+            },
+          ],
+          hasRepeat: false,
+        },
+      ],
+      emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -296,6 +335,15 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         summary: 'Aucun arbitrage de prompt culturel disponible.',
         entries: [],
         noChoiceRisk: 'Aucun momentum culturel à arbitrer.',
+      },
+      promptHistoryDrawer: {
+        state: 'quiet',
+        summary: 'Aucun historique de prompt culturel à afficher.',
+        displayLimit: 5,
+        regionId: 'quiet-field',
+        currentEntries: [],
+        groups: [],
+        emptyHint: 'Historique léger: comparer seulement les prompts actuels et commencer à mémoriser les décisions.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
@@ -577,6 +625,18 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
       influenceScore: 70,
       discoveries: ['archive-routes'],
     },
+    promptHistory: [
+      {
+        decisionId: 'turn-7-aurora-expansion',
+        turn: 7,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'chosen',
+        outcome: 'forum culturel déjà lancé',
+      },
+    ],
     activeRecommendations: [
       {
         recommendationId: 'ember:momentum:volatile:stabilization',
@@ -658,4 +718,13 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   ]);
   assert.match(report.commitmentBundles.promptChoiceComparison.entries[0].narrativeImpact, /préserver le momentum/);
   assert.match(report.commitmentBundles.promptChoiceComparison.noChoiceRisk, /momentum|fenêtre/);
+  assert.equal(report.commitmentBundles.promptHistoryDrawer.state, 'repeat-warning');
+  assert.equal(report.commitmentBundles.promptHistoryDrawer.displayLimit, 5);
+  assert.deepEqual(report.commitmentBundles.promptHistoryDrawer.currentEntries.map((entry) => [entry.clusterLabel, entry.repeatState]), [
+    ['Compact d’Aurora', 'repeated'],
+    ['Harbor Compact', 'new'],
+    ['Ember Guild', 'new'],
+  ]);
+  assert.match(report.commitmentBundles.promptHistoryDrawer.currentEntries[0].repeatReason, /tour 7/);
+  assert.equal(report.commitmentBundles.promptHistoryDrawer.groups[0].hasRepeat, true);
 });
