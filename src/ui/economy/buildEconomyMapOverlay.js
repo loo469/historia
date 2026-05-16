@@ -2018,7 +2018,7 @@ function getRecoveryBudgetCost(entry, routeFeature) {
     return { stock: 1, convoy: 1, labor: base, routeTime: option?.estimatedDelayTurns ?? 1, portCapacity: routeFeature.transportMode === 'sea' ? 1 : 0, relay: 1 };
   }
 
-  return { stock: 0, convoy: 1, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 };
+  return { stock: 0, convoy: 0, labor: 0, routeTime: 0, portCapacity: 0, relay: 0 };
 }
 
 function getRecoveryBudgetGroup(cost, available, entry) {
@@ -2123,6 +2123,126 @@ function buildRecoveryCapacityBudget(logisticsFeatures, atRiskRecoverySummary) {
   };
 }
 
+
+function getRecoveryDebtStatus(costTotal, availableTotal, overloads = []) {
+  if (overloads.length > 0 || costTotal > availableTotal) {
+    return 'en dette';
+  }
+
+  if (costTotal >= Math.max(1, availableTotal - 1)) {
+    return 'à la limite';
+  }
+
+  return 'sous capacité';
+}
+
+function getRecoveryDebtTone(status) {
+  return status === 'en dette' ? 'critical' : status === 'à la limite' ? 'warning' : 'positive';
+}
+
+function getRecoveryDebtNextAction(status, entry, routeFeature) {
+  if (status === 'sous capacité') {
+    return 'continuer la reprise prévue';
+  }
+
+  if (entry.overloads.some((overload) => overload.resource === 'stock')) {
+    return 'ajouter du stock avant le prochain bundle';
+  }
+
+  if (entry.overloads.some((overload) => overload.resource === 'convoy')) {
+    return 'réserver un convoi prioritaire';
+  }
+
+  if (entry.overloads.some((overload) => overload.resource === 'labor')) {
+    return 'détacher une équipe de réparation';
+  }
+
+  if (routeFeature?.transportMode === 'sea' && entry.overloads.some((overload) => overload.resource === 'portCapacity')) {
+    return 'libérer de la capacité portuaire';
+  }
+
+  return status === 'en dette' ? 'séquencer la reprise sur un tour de plus' : 'garder une réserve de capacité';
+}
+
+function buildRecoveryDebtLedger(logisticsFeatures, recoveryCapacityBudget) {
+  const entries = recoveryCapacityBudget.entries.map((entry) => {
+    const routeFeature = logisticsFeatures.find((feature) => feature.routeId === entry.targetId) ?? null;
+    const costTotal = Object.values(entry.cost).reduce((sum, value) => sum + value, 0);
+    const availableTotal = Object.keys(entry.cost).reduce((sum, key) => sum + (recoveryCapacityBudget.available[key] ?? 0), 0);
+    const remainingCapacity = availableTotal - costTotal;
+    const debtAmount = entry.overloads.reduce((sum, overload) => sum + overload.overBy, Math.max(0, -remainingCapacity));
+    const status = getRecoveryDebtStatus(costTotal, availableTotal, entry.overloads);
+    const nextAction = getRecoveryDebtNextAction(status, entry, routeFeature);
+    const corridor = routeFeature?.cityIds?.length > 1 ? routeFeature.cityIds.join(' → ') : routeFeature?.cityIds?.[0] ?? entry.targetId;
+
+    return {
+      id: `recovery-debt:${entry.targetId}`,
+      targetType: 'route',
+      targetId: entry.targetId,
+      label: routeFeature?.label ?? entry.targetId,
+      routeId: entry.targetId,
+      cityIds: routeFeature?.cityIds ?? [],
+      corridor,
+      linkedRiskEntryId: entry.linkedRiskEntryId,
+      linkedBudgetEntryId: entry.id,
+      linkedCheckpointId: entry.linkedCheckpointId,
+      linkedOptionId: entry.linkedOptionId,
+      action: entry.action,
+      status,
+      tone: getRecoveryDebtTone(status),
+      costTotal,
+      availableTotal,
+      remainingCapacity,
+      debtAmount,
+      debtResources: entry.overloads.map((overload) => overload.resource),
+      nextAction,
+      justification: status === 'en dette'
+        ? `${routeFeature?.label ?? entry.targetId}: ${entry.action} dépasse ${entry.overloads.map((overload) => overload.resource).join(', ') || 'la capacité'}; ${nextAction} réduit la dette restante.`
+        : status === 'à la limite'
+          ? `${routeFeature?.label ?? entry.targetId}: ${entry.action} laisse ${remainingCapacity} marge; ${nextAction} évite de recréer une dette.`
+          : `${routeFeature?.label ?? entry.targetId}: ${entry.action} laisse ${remainingCapacity} marge après checkpoints; impact sous contrôle.`,
+    };
+  }).sort((left, right) => {
+    const rank = { 'en dette': 0, 'à la limite': 1, 'sous capacité': 2 };
+
+    return rank[left.status] - rank[right.status]
+      || right.debtAmount - left.debtAmount
+      || left.label.localeCompare(right.label);
+  });
+  const totals = entries.reduce((sum, entry) => ({
+    cost: sum.cost + entry.costTotal,
+    available: sum.available + entry.availableTotal,
+    debt: sum.debt + entry.debtAmount,
+  }), { cost: 0, available: 0, debt: 0 });
+  const debtEntries = entries.filter((entry) => entry.status === 'en dette');
+  const limitEntries = entries.filter((entry) => entry.status === 'à la limite');
+  const status = debtEntries.length > 0 ? 'en dette' : limitEntries.length > 0 ? 'à la limite' : 'sous capacité';
+  const recommended = debtEntries[0] ?? limitEntries[0] ?? entries[0] ?? null;
+
+  return {
+    id: 'logistics-recovery-debt-ledger',
+    title: 'Ledger dette capacité après reprises',
+    status,
+    summary: entries.length === 0
+      ? 'Aucune dette logistique restante après checkpoints.'
+      : status === 'en dette'
+        ? `${debtEntries.length} route(s)/corridor(s) en dette après bundles de reprise; dette totale ${totals.debt}.`
+        : status === 'à la limite'
+          ? `${limitEntries.length} route(s)/corridor(s) à la limite après reprises; garder une réserve.`
+          : `${entries.length} route(s)/corridor(s) sous capacité après reprises.`,
+    totals,
+    entries,
+    recommendedEntryId: recommended?.id ?? null,
+    recommendedNextAction: recommended?.nextAction ?? 'continuer la surveillance',
+    decisionJustification: recommended?.justification ?? 'Aucun solde restant ne force une décision logistique.',
+    legend: [
+      { key: 'sous capacité', label: 'Sous capacité', tone: 'positive' },
+      { key: 'à la limite', label: 'À la limite', tone: 'warning' },
+      { key: 'en dette', label: 'En dette', tone: 'critical' },
+    ],
+  };
+}
+
 function buildDecisionLegend() {
   return [
     { key: 'critical', label: 'Priorité critique: manque ou saturation immédiate', tone: 'danger' },
@@ -2198,6 +2318,7 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
     };
   });
   const atRiskRecoverySummary = buildAtRiskRecoverySummary(logisticsFeaturesWithPlanners);
+  const recoveryCapacityBudget = buildRecoveryCapacityBudget(logisticsFeaturesWithPlanners, atRiskRecoverySummary);
 
   return {
     cities: {
@@ -2220,7 +2341,8 @@ function buildEconomyMapLayers(cityOverlays, routeOverlays) {
       stressFilters: buildRouteStressFilters(logisticsFeaturesWithPlanners),
       recoveryMarkers: buildRecoveryMarkers(cityFeatures, resourceLayer.features, logisticsFeaturesWithPlanners),
       atRiskRecoverySummary,
-      recoveryCapacityBudget: buildRecoveryCapacityBudget(logisticsFeaturesWithPlanners, atRiskRecoverySummary),
+      recoveryCapacityBudget,
+      recoveryDebtLedger: buildRecoveryDebtLedger(logisticsFeaturesWithPlanners, recoveryCapacityBudget),
       recoveryPlannerLegend: [
         { key: 'repair', label: 'Réparer', tone: 'stable' },
         { key: 'reroute', label: 'Rerouter', tone: 'caution' },
