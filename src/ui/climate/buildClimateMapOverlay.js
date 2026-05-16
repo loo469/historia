@@ -1881,6 +1881,47 @@ function describeClimateBundleExpectedEffect(bundle) {
   return 'intervention différée: évite de verrouiller une fenêtre trop contradictoire';
 }
 
+function buildClimateBundleFollowUpQueue(bundle, preview) {
+  const reboundRegionSet = new Set(preview.reboundRegionIds);
+  const conflicts = new Set(bundle.resourceConflicts);
+  return bundle.regionIds.map((regionId) => {
+    const hasRebound = reboundRegionSet.has(regionId);
+    const classification = hasRebound
+      ? (preview.reboundRisk === 'high' ? 'urgent' : 'prudent')
+      : conflicts.has('window-timing')
+        ? 'prudent'
+        : 'deferrable';
+    const reason = classification === 'urgent'
+      ? 'rebond élevé après bundle fragile ou déconseillé'
+      : classification === 'prudent'
+        ? 'fenêtre encore sensible: vérifier avant nouvelle mitigation'
+        : 'signal stable: suivi léger suffit après cooling-off';
+    const ignoredReboundRisk = classification === 'urgent'
+      ? 'retour en alerte probable si aucun suivi n’est joué'
+      : classification === 'prudent'
+        ? 'pression régionale peut remonter si la réserve disparaît'
+        : 'rebond faible sauf nouveau signal saisonnier';
+    const nextAction = classification === 'urgent'
+      ? 'jouer le suivi minimal avant tout autre bundle climat'
+      : classification === 'prudent'
+        ? 'placer une vérification de readiness au prochain tour sûr'
+        : 'différer et garder seulement une veille météo';
+
+    return {
+      followUpId: `${bundle.bundleId}:${regionId}:follow-up`,
+      bundleId: bundle.bundleId,
+      regionId,
+      classification,
+      reason,
+      ignoredReboundRisk,
+      nextAction,
+    };
+  }).sort((left, right) => {
+    const rank = { urgent: 0, prudent: 1, deferrable: 2 };
+    return (rank[left.classification] ?? 2) - (rank[right.classification] ?? 2) || left.regionId.localeCompare(right.regionId);
+  });
+}
+
 function buildClimateBundleAfterActionPreview(bundle) {
   const conflicts = new Set(bundle.resourceConflicts);
   const reboundRegionIds = conflicts.has('residual-risk') || conflicts.has('window-timing') || bundle.viability !== 'viable'
@@ -1905,8 +1946,7 @@ function buildClimateBundleAfterActionPreview(bundle) {
       : bundle.kind === 'monitor'
         ? 'poser une veille légère et n’agir que si le risque remonte'
         : 'ne rien empiler: attendre une fenêtre moins contradictoire';
-
-  return {
+  const preview = {
     expectedEffect: describeClimateBundleExpectedEffect(bundle),
     coolingOffTurns,
     coolingOffState,
@@ -1916,6 +1956,11 @@ function buildClimateBundleAfterActionPreview(bundle) {
     summary: reboundRegionIds.length > 0
       ? `${coolingOffTurns} tour(s) de cooling-off; rebond probable sur ${reboundRegionIds.join(', ')}.`
       : `${coolingOffTurns} tour(s) de cooling-off; aucun rebond régional probable si la réserve reste disponible.`,
+  };
+
+  return {
+    ...preview,
+    followUpQueue: buildClimateBundleFollowUpQueue(bundle, preview),
   };
 }
 
@@ -1941,6 +1986,21 @@ function normalizeClimateBundleAfterActionPreview(preview, basePreview) {
     ).map((regionId) => String(regionId).trim()).filter(Boolean),
     minimalAction: String(normalizedPreview.minimalAction ?? basePreview.minimalAction).trim(),
     summary: String(normalizedPreview.summary ?? basePreview.summary).trim(),
+    followUpQueue: requireArray(
+      normalizedPreview.followUpQueue ?? basePreview.followUpQueue,
+      'ClimateMapOverlay climateActionBundle afterActionPreview followUpQueue',
+    ).map((item) => {
+      const normalizedItem = requireObject(item, 'ClimateMapOverlay climateActionBundle afterActionPreview followUpQueue item');
+      return {
+        followUpId: String(normalizedItem.followUpId).trim(),
+        bundleId: String(normalizedItem.bundleId).trim(),
+        regionId: String(normalizedItem.regionId).trim(),
+        classification: String(normalizedItem.classification).trim(),
+        reason: String(normalizedItem.reason).trim(),
+        ignoredReboundRisk: String(normalizedItem.ignoredReboundRisk).trim(),
+        nextAction: String(normalizedItem.nextAction).trim(),
+      };
+    }),
   };
 }
 

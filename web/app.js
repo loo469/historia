@@ -10883,6 +10883,90 @@ function renderAtlasClimateReboundAfterActionBundle(view) {
   `;
 }
 
+function buildAtlasClimateReboundFollowUpQueue(reboundView, commitmentView) {
+  if (!reboundView || reboundView.state === 'empty' || !commitmentView?.cheapestSafeCommitment) {
+    return {
+      state: 'empty',
+      items: [],
+      summary: 'Aucune file de suivi climat post-preview à afficher.',
+    };
+  }
+
+  const labels = reboundView.reboundProvinceLabels.length > 0
+    ? reboundView.reboundProvinceLabels
+    : [commitmentView.cheapestSafeCommitment.deadlineCovered].filter(Boolean);
+  const followThroughSummary = commitmentView.safestClimateFollowThroughAfterDeadlineTradeoff?.summary ?? '';
+  const nextCommitment = commitmentView.nextClimateCommitment ?? null;
+  const items = labels.map((label, index) => {
+    const classification = reboundView.reboundRisk === 'probable' && index === 0
+      ? 'urgent'
+      : reboundView.reboundRisk === 'watch' || nextCommitment?.deadlineTargeted === label || index === 0
+        ? 'prudent'
+        : 'deferrable';
+    const reason = classification === 'urgent'
+      ? 'rebond probable après la preview: sécuriser avant nouveau bundle'
+      : classification === 'prudent'
+        ? 'signal sensible mais couvert par un suivi léger au prochain tour sûr'
+        : 'signal résiduel moins exposé que la première fenêtre';
+    const ignoredReboundRisk = classification === 'urgent'
+      ? 'l’alerte climat peut revenir dès le prochain cycle si ignorée'
+      : classification === 'prudent'
+        ? 'la pression peut remonter si la réserve ou la readiness est dépensée ailleurs'
+        : 'rebond limité sauf aggravation saisonnière';
+    const nextAction = classification === 'urgent'
+      ? (commitmentView.followUpClimatePayoffRecommendation?.nextAction ?? reboundView.minimalAction)
+      : classification === 'prudent'
+        ? (nextCommitment?.action ?? 'vérifier readiness puis attendre un signal clair')
+        : 'différer: garder une veille et ne pas rouvrir l’assistant bundle';
+
+    return {
+      followUpId: `post-preview:${label}:${index + 1}`,
+      rank: index + 1,
+      label,
+      classification,
+      reason,
+      ignoredReboundRisk,
+      nextAction,
+    };
+  }).sort((left, right) => {
+    const rank = { urgent: 0, prudent: 1, deferrable: 2 };
+    return (rank[left.classification] ?? 2) - (rank[right.classification] ?? 2) || left.rank - right.rank;
+  }).map((item, index) => ({ ...item, rank: index + 1 }));
+
+  return {
+    state: items.some((item) => item.classification === 'urgent') ? 'urgent' : 'ready',
+    items,
+    summary: `${items.length} suivi${items.length > 1 ? 's' : ''} post-preview classé${items.length > 1 ? 's' : ''}; ${followThroughSummary || 'file non redondante avec les bundles précédents.'}`,
+  };
+}
+
+function renderAtlasClimateReboundFollowUpQueue(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-rebound-follow-up map-world-climate-rebound-follow-up--${view.state}" aria-label="File de suivi climat après preview de rebound">
+      <div class="map-world-climate-rebound-follow-up__header">
+        <strong>File suivis rebound</strong>
+        <span>${view.items.length} suivi${view.items.length > 1 ? 's' : ''}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-rebound-follow-up__list">
+        ${view.items.map((item) => `
+          <li class="map-world-climate-rebound-follow-up__item map-world-climate-rebound-follow-up__item--${item.classification}">
+            <b>${item.rank}. ${item.label}</b>
+            <span>${item.classification}</span>
+            <small><b>Raison</b> · ${item.reason}</small>
+            <small><b>Si ignoré</b> · ${item.ignoredReboundRisk}</small>
+            <small><b>Prochaine action</b> · ${item.nextAction}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasClimateCheapestSafeRecoveryCommitment(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'neutral' || !view.cheapestSafeCommitment) {
     return '';
@@ -18856,6 +18940,10 @@ function render() {
   const atlasClimateRecoveryPlanProjection = buildAtlasClimateRecoveryPlanProjection(atlasClimateFirstRecoveryPressureReliefExplanation, atlasClimateRecoveryCollateralReliefRanking);
   const atlasClimateCheapestSafeRecoveryCommitment = buildAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateRecoveryPlanProjection);
   const atlasClimateReboundAfterActionBundle = buildAtlasClimateReboundAfterActionBundle(atlasClimateCheapestSafeRecoveryCommitment);
+  const atlasClimateReboundFollowUpQueue = buildAtlasClimateReboundFollowUpQueue(
+    atlasClimateReboundAfterActionBundle,
+    atlasClimateCheapestSafeRecoveryCommitment,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -18906,6 +18994,7 @@ function render() {
           ${renderAtlasClimateRecoveryPlanProjection(atlasClimateRecoveryPlanProjection)}
           ${renderAtlasClimateCheapestSafeRecoveryCommitment(atlasClimateCheapestSafeRecoveryCommitment)}
           ${renderAtlasClimateReboundAfterActionBundle(atlasClimateReboundAfterActionBundle)}
+          ${renderAtlasClimateReboundFollowUpQueue(atlasClimateReboundFollowUpQueue)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
