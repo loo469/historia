@@ -2547,3 +2547,87 @@ test('buildIntrigueMapOverlay marks ageing priority for fog-safe recheck queue u
   assert.match(urgentQueue.entries[1].ageIndicator.reliabilityCue, /attendre un créneau sûr/);
   assert.match(urgentQueue.entries[1].ageIndicator.fallback, /vieillissement affiché comme surveillance prudente/);
 });
+
+test('buildIntrigueMapOverlay proposes fog-safe escalation prompts for ageing intrigue uncertainties', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-escalate-now',
+      factionId: 'shadow-league',
+      codename: 'Escalate',
+      locationId: 'escalate-now',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 92,
+    }),
+    new Cellule({
+      id: 'cell-escalate-budget',
+      factionId: 'shadow-league',
+      codename: 'Budget Hold',
+      locationId: 'escalate-budget',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 99,
+    }),
+    new Cellule({
+      id: 'cell-escalate-masked',
+      factionId: 'shadow-league',
+      codename: 'Masked Escalation',
+      locationId: 'escalate-masked',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-escalate-now',
+      celluleId: 'cell-escalate-now',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Age into escalation',
+      theaterId: 'escalate-now',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 92,
+      progress: 80,
+      heat: 86,
+      phase: 'execution',
+    }),
+    new OperationClandestine({
+      id: 'op-escalate-budget',
+      celluleId: 'cell-escalate-budget',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Drain recheck budget',
+      theaterId: 'escalate-budget',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 99,
+      progress: 94,
+      heat: 99,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.intrigueEscalationPrompts]));
+  const urgent = byLocation.get('escalate-now');
+  const budget = byLocation.get('escalate-budget');
+  const masked = byLocation.get('escalate-masked');
+
+  assert.equal(urgent.state, 'escalation-needed');
+  assert.equal(urgent.prompts[0].action, 'verify-now');
+  assert.equal(urgent.prompts[0].label, 'Vérifier maintenant');
+  assert.match(urgent.prompts[0].reason, /Attendre devient plus risqué/);
+  assert.match(urgent.prompts[0].exposureCostCue, /budget restant 4/);
+  assert.match(urgent.prompts[0].originFallback, /Origine non datée/);
+  assert.equal(urgent.blockedPrompts[0].action, 'abandon-provisionally');
+  assert.match(urgent.safeMapPolicy, /ne révèlent jamais cible, cellule, relais, cause ou vérité cachée/);
+
+  assert.equal(budget.state, 'escalation-needed');
+  assert.equal(urgent.prompts[1].action, 'wait-for-budget');
+  assert.equal(urgent.prompts[1].label, 'Budget insuffisant');
+  assert.match(urgent.prompts[1].exposureCostCue, /relance différée/);
+
+  assert.equal(masked.state, 'masked-escalation');
+  assert.deepEqual(masked.prompts, []);
+  assert.equal(masked.blockedPrompts[0].action, 'do-not-escalate');
+  assert.match(masked.summary, /attendre une provenance visible/);
+});
