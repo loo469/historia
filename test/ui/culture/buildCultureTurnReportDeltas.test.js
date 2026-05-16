@@ -176,9 +176,36 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         actions: ['amplifier'],
         markerIds: ['river-gate:culture-aurora:event:event-archive-opening'],
         explanation: 'archive-routes → amplifier → expansion prudente',
+        timingWindows: [
+          {
+            timingId: 'culture-commitment:expansion:timing:river-gate',
+            bundleId: 'culture-commitment:expansion',
+            clusterLabel: 'Compact d’Aurora',
+            regionIds: ['river-gate'],
+            status: 'immediate',
+            label: 'action immédiate',
+            timingLabel: 'agir maintenant conserve le momentum',
+            recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
+            delayEffect: 'retarder baisse la priorité du bundle et peut donner la main aux signaux concurrents',
+          },
+        ],
       },
     ],
     incompatibilities: [],
+    timingWindows: [
+      {
+        timingId: 'culture-commitment:expansion:timing:river-gate',
+        bundleId: 'culture-commitment:expansion',
+        clusterLabel: 'Compact d’Aurora',
+        regionIds: ['river-gate'],
+        status: 'immediate',
+        label: 'action immédiate',
+        timingLabel: 'agir maintenant conserve le momentum',
+        recommendationIds: ['river-gate:momentum:strengthened:1:stabilization'],
+        delayEffect: 'retarder baisse la priorité du bundle et peut donner la main aux signaux concurrents',
+      },
+    ],
+    timingSummary: '1 fenêtre de timing culturel après bundle.',
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -219,6 +246,8 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
       summary: 'Aucun bundle d’engagement culturel disponible.',
       bundles: [],
       incompatibilities: [],
+      timingWindows: [],
+      timingSummary: 'Aucune fenêtre de timing culturel active.',
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
   });
@@ -557,4 +586,11 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   ]);
   assert.match(report.commitmentBundles.dependencyExplanation, /apaisement local: ash-treaty → apaiser/);
   assert.deepEqual(report.commitmentBundles.bundles[1].uncertainRecommendationIds, ['mist:momentum:fragile:stabilization']);
+  assert.deepEqual(report.commitmentBundles.timingWindows.map((window) => [window.clusterLabel, window.status, window.label]), [
+    ['Harbor Compact', 'soon-lost', 'fenêtre bientôt perdue'],
+    ['Compact d’Aurora', 'immediate', 'action immédiate'],
+    ['Ember Guild', 'wait', 'attendre'],
+    ['Mist Circle', 'wait', 'attendre'],
+  ]);
+  assert.match(report.commitmentBundles.timingWindows[0].delayEffect, /perdre le momentum/);
 });

@@ -342,6 +342,7 @@ function normalizeCoherenceRecommendation(recommendation, index) {
     supportKey: recommendation.supportKey ?? recommendation.action ?? action,
     markerIds: recommendation.markerIds ?? [],
     expiresSoon: recommendation.expiresSoon === true,
+    timingLabel: recommendation.timingLabel ?? recommendation.timingWindow ?? recommendation.window ?? null,
   };
 }
 
@@ -458,6 +459,55 @@ function buildCommitmentBundleName(trajectory) {
   return 'attente';
 }
 
+function buildCulturalTimingWindow(bundle, clusterMembers) {
+  const expiresSoon = clusterMembers.some((member) => member.expiresSoon);
+  const hasImmediateOpportunity = clusterMembers.some((member) => member.tone === 'opportunity' || member.level === 'surging');
+  const hasFragileSignal = clusterMembers.some((member) => member.confidence === 'low' || member.level === 'fragile');
+  const status = expiresSoon
+    ? 'soon-lost'
+    : hasImmediateOpportunity && !hasFragileSignal
+      ? 'immediate'
+      : 'wait';
+  const clusterLabel = [...new Set(clusterMembers.map((member) => member.cultureName))].join(', ');
+  const regionIds = [...new Set(clusterMembers.map((member) => member.regionId))];
+  const timingLabel = clusterMembers.find((member) => member.timingLabel)?.timingLabel
+    ?? (expiresSoon ? 'cette fenêtre risque de se fermer au prochain tour' : status === 'immediate' ? 'agir maintenant conserve le momentum' : 'attendre stabilise la lecture');
+  const delayEffect = expiresSoon
+    ? 'retarder peut faire perdre le momentum et transformer l’opportunité en tension à réévaluer'
+    : status === 'immediate'
+      ? 'retarder baisse la priorité du bundle et peut donner la main aux signaux concurrents'
+      : hasFragileSignal
+        ? 'attendre garde le bundle lisible mais exige une vérification avant engagement'
+        : 'retarder ne change pas encore la décision, surveiller le prochain signal suffit';
+
+  return {
+    timingId: `${bundle.bundleId}:timing:${regionIds.join('+') || 'cluster'}`,
+    bundleId: bundle.bundleId,
+    clusterLabel,
+    regionIds,
+    status,
+    label: status === 'soon-lost' ? 'fenêtre bientôt perdue' : status === 'immediate' ? 'action immédiate' : 'attendre',
+    timingLabel,
+    recommendationIds: clusterMembers.map((member) => member.recommendationId),
+    delayEffect,
+  };
+}
+
+function buildCulturalTimingWindows(bundle, members) {
+  const clusters = members.reduce((groups, member) => {
+    const key = `${member.regionId}:${member.cultureName}`;
+    groups.set(key, [...(groups.get(key) ?? []), member]);
+    return groups;
+  }, new Map());
+
+  return [...clusters.values()]
+    .map((clusterMembers) => buildCulturalTimingWindow(bundle, clusterMembers))
+    .sort((left, right) => {
+      const order = { 'soon-lost': 3, immediate: 2, wait: 1 };
+      return (order[right.status] ?? 0) - (order[left.status] ?? 0) || left.clusterLabel.localeCompare(right.clusterLabel);
+    });
+}
+
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = []) {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
@@ -476,7 +526,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
           ? 'mixed'
           : 'uncertain';
 
-      return {
+      const bundle = {
         bundleId: `culture-commitment:${trajectory}`,
         label: buildCommitmentBundleName(trajectory),
         trajectory,
@@ -488,6 +538,11 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
         explanation: members
           .map((member) => `${member.discoveryId} → ${member.action} → ${state === 'uncertain' ? 'incertain' : buildCommitmentBundleName(trajectory)}`)
           .join(' | '),
+      };
+
+      return {
+        ...bundle,
+        timingWindows: buildCulturalTimingWindows(bundle, members),
       };
     })
     .filter(Boolean);
@@ -545,6 +600,13 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
       });
     });
 
+  const timingWindows = bundles
+    .flatMap((bundle) => bundle.timingWindows)
+    .sort((left, right) => {
+      const order = { 'soon-lost': 3, immediate: 2, wait: 1 };
+      return (order[right.status] ?? 0) - (order[left.status] ?? 0) || left.clusterLabel.localeCompare(right.clusterLabel);
+    });
+
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
     summary: bundles.length === 0
@@ -552,6 +614,10 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
       : `${bundles.length} bundle${bundles.length > 1 ? 's' : ''} d’engagement culturel, ${incompatibilities.length} incompatibilité${incompatibilities.length > 1 ? 's' : ''}.`,
     bundles,
     incompatibilities,
+    timingWindows,
+    timingSummary: timingWindows.length === 0
+      ? 'Aucune fenêtre de timing culturel active.'
+      : `${timingWindows.length} fenêtre${timingWindows.length > 1 ? 's' : ''} de timing culturel après bundle.`,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -640,6 +706,8 @@ export function buildCultureTurnReportDeltas({
         summary: 'Aucun bundle d’engagement culturel disponible.',
         bundles: [],
         incompatibilities: [],
+        timingWindows: [],
+        timingSummary: 'Aucune fenêtre de timing culturel active.',
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },
     };
