@@ -317,6 +317,24 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       ],
       fallback: 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.',
     },
+    recommendationRotationPreview: {
+      state: 'ready',
+      summary: '1 recommandation culturelle planifiée pour rotation.',
+      entries: [
+        {
+          previewId: 'culture-commitment:expansion:timing:river-gate:follow-up:rotation-preview',
+          promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+          promptLabel: 'Ouvrir le récit d’expansion',
+          clusterLabel: 'Compact d’Aurora',
+          rotationState: 'available-now',
+          factor: 'compatibilité',
+          factorExplanation: 'Compact d’Aurora: compatible maintenant et sans répétition récente.',
+          alternativePromptId: null,
+          alternativeLabel: null,
+        },
+      ],
+      fallback: 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.',
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -386,6 +404,12 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         preferredPromptId: null,
         entries: [],
         fallback: 'Historique court ou ambigu: conserver le classement stable et expliquer la fraîcheur sans masquer les prompts.',
+      },
+      recommendationRotationPreview: {
+        state: 'quiet',
+        summary: 'Aucun aperçu de rotation culturelle disponible.',
+        entries: [],
+        fallback: 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
@@ -780,4 +804,12 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   ]);
   assert.match(report.commitmentBundles.promptFreshnessFilter.entries[0].explanation, /fraîche/);
   assert.match(report.commitmentBundles.promptFreshnessFilter.fallback, /Historique suffisant|Historique court/);
+  assert.equal(report.commitmentBundles.recommendationRotationPreview.state, 'ready');
+  assert.deepEqual(report.commitmentBundles.recommendationRotationPreview.entries.map((entry) => [entry.clusterLabel, entry.rotationState, entry.factor]), [
+    ['Ember Guild', 'available-now', 'compatibilité'],
+    ['Harbor Compact', 'deferred-freshness', 'historique récent'],
+    ['Compact d’Aurora', 'review-soon', 'thème'],
+  ]);
+  assert.match(report.commitmentBundles.recommendationRotationPreview.entries[1].alternativeLabel, /Préparer|Ouvrir|Renforcer|Observer/);
+  assert.match(report.commitmentBundles.recommendationRotationPreview.fallback, /alternative fraîche|Fallback stable/);
 });

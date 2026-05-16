@@ -6476,6 +6476,23 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucune recommandation culturelle à classer par fraîcheur.</small>'}
       </div>
+      <div class="culture-turn-report__rotation-preview culture-turn-report__rotation-preview--${report.commitmentBundles?.recommendationRotationPreview?.state ?? 'quiet'}" aria-label="Aperçu de rotation des recommandations culturelles">
+        <span>Rotation prochaine</span>
+        <strong>${report.commitmentBundles?.recommendationRotationPreview?.summary ?? 'Aucun aperçu de rotation culturelle disponible.'}</strong>
+        <small>${report.commitmentBundles?.recommendationRotationPreview?.fallback ?? 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.'}</small>
+        ${(report.commitmentBundles?.recommendationRotationPreview?.entries ?? []).length > 0 ? `
+          <div class="culture-turn-report__rotation-list">
+            ${report.commitmentBundles.recommendationRotationPreview.entries.map((entry) => `
+              <article class="culture-turn-report__rotation-entry culture-turn-report__rotation-entry--${entry.rotationState}" data-culture-rotation="${entry.previewId}">
+                <b>${entry.promptLabel}</b>
+                <em>${entry.rotationState === 'available-now' ? 'disponible maintenant' : entry.rotationState === 'review-soon' ? 'à revoir bientôt' : entry.rotationState === 'deferred-freshness' ? 'différée pour fraîcheur' : 'écartée faute de contexte'}</em>
+                <small>${entry.factor}: ${entry.factorExplanation}</small>
+                ${entry.alternativeLabel ? `<small>Alternative fraîche: ${entry.alternativeLabel}</small>` : ''}
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucune recommandation culturelle à planifier.</small>'}
+      </div>
       <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
         <summary>
           <span>Historique culturel</span>
