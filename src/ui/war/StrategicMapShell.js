@@ -2181,6 +2181,112 @@ function buildOperationalCommitmentChecklist(operationalPrioritySummary) {
   };
 }
 
+
+function buildCommitmentConflictReason(items, queueEntries) {
+  const blockedItems = items.filter((item) => item.status === 'bloqué');
+  const waitingItems = items.filter((item) => item.status === 'attente');
+  const executableItems = items.filter((item) => item.status === 'engageable' || item.status === 'tenir');
+  const conflictingQueue = queueEntries.find((entry) => entry.status === 'blocked' || entry.status === 'conflict') ?? null;
+  const actionLabels = new Set([...items.map((item) => item.actionLabel), ...queueEntries.map((entry) => entry.actionLabel)]);
+
+  if (blockedItems.length > 0) {
+    const prerequisite = blockedItems[0].prerequisite?.label ?? 'prérequis bloquant';
+    return {
+      conflictType: 'prérequis bloquant',
+      decision: 'bloquer',
+      recommendedAction: `Corriger ${prerequisite}`,
+      tacticalReason: `${blockedItems.length} engagement${blockedItems.length > 1 ? 's' : ''} demandent un prérequis avant résolution.`,
+      remainingRisk: executableItems.length > 0
+        ? `${executableItems.length} option${executableItems.length > 1 ? 's' : ''} exécutable${executableItems.length > 1 ? 's' : ''}, mais le chevauchement reste risqué tant que ${prerequisite} manque.`
+        : `aucune option sûre tant que ${prerequisite} manque`,
+    };
+  }
+
+  if (conflictingQueue) {
+    return {
+      conflictType: 'ordre incompatible',
+      decision: 'remplacer',
+      recommendedAction: conflictingQueue.safeReplacement?.label ?? 'Remplacer par l’action sûre proposée',
+      tacticalReason: conflictingQueue.reason,
+      remainingRisk: conflictingQueue.safeReplacement?.reason ?? 'risque réduit en évitant l’ordre incompatible',
+    };
+  }
+
+  if (actionLabels.size <= 1 && items.length + queueEntries.length > 1) {
+    return {
+      conflictType: 'engagement redondant',
+      decision: 'différer',
+      recommendedAction: items[0]?.actionLabel ?? queueEntries[0]?.actionLabel ?? 'Différer le doublon',
+      tacticalReason: 'plusieurs signaux proposent la même action sur le même front',
+      remainingRisk: 'risque faible: garder un seul engagement actif et relire au prochain tour',
+    };
+  }
+
+  if (waitingItems.length > 0 && executableItems.length > 0) {
+    return {
+      conflictType: 'fenêtre partielle',
+      decision: 'exécuter',
+      recommendedAction: executableItems[0].actionLabel,
+      tacticalReason: `${executableItems[0].provinceLabel} a une option prête pendant que ${waitingItems.length} engagement${waitingItems.length > 1 ? 's' : ''} restent en attente.`,
+      remainingRisk: 'risque maîtrisé si les engagements en attente ne sont pas validés automatiquement',
+    };
+  }
+
+  if (items.length + queueEntries.length > 1 && actionLabels.size > 1) {
+    return {
+      conflictType: 'intentions concurrentes',
+      decision: 'remplacer',
+      recommendedAction: executableItems[0]?.actionLabel ?? items[0]?.actionLabel ?? queueEntries[0]?.actionLabel ?? 'Choisir un seul engagement',
+      tacticalReason: 'plusieurs intentions différentes ciblent la même province ou le même front',
+      remainingRisk: 'risque moyen: choisir une intention et différer les autres',
+    };
+  }
+
+  return null;
+}
+
+function buildOperationalCommitmentConflictResolver(keyboardActionPlanner, operationalCommitmentChecklist) {
+  const queueEntries = keyboardActionPlanner.actionQueueValidation.entries;
+  const provinceIds = [...new Set([
+    ...operationalCommitmentChecklist.checklistItems.map((item) => item.provinceId),
+    ...queueEntries.map((entry) => entry.provinceId),
+  ])];
+
+  const decisions = provinceIds.map((provinceId) => {
+    const commitmentItems = operationalCommitmentChecklist.checklistItems.filter((item) => item.provinceId === provinceId);
+    const provinceQueueEntries = queueEntries.filter((entry) => entry.provinceId === provinceId);
+    const signalCount = commitmentItems.length + provinceQueueEntries.length;
+    if (signalCount <= 1) return null;
+
+    const reason = buildCommitmentConflictReason(commitmentItems, provinceQueueEntries);
+    if (!reason) return null;
+    const provinceLabel = commitmentItems[0]?.provinceLabel ?? provinceQueueEntries[0]?.provinceLabel ?? provinceId;
+
+    return {
+      provinceId,
+      provinceLabel,
+      signalCount,
+      relatedItems: [
+        ...commitmentItems.map((item) => ({ source: 'commitment', label: item.actionLabel, status: item.status })),
+        ...provinceQueueEntries.map((entry) => ({ source: 'queue', label: entry.actionLabel, status: entry.status })),
+      ],
+      keyboardHint: `Focus ${provinceLabel}: ${reason.decision} puis valider ou tabuler vers l’option suivante.`,
+      ...reason,
+    };
+  }).filter(Boolean);
+
+  return {
+    empty: decisions.length === 0,
+    fallbackMessage: decisions.length === 0
+      ? 'Aucun chevauchement de commitment détecté: les engagements peuvent être lus séparément.'
+      : null,
+    decisions,
+    summary: decisions.length === 0
+      ? 'Aucun conflit d’engagement à résoudre.'
+      : `${decisions.length} conflit${decisions.length > 1 ? 's' : ''}: ${decisions.map((decision) => `${decision.decision} ${decision.provinceLabel}`).join(' → ')}`,
+  };
+}
+
 function buildKeyboardActionPlanner(renderedProvinces, options) {
   const activeProvince = renderedProvinces.find(
     (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
@@ -2416,6 +2522,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const frontRecoveryRecommendations = buildFrontRecoveryRecommendations(frontPressureReplay);
   const operationalPrioritySummary = buildOperationalPrioritySummary(renderedProvinces, frontPressureReplay, frontRecoveryRecommendations);
   const operationalCommitmentChecklist = buildOperationalCommitmentChecklist(operationalPrioritySummary);
+  const operationalCommitmentConflictResolver = buildOperationalCommitmentConflictResolver(keyboardActionPlanner, operationalCommitmentChecklist);
 
   return {
     title,
@@ -2428,6 +2535,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     frontRecoveryRecommendations,
     operationalPrioritySummary,
     operationalCommitmentChecklist,
+    operationalCommitmentConflictResolver,
     stats: {
       provinceCount: stats.provinceCount,
       contestedCount: stats.contestedCount,

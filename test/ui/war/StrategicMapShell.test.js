@@ -305,6 +305,12 @@ test('StrategicMapShell sorts provinces, derives headline stats and exposes over
     ],
     summary: '0 prêt · 1 en attente · 0 bloqué',
   });
+  assert.deepEqual(shell.operationalCommitmentConflictResolver, {
+    empty: true,
+    fallbackMessage: 'Aucun chevauchement de commitment détecté: les engagements peuvent être lus séparément.',
+    decisions: [],
+    summary: 'Aucun conflit d’engagement à résoudre.',
+  });
   assert.deepEqual(shell.stats, {
     provinceCount: 2,
     contestedCount: 1,
@@ -474,6 +480,29 @@ test('StrategicMapShell validates province action queues and suggests a safe rep
       label: 'Garder en réserve',
       reason: 'attendre résolution du blocage',
     },
+  });
+  assert.deepEqual(shell.operationalCommitmentConflictResolver, {
+    empty: false,
+    fallbackMessage: null,
+    decisions: [
+      {
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        signalCount: 3,
+        relatedItems: [
+          { source: 'commitment', label: 'Surveiller le front', status: 'attente' },
+          { source: 'queue', label: 'Avancer après front instable', status: 'ready' },
+          { source: 'queue', label: 'Rejouer même cible', status: 'conflict' },
+        ],
+        keyboardHint: 'Focus Front rouge: remplacer puis valider ou tabuler vers l’option suivante.',
+        conflictType: 'ordre incompatible',
+        decision: 'remplacer',
+        recommendedAction: 'Renforcer le front',
+        tacticalReason: 'cible déjà engagée',
+        remainingRisk: 'front contesté et pression militaire visible',
+      },
+    ],
+    summary: '1 conflit: remplacer Front rouge',
   });
 });
 
@@ -846,6 +875,29 @@ test('StrategicMapShell builds a scrub-ready front pressure timeline replay', ()
       },
     ],
     summary: '1 prêt · 0 en attente · 2 bloqué',
+  });
+  assert.deepEqual(shell.operationalCommitmentConflictResolver, {
+    empty: false,
+    fallbackMessage: null,
+    decisions: [
+      {
+        provinceId: 'front',
+        provinceLabel: 'Front rouge',
+        signalCount: 3,
+        relatedItems: [
+          { source: 'commitment', label: 'Consolider le soutien', status: 'bloqué' },
+          { source: 'commitment', label: 'Renforcer le front', status: 'bloqué' },
+          { source: 'commitment', label: 'Sonder prudemment la brèche', status: 'engageable' },
+        ],
+        keyboardHint: 'Focus Front rouge: bloquer puis valider ou tabuler vers l’option suivante.',
+        conflictType: 'prérequis bloquant',
+        decision: 'bloquer',
+        recommendedAction: 'Corriger soutien adjacent à rétablir',
+        tacticalReason: '2 engagements demandent un prérequis avant résolution.',
+        remainingRisk: '1 option exécutable, mais le chevauchement reste risqué tant que soutien adjacent à rétablir manque.',
+      },
+    ],
+    summary: '1 conflit: bloquer Front rouge',
   });
 });
 
