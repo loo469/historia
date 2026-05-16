@@ -2480,3 +2480,70 @@ test('buildIntrigueMapOverlay plans fog-safe recheck queues for unresolved intri
   assert.match(masked.blockedRechecks[0].triggerCondition, /provenance visible/);
   assert.match(masked.safeMapPolicy, /aucune cellule, relais, cible, méthode sensible ou cause cachée/);
 });
+
+test('buildIntrigueMapOverlay marks ageing priority for fog-safe recheck queue uncertainties', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-ageing-urgent',
+      factionId: 'shadow-league',
+      codename: 'Ageing',
+      locationId: 'ageing-urgent',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 92,
+    }),
+    new Cellule({
+      id: 'cell-ageing-watch',
+      factionId: 'shadow-league',
+      codename: 'Budget Watch',
+      locationId: 'ageing-watch',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 99,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-ageing-urgent',
+      celluleId: 'cell-ageing-urgent',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Age visible uncertainty',
+      theaterId: 'ageing-urgent',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 92,
+      progress: 80,
+      heat: 86,
+      phase: 'execution',
+    }),
+    new OperationClandestine({
+      id: 'op-ageing-watch',
+      celluleId: 'cell-ageing-watch',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Consume visible budget',
+      theaterId: 'ageing-watch',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 99,
+      progress: 94,
+      heat: 99,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.intrigueRecheckQueue]));
+  const urgentQueue = byLocation.get('ageing-urgent');
+  assert.equal(byLocation.get('ageing-watch').entries[0].ageIndicator.state, 'urgent');
+
+  assert.equal(urgentQueue.entries[0].ageIndicator.state, 'urgent');
+  assert.equal(urgentQueue.entries[0].priorityLabel, 'Urgent');
+  assert.equal(urgentQueue.entries[0].ageIndicator.origin, 'unknown-origin');
+  assert.match(urgentQueue.entries[0].ageIndicator.fallback, /Origine non datée/);
+  assert.match(urgentQueue.entries[0].ageIndicator.reliabilityCue, /re-vérification prochaine/);
+  assert.match(urgentQueue.ageingSummary, /Urgent:/);
+
+  assert.equal(urgentQueue.entries[1].ageIndicator.state, 'watch');
+  assert.equal(urgentQueue.entries[1].priorityLabel, 'À surveiller');
+  assert.match(urgentQueue.entries[1].ageIndicator.reliabilityCue, /attendre un créneau sûr/);
+  assert.match(urgentQueue.entries[1].ageIndicator.fallback, /vieillissement affiché comme surveillance prudente/);
+});
