@@ -1609,6 +1609,27 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
   ]);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios[0].options[0].sideEffectWarning.text, /capacité reste bloquée/);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.scenarios[0].options[1].sideEffectWarning.nextArbitrage, /route ou ville concurrente/);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.warningGroups.map((group) => ({
+    key: group.key,
+    source: group.source,
+    severity: group.severity,
+    scenarioCount: group.scenarioCount,
+    optionCount: group.optionCount,
+    bestDecision: group.bestDecision.decision,
+    remainingBlocked: group.bestDecision.remainingBlocked,
+  })), [
+    {
+      key: 'stock:stock',
+      source: 'stock',
+      severity: 'danger',
+      scenarioCount: 1,
+      optionCount: 2,
+      bestDecision: 'Remboursement complet',
+      remainingBlocked: 0,
+    },
+  ]);
+  assert.equal(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.topWarningGroupKey, 'stock:stock');
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.warningGroups[0].quickRead, /réduit le risque/);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,
