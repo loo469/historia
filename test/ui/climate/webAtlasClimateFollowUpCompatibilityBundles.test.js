@@ -19,6 +19,11 @@ test('atlas renders compatibility bundles for climate rebound follow-up queues',
   assert.match(webAppSource, /stable-risk/);
   assert.match(webAppSource, /reduced/);
   assert.match(webAppSource, /delta inconnu/);
+  assert.match(webAppSource, /Calendrier cooldown/);
+  assert.match(webAppSource, /ready-now/);
+  assert.match(webAppSource, /soon-safe/);
+  assert.match(webAppSource, /still-risky/);
+  assert.match(webAppSource, /Action attente/);
   assert.match(webAppSource, /renderAtlasClimateReboundFollowUpQueue\(atlasClimateReboundFollowUpQueue\)\}\s*\$\{renderAtlasClimateFollowUpCompatibilityBundles\(atlasClimateFollowUpCompatibilityBundles\)\}/);
 
   assert.match(stylesSource, /\.map-world-climate-follow-up-compat/);

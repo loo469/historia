@@ -11325,6 +11325,43 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
       cause: 'données insuffisantes pour éviter une précision excessive',
     };
   };
+  const describeCooldownReadiness = (item) => {
+    const riskDelta = describeRiskDelta(item);
+    if (riskDelta.state === 'reduced') {
+      return {
+        state: 'ready-now',
+        label: 'prêt maintenant',
+        availableInTurns: 0,
+        reason: riskDelta.cause,
+        waitingAction: 'jouer maintenant si utile, sinon conserver une veille légère',
+      };
+    }
+    if (riskDelta.state === 'stable-risk') {
+      return {
+        state: 'soon-safe',
+        label: 'bientôt sûr',
+        availableInTurns: Math.max(1, (reboundView?.coolingOffTurns ?? 2) - 1),
+        reason: riskDelta.cause,
+        waitingAction: 'attendre le cooling-off et préserver la readiness locale',
+      };
+    }
+    if (riskDelta.state === 'worsening-probable') {
+      return {
+        state: 'still-risky',
+        label: 'encore risqué',
+        availableInTurns: reboundView?.coolingOffTurns ?? 2,
+        reason: riskDelta.cause,
+        waitingAction: 'sécuriser réserve ou mitigation avant engagement',
+      };
+    }
+    return {
+      state: 'unknown',
+      label: 'inconnu',
+      availableInTurns: null,
+      reason: 'données insuffisantes pour dater une fenêtre sûre',
+      waitingAction: 'surveiller sans promettre de date précise',
+    };
+  };
   const makeBundle = (kind, items) => ({
     bundleId: `follow-up-compat:${kind}`,
     kind,
@@ -11335,6 +11372,7 @@ function buildAtlasClimateFollowUpCompatibilityBundles(queueView, reboundView) {
       ? conflictSignals.filter((signal) => signal === 'cooling-off-timing' || signal === 'regional-residual-risk')
       : conflictSignals,
     riskDeltas: items.map((item) => ({ followUpId: item.followUpId, label: item.label, ...describeRiskDelta(item) })),
+    cooldownCalendar: items.map((item) => ({ followUpId: item.followUpId, itemLabel: item.label, linkedRiskDelta: describeRiskDelta(item).state, ...describeCooldownReadiness(item) })),
     recommendation: kind === 'minimal-safe'
       ? 'Bundle minimal sûr: jouer seulement les suivis qui empêchent le rebound immédiat.'
       : 'Bundle ambitieux fragile: couvre plus large mais peut rouvrir réserve, mitigation ou timing.',
@@ -11378,6 +11416,8 @@ function renderAtlasClimateFollowUpCompatibilityBundles(view) {
             <span>${bundle.labels.join(' → ') || 'aucun suivi'}</span>
             <small><b>Conflits</b> · ${bundle.conflictSignals.length > 0 ? bundle.conflictSignals.join(', ') : 'aucun conflit bloquant'}</small>
             <small><b>Delta risque</b> · ${bundle.riskDeltas.length > 0 ? bundle.riskDeltas.map((delta) => `${delta.label}: ${delta.state}, ${delta.cause}`).join(' | ') : 'delta inconnu: données insuffisantes'}</small>
+            <small><b>Calendrier cooldown</b> · ${bundle.cooldownCalendar.length > 0 ? bundle.cooldownCalendar.map((entry) => `${entry.itemLabel}: ${entry.state === 'unknown' ? entry.label : `${entry.label}, T+${entry.availableInTurns}`}, ${entry.reason}`).join(' | ') : 'inconnu: données insuffisantes'}</small>
+            <small><b>Action attente</b> · ${bundle.cooldownCalendar.length > 0 ? bundle.cooldownCalendar.map((entry) => entry.waitingAction).join(' | ') : 'surveiller sans promettre de date précise'}</small>
             <small><b>Recommandation</b> · ${bundle.recommendation}</small>
           </li>
         `).join('')}
