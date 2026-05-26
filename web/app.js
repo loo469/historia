@@ -6605,6 +6605,12 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucune recommandation culturelle sélectionnable à résumer.</small>'}
       </div>
+      <div class="culture-turn-report__follow-through culture-turn-report__follow-through--${report.commitmentBundles?.commitmentFollowThroughReminder?.state ?? 'fallback'}" aria-label="Rappel d’engagement culturel à suivre">
+        <span>Engagement à suivre</span>
+        <strong>${report.commitmentBundles?.commitmentFollowThroughReminder?.summary ?? 'Aucun engagement culturel récent traçable: afficher le prochain choix recommandé sans inventer de promesse passée.'}</strong>
+        <small>Prochaine vérification: ${report.commitmentBundles?.commitmentFollowThroughReminder?.nextCheck ?? 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.'}</small>
+        <small>Action attendue: ${report.commitmentBundles?.commitmentFollowThroughReminder?.expectedAction ?? 'attendre un engagement culturel explicite avant de rappeler une promesse'}</small>
+      </div>
       <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
         <summary>
           <span>Historique culturel</span>
