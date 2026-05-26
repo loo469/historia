@@ -1945,6 +1945,49 @@ button { font: inherit; }
 .culture-turn-report__rotation-entry--review-soon { border-color: rgba(96, 165, 250, 0.34); }
 .culture-turn-report__rotation-entry--deferred-freshness { border-color: rgba(251, 191, 36, 0.4); }
 .culture-turn-report__rotation-entry--excluded-context { border-color: rgba(148, 163, 184, 0.26); }
+.culture-turn-report__commitment-summary {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(250, 204, 21, 0.14);
+}
+.culture-turn-report__commitment-summary > span {
+  color: #fde68a;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__commitment-summary > strong {
+  color: #f8fafc;
+  font-size: 12px;
+}
+.culture-turn-report__commitment-list {
+  display: grid;
+  gap: 6px;
+}
+.culture-turn-report__commitment-entry {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(113, 63, 18, 0.16);
+  border: 1px solid rgba(250, 204, 21, 0.18);
+}
+.culture-turn-report__commitment-entry b { color: #fef3c7; }
+.culture-turn-report__commitment-entry em {
+  color: #fde68a;
+  font-style: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.culture-turn-report__commitment-entry small { color: var(--muted); }
+.culture-turn-report__commitment-entry--available-now { border-color: rgba(74, 222, 128, 0.3); }
+.culture-turn-report__commitment-entry--review-soon { border-color: rgba(96, 165, 250, 0.32); }
+.culture-turn-report__commitment-entry--deferred-freshness { border-color: rgba(251, 191, 36, 0.42); }
+.culture-turn-report__commitment-entry--excluded-context { border-color: rgba(148, 163, 184, 0.26); }
+.culture-turn-report__commitment-entry--caution { box-shadow: inset 3px 0 0 rgba(251, 191, 36, 0.55); }
 .culture-turn-report__history {
   display: grid;
   gap: 7px;
@@ -13518,3 +13561,39 @@ button { font: inherit; }
 .economy-next-recovery-action--action-concrète { border-color: rgba(74, 222, 128, 0.34); }
 .economy-next-recovery-action--à-arbitrer { border-color: rgba(245, 158, 11, 0.38); }
 .economy-next-recovery-action--surveiller { border-color: rgba(148, 163, 184, 0.24); }
+
+.atlas-military-next-best-closure__panel {
+  fill: rgba(20, 83, 45, 0.76);
+  stroke: rgba(134, 239, 172, 0.42);
+  stroke-width: 0.3;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.45));
+}
+.atlas-military-next-best-closure__title,
+.atlas-military-next-best-closure-row text,
+.atlas-military-next-best-closure__empty {
+  fill: #dcfce7;
+  font-size: 0.82px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.24;
+}
+.atlas-military-next-best-closure-row circle {
+  fill: rgba(134, 239, 172, 0.82);
+  stroke: rgba(240, 253, 244, 0.7);
+  stroke-width: 0.14;
+}
+.atlas-military-next-best-closure-row.is-alternative circle {
+  fill: rgba(148, 163, 184, 0.75);
+}
+.atlas-military-next-best-closure-row__reason,
+.atlas-military-next-best-closure-row__action,
+.atlas-military-next-best-closure__empty {
+  fill: #bbf7d0;
+  font-size: 0.48px;
+}
+.atlas-military-next-best-closure-row--logistics circle { fill: rgba(56, 189, 248, 0.84); }
+.atlas-military-next-best-closure-row--climate circle { fill: rgba(34, 197, 94, 0.82); }
+.atlas-military-next-best-closure-row--intel circle { fill: rgba(168, 85, 247, 0.82); }
+.atlas-military-next-best-closure-row--culture circle { fill: rgba(244, 114, 182, 0.82); }
+.atlas-military-next-best-closure-row--unknown circle { fill: rgba(148, 163, 184, 0.78); }

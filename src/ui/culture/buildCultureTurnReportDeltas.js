@@ -889,6 +889,73 @@ function buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promp
   };
 }
 
+function buildCulturalRotationCommitmentSummary(recommendationRotationPreview, promptChoiceComparison, bundles, incompatibilities) {
+  const entries = recommendationRotationPreview.entries.map((entry) => {
+    const comparison = promptChoiceComparison.entries.find((candidate) => candidate.promptId === entry.promptId);
+    const bundle = bundles.find((candidate) => entry.promptId.startsWith(candidate.bundleId)) ?? null;
+    const unresolvedDependencies = incompatibilities.filter((dependency) => (
+      comparison?.recommendationIds ?? []
+    ).some((recommendationId) => dependency.recommendationIds.includes(recommendationId)));
+    const duration = entry.rotationState === 'available-now'
+      ? '1 à 2 tours de suivi culturel'
+      : entry.rotationState === 'review-soon'
+        ? 'à réévaluer au prochain tour de carte'
+        : entry.rotationState === 'deferred-freshness'
+          ? 'différer jusqu’à un nouveau signal culturel'
+          : 'aucune durée fiable tant que le contexte manque';
+    const benefit = bundle
+      ? `${bundle.label}: verrouille le bénéfice culturel principal autour de ${entry.clusterLabel}`
+      : `${entry.promptLabel}: clarifie le prochain choix culturel visible`;
+    const opportunityCost = entry.rotationState === 'available-now'
+      ? 'coût narratif/recherche modéré: les autres thèmes restent en file de rotation'
+      : entry.rotationState === 'review-soon'
+        ? 'coût d’opportunité: retarder évite de répéter un thème déjà vu'
+        : entry.rotationState === 'deferred-freshness'
+          ? 'coût d’opportunité faible: attendre protège la fraîcheur et laisse une alternative progresser'
+          : 'coût d’opportunité incertain: garder les ressources de recherche ouvertes';
+    const dependencyWarning = unresolvedDependencies.length > 0
+      ? `${unresolvedDependencies.length} dépendance${unresolvedDependencies.length > 1 ? 's' : ''} non résolue${unresolvedDependencies.length > 1 ? 's' : ''}: ${unresolvedDependencies.map((dependency) => dependency.reason).join(' | ')}`
+      : entry.rotationState === 'available-now'
+        ? 'aucune dépendance bloquante visible avant engagement'
+        : 'pas de blocage dur: décision légitime si le contexte narratif le justifie';
+
+    return {
+      summaryId: `${entry.promptId}:commitment-summary`,
+      promptId: entry.promptId,
+      promptLabel: entry.promptLabel,
+      clusterLabel: entry.clusterLabel,
+      rotationState: entry.rotationState,
+      duration,
+      benefit,
+      opportunityCost,
+      dependencyWarning,
+      hasUnresolvedDependencies: unresolvedDependencies.length > 0,
+      repeatPolicy: entry.rotationState === 'available-now'
+        ? 'non répété récemment: peut rester prioritaire'
+        : 'répétition récente ou contexte faible: garder dépriorisé et expliqué',
+      alternativeLabel: entry.alternativeLabel,
+    };
+  });
+  const selected = entries.find((entry) => entry.rotationState === 'available-now') ?? entries[0] ?? null;
+
+  return {
+    state: entries.length === 0
+      ? 'quiet'
+      : entries.some((entry) => entry.hasUnresolvedDependencies && entry.rotationState === 'available-now')
+        ? 'caution'
+        : selected?.rotationState === 'available-now'
+          ? 'ready'
+          : 'defer',
+    summary: entries.length === 0
+      ? 'Aucun résumé d’engagement culturel disponible.'
+      : selected
+        ? `${selected.promptLabel}: ${selected.duration}; ${selected.benefit}.`
+        : 'Résumé d’engagement culturel en attente.',
+    selectedPromptId: selected?.promptId ?? null,
+    entries,
+  };
+}
+
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province') {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
@@ -993,6 +1060,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
   const promptHistoryDrawer = buildCulturalPromptHistoryDrawer(promptChoiceComparison, promptHistory, regionId);
   const promptFreshnessFilter = buildCulturalPromptFreshnessFilter(promptChoiceComparison, promptHistoryDrawer);
   const recommendationRotationPreview = buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promptHistoryDrawer);
+  const rotationCommitmentSummary = buildCulturalRotationCommitmentSummary(recommendationRotationPreview, promptChoiceComparison, bundles, incompatibilities);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -1010,6 +1078,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     promptHistoryDrawer,
     promptFreshnessFilter,
     recommendationRotationPreview,
+    rotationCommitmentSummary,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -1134,6 +1203,12 @@ export function buildCultureTurnReportDeltas({
           summary: 'Aucun aperçu de rotation culturelle disponible.',
           entries: [],
           fallback: 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.',
+        },
+        rotationCommitmentSummary: {
+          state: 'quiet',
+          summary: 'Aucun résumé d’engagement culturel disponible.',
+          selectedPromptId: null,
+          entries: [],
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },

@@ -38,6 +38,15 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(webAppSource, /nextRecoveryActionSummary\.affectedDestinations/);
   assert.match(webAppSource, /economy-repayment-outcomes/);
   assert.match(webAppSource, /recap\.secondaryOverload/);
+
+  const repaymentScenariosRenderer = webAppSource.slice(
+    webAppSource.indexOf('function renderEconomyRecoveryRepaymentScenarios'),
+    webAppSource.indexOf('function renderEconomyRecoveryDebtOverlay'),
+  );
+  assert.ok(
+    repaymentScenariosRenderer.indexOf('economy-repayment-outcomes') < repaymentScenariosRenderer.indexOf('economy-next-recovery-action'),
+    'next recovery action summary renders after bottleneck outcome recaps',
+  );
   assert.match(webAppSource, /economy-repayment-tradeoffs/);
   assert.match(webAppSource, /choice\.overloadShiftRisk/);
   assert.match(webAppSource, /economy-repayment-bottlenecks/);
