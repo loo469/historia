@@ -31,3 +31,14 @@ test('atlas military next-best closure renders a primary recommendation and comp
   assert.match(stylesSource, /\.atlas-military-next-best-closure__panel/);
   assert.match(stylesSource, /\.atlas-military-next-best-closure-row\.is-alternative circle/);
 });
+
+test('atlas military compares attempted closure choices against the recommendation', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryClosureAfterActionComparison\(recommendation\)/);
+  assert.match(webAppSource, /Tenté \/ recommandé \/ risque/);
+  assert.match(webAppSource, /aucune action précédente visible/);
+  assert.match(webAppSource, /risque restant: capacité non réservée/);
+  assert.match(webAppSource, /data-atlas-closure-after-action/);
+  assert.match(webAppSource, /renderAtlasMilitaryClosureAfterActionComparison\(closureAfterActionComparison\)/);
+  assert.match(stylesSource, /\.atlas-military-closure-after-action__panel/);
+  assert.match(stylesSource, /\.atlas-military-closure-after-action-row\.is-alternative circle/);
+});
