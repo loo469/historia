@@ -19079,6 +19079,14 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
           ${view.nextRecoveryActionSummary.overloadWarning ? `<b>${view.nextRecoveryActionSummary.overloadWarning}</b>` : ''}
         </article>
       ` : ''}
+      ${view.recoveryMomentumForecast ? `
+        <article class="economy-recovery-momentum economy-recovery-momentum--${view.recoveryMomentumForecast.status.replaceAll(' ', '-')}">
+          <span>${view.recoveryMomentumForecast.title}</span>
+          <strong>${view.recoveryMomentumForecast.headline}</strong>
+          <p>${view.recoveryMomentumForecast.summary}</p>
+          <small>Confiance ${view.recoveryMomentumForecast.confidence}</small>
+        </article>
+      ` : ''}
       ${view.tradeOffComparisons?.length ? `
         <div class="economy-repayment-tradeoffs" aria-label="Comparaison des options de résolution de goulot">
           ${view.tradeOffComparisons.map((comparison) => `

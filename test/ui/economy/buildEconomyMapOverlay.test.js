@@ -1692,6 +1692,16 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.primaryAction, /sans déplacer la surcharge/);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.alternativeAction, /Alternative prudente/);
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.nextRecoveryActionSummary.overloadWarning, /recréer un bottleneck/);
+  assert.deepEqual({
+    status: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryMomentumForecast.status,
+    headline: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryMomentumForecast.headline,
+    linkedOutcomeRecapId: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryMomentumForecast.linkedOutcomeRecapId,
+  }, {
+    status: 'fragile',
+    headline: 'fragile',
+    linkedOutcomeRecapId: 'outcome-recap:stock:stock:recovery-repayment:route-coast:complete',
+  });
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryMomentumForecast.summary, /surveiller la dette/);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,

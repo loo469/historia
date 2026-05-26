@@ -13588,6 +13588,34 @@ button { font: inherit; }
 .economy-next-recovery-action--action-concrète { border-color: rgba(74, 222, 128, 0.34); }
 .economy-next-recovery-action--à-arbitrer { border-color: rgba(245, 158, 11, 0.38); }
 .economy-next-recovery-action--surveiller { border-color: rgba(148, 163, 184, 0.24); }
+.economy-recovery-momentum {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+.economy-recovery-momentum span {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.economy-recovery-momentum strong {
+  color: #f8fafc;
+  font-size: 15px;
+}
+.economy-recovery-momentum p,
+.economy-recovery-momentum small {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.economy-recovery-momentum--en-reprise { border-color: rgba(74, 222, 128, 0.38); }
+.economy-recovery-momentum--stable { border-color: rgba(125, 211, 252, 0.3); }
+.economy-recovery-momentum--fragile { border-color: rgba(251, 191, 36, 0.42); }
 
 .atlas-military-next-best-closure__panel {
   fill: rgba(20, 83, 45, 0.76);

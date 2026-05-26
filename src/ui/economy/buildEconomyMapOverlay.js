@@ -2680,6 +2680,62 @@ function buildNextRecoveryActionSummary(outcomeRecaps, warningGroups) {
   };
 }
 
+function buildRecoveryMomentumForecast(outcomeRecaps, nextRecoveryActionSummary) {
+  if (outcomeRecaps.length === 0) {
+    return {
+      id: 'logistics-recovery-momentum-forecast',
+      status: 'stable',
+      title: 'Momentum prochain tour',
+      headline: 'stable',
+      summary: 'Signaux insuffisants pour conclure: garder la reprise en observation jusqu’au prochain recap.',
+      confidence: 'faible',
+      linkedOutcomeRecapId: null,
+    };
+  }
+
+  const selected = outcomeRecaps.find((recap) => recap.id === nextRecoveryActionSummary?.linkedOutcomeRecapId)
+    ?? outcomeRecaps[0];
+  const totalCapacityFreed = outcomeRecaps.reduce((total, recap) => total + Math.max(0, recap.capacityFreed), 0);
+  const fragileRecaps = outcomeRecaps.filter((recap) => recap.secondaryOverload || recap.status !== 'résolution nette');
+  const unresolvedRecaps = outcomeRecaps.filter((recap) => recap.status === 'résolution partielle' || recap.status === 'données partielles');
+  const hasConcreteRecovery = totalCapacityFreed > 0 && unresolvedRecaps.length === 0 && fragileRecaps.length === 0;
+  const isFragile = unresolvedRecaps.length > 0 || Boolean(nextRecoveryActionSummary?.overloadWarning) || fragileRecaps.length > 0;
+
+  if (hasConcreteRecovery) {
+    return {
+      id: 'logistics-recovery-momentum-forecast',
+      status: 'en reprise',
+      title: 'Momentum prochain tour',
+      headline: 'en reprise',
+      summary: `${totalCapacityFreed} capacité libérée sans goulot secondaire: la trajectoire économique devrait repartir au prochain tour.`,
+      confidence: selected.probableDelay === 'ce tour' ? 'haute' : 'moyenne',
+      linkedOutcomeRecapId: selected.id,
+    };
+  }
+
+  if (isFragile) {
+    return {
+      id: 'logistics-recovery-momentum-forecast',
+      status: 'fragile',
+      title: 'Momentum prochain tour',
+      headline: 'fragile',
+      summary: `${selected.capacityFreed} capacité peut revenir, mais ${selected.displacedRisk}; surveiller la dette avant d’enchaîner.`,
+      confidence: unresolvedRecaps.length > 0 ? 'moyenne' : 'haute',
+      linkedOutcomeRecapId: selected.id,
+    };
+  }
+
+  return {
+    id: 'logistics-recovery-momentum-forecast',
+    status: 'stable',
+    title: 'Momentum prochain tour',
+    headline: 'stable',
+    summary: 'La reprise garde une marge lisible, mais les recaps ne montrent pas encore d’accélération nette.',
+    confidence: 'moyenne',
+    linkedOutcomeRecapId: selected.id,
+  };
+}
+
 function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
@@ -2712,6 +2768,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
   const tradeOffComparisons = buildRepaymentTradeOffComparisons(scenarios, warningGroups);
   const outcomeRecaps = buildRepaymentOutcomeRecaps(tradeOffComparisons);
   const nextRecoveryActionSummary = buildNextRecoveryActionSummary(outcomeRecaps, warningGroups);
+  const recoveryMomentumForecast = buildRecoveryMomentumForecast(outcomeRecaps, nextRecoveryActionSummary);
 
   return {
     id: 'logistics-recovery-repayment-scenarios',
@@ -2730,6 +2787,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     outcomeRecaps,
     topOutcomeRecapId: outcomeRecaps[0]?.id ?? null,
     nextRecoveryActionSummary,
+    recoveryMomentumForecast,
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },
