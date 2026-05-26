@@ -956,7 +956,56 @@ function buildCulturalRotationCommitmentSummary(recommendationRotationPreview, p
   };
 }
 
-function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province') {
+
+function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary, promptHistoryDrawer, turn = 1) {
+  const recentCommitment = promptHistoryDrawer.groups
+    .flatMap((group) => group.entries)
+    .filter((entry) => entry.source === 'history')
+    .filter((entry) => ['chosen', 'committed', 'confirmed', 'accepted'].includes(entry.choiceState))
+    .sort((left, right) => (right.turn ?? 0) - (left.turn ?? 0))[0] ?? null;
+  const selected = rotationCommitmentSummary.entries.find((entry) => entry.promptId === rotationCommitmentSummary.selectedPromptId)
+    ?? rotationCommitmentSummary.entries[0]
+    ?? null;
+
+  if (!recentCommitment) {
+    return {
+      state: 'fallback',
+      reminderId: 'culture-commitment:follow-through:fallback',
+      summary: 'Aucun engagement culturel récent traçable: afficher le prochain choix recommandé sans inventer de promesse passée.',
+      sourcePromptLabel: null,
+      clusterLabel: selected?.clusterLabel ?? null,
+      lastTurn: null,
+      nextCheck: selected
+        ? `Vérifier si ${selected.clusterLabel} peut encore suivre ${selected.promptLabel}.`
+        : 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
+      expectedAction: selected?.hasUnresolvedDependencies
+        ? selected.dependencyWarning
+        : 'attendre un engagement culturel explicite avant de rappeler une promesse',
+    };
+  }
+
+  const followTurn = recentCommitment.turn ? recentCommitment.turn + 1 : turn;
+  const matchingCurrent = rotationCommitmentSummary.entries.find((entry) => entry.clusterLabel === recentCommitment.clusterLabel)
+    ?? selected;
+  const hasDependency = matchingCurrent?.hasUnresolvedDependencies === true;
+
+  return {
+    state: hasDependency ? 'watch' : 'ready',
+    reminderId: `${recentCommitment.historyId}:follow-through-reminder`,
+    summary: `${recentCommitment.clusterLabel}: engagement à suivre au tour ${followTurn} — ${recentCommitment.outcome}.`,
+    sourcePromptLabel: recentCommitment.promptLabel,
+    clusterLabel: recentCommitment.clusterLabel,
+    lastTurn: recentCommitment.turn ?? null,
+    nextCheck: hasDependency
+      ? `Lever la dépendance avant de prolonger ${recentCommitment.promptLabel}.`
+      : `Confirmer que ${recentCommitment.promptLabel} produit encore un signal culturel visible.`,
+    expectedAction: matchingCurrent
+      ? `${matchingCurrent.duration}; ${matchingCurrent.repeatPolicy}`
+      : 'réévaluer le suivi culturel sans répéter tout l’historique',
+  };
+}
+
+function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province', turn = 1) {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
   const bundles = trajectories
@@ -1061,6 +1110,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
   const promptFreshnessFilter = buildCulturalPromptFreshnessFilter(promptChoiceComparison, promptHistoryDrawer);
   const recommendationRotationPreview = buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promptHistoryDrawer);
   const rotationCommitmentSummary = buildCulturalRotationCommitmentSummary(recommendationRotationPreview, promptChoiceComparison, bundles, incompatibilities);
+  const commitmentFollowThroughReminder = buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary, promptHistoryDrawer, turn);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -1079,6 +1129,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     promptFreshnessFilter,
     recommendationRotationPreview,
     rotationCommitmentSummary,
+    commitmentFollowThroughReminder,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -1125,7 +1176,7 @@ export function buildCultureTurnReportDeltas({
   });
   const stabilizationRecommendations = buildCultureStabilizationRecommendations(momentumLayer);
   const recommendationCoherence = buildCultureRecommendationCoherenceSummary(stabilizationRecommendations, activeRecommendations);
-  const commitmentBundles = buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations, promptHistory, regionId);
+  const commitmentBundles = buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations, promptHistory, regionId, turn);
   const deltas = dedupeAndSort([
     ...buildTimelineDeltas(localTimeline, regionId),
     ...buildMarkerDeltas(selectedMarker, regionId),
@@ -1209,6 +1260,16 @@ export function buildCultureTurnReportDeltas({
           summary: 'Aucun résumé d’engagement culturel disponible.',
           selectedPromptId: null,
           entries: [],
+        },
+        commitmentFollowThroughReminder: {
+          state: 'fallback',
+          reminderId: 'culture-commitment:follow-through:fallback',
+          summary: 'Aucun engagement culturel récent traçable: afficher le prochain choix recommandé sans inventer de promesse passée.',
+          sourcePromptLabel: null,
+          clusterLabel: null,
+          lastTurn: null,
+          nextCheck: 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
+          expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },

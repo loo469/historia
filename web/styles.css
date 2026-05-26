@@ -1988,6 +1988,29 @@ button { font: inherit; }
 .culture-turn-report__commitment-entry--deferred-freshness { border-color: rgba(251, 191, 36, 0.42); }
 .culture-turn-report__commitment-entry--excluded-context { border-color: rgba(148, 163, 184, 0.26); }
 .culture-turn-report__commitment-entry--caution { box-shadow: inset 3px 0 0 rgba(251, 191, 36, 0.55); }
+.culture-turn-report__follow-through {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(250, 204, 21, 0.18);
+}
+.culture-turn-report__follow-through > span {
+  color: #fde68a;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__follow-through > strong {
+  color: #f8fafc;
+  font-size: 12px;
+}
+.culture-turn-report__follow-through small { color: var(--muted); }
+.culture-turn-report__follow-through--ready { border-color: rgba(74, 222, 128, 0.3); }
+.culture-turn-report__follow-through--watch { border-color: rgba(251, 191, 36, 0.42); }
+.culture-turn-report__follow-through--fallback { border-color: rgba(148, 163, 184, 0.24); }
 .culture-turn-report__history {
   display: grid;
   gap: 7px;

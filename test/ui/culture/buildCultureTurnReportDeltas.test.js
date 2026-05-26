@@ -356,6 +356,16 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         },
       ],
     },
+    commitmentFollowThroughReminder: {
+      state: 'fallback',
+      reminderId: 'culture-commitment:follow-through:fallback',
+      summary: 'Aucun engagement culturel récent traçable: afficher le prochain choix recommandé sans inventer de promesse passée.',
+      sourcePromptLabel: null,
+      clusterLabel: 'Compact d’Aurora',
+      lastTurn: null,
+      nextCheck: 'Vérifier si Compact d’Aurora peut encore suivre Ouvrir le récit d’expansion.',
+      expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -437,6 +447,16 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         summary: 'Aucun résumé d’engagement culturel disponible.',
         selectedPromptId: null,
         entries: [],
+      },
+      commitmentFollowThroughReminder: {
+        state: 'fallback',
+        reminderId: 'culture-commitment:follow-through:fallback',
+        summary: 'Aucun engagement culturel récent traçable: afficher le prochain choix recommandé sans inventer de promesse passée.',
+        sourcePromptLabel: null,
+        clusterLabel: null,
+        lastTurn: null,
+        nextCheck: 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
+        expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
@@ -849,4 +869,8 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[0].benefit, /verrouille/);
   assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[0].opportunityCost, /narratif\/recherche/);
   assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[1].repeatPolicy, /dépriorisé/);
+  assert.equal(report.commitmentBundles.commitmentFollowThroughReminder.state, 'watch');
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.summary, /engagement à suivre au tour 8/);
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.nextCheck, /dépendance/);
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.expectedAction, /dépriorisé/);
 });
