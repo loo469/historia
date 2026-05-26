@@ -2789,7 +2789,9 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.equal(stable.choices[0].action, 'stabilize');
   assert.equal(stable.choices[0].recommended, true);
   assert.match(stable.choices[0].reason, /évite une boucle de recheck/);
+  assert.equal(stable.choices[0].riskPreview, 'risque: aucun immédiat');
   assert.match(stable.choices[1].fogRisk, /brouillard conservé/);
+  assert.equal(stable.choices[1].riskPreview, 'risque: laisse signal instable');
   assert.equal(stable.choices[2].recommended, false);
 
   assert.equal(budget.state, 'observation-recommended');
@@ -2799,12 +2801,14 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.equal(budget.choices[1].recommended, true);
   assert.equal(budget.choices[2].action, 'reverify');
   assert.equal(budget.choices[2].blockedBy, 'insufficient-budget');
+  assert.equal(budget.choices[2].riskPreview, 'risque: dépasse budget visible');
   assert.match(budget.choices[2].fogRisk, /trop risqué/);
   assert.ok(budget.riskyChoices.every((choice) => choice.action === 'reverify'));
 
   assert.equal(masked.state, 'masked-stabilization-choices');
   assert.equal(masked.recommendedPosture, 'observe');
   assert.deepEqual(masked.choices.map((choice) => choice.action), ['observe']);
+  assert.equal(masked.choices[0].riskPreview, 'risque: provenance incomplète');
   assert.match(masked.choices[0].reason, /provenance reste insuffisante/);
   assert.match(masked.safeMapPolicy, /ne .*révélée/);
 });
