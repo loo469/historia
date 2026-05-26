@@ -335,6 +335,27 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       ],
       fallback: 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.',
     },
+    rotationCommitmentSummary: {
+      state: 'ready',
+      summary: 'Ouvrir le récit d’expansion: 1 à 2 tours de suivi culturel; expansion prudente: verrouille le bénéfice culturel principal autour de Compact d’Aurora.',
+      selectedPromptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+      entries: [
+        {
+          summaryId: 'culture-commitment:expansion:timing:river-gate:follow-up:commitment-summary',
+          promptId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+          promptLabel: 'Ouvrir le récit d’expansion',
+          clusterLabel: 'Compact d’Aurora',
+          rotationState: 'available-now',
+          duration: '1 à 2 tours de suivi culturel',
+          benefit: 'expansion prudente: verrouille le bénéfice culturel principal autour de Compact d’Aurora',
+          opportunityCost: 'coût narratif/recherche modéré: les autres thèmes restent en file de rotation',
+          dependencyWarning: 'aucune dépendance bloquante visible avant engagement',
+          hasUnresolvedDependencies: false,
+          repeatPolicy: 'non répété récemment: peut rester prioritaire',
+          alternativeLabel: null,
+        },
+      ],
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -410,6 +431,12 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         summary: 'Aucun aperçu de rotation culturelle disponible.',
         entries: [],
         fallback: 'Fallback stable: historique court ou ambigu, conserver les prompts visibles sans forcer la rotation.',
+      },
+      rotationCommitmentSummary: {
+        state: 'quiet',
+        summary: 'Aucun résumé d’engagement culturel disponible.',
+        selectedPromptId: null,
+        entries: [],
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
@@ -812,4 +839,14 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   ]);
   assert.match(report.commitmentBundles.recommendationRotationPreview.entries[1].alternativeLabel, /Préparer|Ouvrir|Renforcer|Observer/);
   assert.match(report.commitmentBundles.recommendationRotationPreview.fallback, /alternative fraîche|Fallback stable/);
+  assert.equal(report.commitmentBundles.rotationCommitmentSummary.state, 'caution');
+  assert.deepEqual(report.commitmentBundles.rotationCommitmentSummary.entries.map((entry) => [entry.clusterLabel, entry.rotationState, entry.hasUnresolvedDependencies]), [
+    ['Ember Guild', 'available-now', true],
+    ['Harbor Compact', 'deferred-freshness', true],
+    ['Compact d’Aurora', 'review-soon', true],
+  ]);
+  assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[0].duration, /1 à 2 tours/);
+  assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[0].benefit, /verrouille/);
+  assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[0].opportunityCost, /narratif\/recherche/);
+  assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[1].repeatPolicy, /dépriorisé/);
 });

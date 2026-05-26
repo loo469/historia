@@ -6493,6 +6493,24 @@ function renderCultureTurnReport(report) {
           </div>
         ` : '<small>État vide: aucune recommandation culturelle à planifier.</small>'}
       </div>
+      <div class="culture-turn-report__commitment-summary culture-turn-report__commitment-summary--${report.commitmentBundles?.rotationCommitmentSummary?.state ?? 'quiet'}" aria-label="Résumé d’engagement culturel avant validation">
+        <span>Engagement culturel</span>
+        <strong>${report.commitmentBundles?.rotationCommitmentSummary?.summary ?? 'Aucun résumé d’engagement culturel disponible.'}</strong>
+        ${(report.commitmentBundles?.rotationCommitmentSummary?.entries ?? []).length > 0 ? `
+          <div class="culture-turn-report__commitment-list">
+            ${report.commitmentBundles.rotationCommitmentSummary.entries.map((entry) => `
+              <article class="culture-turn-report__commitment-entry culture-turn-report__commitment-entry--${entry.rotationState} ${entry.hasUnresolvedDependencies ? 'culture-turn-report__commitment-entry--caution' : ''}" data-culture-commitment="${entry.summaryId}">
+                <b>${entry.promptLabel}</b>
+                <em>${entry.duration}</em>
+                <small>Bénéfice: ${entry.benefit}</small>
+                <small>Coût: ${entry.opportunityCost}</small>
+                <small>${entry.dependencyWarning}</small>
+                <small>${entry.repeatPolicy}${entry.alternativeLabel ? ` · Alternative: ${entry.alternativeLabel}` : ''}</small>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<small>État vide: aucune recommandation culturelle sélectionnable à résumer.</small>'}
+      </div>
       <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
         <summary>
           <span>Historique culturel</span>
