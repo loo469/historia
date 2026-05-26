@@ -3075,6 +3075,127 @@ function buildIntrigueEscalationOutcomeRecap({ locationId, locationName, intrigu
   };
 }
 
+function buildPostRecapStabilizationChoices({ locationId, locationName, intrigueEscalationOutcomeRecap }) {
+  if (intrigueEscalationOutcomeRecap.state === 'masked-outcome-recap') {
+    return {
+      state: 'masked-stabilization-choices',
+      locationId,
+      locationName,
+      recommendedPosture: 'observe',
+      choices: [{
+        action: 'observe',
+        label: 'Observer sans relance',
+        recommended: true,
+        exposureCost: '0 exposition ajoutée',
+        fogRisk: 'brouillard préservé',
+        reason: 'La provenance reste insuffisante: maintenir la surveillance visible sans inférer de vérité cachée.',
+      }],
+      riskyChoices: intrigueEscalationOutcomeRecap.blockedChoices.map((choice) => ({
+        action: 'reverify',
+        label: 'Re-vérifier maintenant',
+        exposureCost: choice.budgetEffect,
+        fogRisk: 'trop risqué sous brouillard',
+        blockedBy: choice.blockedBy,
+        reason: choice.safeReason,
+      })),
+      summary: 'Posture post-récap: observer, car le brouillard masque encore la provenance sûre.',
+      safeMapPolicy: 'Choix D17 limités aux effets visibles de posture, exposition et brouillard; aucune cible, cellule, relais, méthode ou vérité cachée n’est révélée.',
+    };
+  }
+
+  const activeChoices = intrigueEscalationOutcomeRecap.choices.filter((choice) => !choice.blockedBy);
+  const budgetBlockedChoices = intrigueEscalationOutcomeRecap.choices.filter((choice) => choice.blockedBy === 'insufficient-budget');
+  const resolvedEnough = activeChoices.some((choice) => choice.action === 'verify-now')
+    && budgetBlockedChoices.length === 0;
+  const hasActiveResolution = activeChoices.some((choice) => choice.action === 'verify-now' || choice.action === 'delegate-light-observation');
+  const hasOnlyCalmOutcomes = activeChoices.length > 0
+    && activeChoices.every((choice) => choice.action === 'hold-calm');
+  const shouldObserve = budgetBlockedChoices.length > 0 || (!hasActiveResolution && !hasOnlyCalmOutcomes);
+  const recommendedPosture = resolvedEnough || hasOnlyCalmOutcomes
+    ? 'stabilize'
+    : shouldObserve
+      ? 'observe'
+      : 'stabilize';
+  const primaryChoice = activeChoices.find((choice) => choice.action === 'verify-now')
+    ?? activeChoices.find((choice) => choice.action === 'delegate-light-observation')
+    ?? activeChoices[0]
+    ?? null;
+  const firstBudgetBlock = budgetBlockedChoices[0] ?? intrigueEscalationOutcomeRecap.blockedChoices[0] ?? null;
+
+  const choices = [
+    {
+      action: 'stabilize',
+      label: 'Stabiliser le suivi',
+      recommended: recommendedPosture === 'stabilize',
+      exposureCost: '0 exposition ajoutée',
+      fogRisk: 'brouillard réduit sans nouvelle vérification',
+      reason: resolvedEnough
+        ? 'Le récap indique une résolution suffisante: stabiliser évite une boucle de recheck.'
+        : hasOnlyCalmOutcomes
+          ? 'Les issues restent calmes: stabiliser et surveiller suffit pour ce tour.'
+          : 'Stabiliser garde la priorité sous contrôle avant de rouvrir une vérification.',
+      confidenceEffect: primaryChoice?.confidenceEffect ?? 'confiance stable avec données partielles préservées',
+    },
+    {
+      action: 'observe',
+      label: 'Observer un tour',
+      recommended: recommendedPosture === 'observe',
+      exposureCost: '0-1 exposition visible',
+      fogRisk: 'brouillard conservé; signal à rafraîchir seulement s’il reste visible',
+      reason: shouldObserve
+        ? 'Observer évite de payer une relance alors que budget ou provenance restent fragiles.'
+        : 'Alternative prudente si le joueur veut confirmer la stabilité sans nouvelle escalade.',
+      confidenceEffect: 'confiance maintenue sans déduire de cible cachée',
+    },
+  ];
+
+  const reverifyChoice = firstBudgetBlock
+    ? {
+      action: 'reverify',
+      label: 'Re-vérifier maintenant',
+      recommended: false,
+      exposureCost: firstBudgetBlock.budgetEffect,
+      fogRisk: 'trop risqué: peut recréer du brouillard ou dépasser le budget visible',
+      blockedBy: firstBudgetBlock.blockedBy ?? 'over-exposure-risk',
+      reason: 'Visible mais déconseillé: ne relancer qu’avec budget/provenance lisible.',
+      confidenceEffect: firstBudgetBlock.confidenceEffect,
+    }
+    : activeChoices.length > 0 && !resolvedEnough
+      ? {
+        action: 'reverify',
+        label: 'Re-vérifier plus tard',
+        recommended: false,
+        exposureCost: primaryChoice?.budgetEffect ?? 'exposition modérée à revalider',
+        fogRisk: 'risque modéré: attendre un nouveau signal visible',
+        blockedBy: null,
+        reason: 'Option de reprise différée si l’observation montre encore une incertitude exploitable.',
+        confidenceEffect: primaryChoice?.confidenceEffect,
+      }
+      : null;
+
+  return {
+    state: recommendedPosture === 'stabilize'
+      ? 'stabilization-recommended'
+      : 'observation-recommended',
+    locationId,
+    locationName,
+    recommendedPosture,
+    choices: reverifyChoice ? [...choices, reverifyChoice] : choices,
+    riskyChoices: intrigueEscalationOutcomeRecap.blockedChoices.map((choice) => ({
+      action: 'reverify',
+      label: choice.label,
+      exposureCost: choice.budgetEffect,
+      fogRisk: 'risque trop élevé pour une relance immédiate',
+      blockedBy: choice.blockedBy,
+      reason: choice.safeReason,
+    })),
+    summary: recommendedPosture === 'stabilize'
+      ? 'Posture post-récap: stabiliser ou surveiller, sans relancer une boucle de vérification.'
+      : 'Posture post-récap: observer avant toute re-vérification coûteuse.',
+    safeMapPolicy: 'Choix D17 limités aux effets visibles de posture, exposition et brouillard; aucune cible, cellule, relais, méthode ou vérité cachée n’est révélée.',
+  };
+}
+
 function buildSafeMapMasking({ presenceLevel, riskLevel, sabotageRiskScore, exposedCellCount, locationOperations }) {
   const activeRisk = riskLevel === 'high' || locationOperations.some((operation) => operation.phase === 'execution');
   const decayingRisk = !activeRisk && sabotageRiskScore > 0;
@@ -3288,6 +3409,11 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
         locationName,
         intrigueEscalationPrompts,
       });
+      const postRecapStabilizationChoices = buildPostRecapStabilizationChoices({
+        locationId,
+        locationName,
+        intrigueEscalationOutcomeRecap,
+      });
       const safeMapSignals = normalizedOptions.includeSuspicionPlayback || normalizedOptions.safeMapMode
         ? {
           suspicionHeatDecayPlayback,
@@ -3306,6 +3432,7 @@ export function buildIntrigueMapOverlay(cellules, operations = [], options = {})
           intrigueRecheckQueue,
           intrigueEscalationPrompts,
           intrigueEscalationOutcomeRecap,
+          postRecapStabilizationChoices,
         }
         : {};
 
