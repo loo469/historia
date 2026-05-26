@@ -18947,6 +18947,22 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
           `).join('')}
         </div>
       ` : ''}
+      ${view.nextRecoveryActionSummary ? `
+        <article class="economy-next-recovery-action economy-next-recovery-action--${view.nextRecoveryActionSummary.status.replaceAll(' ', '-')}">
+          <div>
+            <span>${view.nextRecoveryActionSummary.status}</span>
+            <strong>${view.nextRecoveryActionSummary.primaryAction}</strong>
+          </div>
+          <p>${view.nextRecoveryActionSummary.summary}</p>
+          <small>${view.nextRecoveryActionSummary.alternativeAction}</small>
+          ${view.nextRecoveryActionSummary.affectedDestinations.length ? `
+            <ul>
+              ${view.nextRecoveryActionSummary.affectedDestinations.map((destination) => `<li>${destination.label} · ${destination.corridor}</li>`).join('')}
+            </ul>
+          ` : ''}
+          ${view.nextRecoveryActionSummary.overloadWarning ? `<b>${view.nextRecoveryActionSummary.overloadWarning}</b>` : ''}
+        </article>
+      ` : ''}
       ${view.tradeOffComparisons?.length ? `
         <div class="economy-repayment-tradeoffs" aria-label="Comparaison des options de résolution de goulot">
           ${view.tradeOffComparisons.map((comparison) => `

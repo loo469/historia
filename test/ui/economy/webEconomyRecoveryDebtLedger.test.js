@@ -33,8 +33,20 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(webAppSource, /warningGroups/);
   assert.match(webAppSource, /tradeOffComparisons/);
   assert.match(webAppSource, /outcomeRecaps/);
+  assert.match(webAppSource, /nextRecoveryActionSummary/);
+  assert.match(webAppSource, /economy-next-recovery-action/);
+  assert.match(webAppSource, /nextRecoveryActionSummary\.affectedDestinations/);
   assert.match(webAppSource, /economy-repayment-outcomes/);
   assert.match(webAppSource, /recap\.secondaryOverload/);
+
+  const repaymentScenariosRenderer = webAppSource.slice(
+    webAppSource.indexOf('function renderEconomyRecoveryRepaymentScenarios'),
+    webAppSource.indexOf('function renderEconomyRecoveryDebtOverlay'),
+  );
+  assert.ok(
+    repaymentScenariosRenderer.indexOf('economy-repayment-outcomes') < repaymentScenariosRenderer.indexOf('economy-next-recovery-action'),
+    'next recovery action summary renders after bottleneck outcome recaps',
+  );
   assert.match(webAppSource, /economy-repayment-tradeoffs/);
   assert.match(webAppSource, /choice\.overloadShiftRisk/);
   assert.match(webAppSource, /economy-repayment-bottlenecks/);
@@ -63,4 +75,7 @@ test('playable economy overlay renders logistics recovery debt ledger', () => {
   assert.match(stylesSource, /\.economy-repayment-tradeoff__choice--rapide-fragile/);
   assert.match(stylesSource, /\.economy-repayment-outcome--résolution-avec-surcharge-secondaire/);
   assert.match(stylesSource, /\.economy-repayment-outcome--données-partielles/);
+  assert.match(stylesSource, /\.economy-next-recovery-action--action-concrète/);
+  assert.match(stylesSource, /\.economy-next-recovery-action--à-arbitrer/);
+  assert.match(stylesSource, /\.economy-next-recovery-action--surveiller/);
 });
