@@ -31,10 +31,20 @@ test('atlas renders compatibility bundles for climate rebound follow-up queues',
   assert.match(webAppSource, /regional-fragility-conflict/);
   assert.match(webAppSource, /Action sûre/);
   assert.match(webAppSource, /Action à éviter/);
-  assert.match(webAppSource, /renderAtlasClimateReboundFollowUpQueue\(atlasClimateReboundFollowUpQueue\)\}\s*\$\{renderAtlasClimateFollowUpCompatibilityBundles\(atlasClimateFollowUpCompatibilityBundles\)\}\s*\$\{renderAtlasSelectedClimateFollowUpReadinessRecap\(atlasSelectedClimateFollowUpReadinessRecap\)\}/);
+  assert.match(webAppSource, /buildAtlasNextClimateFollowUpAction/);
+  assert.match(webAppSource, /renderAtlasNextClimateFollowUpAction/);
+  assert.match(webAppSource, /Prochaine action climat/);
+  assert.match(webAppSource, /Risque majeur évité/);
+  assert.match(webAppSource, /Coût réserve\/tempo/);
+  assert.match(webAppSource, /Follow-ups en attente/);
+  assert.match(webAppSource, /immediate-action/);
+  assert.match(webAppSource, /safe-wait/);
+  assert.match(webAppSource, /minimal-prep/);
+  assert.match(webAppSource, /renderAtlasClimateReboundFollowUpQueue\(atlasClimateReboundFollowUpQueue\)\}\s*\$\{renderAtlasClimateFollowUpCompatibilityBundles\(atlasClimateFollowUpCompatibilityBundles\)\}\s*\$\{renderAtlasSelectedClimateFollowUpReadinessRecap\(atlasSelectedClimateFollowUpReadinessRecap\)\}\s*\$\{renderAtlasNextClimateFollowUpAction\(atlasNextClimateFollowUpAction\)\}/);
 
   assert.match(stylesSource, /\.map-world-climate-follow-up-compat/);
   assert.match(stylesSource, /\.map-world-climate-follow-up-compat__item--minimal-safe/);
   assert.match(stylesSource, /\.map-world-climate-follow-up-compat__item--ambitious-fragile/);
   assert.match(stylesSource, /\.map-world-climate-follow-up-readiness-recap/);
+  assert.match(stylesSource, /\.map-world-climate-next-follow-up/);
 });

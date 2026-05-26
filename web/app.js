@@ -11611,6 +11611,122 @@ function buildAtlasSelectedClimateFollowUpReadinessRecap(compatibilityView) {
   };
 }
 
+function buildAtlasNextClimateFollowUpAction(readinessRecapView, compatibilityView) {
+  if (!readinessRecapView || readinessRecapView.state === 'empty' || !compatibilityView || compatibilityView.state === 'empty') {
+    return {
+      state: 'empty',
+      recommendation: null,
+      pendingIncompatible: [],
+      summary: 'Aucune prochaine action climat: aucun récap readiness exploitable.',
+    };
+  }
+
+  const selectedBundle = compatibilityView.bundles.find((bundle) => bundle.kind === 'minimal-safe') ?? compatibilityView.bundles[0];
+  const selectedRecap = selectedBundle?.readinessRecaps?.find((recap) => recap.label === readinessRecapView.selectedLabel)
+    ?? selectedBundle?.readinessRecaps?.[0]
+    ?? null;
+  if (!selectedRecap) {
+    return {
+      state: 'empty',
+      recommendation: null,
+      pendingIncompatible: [],
+      summary: 'Aucune prochaine action climat: le bundle sélectionné ne contient pas de récap utilisable.',
+    };
+  }
+
+  const cooldownBlocked = selectedRecap.linkedCooldownState === 'soon-safe' || selectedRecap.linkedCooldownState === 'still-risky';
+  const reservePressure = /réserve|ressource|mitigation/i.test(`${selectedRecap.safeAction} ${selectedRecap.avoidAction} ${selectedRecap.residualRisk}`);
+  const residualRisk = selectedRecap.residualRisk;
+  const avoidedRisk = selectedRecap.linkedRiskDelta === 'worsening-probable'
+    ? 'rebond catastrophique ou régional immédiat'
+    : selectedRecap.linkedRiskDelta === 'stable-risk'
+      ? 'remontée du risque pendant le cooling-off'
+      : selectedRecap.linkedRiskDelta === 'reduced'
+        ? 'dépense inutile de réserve alors que le risque est déjà réduit'
+        : 'risque climatique non qualifié';
+  const cost = cooldownBlocked
+    ? `tempo T+${selectedBundle.cooldownCalendar?.[0]?.availableInTurns ?? 1} et réserve maintenue`
+    : reservePressure
+      ? 'réserve ciblée ou mitigation minimale'
+      : 'coût bas: exécution courte et veille conservée';
+  const mode = selectedRecap.linkedCooldownState === 'ready-now' && !/regional-fragility-conflict/.test(selectedRecap.state)
+    ? 'immediate-action'
+    : cooldownBlocked
+      ? 'safe-wait'
+      : 'minimal-prep';
+  const action = mode === 'immediate-action'
+    ? selectedRecap.safeAction
+    : mode === 'safe-wait'
+      ? selectedRecap.safeAction
+      : 'Préparer la ressource minimale puis relire le cooldown avant engagement.';
+  const whyNotPrimary = (recap) => {
+    if (recap.linkedCooldownState === 'still-risky') return 'cooldown incomplet et risque résiduel élevé';
+    if (recap.linkedCooldownState === 'soon-safe') return 'attendre la fin du cooling-off avant de consommer la réserve';
+    if (recap.state === 'regional-fragility-conflict') return 'fragilité régionale: ne pas proposer comme choix principal';
+    return 'moins prioritaire que le bundle minimal sélectionné';
+  };
+  const selectedIds = new Set(selectedBundle?.itemIds ?? []);
+  const pendingIncompatible = [
+    ...(compatibilityView.pendingIfMinimal ?? []).map((item) => ({
+      label: item.label,
+      reason: item.reason,
+    })),
+    ...compatibilityView.bundles
+      .filter((bundle) => bundle.kind !== selectedBundle.kind)
+      .flatMap((bundle) => bundle.readinessRecaps ?? [])
+      .filter((recap) => !selectedIds.has(recap.followUpId) && (recap.linkedCooldownState !== 'ready-now' || recap.state === 'regional-fragility-conflict'))
+      .map((recap) => ({
+        label: recap.label,
+        reason: whyNotPrimary(recap),
+      })),
+  ].filter((item, index, all) => item.label && all.findIndex((candidate) => candidate.label === item.label) === index).slice(0, 3);
+
+  return {
+    state: mode,
+    recommendation: {
+      label: selectedRecap.label,
+      action,
+      avoidedRisk,
+      cost,
+      residualRisk,
+      cooldownState: selectedRecap.linkedCooldownState,
+      reserveImpact: reservePressure ? 'réserve sollicitée: limiter au strict nécessaire' : 'réserve préservée',
+      rationale: mode === 'immediate-action'
+        ? 'readiness prête: l’action peut devenir le choix principal sans violer le cooldown'
+        : mode === 'safe-wait'
+          ? 'cooldown non terminé: l’attente justifiée remplace l’action principale'
+          : 'readiness fragile: seule une préparation minimale est recommandée',
+    },
+    pendingIncompatible,
+    summary: mode === 'immediate-action'
+      ? `${selectedRecap.label}: action immédiate recommandée, risque évité ${avoidedRisk}, coût ${cost}.`
+      : mode === 'safe-wait'
+        ? `${selectedRecap.label}: attente sûre recommandée, risque évité ${avoidedRisk}, coût ${cost}.`
+        : `${selectedRecap.label}: préparation minimale recommandée avant action, risque évité ${avoidedRisk}, coût ${cost}.`,
+  };
+}
+
+function renderAtlasNextClimateFollowUpAction(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || !view.recommendation) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-next-follow-up map-world-climate-next-follow-up--${view.state}" aria-label="Prochaine action climatique après récap readiness">
+      <div class="map-world-climate-next-follow-up__header">
+        <strong>Prochaine action climat</strong>
+        <span>${view.state === 'immediate-action' ? 'agir' : view.state === 'safe-wait' ? 'attendre' : 'préparer'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${view.recommendation.label}</b> · ${view.recommendation.action}</small>
+      <small><b>Risque majeur évité</b> · ${view.recommendation.avoidedRisk}; ${view.recommendation.residualRisk}</small>
+      <small><b>Coût réserve/tempo</b> · ${view.recommendation.cost}; ${view.recommendation.reserveImpact}</small>
+      <small><b>Pourquoi ce choix</b> · ${view.recommendation.rationale}</small>
+      <small><b>Follow-ups en attente</b> · ${view.pendingIncompatible.length > 0 ? view.pendingIncompatible.map((item) => `${item.label}: ${item.reason}`).join(' | ') : 'aucun follow-up incompatible à masquer'}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -19795,6 +19911,10 @@ function render() {
     atlasClimateReboundAfterActionBundle,
   );
   const atlasSelectedClimateFollowUpReadinessRecap = buildAtlasSelectedClimateFollowUpReadinessRecap(atlasClimateFollowUpCompatibilityBundles);
+  const atlasNextClimateFollowUpAction = buildAtlasNextClimateFollowUpAction(
+    atlasSelectedClimateFollowUpReadinessRecap,
+    atlasClimateFollowUpCompatibilityBundles,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -19848,6 +19968,7 @@ function render() {
           ${renderAtlasClimateReboundFollowUpQueue(atlasClimateReboundFollowUpQueue)}
           ${renderAtlasClimateFollowUpCompatibilityBundles(atlasClimateFollowUpCompatibilityBundles)}
           ${renderAtlasSelectedClimateFollowUpReadinessRecap(atlasSelectedClimateFollowUpReadinessRecap)}
+          ${renderAtlasNextClimateFollowUpAction(atlasNextClimateFollowUpAction)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
