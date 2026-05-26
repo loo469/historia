@@ -2736,6 +2736,81 @@ function buildRecoveryMomentumForecast(outcomeRecaps, nextRecoveryActionSummary)
   };
 }
 
+function buildRecoveryRelapseRiskAlerts(recoveryMomentumForecast, outcomeRecaps, warningGroups) {
+  if (!recoveryMomentumForecast || recoveryMomentumForecast.status !== 'fragile') {
+    return {
+      id: 'logistics-recovery-relapse-risk-alerts',
+      status: 'solide',
+      title: 'Risque de rechute prochain tour',
+      summary: 'Aucune alerte de rechute prioritaire: la récupération reste lisible pour le prochain tour.',
+      alertGroups: [],
+      topAlertKey: null,
+    };
+  }
+
+  const groupedAlerts = new Map();
+  outcomeRecaps
+    .filter((recap) => recap.secondaryOverload || recap.status !== 'résolution nette')
+    .forEach((recap) => {
+      const warningGroup = warningGroups.find((group) => group.key === recap.warningGroupKey) ?? null;
+      const factor = recap.secondaryOverload
+        ? 'capacité partagée peut redéplacer la surcharge'
+        : recap.status === 'résolution partielle'
+          ? 'dette résiduelle peut rebloquer la route'
+          : 'signal incomplet à confirmer';
+      const key = recap.secondaryOverload ? `shared-capacity:${recap.warningGroupKey}` : `residual-debt:${recap.warningGroupKey}`;
+      const existing = groupedAlerts.get(key) ?? {
+        key,
+        severity: recap.secondaryOverload ? 'à risque' : 'fragile',
+        factor,
+        action: recap.secondaryOverload
+          ? 'réserver une marge de capacité avant de relancer une récupération concurrente'
+          : 'rembourser la dette résiduelle avant d’enchaîner la reprise',
+        warningGroupKey: recap.warningGroupKey,
+        linkedOutcomeRecapIds: [],
+        targets: [],
+      };
+
+      existing.linkedOutcomeRecapIds.push(recap.id);
+      warningGroup?.details.forEach((detail) => {
+        if (!existing.targets.some((target) => target.targetId === detail.targetId)) {
+          existing.targets.push({
+            targetId: detail.targetId,
+            label: detail.label,
+            corridor: detail.corridor,
+          });
+        }
+      });
+      groupedAlerts.set(key, existing);
+    });
+
+  const alertGroups = [...groupedAlerts.values()].sort((left, right) => Number(right.severity === 'à risque') - Number(left.severity === 'à risque')
+    || right.linkedOutcomeRecapIds.length - left.linkedOutcomeRecapIds.length
+    || left.key.localeCompare(right.key));
+
+  if (alertGroups.length === 0) {
+    return {
+      id: 'logistics-recovery-relapse-risk-alerts',
+      status: 'à surveiller',
+      title: 'Risque de rechute prochain tour',
+      summary: 'Momentum fragile sans facteur isolé: confirmer les signaux de reprise avant le prochain arbitrage.',
+      alertGroups: [],
+      topAlertKey: null,
+    };
+  }
+
+  const topAlert = alertGroups[0];
+
+  return {
+    id: 'logistics-recovery-relapse-risk-alerts',
+    status: topAlert.severity,
+    title: 'Risque de rechute prochain tour',
+    summary: `${alertGroups.length} facteur(s) groupé(s); principal risque: ${topAlert.factor}.`,
+    alertGroups,
+    topAlertKey: topAlert.key,
+  };
+}
+
 function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymentPriorities, logisticsFeatures = []) {
   const candidates = repaymentPriorities.priorities.slice(0, 3);
   const scenarios = candidates.map((priority) => {
@@ -2769,6 +2844,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
   const outcomeRecaps = buildRepaymentOutcomeRecaps(tradeOffComparisons);
   const nextRecoveryActionSummary = buildNextRecoveryActionSummary(outcomeRecaps, warningGroups);
   const recoveryMomentumForecast = buildRecoveryMomentumForecast(outcomeRecaps, nextRecoveryActionSummary);
+  const recoveryRelapseRiskAlerts = buildRecoveryRelapseRiskAlerts(recoveryMomentumForecast, outcomeRecaps, warningGroups);
 
   return {
     id: 'logistics-recovery-repayment-scenarios',
@@ -2788,6 +2864,7 @@ function buildRecoveryDebtRepaymentScenarioPreviews(recoveryDebtLedger, repaymen
     topOutcomeRecapId: outcomeRecaps[0]?.id ?? null,
     nextRecoveryActionSummary,
     recoveryMomentumForecast,
+    recoveryRelapseRiskAlerts,
     legend: [
       { key: 'partial', label: 'Partiel: débloque une portion', tone: 'warning' },
       { key: 'complete', label: 'Complet: sécurise la reprise', tone: 'positive' },

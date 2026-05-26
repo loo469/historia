@@ -1702,6 +1702,19 @@ test('buildEconomyMapOverlay exposes city resource and logistics map layers', ()
     linkedOutcomeRecapId: 'outcome-recap:stock:stock:recovery-repayment:route-coast:complete',
   });
   assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryMomentumForecast.summary, /surveiller la dette/);
+  assert.deepEqual({
+    status: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.status,
+    topAlertKey: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.topAlertKey,
+    alertCount: overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.alertGroups.length,
+  }, {
+    status: 'à risque',
+    topAlertKey: 'shared-capacity:stock:stock',
+    alertCount: 1,
+  });
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.summary, /principal risque/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.alertGroups[0].factor, /capacité partagée/);
+  assert.match(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.alertGroups[0].action, /réserver une marge/);
+  assert.deepEqual(overlay.layers.logistics.recoveryDebtRepaymentScenarioPreviews.recoveryRelapseRiskAlerts.alertGroups[0].targets.map((target) => target.targetId), ['route-coast']);
 
   assert.deepEqual(overlay.layers.logistics.recoveryMarkers.map((marker) => ({
     targetType: marker.targetType,

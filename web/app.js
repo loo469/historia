@@ -19203,6 +19203,23 @@ function renderEconomyRecoveryRepaymentScenarios(economyView) {
           <small>Confiance ${view.recoveryMomentumForecast.confidence}</small>
         </article>
       ` : ''}
+      ${view.recoveryRelapseRiskAlerts?.alertGroups?.length ? `
+        <aside class="economy-recovery-relapse economy-recovery-relapse--${view.recoveryRelapseRiskAlerts.status.replaceAll(' ', '-')}" aria-label="Alertes risque de rechute de récupération">
+          <div>
+            <span>${view.recoveryRelapseRiskAlerts.title}</span>
+            <strong>${view.recoveryRelapseRiskAlerts.summary}</strong>
+          </div>
+          <ul>
+            ${view.recoveryRelapseRiskAlerts.alertGroups.map((group) => `
+              <li class="economy-recovery-relapse__group economy-recovery-relapse__group--${group.severity.replaceAll(' ', '-')}">
+                <b>${group.factor}</b>
+                <span>${group.action}</span>
+                <small>${group.targets.length ? group.targets.map((target) => `${target.label} · ${target.corridor}`).join(' · ') : group.warningGroupKey}</small>
+              </li>
+            `).join('')}
+          </ul>
+        </aside>
+      ` : ''}
       ${view.tradeOffComparisons?.length ? `
         <div class="economy-repayment-tradeoffs" aria-label="Comparaison des options de résolution de goulot">
           ${view.tradeOffComparisons.map((comparison) => `
