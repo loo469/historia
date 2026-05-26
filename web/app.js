@@ -1920,6 +1920,8 @@ function buildAtlasMilitaryBlockerResolutionChecklist(handoff) {
       provinceLabel: row.provinceLabel,
       blockerBadge: row.blockerBadge,
       checklist,
+      previousDecision: row.blockingDecision,
+      usefulAction: row.usefulAction,
       tone: row.blockerBadge.type,
       priority: row.priority ?? 0,
     };
@@ -1999,6 +2001,8 @@ function buildAtlasMilitaryNextBestClosureRecommendation(checklist) {
       orderState: item.checklist.orderState,
       reason: getAtlasMilitaryClosureReason(item),
       nextAction: item.checklist.immediateAction,
+      previousDecision: item.previousDecision,
+      usefulAction: item.usefulAction,
       waitState: item.checklist.waitingState,
       score: getAtlasMilitaryClosureImpactScore(item),
       promoted: item.blockerBadge.type !== 'unknown',
@@ -2036,6 +2040,65 @@ function renderAtlasMilitaryNextBestClosureRecommendation(recommendation) {
           <text class="atlas-military-next-best-closure-row__province" x="46" y="${90.5 + index * 4.4}">${index === 0 ? '1' : index + 1}. ${row.provinceLabel}</text>
           <text class="atlas-military-next-best-closure-row__reason" x="46" y="${92 + index * 4.4}">${row.reason}</text>
           <text class="atlas-military-next-best-closure-row__action" x="46" y="${93.4 + index * 4.4}">${row.nextAction}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
+function getAtlasMilitaryClosureRemainingRisk(row) {
+  if (row.blockerType === 'logistics') return 'risque restant: capacité non réservée';
+  if (row.blockerType === 'intel') return 'risque restant: brouillard avant engagement';
+  if (row.blockerType === 'climate') return 'risque restant: fenêtre météo instable';
+  if (row.blockerType === 'culture') return 'risque restant: adhésion locale fragile';
+  return 'risque restant: cause à vérifier';
+}
+
+function getAtlasMilitaryClosureAttemptLabel(row, index) {
+  if (row.previousDecision && row.previousDecision !== row.nextAction) return row.previousDecision;
+  if (index > 0) return `alternative récente: ${row.blockerLabel}`;
+  return 'aucune action précédente visible';
+}
+
+function buildAtlasMilitaryClosureAfterActionComparison(recommendation) {
+  const options = recommendation?.options ?? [];
+  if (!options.length || recommendation?.empty) {
+    return {
+      rows: [],
+      summary: 'Comparaison clôture indisponible: aucune recommandation visible.',
+      empty: true,
+    };
+  }
+
+  const rows = options.slice(0, 2).map((row, index) => ({
+    comparisonId: `closure-after-action:${row.provinceLabel}:${index}`,
+    provinceLabel: row.provinceLabel,
+    blockerType: row.blockerType,
+    attempted: getAtlasMilitaryClosureAttemptLabel(row, index),
+    recommended: row.nextAction,
+    remainingRisk: getAtlasMilitaryClosureRemainingRisk(row),
+    primary: index === 0,
+  }));
+
+  return {
+    rows,
+    summary: `${rows[0].provinceLabel}: tenté ${rows[0].attempted}; recommandé ${rows[0].recommended}; ${rows[0].remainingRisk}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryClosureAfterActionComparison(comparison) {
+  const height = comparison.empty ? 6.8 : 5.8 + (comparison.rows.length * 4.1);
+  return `
+    <g class="atlas-military-closure-after-action" aria-label="Comparaison après action des choix de clôture: ${comparison.summary}">
+      <rect class="atlas-military-closure-after-action__panel" x="43" y="106" width="35" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-closure-after-action__title" x="44.2" y="108.5">Tenté / recommandé / risque</text>
+      ${comparison.empty ? `<text class="atlas-military-closure-after-action__empty" x="44.2" y="111.4">${comparison.summary}</text>` : comparison.rows.map((row, index) => `
+        <g class="atlas-military-closure-after-action-row atlas-military-closure-after-action-row--${row.blockerType} ${row.primary ? 'is-primary' : 'is-alternative'}" data-atlas-closure-after-action="${row.comparisonId}" aria-label="${row.provinceLabel}: tenté ${row.attempted}; recommandé ${row.recommended}; ${row.remainingRisk}">
+          <circle cx="44.8" cy="${111 + index * 4.1}" r="0.66"></circle>
+          <text class="atlas-military-closure-after-action-row__province" x="46" y="${110.5 + index * 4.1}">${row.primary ? 'Recommandé' : 'Alternative'} · ${row.provinceLabel}</text>
+          <text class="atlas-military-closure-after-action-row__attempt" x="46" y="${111.9 + index * 4.1}">tenté: ${row.attempted}</text>
+          <text class="atlas-military-closure-after-action-row__risk" x="46" y="${113.3 + index * 4.1}">reco: ${row.recommended} · ${row.remainingRisk}</text>
         </g>
       `).join('')}
     </g>
@@ -3101,6 +3164,7 @@ function renderAtlasMilitaryLayer(shell) {
   const carryOverConfidenceHandoff = buildAtlasMilitaryCarryOverConfidenceHandoff(nextTurnCarryOverQueue, carryOverOutcomeTimeline);
   const blockerResolutionChecklist = buildAtlasMilitaryBlockerResolutionChecklist(carryOverConfidenceHandoff);
   const nextBestClosureRecommendation = buildAtlasMilitaryNextBestClosureRecommendation(blockerResolutionChecklist);
+  const closureAfterActionComparison = buildAtlasMilitaryClosureAfterActionComparison(nextBestClosureRecommendation);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -3139,6 +3203,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryCarryOverConfidenceHandoff(carryOverConfidenceHandoff)}
       ${renderAtlasMilitaryBlockerResolutionChecklist(blockerResolutionChecklist)}
       ${renderAtlasMilitaryNextBestClosureRecommendation(nextBestClosureRecommendation)}
+      ${renderAtlasMilitaryClosureAfterActionComparison(closureAfterActionComparison)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
