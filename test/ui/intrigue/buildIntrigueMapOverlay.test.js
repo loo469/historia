@@ -2718,3 +2718,93 @@ test('buildIntrigueMapOverlay recaps fog-safe outcomes for escalation prompt cho
   assert.equal(masked.blockedChoices[0].blockedBy, 'unknown-provenance');
   assert.match(masked.summary, /provenance reste insuffisante/);
 });
+
+test('buildIntrigueMapOverlay recommends post-recap stabilization choices without recheck loops', () => {
+  const overlay = buildIntrigueMapOverlay([
+    new Cellule({
+      id: 'cell-post-stable',
+      factionId: 'shadow-league',
+      codename: 'Post Stable',
+      locationId: 'post-stable',
+      memberIds: ['ag-1'],
+      assetIds: ['asset-1'],
+      exposure: 20,
+    }),
+    new Cellule({
+      id: 'cell-post-budget',
+      factionId: 'shadow-league',
+      codename: 'Post Budget',
+      locationId: 'post-budget',
+      memberIds: ['ag-2'],
+      assetIds: ['asset-2'],
+      exposure: 92,
+    }),
+    new Cellule({
+      id: 'cell-post-masked',
+      factionId: 'shadow-league',
+      codename: 'Post Masked',
+      locationId: 'post-masked',
+      memberIds: ['ag-3'],
+      assetIds: ['asset-3'],
+      exposure: 0,
+    }),
+  ], [
+    new OperationClandestine({
+      id: 'op-post-stable',
+      celluleId: 'cell-post-stable',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Resolved enough recap',
+      theaterId: 'post-stable',
+      assignedAgentIds: ['ag-1'],
+      requiredAssetIds: ['asset-1'],
+      detectionRisk: 20,
+      progress: 0,
+      heat: 0,
+      phase: 'execution',
+    }),
+    new OperationClandestine({
+      id: 'op-post-budget',
+      celluleId: 'cell-post-budget',
+      targetFactionId: 'sun-empire',
+      type: 'sabotage',
+      objective: 'Budget constrained recap',
+      theaterId: 'post-budget',
+      assignedAgentIds: ['ag-2'],
+      requiredAssetIds: ['asset-2'],
+      detectionRisk: 92,
+      progress: 80,
+      heat: 86,
+      phase: 'execution',
+    }),
+  ], { safeMapMode: true });
+  const byLocation = new Map(overlay.map((entry) => [entry.locationId, entry.postRecapStabilizationChoices]));
+  const stable = byLocation.get('post-stable');
+  const budget = byLocation.get('post-budget');
+  const masked = byLocation.get('post-masked');
+
+  assert.equal(stable.state, 'stabilization-recommended');
+  assert.equal(stable.recommendedPosture, 'stabilize');
+  assert.equal(stable.choices.length, 3);
+  assert.equal(stable.choices[0].action, 'stabilize');
+  assert.equal(stable.choices[0].recommended, true);
+  assert.match(stable.choices[0].reason, /évite une boucle de recheck/);
+  assert.match(stable.choices[1].fogRisk, /brouillard conservé/);
+  assert.equal(stable.choices[2].recommended, false);
+
+  assert.equal(budget.state, 'observation-recommended');
+  assert.equal(budget.recommendedPosture, 'observe');
+  assert.equal(budget.choices.length, 3);
+  assert.equal(budget.choices[1].action, 'observe');
+  assert.equal(budget.choices[1].recommended, true);
+  assert.equal(budget.choices[2].action, 'reverify');
+  assert.equal(budget.choices[2].blockedBy, 'insufficient-budget');
+  assert.match(budget.choices[2].fogRisk, /trop risqué/);
+  assert.ok(budget.riskyChoices.every((choice) => choice.action === 'reverify'));
+
+  assert.equal(masked.state, 'masked-stabilization-choices');
+  assert.equal(masked.recommendedPosture, 'observe');
+  assert.deepEqual(masked.choices.map((choice) => choice.action), ['observe']);
+  assert.match(masked.choices[0].reason, /provenance reste insuffisante/);
+  assert.match(masked.safeMapPolicy, /ne .*révélée/);
+});
