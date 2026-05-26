@@ -11813,6 +11813,8 @@ function buildAtlasNextClimateFollowUpAction(readinessRecapView, compatibilityVi
 
   const cooldownBlocked = selectedRecap.linkedCooldownState === 'soon-safe' || selectedRecap.linkedCooldownState === 'still-risky';
   const reservePressure = /réserve|ressource|mitigation/i.test(`${selectedRecap.safeAction} ${selectedRecap.avoidAction} ${selectedRecap.residualRisk}`);
+  const regionalPressure = /région|regional|fragile|catastrophe|mythe/i.test(`${selectedRecap.state} ${selectedRecap.reason} ${selectedRecap.residualRisk}`);
+  const supportPressure = /readiness|mitigation|soutien|relais/i.test(`${selectedRecap.safeAction} ${selectedRecap.reason}`);
   const residualRisk = selectedRecap.residualRisk;
   const avoidedRisk = selectedRecap.linkedRiskDelta === 'worsening-probable'
     ? 'rebond catastrophique ou régional immédiat'
@@ -11843,6 +11845,47 @@ function buildAtlasNextClimateFollowUpAction(readinessRecapView, compatibilityVi
     return 'moins prioritaire que le bundle minimal sélectionné';
   };
   const selectedIds = new Set(selectedBundle?.itemIds ?? []);
+  const buildReadinessGapIndicator = () => {
+    if (cooldownBlocked) {
+      return {
+        type: 'delay',
+        label: 'manque délai',
+        gapReduced: 'réduit l’écart de timing avant le prochain engagement sûr',
+        actionHint: 'attendre le cooling-off puis relire le delta avant action',
+      };
+    }
+    if (reservePressure) {
+      return {
+        type: 'resource',
+        label: 'manque ressource',
+        gapReduced: 'réduit l’écart de réserve ou mitigation nécessaire',
+        actionHint: 'verrouiller seulement la réserve minimale affichée',
+      };
+    }
+    if (regionalPressure) {
+      return {
+        type: 'region',
+        label: 'manque région',
+        gapReduced: 'réduit l’écart de fragilité régionale avant propagation',
+        actionHint: 'confirmer la région exposée avant d’élargir le bundle',
+      };
+    }
+    if (supportPressure) {
+      return {
+        type: 'support',
+        label: 'manque soutien',
+        gapReduced: 'réduit l’écart de soutien readiness avant exécution',
+        actionHint: 'garder un relais ou une mitigation courte attachée à l’action',
+      };
+    }
+    return {
+      type: 'fallback',
+      label: 'manque à confirmer',
+      gapReduced: 'réduit un écart encore non qualifié par les signaux actuels',
+      actionHint: 'rester sur l’action courte et surveiller le prochain signal climat',
+    };
+  };
+  const readinessGap = buildReadinessGapIndicator();
   const pendingIncompatible = [
     ...(compatibilityView.pendingIfMinimal ?? []).map((item) => ({
       label: item.label,
@@ -11867,6 +11910,7 @@ function buildAtlasNextClimateFollowUpAction(readinessRecapView, compatibilityVi
       cost,
       residualRisk,
       cooldownState: selectedRecap.linkedCooldownState,
+      readinessGap,
       reserveImpact: reservePressure ? 'réserve sollicitée: limiter au strict nécessaire' : 'réserve préservée',
       rationale: mode === 'immediate-action'
         ? 'readiness prête: l’action peut devenir le choix principal sans violer le cooldown'
@@ -11898,6 +11942,7 @@ function renderAtlasNextClimateFollowUpAction(view) {
       <small><b>${view.recommendation.label}</b> · ${view.recommendation.action}</small>
       <small><b>Risque majeur évité</b> · ${view.recommendation.avoidedRisk}; ${view.recommendation.residualRisk}</small>
       <small><b>Coût réserve/tempo</b> · ${view.recommendation.cost}; ${view.recommendation.reserveImpact}</small>
+      <small class="map-world-climate-next-follow-up__gap map-world-climate-next-follow-up__gap--${view.recommendation.readinessGap.type}"><b>Manque principal</b> · ${view.recommendation.readinessGap.label}: ${view.recommendation.readinessGap.gapReduced}. ${view.recommendation.readinessGap.actionHint}</small>
       <small><b>Pourquoi ce choix</b> · ${view.recommendation.rationale}</small>
       <small><b>Follow-ups en attente</b> · ${view.pendingIncompatible.length > 0 ? view.pendingIncompatible.map((item) => `${item.label}: ${item.reason}`).join(' | ') : 'aucun follow-up incompatible à masquer'}</small>
     </aside>

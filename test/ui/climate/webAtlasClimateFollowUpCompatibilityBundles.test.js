@@ -37,6 +37,13 @@ test('atlas renders compatibility bundles for climate rebound follow-up queues',
   assert.match(webAppSource, /Risque majeur évité/);
   assert.match(webAppSource, /Coût réserve\/tempo/);
   assert.match(webAppSource, /Follow-ups en attente/);
+  assert.match(webAppSource, /Manque principal/);
+  assert.match(webAppSource, /buildReadinessGapIndicator/);
+  assert.match(webAppSource, /manque délai/);
+  assert.match(webAppSource, /manque ressource/);
+  assert.match(webAppSource, /manque région/);
+  assert.match(webAppSource, /manque soutien/);
+  assert.match(webAppSource, /manque à confirmer/);
   assert.match(webAppSource, /immediate-action/);
   assert.match(webAppSource, /safe-wait/);
   assert.match(webAppSource, /minimal-prep/);
@@ -47,4 +54,9 @@ test('atlas renders compatibility bundles for climate rebound follow-up queues',
   assert.match(stylesSource, /\.map-world-climate-follow-up-compat__item--ambitious-fragile/);
   assert.match(stylesSource, /\.map-world-climate-follow-up-readiness-recap/);
   assert.match(stylesSource, /\.map-world-climate-next-follow-up/);
+  assert.match(stylesSource, /\.map-world-climate-next-follow-up__gap--resource/);
+  assert.match(stylesSource, /\.map-world-climate-next-follow-up__gap--delay/);
+  assert.match(stylesSource, /\.map-world-climate-next-follow-up__gap--region/);
+  assert.match(stylesSource, /\.map-world-climate-next-follow-up__gap--support/);
+  assert.match(stylesSource, /\.map-world-climate-next-follow-up__gap--fallback/);
 });
