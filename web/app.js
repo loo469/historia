@@ -2105,6 +2105,85 @@ function renderAtlasMilitaryClosureAfterActionComparison(comparison) {
   `;
 }
 
+
+function getAtlasMilitaryRelapseWatchStatus(row, index) {
+  if (row.blockerType === 'unknown') return 'à surveiller';
+  if (row.primary && index === 0 && !row.remainingRisk.includes('fragile')) return 'stable';
+  if (row.blockerType === 'climate' || row.blockerType === 'culture') return 'fragile';
+  return 'à surveiller';
+}
+
+function getAtlasMilitaryRelapseWatchReason(row) {
+  if (row.blockerType === 'logistics') return 'capacité à confirmer au tour suivant';
+  if (row.blockerType === 'intel') return 'brouillard à lever avant reprise';
+  if (row.blockerType === 'climate') return 'fenêtre météo peut rouvrir le front';
+  if (row.blockerType === 'culture') return 'adhésion locale encore sensible';
+  return 'cause visible insuffisante: contrôle léger';
+}
+
+function buildAtlasMilitaryPostClosureRelapseWatchlist(comparison, recommendation) {
+  const comparisonRows = comparison?.rows ?? [];
+  const recommendationOptions = recommendation?.options ?? [];
+  if ((!comparisonRows.length || comparison?.empty) && (!recommendationOptions.length || recommendation?.empty)) {
+    return {
+      items: [],
+      summary: 'Surveillance post-clôture indisponible: aucune province fermée visible.',
+      empty: true,
+    };
+  }
+
+  const mergedRows = [...comparisonRows];
+  recommendationOptions.forEach((option) => {
+    if (mergedRows.some((row) => row.provinceLabel === option.provinceLabel)) return;
+    mergedRows.push({
+      provinceLabel: option.provinceLabel,
+      blockerType: option.blockerType,
+      attempted: option.previousDecision || option.nextAction,
+      recommended: option.nextAction,
+      remainingRisk: getAtlasMilitaryClosureRemainingRisk(option),
+      primary: false,
+    });
+  });
+
+  const items = mergedRows.slice(0, 3).map((row, index) => {
+    const status = getAtlasMilitaryRelapseWatchStatus(row, index);
+    return {
+      watchId: `post-closure-relapse:${row.provinceLabel}:${index}`,
+      provinceLabel: row.provinceLabel,
+      blockerType: row.blockerType,
+      status,
+      statusKey: status === 'stable' ? 'stable' : status === 'fragile' ? 'fragile' : 'surveiller',
+      reason: getAtlasMilitaryRelapseWatchReason(row),
+      nextCheck: status === 'stable' ? 'recontrôle léger' : status === 'fragile' ? 'priorité prochain tour' : 'vérifier signal visible',
+      remainingRisk: row.remainingRisk,
+    };
+  });
+
+  return {
+    items,
+    summary: `${items.length} province${items.length > 1 ? 's' : ''} à recontrôler après clôture: ${items.map((item) => `${item.provinceLabel} ${item.status}`).join(', ')}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryPostClosureRelapseWatchlist(watchlist) {
+  const height = watchlist.empty ? 6.8 : 5.6 + (watchlist.items.length * 4.05);
+  return `
+    <g class="atlas-military-post-closure-watchlist" aria-label="Watchlist post-clôture des rechutes provinciales: ${watchlist.summary}">
+      <rect class="atlas-military-post-closure-watchlist__panel" x="43" y="121" width="35" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-post-closure-watchlist__title" x="44.2" y="123.4">À recontrôler</text>
+      ${watchlist.empty ? `<text class="atlas-military-post-closure-watchlist__empty" x="44.2" y="126.2">${watchlist.summary}</text>` : watchlist.items.map((row, index) => `
+        <g class="atlas-military-post-closure-watchlist-row atlas-military-post-closure-watchlist-row--${row.blockerType} atlas-military-post-closure-watchlist-row--${row.statusKey}" data-atlas-post-closure-watch="${row.watchId}" aria-label="${row.provinceLabel}: ${row.status}; raison ${row.reason}; prochain contrôle ${row.nextCheck}; ${row.remainingRisk}">
+          <circle cx="44.8" cy="${125.7 + index * 4.05}" r="0.64"></circle>
+          <text class="atlas-military-post-closure-watchlist-row__province" x="46" y="${125.1 + index * 4.05}">${row.provinceLabel} · ${row.status}</text>
+          <text class="atlas-military-post-closure-watchlist-row__reason" x="46" y="${126.45 + index * 4.05}">${row.reason}</text>
+          <text class="atlas-military-post-closure-watchlist-row__check" x="46" y="${127.8 + index * 4.05}">${row.nextCheck}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function getAtlasMilitaryBlockingHandoffDecision(item, confidence) {
   if (!item) return 'attente: visibilité insuffisante';
   if (item.kind === 'obligatoire' && item.dependencies?.includes('logistique')) return 'renfort: sécuriser logistique';
@@ -3165,6 +3244,7 @@ function renderAtlasMilitaryLayer(shell) {
   const blockerResolutionChecklist = buildAtlasMilitaryBlockerResolutionChecklist(carryOverConfidenceHandoff);
   const nextBestClosureRecommendation = buildAtlasMilitaryNextBestClosureRecommendation(blockerResolutionChecklist);
   const closureAfterActionComparison = buildAtlasMilitaryClosureAfterActionComparison(nextBestClosureRecommendation);
+  const postClosureRelapseWatchlist = buildAtlasMilitaryPostClosureRelapseWatchlist(closureAfterActionComparison, nextBestClosureRecommendation);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -3204,6 +3284,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryBlockerResolutionChecklist(blockerResolutionChecklist)}
       ${renderAtlasMilitaryNextBestClosureRecommendation(nextBestClosureRecommendation)}
       ${renderAtlasMilitaryClosureAfterActionComparison(closureAfterActionComparison)}
+      ${renderAtlasMilitaryPostClosureRelapseWatchlist(postClosureRelapseWatchlist)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `
