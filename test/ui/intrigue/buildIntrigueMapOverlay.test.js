@@ -2797,6 +2797,10 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.equal(stable.waitCostHint.waitCostLevel, 'medium');
   assert.match(stable.waitCostHint.latentRisk, /re-vérification ultérieure/);
   assert.ok(stable.waitCostHint.worsensIfWaiting.includes('fraîcheur du signal'));
+  assert.equal(stable.timingComparison.state, 'act-now-preferred');
+  assert.equal(stable.timingComparison.recommendedTiming, 'act-now');
+  assert.equal(stable.timingComparison.waitRecommended, false);
+  assert.equal(stable.timingComparison.dominantReason, 'coût-opportunité');
 
   assert.equal(budget.state, 'observation-recommended');
   assert.equal(budget.recommendedPosture, 'observe');
@@ -2811,6 +2815,11 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.equal(budget.waitCostHint.state, 'immediate-risk');
   assert.equal(budget.waitCostHint.waitCostLevel, 'high');
   assert.match(budget.waitCostHint.immediateRisk, /Budget\/provenance fragiles/);
+  assert.equal(budget.timingComparison.state, 'short-wait-recommended');
+  assert.equal(budget.timingComparison.recommendedTiming, 'short-wait');
+  assert.equal(budget.timingComparison.waitRecommended, true);
+  assert.equal(budget.timingComparison.dominantReason, 'exposition');
+  assert.match(budget.timingComparison.shortWait.outcome, /fenêtre moins coûteuse/);
 
   assert.equal(masked.state, 'masked-stabilization-choices');
   assert.equal(masked.recommendedPosture, 'observe');
@@ -2820,5 +2829,9 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.equal(masked.waitCostHint.state, 'insufficient-information');
   assert.equal(masked.waitCostHint.waitCostLevel, 'unknown');
   assert.match(masked.waitCostHint.summary, /Attendre reste plus sûr/);
+  assert.equal(masked.timingComparison.state, 'short-wait-recommended');
+  assert.equal(masked.timingComparison.dominantReason, 'information-manquante');
+  assert.equal(masked.timingComparison.waitRecommended, true);
+  assert.match(masked.timingComparison.actNow.risk, /provenance sûre/);
   assert.match(masked.safeMapPolicy, /ne .*révélée/);
 });

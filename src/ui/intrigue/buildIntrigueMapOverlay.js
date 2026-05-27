@@ -3187,8 +3187,98 @@ function buildStabilizationWaitCostHint({ recommendedPosture, resolvedEnough = f
   };
 }
 
+function buildStabilizationTimingComparison({ recommendedPosture, waitCostHint, firstBudgetBlock = null, masked = false }) {
+  if (masked || waitCostHint.state === 'insufficient-information') {
+    return {
+      state: 'short-wait-recommended',
+      recommendedTiming: 'short-wait',
+      waitRecommended: true,
+      urgency: 'temper',
+      dominantReason: 'information-manquante',
+      label: 'Attendre court réduit le risque',
+      actNow: {
+        outcome: 'Stabiliser maintenant resterait trop opaque.',
+        risk: 'peut figer une lecture sans provenance sûre',
+      },
+      shortWait: {
+        outcome: 'Attendre un signal fog-safe rend la stabilisation plus fiable.',
+        risk: 'signal peut périmer si aucun indice ne revient',
+      },
+      summary: 'Temporiser est recommandé: l’information manquante domine le coût d’opportunité visible.',
+    };
+  }
+
+  if (recommendedPosture !== 'stabilize') {
+    const exposureDriven = firstBudgetBlock?.blockedBy === 'insufficient-budget' || waitCostHint.waitCostLevel === 'high';
+
+    return {
+      state: 'short-wait-recommended',
+      recommendedTiming: 'short-wait',
+      waitRecommended: true,
+      urgency: 'temper',
+      dominantReason: exposureDriven ? 'exposition' : 'coût-opportunité',
+      label: exposureDriven ? 'Attendre court baisse l’exposition' : 'Attendre court clarifie le coût',
+      actNow: {
+        outcome: 'Agir maintenant risque de payer une relance trop chère.',
+        risk: exposureDriven ? 'exposition/budget visible défavorable' : 'gain visible trop faible',
+      },
+      shortWait: {
+        outcome: 'Attendre un tour peut rouvrir une fenêtre moins coûteuse.',
+        risk: 'priorité surveillée sans révéler de cible cachée',
+      },
+      summary: exposureDriven
+        ? 'Temporiser est meilleur maintenant: l’exposition domine la décision visible.'
+        : 'Temporiser est meilleur maintenant: le coût d’opportunité dépasse le gain immédiat.',
+    };
+  }
+
+  if (waitCostHint.state === 'immediate-risk') {
+    return {
+      state: 'act-now-urgent',
+      recommendedTiming: 'act-now',
+      waitRecommended: false,
+      urgency: 'urgent',
+      dominantReason: 'fenêtre-adverse',
+      label: 'Agir maintenant évite une dégradation rapide',
+      actNow: {
+        outcome: 'Stabiliser verrouille la fenêtre sûre visible.',
+        risk: '0 exposition ajoutée',
+      },
+      shortWait: {
+        outcome: 'Attendre peut laisser la fenêtre adverse se refermer.',
+        risk: 'priorité instable et recheck plus coûteux',
+      },
+      summary: 'Choix urgent: la fenêtre visible se dégrade plus vite que le bénéfice d’attendre.',
+    };
+  }
+
+  return {
+    state: 'act-now-preferred',
+    recommendedTiming: 'act-now',
+    waitRecommended: false,
+    urgency: 'watch',
+    dominantReason: 'coût-opportunité',
+    label: 'Agir maintenant évite une dette de suivi',
+    actNow: {
+      outcome: 'Stabiliser maintenant clôt la boucle sans nouvelle exposition.',
+      risk: 'risque immédiat faible',
+    },
+    shortWait: {
+      outcome: 'Attendre reste possible mais rend le suivi moins net.',
+      risk: 'signal vieilli ou re-vérification plus chère',
+    },
+    summary: 'Agir maintenant reste préférable: l’attente est tolérée, pas recommandée.',
+  };
+}
+
+
 function buildPostRecapStabilizationChoices({ locationId, locationName, intrigueEscalationOutcomeRecap }) {
   if (intrigueEscalationOutcomeRecap.state === 'masked-outcome-recap') {
+    const waitCostHint = buildStabilizationWaitCostHint({
+      recommendedPosture: 'observe',
+      masked: true,
+    });
+
     return {
       state: 'masked-stabilization-choices',
       locationId,
@@ -3222,8 +3312,10 @@ function buildPostRecapStabilizationChoices({ locationId, locationName, intrigue
           reason: choice.safeReason,
         }),
       })),
-      waitCostHint: buildStabilizationWaitCostHint({
+      waitCostHint,
+      timingComparison: buildStabilizationTimingComparison({
         recommendedPosture: 'observe',
+        waitCostHint,
         masked: true,
       }),
       summary: 'Posture post-récap: observer, car le brouillard masque encore la provenance sûre.',
@@ -3332,6 +3424,15 @@ function buildPostRecapStabilizationChoices({ locationId, locationName, intrigue
       }
       : null;
 
+  const waitCostHint = buildStabilizationWaitCostHint({
+    recommendedPosture,
+    resolvedEnough,
+    hasOnlyCalmOutcomes,
+    shouldObserve,
+    firstBudgetBlock,
+    primaryChoice,
+  });
+
   return {
     state: recommendedPosture === 'stabilize'
       ? 'stabilization-recommended'
@@ -3355,13 +3456,11 @@ function buildPostRecapStabilizationChoices({ locationId, locationName, intrigue
         reason: choice.safeReason,
       }),
     })),
-    waitCostHint: buildStabilizationWaitCostHint({
+    waitCostHint,
+    timingComparison: buildStabilizationTimingComparison({
       recommendedPosture,
-      resolvedEnough,
-      hasOnlyCalmOutcomes,
-      shouldObserve,
+      waitCostHint,
       firstBudgetBlock,
-      primaryChoice,
     }),
     summary: recommendedPosture === 'stabilize'
       ? 'Posture post-récap: stabiliser ou surveiller, sans relancer une boucle de vérification.'
