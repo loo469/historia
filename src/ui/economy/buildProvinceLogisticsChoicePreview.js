@@ -509,6 +509,74 @@ function buildRecoveryPriorityActions(routeChoices) {
 }
 
 
+function buildRecoveryLeverRanking(routeChoices, priorityActions, hasBlocker) {
+  if (!hasBlocker || priorityActions.length === 0) {
+    return {
+      levers: [],
+      summary: hasBlocker
+        ? 'Aucun levier recovery utile: coûts ou risques évités trop incertains.'
+        : 'Aucun levier recovery à classer: logistique stable ou signaux insuffisants.',
+      empty: true,
+    };
+  }
+
+  const optionByRouteId = new Map(routeChoices.map((option) => [option.routeId, option]));
+  const candidates = priorityActions
+    .map((action) => {
+      const option = optionByRouteId.get(action.routeId) ?? null;
+      const choice = option?.recoveryChoices.find((candidate) => candidate.choiceId === action.choiceId) ?? null;
+      const criticalAvoided = Math.max(
+        action.shortagesAvoided,
+        choice?.downstreamShortages.filter((shortage) => shortage.status === 'aggravée' || shortage.status === 'déplacée').length ?? 0,
+      );
+      const capacityKey = `${action.resource}:${choice?.blocker ?? option?.cost ?? action.cost}`;
+      const avoidedRisk = criticalAvoided > 0
+        ? `${criticalAvoided} pénurie${criticalAvoided > 1 ? 's' : ''}/goulot${criticalAvoided > 1 ? 's' : ''} évité${criticalAvoided > 1 ? 's' : ''}`
+        : choice?.bottleneck?.tone === 'high'
+          ? `${choice.bottleneck.label} neutralisé avant rechute`
+          : `${action.downstreamStatus} contenu avant prochain tour`;
+
+      return {
+        leverId: `lever:${action.actionId}`,
+        label: action.action,
+        route: action.route,
+        resource: action.resource,
+        tone: action.tone,
+        primaryCost: action.cost,
+        avoidedRisk,
+        tradeoff: action.tradeoff,
+        blocker: choice?.blocker ?? 'capacité à confirmer',
+        capacityKey,
+        priorityScore: action.impactScore + criticalAvoided * 16,
+      };
+    })
+    .sort((left, right) => right.priorityScore - left.priorityScore || left.label.localeCompare(right.label))
+    .slice(0, 3);
+
+  const capacityCounts = candidates.reduce((counts, lever) => counts.set(lever.capacityKey, (counts.get(lever.capacityKey) ?? 0) + 1), new Map());
+  const levers = candidates.map((lever, index, ordered) => {
+    const conflict = ordered.find((candidate, candidateIndex) => candidateIndex !== index && candidate.capacityKey === lever.capacityKey) ?? null;
+    return {
+      ...lever,
+      rank: index + 1,
+      recommended: index === 0,
+      mutualBlocker: conflict
+        ? `Partage ${lever.resource}/${lever.blocker} avec ${conflict.label}: choisir l’un retarde l’autre.`
+        : (capacityCounts.get(lever.capacityKey) ?? 0) > 1
+          ? `Même capacité consommée par un autre levier ${lever.resource}.`
+          : 'Pas de blocage mutuel majeur détecté.',
+    };
+  });
+
+  return {
+    levers,
+    summary: levers.length > 0
+      ? `${levers[0].label} d’abord: coût ${levers[0].primaryCost}, risque évité ${levers[0].avoidedRisk}.`
+      : 'Aucun levier recovery utile: coûts ou risques évités trop incertains.',
+    empty: levers.length === 0,
+  };
+}
+
 function buildSelectedActionImpactPreview(priorityAction, routeChoices) {
   if (!priorityAction) {
     return {
@@ -604,7 +672,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const queuedLogisticsActions = Array.isArray(normalizedOptions.queuedLogisticsActions) ? normalizedOptions.queuedLogisticsActions : [];
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', selectedActionPreview: buildSelectedActionImpactPreview(null, []), primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', recoveryLeverRanking: buildRecoveryLeverRanking([], [], false), selectedActionPreview: buildSelectedActionImpactPreview(null, []), primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -639,6 +707,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       downstreamSummary: 'Aucune pénurie aval claire détectée.',
       priorityActions: [],
       prioritySummary: 'Aucune action logistique prioritaire disponible.',
+      recoveryLeverRanking: buildRecoveryLeverRanking([], [], false),
       selectedActionPreview: buildSelectedActionImpactPreview(null, []),
       primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions),
       status: 'stable',
@@ -651,6 +720,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const hasBlocker = routeChoices.some((choice) => choice.tone === 'high' || choice.tone === 'medium');
   const priorityActions = buildRecoveryPriorityActions(routeChoices);
   const recommendedPriority = priorityActions[0] ?? null;
+  const recoveryLeverRanking = buildRecoveryLeverRanking(routeChoices, priorityActions, hasBlocker);
   const selectedActionPreview = buildSelectedActionImpactPreview(recommendedPriority, routeChoices);
   const primaryLogisticsAction = buildPrimaryLogisticsQueueAction(recommendedPriority, selectedActionPreview, queuedLogisticsActions);
 
@@ -669,6 +739,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     prioritySummary: recommendedPriority
       ? `${recommendedPriority.action} recommandée: ${recommendedPriority.reason} (${recommendedPriority.tradeoff}, ${recommendedPriority.delay}).`
       : 'Aucune action logistique prioritaire disponible.',
+    recoveryLeverRanking,
     selectedActionPreview,
     primaryLogisticsAction,
     status: hasBlocker ? recommended.tone : 'stable',

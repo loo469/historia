@@ -79,6 +79,11 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(['aggravée', 'déplacée', 'résolue', 'inconnue'].includes(preview.downstreamStatus));
   assert.ok(preview.priorityActions.length >= 2);
   assert.equal(preview.priorityActions[0].recommended, true);
+  assert.equal(preview.recoveryLeverRanking.empty, false);
+  assert.ok(preview.recoveryLeverRanking.levers.length >= 2);
+  assert.equal(preview.recoveryLeverRanking.levers[0].recommended, true);
+  assert.match(preview.recoveryLeverRanking.summary, /coût|risque évité/i);
+  assert.ok(preview.recoveryLeverRanking.levers.every((lever) => lever.primaryCost.length > 0 && lever.avoidedRisk.length > 0 && lever.mutualBlocker.length > 0));
   assert.ok(preview.selectedActionPreview.badges.length <= 3);
   assert.match(preview.prioritySummary, /recommandée/);
   assert.ok(preview.priorityActions.some((action) => /rapide mais limitée|plus lente mais structurante|équilibrée/.test(action.tradeoff)));
@@ -143,6 +148,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.downstreamSummary, /Aucune pénurie aval/);
   assert.deepEqual(preview.priorityActions, []);
   assert.match(preview.prioritySummary, /Aucune action logistique prioritaire/);
+  assert.equal(preview.recoveryLeverRanking.empty, true);
+  assert.deepEqual(preview.recoveryLeverRanking.levers, []);
   assert.equal(preview.selectedActionPreview.status, 'empty');
   assert.deepEqual(preview.selectedActionPreview.badges, []);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
@@ -186,6 +193,7 @@ test('buildProvinceLogisticsChoicePreview exposes stable local route causes', ()
   assert.match(preview.options[0].recoveryChoices[0].bottleneck.detail, /Aucun ralentisseur/);
   assert.ok(preview.priorityActions.length >= 1);
   assert.equal(preview.priorityActions[0].recommended, true);
+  assert.equal(preview.recoveryLeverRanking.empty, true);
   assert.equal(preview.options[0].recoveryChoices[0].downstreamShortages[0].status, 'résolue');
   assert.match(preview.options[0].recoveryChoices[0].downstreamShortages[0].detail, /aucune pénurie aval/i);
 });

@@ -7563,6 +7563,23 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           `).join('')}
         </div>
       ` : ''}
+      ${preview.recoveryLeverRanking && !preview.recoveryLeverRanking.empty ? `
+        <div class="province-logistics-recovery-lever-ranking" aria-label="Classement compact des leviers recovery logistique">
+          <div class="province-logistics-recovery-lever-ranking__header">
+            <b>Leviers recovery</b>
+            <span>${preview.recoveryLeverRanking.summary}</span>
+          </div>
+          <ol>
+            ${preview.recoveryLeverRanking.levers.map((lever) => `
+              <li class="province-logistics-recovery-lever province-logistics-recovery-lever--${lever.tone} ${lever.recommended ? 'is-recommended' : ''}">
+                <strong>#${lever.rank} ${lever.label}</strong>
+                <span>Coût: ${lever.primaryCost} · Risque évité: ${lever.avoidedRisk}</span>
+                <small>${lever.tradeoff} · ${lever.mutualBlocker}</small>
+              </li>
+            `).join('')}
+          </ol>
+        </div>
+      ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">
         <div>
           <b>Action carte</b>
