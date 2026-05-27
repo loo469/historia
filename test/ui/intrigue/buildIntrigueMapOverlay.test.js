@@ -2793,6 +2793,10 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.match(stable.choices[1].fogRisk, /brouillard conservé/);
   assert.equal(stable.choices[1].riskPreview, 'risque: laisse signal instable');
   assert.equal(stable.choices[2].recommended, false);
+  assert.equal(stable.waitCostHint.state, 'latent-risk');
+  assert.equal(stable.waitCostHint.waitCostLevel, 'medium');
+  assert.match(stable.waitCostHint.latentRisk, /re-vérification ultérieure/);
+  assert.ok(stable.waitCostHint.worsensIfWaiting.includes('fraîcheur du signal'));
 
   assert.equal(budget.state, 'observation-recommended');
   assert.equal(budget.recommendedPosture, 'observe');
@@ -2804,11 +2808,17 @@ test('buildIntrigueMapOverlay recommends post-recap stabilization choices withou
   assert.equal(budget.choices[2].riskPreview, 'risque: dépasse budget visible');
   assert.match(budget.choices[2].fogRisk, /trop risqué/);
   assert.ok(budget.riskyChoices.every((choice) => choice.action === 'reverify'));
+  assert.equal(budget.waitCostHint.state, 'immediate-risk');
+  assert.equal(budget.waitCostHint.waitCostLevel, 'high');
+  assert.match(budget.waitCostHint.immediateRisk, /Budget\/provenance fragiles/);
 
   assert.equal(masked.state, 'masked-stabilization-choices');
   assert.equal(masked.recommendedPosture, 'observe');
   assert.deepEqual(masked.choices.map((choice) => choice.action), ['observe']);
   assert.equal(masked.choices[0].riskPreview, 'risque: provenance incomplète');
   assert.match(masked.choices[0].reason, /provenance reste insuffisante/);
+  assert.equal(masked.waitCostHint.state, 'insufficient-information');
+  assert.equal(masked.waitCostHint.waitCostLevel, 'unknown');
+  assert.match(masked.waitCostHint.summary, /Attendre reste plus sûr/);
   assert.match(masked.safeMapPolicy, /ne .*révélée/);
 });
