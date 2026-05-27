@@ -3107,6 +3107,86 @@ function buildStabilizationRiskPreview({ action, blockedBy = null, exposureCost 
   return 'risque: non calculable';
 }
 
+function buildStabilizationWaitCostHint({ recommendedPosture, resolvedEnough = false, hasOnlyCalmOutcomes = false, shouldObserve = false, firstBudgetBlock = null, primaryChoice = null, masked = false }) {
+  if (masked) {
+    return {
+      state: 'insufficient-information',
+      label: 'Coût d’attente: information insuffisante',
+      waitCostLevel: 'unknown',
+      immediateRisk: 'Aucun risque immédiat chiffré: la provenance visible reste insuffisante.',
+      latentRisk: 'Attendre peut périmer le signal, mais aucun détail caché n’est déduit.',
+      uncertainty: 'élevée: provenance, cible et relais restent masqués',
+      worsensIfWaiting: ['fraîcheur du signal', 'fenêtre de stabilisation lisible'],
+      recommendation: 'observer-sans-inférer',
+      summary: 'Attendre reste plus sûr que stabiliser à l’aveugle, mais la décision devra être reprise dès qu’un signal fog-safe réapparaît.',
+    };
+  }
+
+  if (recommendedPosture !== 'stabilize' && firstBudgetBlock) {
+    return {
+      state: 'immediate-risk',
+      label: 'Coût d’attente: risque immédiat visible',
+      waitCostLevel: 'high',
+      immediateRisk: 'Budget/provenance fragiles: repousser la stabilisation garde une relance coûteuse en file.',
+      latentRisk: 'La priorité peut rester bloquée et consommer la prochaine fenêtre sûre sans révéler de cible cachée.',
+      uncertainty: firstBudgetBlock.blockedBy === 'insufficient-budget'
+        ? 'moyenne: budget visible insuffisant'
+        : 'moyenne: provenance encore fragile',
+      worsensIfWaiting: ['budget de vérification', 'priorité de suivi', 'fraîcheur du signal'],
+      recommendation: 'observer-un-tour',
+      summary: 'Attendre est lisible mais coûteux: le joueur voit que budget, priorité et signal peuvent empirer avant une stabilisation sûre.',
+    };
+  }
+
+  if (recommendedPosture === 'stabilize') {
+    return {
+      state: resolvedEnough || hasOnlyCalmOutcomes ? 'latent-risk' : 'immediate-risk',
+      label: resolvedEnough || hasOnlyCalmOutcomes
+        ? 'Coût d’attente: risque latent'
+        : 'Coût d’attente: risque immédiat visible',
+      waitCostLevel: resolvedEnough || hasOnlyCalmOutcomes ? 'medium' : 'high',
+      immediateRisk: resolvedEnough || hasOnlyCalmOutcomes
+        ? 'Aucun risque immédiat nouveau: la stabilisation reste disponible maintenant.'
+        : 'Reporter peut laisser une priorité instable ouverte malgré un choix de stabilisation possible.',
+      latentRisk: resolvedEnough
+        ? 'Le signal résolu peut vieillir; une re-vérification ultérieure coûtera plus d’exposition visible.'
+        : hasOnlyCalmOutcomes
+          ? 'Les issues calmes peuvent redevenir ambiguës si la stabilisation est repoussée.'
+          : 'La fenêtre sûre peut se refermer avant le prochain tour.',
+      uncertainty: primaryChoice?.confidenceEffect ?? 'faible à moyenne: seules les marges visibles sont utilisées',
+      worsensIfWaiting: ['fraîcheur du signal', 'coût de re-vérification', 'stabilité du suivi'],
+      recommendation: 'stabiliser-maintenant',
+      summary: 'Le coût d’attente est surtout une dette de suivi: stabiliser maintenant évite de repayer une vérification fog-safe.',
+    };
+  }
+
+  if (shouldObserve) {
+    return {
+      state: 'insufficient-information',
+      label: 'Coût d’attente: information insuffisante',
+      waitCostLevel: 'unknown',
+      immediateRisk: 'Risque immédiat non confirmé: budget ou provenance ne justifient pas une stabilisation forcée.',
+      latentRisk: 'Attendre peut faire vieillir le signal, mais relancer maintenant coûterait plus que le gain visible.',
+      uncertainty: primaryChoice?.confidenceEffect ?? 'élevée: signal exploitable mais incomplet',
+      worsensIfWaiting: ['fraîcheur du signal', 'confiance exploitable'],
+      recommendation: 'observer-un-tour',
+      summary: 'L’indication reste incertaine: surveiller un tour conserve le brouillard sans cacher que la fraîcheur du signal se dégrade.',
+    };
+  }
+
+  return {
+    state: 'latent-risk',
+    label: 'Coût d’attente: risque latent',
+    waitCostLevel: 'medium',
+    immediateRisk: 'Aucun risque immédiat nouveau dans le récap visible.',
+    latentRisk: 'La fenêtre de stabilisation peut perdre en lisibilité si elle n’est pas verrouillée.',
+    uncertainty: 'moyenne: décision basée uniquement sur les effets visibles',
+    worsensIfWaiting: ['stabilité du suivi'],
+    recommendation: 'stabiliser-ou-surveiller',
+    summary: 'Attendre reste possible, mais la carte signale la dette de suivi avant toute nouvelle relance.',
+  };
+}
+
 function buildPostRecapStabilizationChoices({ locationId, locationName, intrigueEscalationOutcomeRecap }) {
   if (intrigueEscalationOutcomeRecap.state === 'masked-outcome-recap') {
     return {
@@ -3142,8 +3222,12 @@ function buildPostRecapStabilizationChoices({ locationId, locationName, intrigue
           reason: choice.safeReason,
         }),
       })),
+      waitCostHint: buildStabilizationWaitCostHint({
+        recommendedPosture: 'observe',
+        masked: true,
+      }),
       summary: 'Posture post-récap: observer, car le brouillard masque encore la provenance sûre.',
-      safeMapPolicy: 'Choix D17 limités aux effets visibles de posture, exposition et brouillard; aucune cible, cellule, relais, méthode ou vérité cachée n’est révélée.',
+      safeMapPolicy: 'Choix D17/D19 limités aux effets visibles de posture, exposition, coût d’attente et brouillard; aucune cible, cellule, relais, méthode ou vérité cachée n’est révélée.',
     };
   }
 
@@ -3271,10 +3355,18 @@ function buildPostRecapStabilizationChoices({ locationId, locationName, intrigue
         reason: choice.safeReason,
       }),
     })),
+    waitCostHint: buildStabilizationWaitCostHint({
+      recommendedPosture,
+      resolvedEnough,
+      hasOnlyCalmOutcomes,
+      shouldObserve,
+      firstBudgetBlock,
+      primaryChoice,
+    }),
     summary: recommendedPosture === 'stabilize'
       ? 'Posture post-récap: stabiliser ou surveiller, sans relancer une boucle de vérification.'
       : 'Posture post-récap: observer avant toute re-vérification coûteuse.',
-    safeMapPolicy: 'Choix D17 limités aux effets visibles de posture, exposition et brouillard; aucune cible, cellule, relais, méthode ou vérité cachée n’est révélée.',
+    safeMapPolicy: 'Choix D17/D19 limités aux effets visibles de posture, exposition, coût d’attente et brouillard; aucune cible, cellule, relais, méthode ou vérité cachée n’est révélée.',
   };
 }
 
