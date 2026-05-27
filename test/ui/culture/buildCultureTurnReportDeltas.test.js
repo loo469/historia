@@ -363,11 +363,89 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       sourcePromptLabel: null,
       clusterLabel: 'Compact d’Aurora',
       lastTurn: null,
+      agePriority: {
+        state: 'next-choice',
+        label: 'nouvelle priorité',
+        ageTurns: 0,
+        priority: 1,
+        relevance: 'orienter le prochain choix sans masquer les nouvelles opportunités',
+        almostExpired: false,
+        stale: false,
+      },
+      priorityLabel: 'nouvelle priorité · priorité 1/4',
       nextCheck: 'Vérifier si Compact d’Aurora peut encore suivre Ouvrir le récit d’expansion.',
       expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
     },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
+});
+
+
+test('buildCultureTurnReportDeltas marks stale cultural follow-through reminders behind fresher opportunities', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 12,
+    selectedRegionId: 'harbor',
+    selectedMarker: {
+      overlayId: 'harbor:culture-aurora',
+      regionId: 'harbor',
+      cultureName: 'Harbor Compact',
+      influenceTier: 'strong',
+      influenceScore: 78,
+      discoveries: ['harbor-forum'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+        consequencePreview: {
+          confidence: 'high',
+          opportunity: 'forum portuaire prêt',
+          summary: 'amplifier: forum portuaire prêt.',
+          visibleMarkerIds: ['harbor:culture-aurora:event:forum'],
+        },
+      },
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'chosen',
+        outcome: 'forum ancien à confirmer',
+      },
+    ],
+    activeRecommendations: [
+      {
+        recommendationId: 'harbor:momentum:surge:stabilization',
+        regionId: 'harbor',
+        cultureName: 'Harbor Compact',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'harbor-forum',
+        confidence: 'high',
+        supportKey: 'amplifier',
+        markerIds: ['harbor-marker'],
+        rank: 1,
+      },
+    ],
+  });
+
+  assert.equal(report.commitmentBundles.commitmentFollowThroughReminder.state, 'stale');
+  assert.deepEqual(report.commitmentBundles.commitmentFollowThroughReminder.agePriority, {
+    state: 'stale',
+    label: 'pertinence perdue',
+    ageTurns: 4,
+    priority: 1,
+    relevance: 'ne pas laisser cet ancien rappel masquer les opportunités fraîches',
+    almostExpired: true,
+    stale: true,
+  });
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.nextCheck, /Remplacer ou reconfirmer/);
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.expectedAction, /opportunités fraîches/);
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -455,6 +533,16 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         sourcePromptLabel: null,
         clusterLabel: null,
         lastTurn: null,
+        agePriority: {
+          state: 'none',
+          label: 'aucun engagement actif',
+          ageTurns: 0,
+          priority: 0,
+          relevance: 'aucune promesse culturelle active à vieillir',
+          almostExpired: false,
+          stale: false,
+        },
+        priorityLabel: 'aucun engagement actif · priorité 0/4',
         nextCheck: 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
         expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
       },
@@ -709,6 +797,7 @@ test('buildCultureTurnReportDeltas summarizes coherence tensions between active 
 
 test('buildCultureTurnReportDeltas groups compatible and incompatible cultural commitment bundles', () => {
   const report = buildCultureTurnReportDeltas({
+    turn: 8,
     selectedRegionId: 'river-gate',
     selectedMarker: {
       overlayId: 'river-gate:culture-aurora',
@@ -871,6 +960,16 @@ test('buildCultureTurnReportDeltas groups compatible and incompatible cultural c
   assert.match(report.commitmentBundles.rotationCommitmentSummary.entries[1].repeatPolicy, /dépriorisé/);
   assert.equal(report.commitmentBundles.commitmentFollowThroughReminder.state, 'watch');
   assert.match(report.commitmentBundles.commitmentFollowThroughReminder.summary, /engagement à suivre au tour 8/);
-  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.nextCheck, /dépendance/);
-  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.expectedAction, /dépriorisé/);
+  assert.deepEqual(report.commitmentBundles.commitmentFollowThroughReminder.agePriority, {
+    state: 'expiring',
+    label: 'presque périmé',
+    ageTurns: 1,
+    priority: 3,
+    relevance: 'valider maintenant ou remplacer par une opportunité plus fraîche',
+    almostExpired: true,
+    stale: false,
+  });
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.priorityLabel, /presque périmé · 1 tour · priorité 3\/4/);
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.nextCheck, /Décider ce tour/);
+  assert.match(report.commitmentBundles.commitmentFollowThroughReminder.expectedAction, /opportunité plus fraîche/);
 });
