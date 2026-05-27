@@ -45,12 +45,24 @@ test('atlas military compares attempted closure choices against the recommendati
 
 test('atlas military renders a post-closure relapse watchlist from visible closure risks', () => {
   assert.match(webAppSource, /function buildAtlasMilitaryPostClosureRelapseWatchlist\(comparison, recommendation\)/);
-  assert.match(webAppSource, /Watchlist post-clôture des rechutes provinciales/);
-  assert.match(webAppSource, /À recontrôler/);
+  assert.match(webAppSource, /Fenêtres de sécurité post-clôture des rechutes provinciales/);
+  assert.match(webAppSource, /Fenêtre sûre/);
   assert.match(webAppSource, /capacité à confirmer au tour suivant/);
   assert.match(webAppSource, /fenêtre météo peut rouvrir le front/);
   assert.match(webAppSource, /data-atlas-post-closure-watch/);
   assert.match(webAppSource, /renderAtlasMilitaryPostClosureRelapseWatchlist\(postClosureRelapseWatchlist\)/);
   assert.match(stylesSource, /\.atlas-military-post-closure-watchlist__panel/);
   assert.match(stylesSource, /\.atlas-military-post-closure-watchlist-row--fragile circle/);
+});
+
+test('atlas military adds safe-wait windows to post-closure relapse risks', () => {
+  assert.match(webAppSource, /function getAtlasMilitaryRelapseSafeWaitWindow\(row, status\)/);
+  assert.match(webAppSource, /attente sûre: 2 tours/);
+  assert.match(webAppSource, /attente courte: météo à confirmer/);
+  assert.match(webAppSource, /facteur: pression militaire\/capacité/);
+  assert.match(webAppSource, /facteur: soutien local/);
+  assert.match(webAppSource, /Fenêtres de sécurité post-clôture des rechutes provinciales/);
+  assert.match(webAppSource, /row\.safeWaitWindow/);
+  assert.match(webAppSource, /row\.dominantFactor/);
+  assert.match(stylesSource, /\.atlas-military-post-closure-watchlist-row__window/);
 });

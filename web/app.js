@@ -2121,6 +2121,30 @@ function getAtlasMilitaryRelapseWatchReason(row) {
   return 'cause visible insuffisante: contrôle léger';
 }
 
+
+function getAtlasMilitaryRelapseSafeWaitWindow(row, status) {
+  if (status === 'stable') return 'attente sûre: 2 tours';
+  if (row.blockerType === 'logistics') return 'attente sûre: 1 tour si capacité réservée';
+  if (row.blockerType === 'intel') return 'attente sûre: 1 tour si brouillard stable';
+  if (row.blockerType === 'climate') return 'attente courte: météo à confirmer';
+  if (row.blockerType === 'culture') return 'attente courte: soutien local requis';
+  return 'attente non garantie: vérifier maintenant';
+}
+
+function getAtlasMilitaryRelapseDominantFactor(row) {
+  if (row.blockerType === 'logistics') return 'facteur: pression militaire/capacité';
+  if (row.blockerType === 'intel') return 'facteur: renseignement incomplet';
+  if (row.blockerType === 'climate') return 'facteur: fenêtre météo';
+  if (row.blockerType === 'culture') return 'facteur: soutien local';
+  return 'facteur: voisin instable ou inconnu';
+}
+
+function getAtlasMilitaryRelapseWaitUrgency(status) {
+  if (status === 'stable') return 'peut attendre';
+  if (status === 'fragile') return 'urgent';
+  return 'à borner';
+}
+
 function buildAtlasMilitaryPostClosureRelapseWatchlist(comparison, recommendation) {
   const comparisonRows = comparison?.rows ?? [];
   const recommendationOptions = recommendation?.options ?? [];
@@ -2154,6 +2178,9 @@ function buildAtlasMilitaryPostClosureRelapseWatchlist(comparison, recommendatio
       status,
       statusKey: status === 'stable' ? 'stable' : status === 'fragile' ? 'fragile' : 'surveiller',
       reason: getAtlasMilitaryRelapseWatchReason(row),
+      safeWaitWindow: getAtlasMilitaryRelapseSafeWaitWindow(row, status),
+      dominantFactor: getAtlasMilitaryRelapseDominantFactor(row),
+      waitUrgency: getAtlasMilitaryRelapseWaitUrgency(status),
       nextCheck: status === 'stable' ? 'recontrôle léger' : status === 'fragile' ? 'priorité prochain tour' : 'vérifier signal visible',
       remainingRisk: row.remainingRisk,
     };
@@ -2161,23 +2188,24 @@ function buildAtlasMilitaryPostClosureRelapseWatchlist(comparison, recommendatio
 
   return {
     items,
-    summary: `${items.length} province${items.length > 1 ? 's' : ''} à recontrôler après clôture: ${items.map((item) => `${item.provinceLabel} ${item.status}`).join(', ')}.`,
+    summary: `${items.length} fenêtre${items.length > 1 ? 's' : ''} de sécurité post-clôture: ${items.map((item) => `${item.provinceLabel} ${item.waitUrgency}`).join(', ')}.`,
     empty: false,
   };
 }
 
 function renderAtlasMilitaryPostClosureRelapseWatchlist(watchlist) {
-  const height = watchlist.empty ? 6.8 : 5.6 + (watchlist.items.length * 4.05);
+  const height = watchlist.empty ? 6.8 : 5.8 + (watchlist.items.length * 5.1);
   return `
-    <g class="atlas-military-post-closure-watchlist" aria-label="Watchlist post-clôture des rechutes provinciales: ${watchlist.summary}">
+    <g class="atlas-military-post-closure-watchlist" aria-label="Fenêtres de sécurité post-clôture des rechutes provinciales: ${watchlist.summary}">
       <rect class="atlas-military-post-closure-watchlist__panel" x="43" y="121" width="35" height="${height}" rx="2.1"></rect>
-      <text class="atlas-military-post-closure-watchlist__title" x="44.2" y="123.4">À recontrôler</text>
+      <text class="atlas-military-post-closure-watchlist__title" x="44.2" y="123.4">Fenêtre sûre</text>
       ${watchlist.empty ? `<text class="atlas-military-post-closure-watchlist__empty" x="44.2" y="126.2">${watchlist.summary}</text>` : watchlist.items.map((row, index) => `
-        <g class="atlas-military-post-closure-watchlist-row atlas-military-post-closure-watchlist-row--${row.blockerType} atlas-military-post-closure-watchlist-row--${row.statusKey}" data-atlas-post-closure-watch="${row.watchId}" aria-label="${row.provinceLabel}: ${row.status}; raison ${row.reason}; prochain contrôle ${row.nextCheck}; ${row.remainingRisk}">
-          <circle cx="44.8" cy="${125.7 + index * 4.05}" r="0.64"></circle>
-          <text class="atlas-military-post-closure-watchlist-row__province" x="46" y="${125.1 + index * 4.05}">${row.provinceLabel} · ${row.status}</text>
-          <text class="atlas-military-post-closure-watchlist-row__reason" x="46" y="${126.45 + index * 4.05}">${row.reason}</text>
-          <text class="atlas-military-post-closure-watchlist-row__check" x="46" y="${127.8 + index * 4.05}">${row.nextCheck}</text>
+        <g class="atlas-military-post-closure-watchlist-row atlas-military-post-closure-watchlist-row--${row.blockerType} atlas-military-post-closure-watchlist-row--${row.statusKey}" data-atlas-post-closure-watch="${row.watchId}" aria-label="${row.provinceLabel}: ${row.status}; ${row.safeWaitWindow}; ${row.dominantFactor}; prochain contrôle ${row.nextCheck}; ${row.remainingRisk}">
+          <circle cx="44.8" cy="${125.7 + index * 5.1}" r="0.64"></circle>
+          <text class="atlas-military-post-closure-watchlist-row__province" x="46" y="${125.1 + index * 5.1}">${row.provinceLabel} · ${row.waitUrgency}</text>
+          <text class="atlas-military-post-closure-watchlist-row__window" x="46" y="${126.45 + index * 5.1}">${row.safeWaitWindow}</text>
+          <text class="atlas-military-post-closure-watchlist-row__factor" x="46" y="${127.8 + index * 5.1}">${row.dominantFactor}</text>
+          <text class="atlas-military-post-closure-watchlist-row__check" x="46" y="${129.15 + index * 5.1}">${row.nextCheck}</text>
         </g>
       `).join('')}
     </g>

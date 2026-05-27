@@ -13830,6 +13830,8 @@ button { font: inherit; }
   stroke-width: 0.13;
 }
 .atlas-military-post-closure-watchlist-row__reason,
+.atlas-military-post-closure-watchlist-row__window,
+.atlas-military-post-closure-watchlist-row__factor,
 .atlas-military-post-closure-watchlist-row__check,
 .atlas-military-post-closure-watchlist__empty {
   fill: #fde68a;
@@ -13837,6 +13839,7 @@ button { font: inherit; }
 }
 .atlas-military-post-closure-watchlist-row--stable circle { fill: rgba(74, 222, 128, 0.82); }
 .atlas-military-post-closure-watchlist-row--fragile circle { fill: rgba(251, 191, 36, 0.86); }
+.atlas-military-post-closure-watchlist-row--fragile .atlas-military-post-closure-watchlist-row__window { fill: #fed7aa; }
 .atlas-military-post-closure-watchlist-row--surveiller circle { fill: rgba(96, 165, 250, 0.82); }
 .atlas-military-post-closure-watchlist-row--logistics circle { stroke: rgba(125, 211, 252, 0.78); }
 .atlas-military-post-closure-watchlist-row--climate circle { stroke: rgba(134, 239, 172, 0.78); }
