@@ -9718,6 +9718,75 @@ function buildAtlasClimatePostBoostDeadlineRiskPreview(boostView) {
   };
 }
 
+
+function buildAtlasClimateReadinessConsequenceHints(gapView, boostView, postBoostView) {
+  if (!gapView || gapView.state !== 'warning' || gapView.gaps.length === 0) {
+    return {
+      state: 'empty',
+      hints: [],
+      summary: 'Aucune conséquence readiness climat prioritaire à afficher.',
+    };
+  }
+
+  const boostsByProvince = new Map((boostView?.boosts ?? []).map((boost) => [boost.provinceId, boost]));
+  const postBoostByProvince = new Map((postBoostView?.previews ?? []).map((preview) => [preview.provinceId, preview]));
+  const consequenceByGapType = {
+    capacité: {
+      threatenedSystem: 'capacité mitigation régionale',
+      likelyMapEffect: 'front climatique élargi: une province voisine garde sa cascade active faute d’équipe disponible.',
+    },
+    'dépendance régionale': {
+      threatenedSystem: 'corridor régional partagé',
+      likelyMapEffect: 'effet domino carte: le hub protégé reste dépendant d’un voisin non sécurisé.',
+    },
+    délai: {
+      threatenedSystem: 'fenêtre saisonnière',
+      likelyMapEffect: 'deadline ratée: la province bascule en marqueur critique au prochain tour météo.',
+    },
+    ressource: {
+      threatenedSystem: 'stock logistique climat',
+      likelyMapEffect: 'mitigation partielle: le risque reste visible malgré l’action principale.',
+    },
+  };
+
+  const hints = gapView.gaps
+    .slice(0, 3)
+    .map((gap) => {
+      const boost = boostsByProvince.get(gap.provinceId);
+      const postBoost = postBoostByProvince.get(gap.provinceId);
+      const consequence = consequenceByGapType[gap.gapType] ?? consequenceByGapType.ressource;
+      const followUpEffect = postBoost?.outcome === 'executable'
+        ? 'réduit le risque: le boost rend la fenêtre jouable sans créer de nouvelle queue.'
+        : postBoost?.outcome === 'still-tight'
+          ? 'reporte le risque: le boost gagne du temps mais impose une relecture au prochain tour.'
+          : 'ne change pas vraiment le risque: il faut arbitrer plus qu’un boost minimal.';
+      const priorityReason = gap.status === 'too-late'
+        ? 'priorité maximale car la carte risque déjà de montrer une deadline manquée.'
+        : gap.status === 'insufficient'
+          ? 'priorité haute car la province manque de capacité avant exposition.'
+          : 'priorité de veille car la fenêtre tient seulement si l’action part maintenant.';
+
+      return {
+        provinceId: gap.provinceId,
+        provinceLabel: gap.provinceLabel,
+        status: gap.status,
+        gapType: gap.gapType,
+        deadline: gap.deadline,
+        threatenedSystem: consequence.threatenedSystem,
+        likelyMapEffect: consequence.likelyMapEffect,
+        followUpAction: boost?.smallestBoost ?? 'Confirmer ressource et timing avant validation.',
+        followUpEffect,
+        priorityReason,
+      };
+    });
+
+  return {
+    state: hints.length > 0 ? 'warning' : 'empty',
+    hints,
+    summary: `${hints.length} conséquence${hints.length > 1 ? 's' : ''} carte prioritaire${hints.length > 1 ? 's' : ''}: seules les menaces readiness les plus utiles sont affichées.`,
+  };
+}
+
 function renderAtlasClimatePostBoostDeadlineRiskPreview(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -9737,6 +9806,35 @@ function renderAtlasClimatePostBoostDeadlineRiskPreview(view) {
             <span>${preview.deadline} · ${preview.label}</span>
             <small><b>Boost appliqué</b> · ${preview.appliedBoost}</small>
             <small><b>Pression résiduelle</b> · ${preview.postBoostSignal}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
+
+function renderAtlasClimateReadinessConsequenceHints(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state !== 'warning') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-readiness-consequences map-world-climate-readiness-consequences--${view.state}" aria-label="Conséquences carte des écarts de readiness climat">
+      <div class="map-world-climate-readiness-consequences__header">
+        <strong>Conséquences readiness</strong>
+        <span>${view.hints.length} menace${view.hints.length > 1 ? 's' : ''} priorisée${view.hints.length > 1 ? 's' : ''}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-readiness-consequences__list">
+        ${view.hints.map((hint) => `
+          <li class="map-world-climate-readiness-consequences__item map-world-climate-readiness-consequences__item--${hint.status}">
+            <b>${hint.provinceLabel}</b>
+            <span>${hint.deadline} · ${hint.threatenedSystem}</span>
+            <small><b>Conséquence probable carte</b> · ${hint.likelyMapEffect}</small>
+            <small><b>Action de suivi</b> · ${hint.followUpAction}</small>
+            <small><b>Effet sur risque</b> · ${hint.followUpEffect}</small>
+            <small><b>Pourquoi priorisé</b> · ${hint.priorityReason}</small>
           </li>
         `).join('')}
       </ol>
@@ -20145,6 +20243,11 @@ function render() {
   const atlasClimateUnderReadyExecutionGaps = buildAtlasClimateUnderReadyExecutionGaps(atlasClimateMitigationReadiness);
   const atlasClimateReadinessBoostRecommendations = buildAtlasClimateReadinessBoostRecommendations(atlasClimateUnderReadyExecutionGaps);
   const atlasClimatePostBoostDeadlineRiskPreview = buildAtlasClimatePostBoostDeadlineRiskPreview(atlasClimateReadinessBoostRecommendations);
+  const atlasClimateReadinessConsequenceHints = buildAtlasClimateReadinessConsequenceHints(
+    atlasClimateUnderReadyExecutionGaps,
+    atlasClimateReadinessBoostRecommendations,
+    atlasClimatePostBoostDeadlineRiskPreview,
+  );
   const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
   const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
   const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
@@ -20208,6 +20311,7 @@ function render() {
           ${renderAtlasClimateUnderReadyExecutionGaps(atlasClimateUnderReadyExecutionGaps)}
           ${renderAtlasClimateReadinessBoostRecommendations(atlasClimateReadinessBoostRecommendations)}
           ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
+          ${renderAtlasClimateReadinessConsequenceHints(atlasClimateReadinessConsequenceHints)}
           ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
           ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
           ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
