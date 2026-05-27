@@ -6754,6 +6754,7 @@ function renderCultureTurnReport(report) {
       <div class="culture-turn-report__follow-through culture-turn-report__follow-through--${report.commitmentBundles?.commitmentFollowThroughReminder?.state ?? 'fallback'}" aria-label="Rappel d’engagement culturel à suivre">
         <span>Engagement à suivre</span>
         <strong>${report.commitmentBundles?.commitmentFollowThroughReminder?.summary ?? 'Aucun engagement culturel récent traçable: afficher le prochain choix recommandé sans inventer de promesse passée.'}</strong>
+        <small>Âge/priorité: ${report.commitmentBundles?.commitmentFollowThroughReminder?.priorityLabel ?? 'aucun engagement actif · priorité 0/4'}</small>
         <small>Prochaine vérification: ${report.commitmentBundles?.commitmentFollowThroughReminder?.nextCheck ?? 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.'}</small>
         <small>Action attendue: ${report.commitmentBundles?.commitmentFollowThroughReminder?.expectedAction ?? 'attendre un engagement culturel explicite avant de rappeler une promesse'}</small>
       </div>

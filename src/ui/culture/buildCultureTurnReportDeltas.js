@@ -957,6 +957,47 @@ function buildCulturalRotationCommitmentSummary(recommendationRotationPreview, p
 }
 
 
+function buildCulturalFollowThroughAgePriority(recentCommitment, matchingCurrent, selected, turn = 1) {
+  if (!recentCommitment) {
+    return {
+      state: selected ? 'next-choice' : 'none',
+      label: selected ? 'nouvelle priorité' : 'aucun engagement actif',
+      ageTurns: 0,
+      priority: selected ? 1 : 0,
+      relevance: selected ? 'orienter le prochain choix sans masquer les nouvelles opportunités' : 'aucune promesse culturelle active à vieillir',
+      almostExpired: false,
+      stale: false,
+    };
+  }
+
+  const ageTurns = Math.max(0, Number.isFinite(recentCommitment.turn) ? turn - recentCommitment.turn : 1);
+  const currentStillRelevant = matchingCurrent && matchingCurrent.clusterLabel === recentCommitment.clusterLabel;
+  const rotationState = matchingCurrent?.rotationState ?? 'missing';
+  const almostExpired = ageTurns >= 2 || rotationState === 'deferred-freshness' || rotationState === 'review-soon';
+  const stale = ageTurns >= 3 || rotationState === 'excluded-context' || !currentStillRelevant;
+  const priority = stale
+    ? 1
+    : almostExpired
+      ? 3
+      : matchingCurrent?.rotationState === 'available-now'
+        ? 4
+        : 2;
+
+  return {
+    state: stale ? 'stale' : almostExpired ? 'expiring' : 'current',
+    label: stale ? 'pertinence perdue' : almostExpired ? 'presque périmé' : 'suivi actif',
+    ageTurns,
+    priority,
+    relevance: stale
+      ? 'ne pas laisser cet ancien rappel masquer les opportunités fraîches'
+      : almostExpired
+        ? 'valider maintenant ou remplacer par une opportunité plus fraîche'
+        : 'suivi encore utile si un signal visible confirme la promesse',
+    almostExpired,
+    stale,
+  };
+}
+
 function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary, promptHistoryDrawer, turn = 1) {
   const recentCommitment = promptHistoryDrawer.groups
     .flatMap((group) => group.entries)
@@ -968,6 +1009,8 @@ function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary,
     ?? null;
 
   if (!recentCommitment) {
+    const agePriority = buildCulturalFollowThroughAgePriority(null, null, selected, turn);
+
     return {
       state: 'fallback',
       reminderId: 'culture-commitment:follow-through:fallback',
@@ -975,6 +1018,8 @@ function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary,
       sourcePromptLabel: null,
       clusterLabel: selected?.clusterLabel ?? null,
       lastTurn: null,
+      agePriority,
+      priorityLabel: `${agePriority.label} · priorité ${agePriority.priority}/4`,
       nextCheck: selected
         ? `Vérifier si ${selected.clusterLabel} peut encore suivre ${selected.promptLabel}.`
         : 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
@@ -988,20 +1033,27 @@ function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary,
   const matchingCurrent = rotationCommitmentSummary.entries.find((entry) => entry.clusterLabel === recentCommitment.clusterLabel)
     ?? selected;
   const hasDependency = matchingCurrent?.hasUnresolvedDependencies === true;
+  const agePriority = buildCulturalFollowThroughAgePriority(recentCommitment, matchingCurrent, selected, turn);
 
   return {
-    state: hasDependency ? 'watch' : 'ready',
+    state: agePriority.stale ? 'stale' : hasDependency || agePriority.almostExpired ? 'watch' : 'ready',
     reminderId: `${recentCommitment.historyId}:follow-through-reminder`,
     summary: `${recentCommitment.clusterLabel}: engagement à suivre au tour ${followTurn} — ${recentCommitment.outcome}.`,
     sourcePromptLabel: recentCommitment.promptLabel,
     clusterLabel: recentCommitment.clusterLabel,
     lastTurn: recentCommitment.turn ?? null,
-    nextCheck: hasDependency
-      ? `Lever la dépendance avant de prolonger ${recentCommitment.promptLabel}.`
-      : `Confirmer que ${recentCommitment.promptLabel} produit encore un signal culturel visible.`,
+    agePriority,
+    priorityLabel: `${agePriority.label} · ${agePriority.ageTurns} tour${agePriority.ageTurns > 1 ? 's' : ''} · priorité ${agePriority.priority}/4`,
+    nextCheck: agePriority.stale
+      ? `Remplacer ou reconfirmer ${recentCommitment.promptLabel}: le rappel a perdu sa pertinence.`
+      : agePriority.almostExpired
+        ? `Décider ce tour si ${recentCommitment.promptLabel} mérite encore une action.`
+        : hasDependency
+          ? `Lever la dépendance avant de prolonger ${recentCommitment.promptLabel}.`
+          : `Confirmer que ${recentCommitment.promptLabel} produit encore un signal culturel visible.`,
     expectedAction: matchingCurrent
-      ? `${matchingCurrent.duration}; ${matchingCurrent.repeatPolicy}`
-      : 'réévaluer le suivi culturel sans répéter tout l’historique',
+      ? `${matchingCurrent.duration}; ${matchingCurrent.repeatPolicy}; ${agePriority.relevance}`
+      : `réévaluer le suivi culturel sans répéter tout l’historique; ${agePriority.relevance}`,
   };
 }
 
@@ -1268,6 +1320,16 @@ export function buildCultureTurnReportDeltas({
           sourcePromptLabel: null,
           clusterLabel: null,
           lastTurn: null,
+          agePriority: {
+            state: 'none',
+            label: 'aucun engagement actif',
+            ageTurns: 0,
+            priority: 0,
+            relevance: 'aucune promesse culturelle active à vieillir',
+            almostExpired: false,
+            stale: false,
+          },
+          priorityLabel: 'aucun engagement actif · priorité 0/4',
           nextCheck: 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
           expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
         },
