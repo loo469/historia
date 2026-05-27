@@ -9952,6 +9952,93 @@ function renderAtlasClimateReadinessConsequenceHints(view) {
   `;
 }
 
+function buildAtlasClimateNextReadinessThreshold(consequenceView, boostView, postBoostView) {
+  if (!consequenceView || consequenceView.state !== 'warning' || consequenceView.hints.length === 0) {
+    return {
+      state: 'empty',
+      recommendation: null,
+      noEffectSignals: [],
+      summary: 'Aucun prochain seuil readiness climat à recommander depuis la carte.',
+    };
+  }
+
+  const boostsByProvince = new Map((boostView?.boosts ?? []).map((boost) => [boost.provinceId, boost]));
+  const postBoostByProvince = new Map((postBoostView?.previews ?? []).map((preview) => [preview.provinceId, preview]));
+  const thresholdBySystem = {
+    'capacité mitigation régionale': 'seuil capacité +1 équipe prête',
+    'corridor régional partagé': 'seuil coordination régionale confirmée',
+    'fenêtre saisonnière': 'seuil délai: jalon avancé avant saison critique',
+    'stock logistique climat': 'seuil réserve climat verrouillée',
+  };
+  const benefitBySystem = {
+    'capacité mitigation régionale': 'catastrophe évitée: cascade voisine contenue avant saturation de carte.',
+    'corridor régional partagé': 'région protégée: le corridor partagé cesse de propager le risque.',
+    'fenêtre saisonnière': 'délai gagné: une fenêtre d’action redevient lisible avant la saison critique.',
+    'stock logistique climat': 'mythe stabilisé: le récit de crise ne s’aggrave pas faute de ressource visible.',
+  };
+  const outcomeWeight = { executable: 3, 'still-tight': 2, insufficient: 1 };
+  const recommendations = consequenceView.hints
+    .map((hint) => {
+      const boost = boostsByProvince.get(hint.provinceId);
+      const preview = postBoostByProvince.get(hint.provinceId);
+      const outcome = preview?.outcome ?? 'insufficient';
+      const noImmediateThresholdChange = outcome === 'insufficient';
+      return {
+        provinceId: hint.provinceId,
+        provinceLabel: hint.provinceLabel,
+        status: hint.status,
+        deadline: hint.deadline,
+        threshold: thresholdBySystem[hint.threatenedSystem] ?? 'seuil readiness minimal confirmé',
+        expectedBenefit: benefitBySystem[hint.threatenedSystem] ?? hint.likelyMapEffect,
+        investment: boost?.smallestBoost ?? hint.followUpAction,
+        outcome,
+        noImmediateThresholdChange,
+        signal: noImmediateThresholdChange
+          ? 'petit investissement sans effet de seuil immédiat'
+          : outcome === 'still-tight'
+            ? 'seuil franchi mais marge courte'
+            : 'seuil franchi avec bénéfice lisible',
+        reason: hint.priorityReason,
+      };
+    })
+    .sort((left, right) => outcomeWeight[right.outcome] - outcomeWeight[left.outcome] || (left.noImmediateThresholdChange ? 1 : 0) - (right.noImmediateThresholdChange ? 1 : 0) || left.deadline.localeCompare(right.deadline));
+
+  const recommendation = recommendations.find((candidate) => !candidate.noImmediateThresholdChange) ?? recommendations[0];
+  const noEffectSignals = recommendations
+    .filter((candidate) => candidate.noImmediateThresholdChange)
+    .slice(0, 2);
+
+  return {
+    state: recommendation.noImmediateThresholdChange ? 'no-threshold-change' : recommendation.outcome === 'still-tight' ? 'threshold-tight' : 'threshold-ready',
+    recommendation,
+    noEffectSignals,
+    summary: recommendation.noImmediateThresholdChange
+      ? `${recommendation.provinceLabel}: aucun petit investissement ne change un seuil immédiatement; escalader avant de promettre un bénéfice carte.`
+      : `${recommendation.provinceLabel}: prochain seuil recommandé (${recommendation.threshold}) avec bénéfice carte immédiat.`,
+  };
+}
+
+function renderAtlasClimateNextReadinessThreshold(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || !view.recommendation) {
+    return '';
+  }
+
+  const recommendation = view.recommendation;
+  return `
+    <aside class="map-world-climate-next-threshold map-world-climate-next-threshold--${view.state}" aria-label="Prochain seuil de préparation climatique recommandé">
+      <div class="map-world-climate-next-threshold__header">
+        <strong>Prochain seuil readiness</strong>
+        <span>${recommendation.signal}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${recommendation.provinceLabel}</b> · ${recommendation.deadline} · ${recommendation.threshold}</small>
+      <small><b>Bénéfice attendu</b> · ${recommendation.expectedBenefit}</small>
+      <small><b>Investissement lisible</b> · ${recommendation.investment}</small>
+      ${view.noEffectSignals.length > 0 ? `<small><b>Sans effet immédiat</b> · ${view.noEffectSignals.map((signal) => `${signal.provinceLabel}: ${signal.threshold}`).join(' | ')}</small>` : ''}
+    </aside>
+  `;
+}
+
 function buildAtlasClimateReadinessBoostReliefRanking(postBoostView) {
   if (!postBoostView || postBoostView.state === 'empty' || postBoostView.previews.length === 0) {
     return {
@@ -20375,6 +20462,11 @@ function render() {
     atlasClimateReadinessBoostRecommendations,
     atlasClimatePostBoostDeadlineRiskPreview,
   );
+  const atlasClimateNextReadinessThreshold = buildAtlasClimateNextReadinessThreshold(
+    atlasClimateReadinessConsequenceHints,
+    atlasClimateReadinessBoostRecommendations,
+    atlasClimatePostBoostDeadlineRiskPreview,
+  );
   const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
   const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
   const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
@@ -20439,6 +20531,7 @@ function render() {
           ${renderAtlasClimateReadinessBoostRecommendations(atlasClimateReadinessBoostRecommendations)}
           ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
           ${renderAtlasClimateReadinessConsequenceHints(atlasClimateReadinessConsequenceHints)}
+          ${renderAtlasClimateNextReadinessThreshold(atlasClimateNextReadinessThreshold)}
           ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
           ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
           ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
