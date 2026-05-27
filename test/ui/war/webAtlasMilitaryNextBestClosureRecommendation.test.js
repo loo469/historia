@@ -42,3 +42,15 @@ test('atlas military compares attempted closure choices against the recommendati
   assert.match(stylesSource, /\.atlas-military-closure-after-action__panel/);
   assert.match(stylesSource, /\.atlas-military-closure-after-action-row\.is-alternative circle/);
 });
+
+test('atlas military renders a post-closure relapse watchlist from visible closure risks', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryPostClosureRelapseWatchlist\(comparison, recommendation\)/);
+  assert.match(webAppSource, /Watchlist post-clôture des rechutes provinciales/);
+  assert.match(webAppSource, /À recontrôler/);
+  assert.match(webAppSource, /capacité à confirmer au tour suivant/);
+  assert.match(webAppSource, /fenêtre météo peut rouvrir le front/);
+  assert.match(webAppSource, /data-atlas-post-closure-watch/);
+  assert.match(webAppSource, /renderAtlasMilitaryPostClosureRelapseWatchlist\(postClosureRelapseWatchlist\)/);
+  assert.match(stylesSource, /\.atlas-military-post-closure-watchlist__panel/);
+  assert.match(stylesSource, /\.atlas-military-post-closure-watchlist-row--fragile circle/);
+});
