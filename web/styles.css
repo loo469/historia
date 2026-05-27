@@ -2012,6 +2012,45 @@ button { font: inherit; }
 .culture-turn-report__follow-through--watch { border-color: rgba(251, 191, 36, 0.42); }
 .culture-turn-report__follow-through--stale { border-color: rgba(248, 113, 113, 0.45); }
 .culture-turn-report__follow-through--fallback { border-color: rgba(148, 163, 184, 0.24); }
+.culture-turn-report__follow-through-plan {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+.culture-turn-report__follow-through-plan > span {
+  color: #bae6fd;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__follow-through-plan > strong { color: #f8fafc; font-size: 12px; }
+.culture-turn-report__follow-through-plan-list { display: grid; gap: 6px; }
+.culture-turn-report__follow-through-plan-group {
+  padding: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 6, 23, 0.22);
+}
+.culture-turn-report__follow-through-plan-group summary { cursor: pointer; }
+.culture-turn-report__follow-through-plan-group summary b { color: #e0f2fe; }
+.culture-turn-report__follow-through-plan-group summary em { color: var(--muted); margin-left: 6px; }
+.culture-turn-report__follow-through-plan-group small { display: block; color: var(--muted); margin-top: 4px; }
+.culture-turn-report__follow-through-plan-group--ready { border-color: rgba(74, 222, 128, 0.32); }
+.culture-turn-report__follow-through-plan-group--urgent { border-color: rgba(251, 191, 36, 0.45); }
+.culture-turn-report__follow-through-plan-group--stale { border-color: rgba(248, 113, 113, 0.42); }
+.culture-turn-report__follow-through-plan-details { display: grid; gap: 4px; margin-top: 6px; }
+.culture-turn-report__follow-through-plan-detail {
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.35);
+}
+.culture-turn-report__follow-through-plan-detail b { color: #f8fafc; }
 .culture-turn-report__history {
   display: grid;
   gap: 7px;

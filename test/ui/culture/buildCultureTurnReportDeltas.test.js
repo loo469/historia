@@ -376,6 +376,36 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       nextCheck: 'Vérifier si Compact d’Aurora peut encore suivre Ouvrir le récit d’expansion.',
       expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
     },
+    followThroughBundlePlan: {
+      state: 'ready',
+      summary: '1 plan de suivi culturel groupé; premier: Compact d’Aurora.',
+      bestBundleId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle',
+      groups: [
+        {
+          bundleId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle',
+          clusterLabel: 'Compact d’Aurora',
+          theme: 'Ouvrir le récit d’expansion',
+          state: 'ready',
+          summary: 'Compact d’Aurora: 1 suivi regroupé sur Ouvrir le récit d’expansion.',
+          groupingReason: 'Même enjeu culturel: garder le contexte visible sans grossir la file.',
+          unlockScore: 4,
+          bestFirstFollowUp: 'Ouvrir le récit d’expansion — expansion prudente: verrouille le bénéfice culturel principal autour de Compact d’Aurora',
+          avoidedLoss: 'expansion prudente: verrouille le bénéfice culturel principal autour de Compact d’Aurora',
+          detailCount: 1,
+          details: [
+            {
+              detailId: 'culture-commitment:expansion:timing:river-gate:follow-up',
+              source: 'current',
+              promptLabel: 'Ouvrir le récit d’expansion',
+              clusterLabel: 'Compact d’Aurora',
+              state: 'best-safe',
+              note: 'aucune décision récente similaire dans la limite affichée',
+            },
+          ],
+        },
+      ],
+      detailMode: 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
+    },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
   });
 });
@@ -446,6 +476,10 @@ test('buildCultureTurnReportDeltas marks stale cultural follow-through reminders
   });
   assert.match(report.commitmentBundles.commitmentFollowThroughReminder.nextCheck, /Remplacer ou reconfirmer/);
   assert.match(report.commitmentBundles.commitmentFollowThroughReminder.expectedAction, /opportunités fraîches/);
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.state, 'actionable');
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.groups[0].clusterLabel, 'Compact d’Aurora');
+  assert.match(report.commitmentBundles.followThroughBundlePlan.groups[0].groupingReason, /Même enjeu culturel|Même thème/);
+  assert.match(report.commitmentBundles.followThroughBundlePlan.groups[0].avoidedLoss, /opportunité fraîche/);
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -545,6 +579,13 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         priorityLabel: 'aucun engagement actif · priorité 0/4',
         nextCheck: 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
         expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
+      },
+      followThroughBundlePlan: {
+        state: 'quiet',
+        summary: 'Aucun plan de suivi culturel groupé.',
+        bestBundleId: null,
+        groups: [],
+        detailMode: 'Aucun détail individuel à ouvrir.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
     },
