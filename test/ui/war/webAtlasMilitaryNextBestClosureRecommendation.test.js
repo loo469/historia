@@ -145,3 +145,27 @@ test('atlas military warns when neighboring province reviews become stale', () =
   assert.match(stylesSource, /\.atlas-military-neighbor-review-staleness--front/);
   assert.match(stylesSource, /\.atlas-military-neighbor-review-staleness--unknown/);
 });
+
+// MAP-A26: explain what changed since a stale neighbouring province review so
+// the player can decide whether to re-run it.
+test('atlas military explains what changed since the stale neighboring review', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborReviewChangeExplanation\(staleness, priority, shifts\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborReviewChangeExplanation\(change, y\)/);
+  assert.match(webAppSource, /Changement depuis la revue voisine stale/);
+  assert.match(webAppSource, /Changement: ordre modifié/);
+  assert.match(webAppSource, /ordre ajouté\/retiré: recommandation à recalculer/);
+  assert.match(webAppSource, /Changement: front modifié/);
+  assert.match(webAppSource, /front voisin impacté/);
+  assert.match(webAppSource, /Changement: tour passé/);
+  assert.match(webAppSource, /priorité voisine recalculée sans cible critique/);
+  assert.match(webAppSource, /Changement: cause non précisée/);
+  assert.match(webAppSource, /fallback discret: donnée stale non identifiée/);
+  assert.match(webAppSource, /relancer toute la revue/);
+  assert.match(webAppSource, /vérifier seulement \$\{impacted\}/);
+  assert.match(webAppSource, /conserver la décision/);
+  assert.match(webAppSource, /reviewChange: buildAtlasMilitaryNeighborReviewChangeExplanation/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborReviewChangeExplanation\(preview\.reviewChange, changeY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-change__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-change--invalidant/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-change--mineur/);
+});
