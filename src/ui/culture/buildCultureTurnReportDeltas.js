@@ -1169,6 +1169,64 @@ function buildCulturalBundleFalloutPreview(cleanupPrompts) {
   };
 }
 
+function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, falloutPreview) {
+  const candidates = cleanupPrompts
+    .map((prompt) => {
+      const group = groups.find((candidate) => candidate.bundleId === prompt.bundleId) ?? null;
+      const fallout = falloutPreview.entries.find((entry) => entry.bundleId === prompt.bundleId) ?? null;
+      const freshDetail = group?.details.find((detail) => detail.source === 'current')
+        ?? groups.find((candidate) => candidate.bundleId !== prompt.bundleId)?.details.find((detail) => detail.source === 'current')
+        ?? null;
+      const highRisk = prompt.state === 'obsolete' || (fallout?.severity ?? 0) >= 2;
+      if (!highRisk) {
+        return null;
+      }
+      const alternativeType = prompt.state === 'obsolete' && freshDetail
+        ? 'renew'
+        : prompt.state === 'obsolete'
+          ? 'abandon'
+          : 'replan';
+      const action = alternativeType === 'renew'
+        ? `renouveler via ${freshDetail.promptLabel}`
+        : alternativeType === 'abandon'
+          ? 'abandonner ce bundle obsolète'
+          : 'replanifier après cleanup du risque';
+      const avoidedConsequence = fallout?.consequence
+        ?? (prompt.state === 'obsolete'
+          ? `${prompt.clusterLabel}: opportunité fraîche masquée.`
+          : `${prompt.clusterLabel}: tension culturelle prolongée.`);
+
+      return {
+        replacementId: `${prompt.cleanupId}:replacement`,
+        bundleId: prompt.bundleId,
+        clusterLabel: prompt.clusterLabel,
+        state: alternativeType,
+        action,
+        replacementPromptLabel: freshDetail?.promptLabel ?? null,
+        avoidedConsequence,
+        reason: `${prompt.reason} Alternative compacte: ${action}.`,
+        priority: (fallout?.severity ?? 0) + (prompt.state === 'obsolete' ? 2 : 1),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.priority - left.priority || left.clusterLabel.localeCompare(right.clusterLabel))
+    .slice(0, 3);
+  const top = candidates[0] ?? null;
+
+  return {
+    state: candidates.length === 0
+      ? 'quiet'
+      : candidates.some((candidate) => candidate.state === 'renew' || candidate.state === 'abandon')
+        ? 'action-needed'
+        : 'replan',
+    summary: !top
+      ? 'Aucun remplacement culturel nécessaire ce tour.'
+      : `${top.clusterLabel}: ${top.action} pour éviter ${top.avoidedConsequence}`,
+    primaryReplacementId: top?.replacementId ?? null,
+    entries: candidates,
+  };
+}
+
 function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder) {
   const groups = promptHistoryDrawer.groups.map((group) => {
     const currentEntries = group.entries.filter((entry) => entry.source === 'current');
@@ -1232,6 +1290,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     ? 'Aucun prompt de nettoyage culturel à proposer.'
     : `${cleanupPrompts.length} prompt${cleanupPrompts.length > 1 ? 's' : ''} de nettoyage: ${cleanupPrompts.map((prompt) => `${prompt.clusterLabel} → ${prompt.action}`).join(' | ')}.`;
   const falloutPreview = buildCulturalBundleFalloutPreview(cleanupPrompts);
+  const replacementRecommendations = buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, falloutPreview);
 
   return {
     state: groups.length === 0
@@ -1249,6 +1308,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     cleanupPrompts,
     cleanupSummary,
     falloutPreview,
+    replacementRecommendations,
     detailMode: groups.length === 0
       ? 'Aucun détail individuel à ouvrir.'
       : 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
@@ -1549,6 +1609,12 @@ export function buildCultureTurnReportDeltas({
             consequence: 'Aucun fallout immédiat détecté.',
             severity: 0,
             minimalCleanupAction: null,
+            entries: [],
+          },
+          replacementRecommendations: {
+            state: 'quiet',
+            summary: 'Aucun remplacement culturel nécessaire ce tour.',
+            primaryReplacementId: null,
             entries: [],
           },
           detailMode: 'Aucun détail individuel à ouvrir.',

@@ -2070,6 +2070,37 @@ button { font: inherit; }
 .culture-turn-report__fallout-preview--action-needed { border-color: rgba(248, 113, 113, 0.45); }
 .culture-turn-report__fallout-preview--watch { border-color: rgba(251, 191, 36, 0.38); }
 .culture-turn-report__fallout-preview--quiet { border-color: rgba(74, 222, 128, 0.24); }
+.culture-turn-report__replacement-recommendations {
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.28);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+.culture-turn-report__replacement-recommendations > span {
+  color: #bae6fd;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__replacement-recommendations > strong { color: #f8fafc; font-size: 11px; }
+.culture-turn-report__replacement-recommendation-list { display: grid; gap: 5px; }
+.culture-turn-report__replacement-recommendation {
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+  border-radius: 9px;
+  background: rgba(2, 6, 23, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.culture-turn-report__replacement-recommendation b { color: #f8fafc; }
+.culture-turn-report__replacement-recommendation small { color: var(--muted); }
+.culture-turn-report__replacement-recommendations--action-needed { border-color: rgba(248, 113, 113, 0.45); }
+.culture-turn-report__replacement-recommendations--replan { border-color: rgba(251, 191, 36, 0.4); }
+.culture-turn-report__replacement-recommendation--renew { border-color: rgba(74, 222, 128, 0.34); }
+.culture-turn-report__replacement-recommendation--abandon { border-color: rgba(248, 113, 113, 0.4); }
+.culture-turn-report__replacement-recommendation--replan { border-color: rgba(251, 191, 36, 0.4); }
 .culture-turn-report__cleanup-prompts {
   display: grid;
   gap: 6px;

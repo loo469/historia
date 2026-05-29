@@ -440,6 +440,24 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
           },
         ],
       },
+      replacementRecommendations: {
+        state: 'replan',
+        summary: 'Compact d’Aurora: replanifier après cleanup du risque pour éviter Compact d’Aurora: tension culturelle maintenue si le nettoyage est ignoré.',
+        primaryReplacementId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle:cleanup-prompt:replacement',
+        entries: [
+          {
+            replacementId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle:cleanup-prompt:replacement',
+            bundleId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle',
+            clusterLabel: 'Compact d’Aurora',
+            state: 'replan',
+            action: 'replanifier après cleanup du risque',
+            replacementPromptLabel: 'Ouvrir le récit d’expansion',
+            avoidedConsequence: 'Compact d’Aurora: tension culturelle maintenue si le nettoyage est ignoré.',
+            reason: 'Compact d’Aurora: expansion prudente: verrouille le bénéfice culturel principal autour de Compact d’Aurora; Vérifier si Compact d’Aurora peut encore suivre Ouvrir le récit d’expansion. Alternative compacte: replanifier après cleanup du risque.',
+            priority: 3,
+          },
+        ],
+      },
       detailMode: 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
     },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
@@ -532,6 +550,16 @@ test('buildCultureTurnReportDeltas marks stale cultural follow-through reminders
   assert.equal(report.commitmentBundles.followThroughBundlePlan.falloutPreview.consequenceType, 'opportunity-lost');
   assert.match(report.commitmentBundles.followThroughBundlePlan.falloutPreview.consequence, /opportunité fraîche masquée/);
   assert.equal(report.commitmentBundles.followThroughBundlePlan.falloutPreview.minimalCleanupAction, 'remplacer par Ouvrir le récit d’expansion');
+  assert.deepEqual(report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.state,
+    entry.action,
+    entry.replacementPromptLabel,
+  ]), [
+    ['Compact d’Aurora', 'renew', 'renouveler via Ouvrir le récit d’expansion', 'Ouvrir le récit d’expansion'],
+    ['Harbor Compact', 'replan', 'replanifier après cleanup du risque', 'Ouvrir le récit d’expansion'],
+  ]);
+  assert.match(report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries[0].avoidedConsequence, /opportunité fraîche masquée/);
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -648,6 +676,12 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
           consequence: 'Aucun fallout immédiat détecté.',
           severity: 0,
           minimalCleanupAction: null,
+          entries: [],
+        },
+        replacementRecommendations: {
+          state: 'quiet',
+          summary: 'Aucun remplacement culturel nécessaire ce tour.',
+          primaryReplacementId: null,
           entries: [],
         },
         detailMode: 'Aucun détail individuel à ouvrir.',

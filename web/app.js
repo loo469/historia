@@ -6988,6 +6988,21 @@ function renderCultureTurnReport(report) {
           <small>Conséquence: ${report.commitmentBundles?.followThroughBundlePlan?.falloutPreview?.consequence ?? 'Aucun fallout immédiat détecté.'}</small>
           ${report.commitmentBundles?.followThroughBundlePlan?.falloutPreview?.minimalCleanupAction ? `<small>Cleanup minimal: ${report.commitmentBundles.followThroughBundlePlan.falloutPreview.minimalCleanupAction}</small>` : ''}
         </div>
+        <div class="culture-turn-report__replacement-recommendations culture-turn-report__replacement-recommendations--${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.state ?? 'quiet'}" aria-label="Remplacements recommandés pour bundles culturels périmés">
+          <span>Remplacement recommandé</span>
+          <strong>${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.summary ?? 'Aucun remplacement culturel nécessaire ce tour.'}</strong>
+          ${(report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.entries ?? []).length > 0 ? `
+            <div class="culture-turn-report__replacement-recommendation-list">
+              ${report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries.map((entry) => `
+                <span class="culture-turn-report__replacement-recommendation culture-turn-report__replacement-recommendation--${entry.state}">
+                  <b>${entry.clusterLabel}</b>
+                  <small>${entry.action}${entry.replacementPromptLabel ? ` · prompt: ${entry.replacementPromptLabel}` : ''}</small>
+                  <small>Évite: ${entry.avoidedConsequence}</small>
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
         <div class="culture-turn-report__cleanup-prompts" aria-label="Prompts de nettoyage des bundles culturels">
           <strong>${report.commitmentBundles?.followThroughBundlePlan?.cleanupSummary ?? 'Aucun prompt de nettoyage culturel à proposer.'}</strong>
           ${(report.commitmentBundles?.followThroughBundlePlan?.cleanupPrompts ?? []).length > 0 ? `
