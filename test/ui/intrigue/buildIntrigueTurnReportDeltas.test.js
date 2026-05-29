@@ -93,6 +93,14 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
       justification: 'la confiance fragile justifie d’attendre un signal plus sûr avant d’agir',
     },
     fogSafe: true,
+    minimumVerificationPrompt: {
+      state: 'low-confidence',
+      confidence: 'baisse',
+      cause: 'exposition',
+      verification: 'Vérifier le niveau d’exposition visible avant d’engager une réponse lourde.',
+      waitLessRisky: true,
+      summary: 'Attendre un tour est moins risqué que forcer l’action tant que la confiance reste basse.',
+    },
   });
   assert.ok(report.deltas.some((delta) => delta.type === 'timing' && delta.detail === 'agir maintenant → attendre: cause visible exposition.'));
 });
@@ -121,6 +129,27 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
     justifies: 'act-now',
     label: 'baisse: délai',
     justification: 'la perte de confiance rend l’attente plus risquée que l’action immédiate',
+  });
+  assert.deepEqual(report.minimumVerificationPrompt, {
+    state: 'low-confidence',
+    confidence: 'baisse',
+    cause: 'délai',
+    verification: 'Confirmer que le signal n’a pas vieilli avant de forcer l’action immédiate.',
+    waitLessRisky: false,
+    summary: 'Agir maintenant reste indiqué, mais seulement après une vérification minimale du signal visible.',
+  });
+});
+
+test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is sufficient', () => {
+  const report = buildIntrigueTurnReportDeltas(province, buildIntrigueView(), { previousActionCode: 'contenir' });
+
+  assert.deepEqual(report.minimumVerificationPrompt, {
+    state: 'sufficient-confidence',
+    confidence: 'suffisante',
+    cause: 'aucun changement de timing confirmé',
+    verification: 'Aucune vérification minimale requise avant l’action recommandée.',
+    waitLessRisky: false,
+    summary: 'Confiance suffisante: garder la recommandation actuelle sans étape de vérification supplémentaire.',
   });
 });
 

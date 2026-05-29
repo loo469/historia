@@ -8035,6 +8035,13 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
           <small>Confiance ${report.timingRecommendationChange.confidenceShift?.label ?? 'instable: signal contradictoire'} · ${report.timingRecommendationChange.confidenceShift?.justification ?? 'justification à confirmer sans révéler de donnée masquée'}</small>
         </div>
       ` : ''}
+      ${report.minimumVerificationPrompt ? `
+        <div class="province-intrigue-turn-report__verification province-intrigue-turn-report__verification--${report.minimumVerificationPrompt.state}" aria-label="Vérification minimale avant timing intrigue">
+          <b>${report.minimumVerificationPrompt.state === 'low-confidence' ? 'Vérification minimale' : 'Confiance suffisante'}</b>
+          <span>${report.minimumVerificationPrompt.verification}</span>
+          <small>${report.minimumVerificationPrompt.summary}</small>
+        </div>
+      ` : ''}
       ${report.deltas.length > 0 ? `
         <ul class="province-intrigue-turn-report__list">
           ${report.deltas.map((delta) => `
