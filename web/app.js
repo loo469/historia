@@ -8109,6 +8109,13 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               <small>${preview.secondaryChoiceRelapsePreview.guardAction}</small>
             </div>
           ` : ''}
+          ${preview.localRecoveryCapacityConflictWarning && preview.localRecoveryCapacityConflictWarning.state !== 'empty' ? `
+            <div class="province-logistics-capacity-conflict province-logistics-capacity-conflict--${preview.localRecoveryCapacityConflictWarning.state}" aria-label="Conflit de capacité entre récupération locale et route critique">
+              <b>Conflit capacité</b>
+              <span>${preview.localRecoveryCapacityConflictWarning.summary}</span>
+              <small>${preview.localRecoveryCapacityConflictWarning.detail}</small>
+            </div>
+          ` : ''}
         </div>
       ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">

@@ -111,6 +111,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.secondaryChoiceRelapsePreview.summary, /Choix secondaire|rechute|fragile|stable/);
   assert.match(preview.secondaryChoiceRelapsePreview.factor, /capacité|dette logistique|route critique|momentum|marge/);
   assert.match(preview.secondaryChoiceRelapsePreview.guardAction, /Action minimale|Ember Line/);
+  assert.ok(['warning', 'critical'].includes(preview.localRecoveryCapacityConflictWarning.state));
+  assert.match(preview.localRecoveryCapacityConflictWarning.summary, /Attention: ce choix retarde aussi/);
+  assert.match(preview.localRecoveryCapacityConflictWarning.detail, /consomme|partage|Outils/);
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
   assert.match(preview.primaryLogisticsAction.downstreamImpact, /pénurie|route|province|délai/);
@@ -178,6 +181,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.primarySecondaryTradeoff.summary, /indisponible|aucun bottleneck secondaire/);
   assert.equal(preview.secondaryChoiceRelapsePreview.state, 'unknown');
   assert.match(preview.secondaryChoiceRelapsePreview.summary, /Rechute non chiffrable/);
+  assert.equal(preview.localRecoveryCapacityConflictWarning.state, 'empty');
+  assert.match(preview.localRecoveryCapacityConflictWarning.summary, /Aucun conflit transversal/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
