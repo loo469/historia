@@ -172,6 +172,43 @@ function buildNextTurnUnlock(principalRisk, fullReviewRequired, timingRecommenda
   return 'Au prochain tour, elle réduira l’incertitude avant de choisir entre agir et attendre.';
 }
 
+function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingRecommendationChange) {
+  const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
+  const optionsByRisk = {
+    'exposition excessive': [
+      { type: 'defensive', label: 'Défensif', consequence: 'réduire l’exposition avant toute réponse lourde' },
+      { type: 'wait', label: 'Attente', consequence: 'attendre un tour si le seuil visible redevient sûr' },
+      { type: 'offensive', label: 'Offensif', consequence: 'agir seulement si l’exposition reste maîtrisée' },
+    ],
+    'timing fragile': [
+      { type: 'offensive', label: 'Offensif', consequence: 'agir vite si la fenêtre visible se ferme' },
+      { type: 'wait', label: 'Attente', consequence: 'attendre si le signal reste frais au prochain tour' },
+      { type: 'defensive', label: 'Défensif', consequence: 'limiter le coût d’un recheck si la fenêtre est perdue' },
+    ],
+    'signal contradictoire': [
+      { type: 'offensive', label: 'Offensif', consequence: 'agir si les deux indices visibles convergent' },
+      { type: 'defensive', label: 'Défensif', consequence: 'basculer en revue complète si le recoupement diverge' },
+      { type: 'wait', label: 'Attente', consequence: 'différer seulement si l’incertitude baisse sans contradiction' },
+    ],
+    'confiance basse': [
+      { type: 'defensive', label: 'Défensif', consequence: 'stabiliser la lecture si la confiance reste basse' },
+      { type: 'wait', label: 'Attente', consequence: 'attendre si la cause visible n’empire pas' },
+      { type: 'offensive', label: 'Offensif', consequence: 'agir si le contrôle confirme un signal exploitable' },
+    ],
+  };
+  const options = optionsByRisk[principalRisk] ?? optionsByRisk['confiance basse'];
+
+  if (fullReviewRequired) {
+    return options.slice(0, 2);
+  }
+
+  if (!canWaitNextTurn) {
+    return options.filter((option) => option.type !== 'wait').slice(0, 2);
+  }
+
+  return options.slice(0, 3);
+}
+
 function buildSafestMinimalVerification(prompt, timingRecommendationChange = null) {
   if (!prompt || prompt.state !== 'low-confidence') {
     return {
@@ -181,6 +218,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
       action: 'Conserver la recommandation actuelle.',
       whyEnough: 'La confiance visible ne demande pas de déblocage avant attente.',
       unlockNextTurn: 'Aucun choix supplémentaire à débloquer au prochain tour.',
+      followUpOptions: [],
       fullReviewRequired: false,
       fallback: true,
     };
@@ -230,6 +268,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     action: plan.action,
     whyEnough: plan.whyEnough,
     unlockNextTurn: buildNextTurnUnlock(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
+    followUpOptions: buildUnlockedFollowUpOptions(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };
