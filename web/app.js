@@ -7977,6 +7977,13 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               <small>${preview.primarySecondaryTradeoff.opportunityCost}</small>
             </div>
           ` : ''}
+          ${preview.secondaryChoiceRelapsePreview ? `
+            <div class="province-logistics-secondary-relapse province-logistics-secondary-relapse--${preview.secondaryChoiceRelapsePreview.state}" aria-label="Risque de rechute si le bottleneck secondaire est choisi">
+              <b>Risque après choix secondaire</b>
+              <span>${preview.secondaryChoiceRelapsePreview.summary}</span>
+              <small>${preview.secondaryChoiceRelapsePreview.guardAction}</small>
+            </div>
+          ` : ''}
         </div>
       ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">

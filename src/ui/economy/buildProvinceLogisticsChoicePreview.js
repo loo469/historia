@@ -744,6 +744,49 @@ function buildPrimarySecondaryTradeoff(priorityAction, selectedActionPreview, se
   };
 }
 
+
+function buildSecondaryChoiceRelapsePreview(priorityAction, selectedActionPreview, secondaryBottleneckPreview, primarySecondaryTradeoff) {
+  if (!priorityAction || !secondaryBottleneckPreview || secondaryBottleneckPreview.state === 'empty') {
+    return {
+      state: 'unknown',
+      summary: 'Rechute non chiffrable: aucun choix secondaire exploitable pour comparer la marge du levier principal.',
+      factor: 'projection insuffisante',
+      guardAction: 'Attendre un signal secondaire ou garder le levier principal en veille.',
+      safeSecondary: false,
+    };
+  }
+
+  const secondaryBetter = primarySecondaryTradeoff?.secondaryBetter ?? false;
+  const criticalRemaining = selectedActionPreview?.criticalRemaining ?? false;
+  const state = secondaryBetter
+    ? 'fragile'
+    : criticalRemaining || secondaryBottleneckPreview.state === 'blocked'
+      ? 'relapse-risk'
+      : secondaryBottleneckPreview.state === 'watch'
+        ? 'fragile'
+        : 'stable';
+  const factor = criticalRemaining
+    ? `dette logistique encore critique sur ${priorityAction.route}`
+    : secondaryBottleneckPreview.state === 'blocked'
+      ? `route critique ${secondaryBottleneckPreview.route} peut absorber la capacité avant stabilisation`
+      : secondaryBottleneckPreview.state === 'watch'
+        ? `momentum insuffisant si ${secondaryBottleneckPreview.route} reste sous surveillance`
+        : `marge suffisante après ${priorityAction.action}`;
+  const safeSecondary = state === 'stable';
+
+  return {
+    state,
+    summary: safeSecondary
+      ? `Choix secondaire sûr: le levier principal reste stable, ${factor}.`
+      : `Choix secondaire risqué: le levier principal devient ${state === 'relapse-risk' ? 'en rechute probable' : 'fragile'}, facteur clé: ${factor}.`,
+    factor,
+    guardAction: safeSecondary
+      ? `Action minimale: garder ${priorityAction.route} en veille pendant le traitement secondaire.`
+      : `Action minimale: sécuriser ${priorityAction.route} avec ${priorityAction.cost} avant de traiter ${secondaryBottleneckPreview.route}.`,
+    safeSecondary,
+  };
+}
+
 function buildPrimaryLogisticsQueueAction(priorityAction, selectedActionPreview, queuedLogisticsActions = []) {
   if (!priorityAction) {
     return {
@@ -794,7 +837,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const queuedLogisticsActions = Array.isArray(normalizedOptions.queuedLogisticsActions) ? normalizedOptions.queuedLogisticsActions : [];
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', recoveryLeverRanking: buildRecoveryLeverRanking([], [], false), selectedActionPreview: buildSelectedActionImpactPreview(null, []), secondaryBottleneckPreview: buildSecondaryBottleneckPreview(null, []), primarySecondaryTradeoff: buildPrimarySecondaryTradeoff(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, [])), primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', recoveryLeverRanking: buildRecoveryLeverRanking([], [], false), selectedActionPreview: buildSelectedActionImpactPreview(null, []), secondaryBottleneckPreview: buildSecondaryBottleneckPreview(null, []), primarySecondaryTradeoff: buildPrimarySecondaryTradeoff(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, [])), secondaryChoiceRelapsePreview: buildSecondaryChoiceRelapsePreview(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, []), null), primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -833,6 +876,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       selectedActionPreview: buildSelectedActionImpactPreview(null, []),
       secondaryBottleneckPreview: buildSecondaryBottleneckPreview(null, []),
       primarySecondaryTradeoff: buildPrimarySecondaryTradeoff(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, [])),
+      secondaryChoiceRelapsePreview: buildSecondaryChoiceRelapsePreview(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, []), null),
       primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions),
       status: 'stable',
       summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
@@ -848,6 +892,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const selectedActionPreview = buildSelectedActionImpactPreview(recommendedPriority, routeChoices);
   const secondaryBottleneckPreview = buildSecondaryBottleneckPreview(recommendedPriority, routeChoices);
   const primarySecondaryTradeoff = buildPrimarySecondaryTradeoff(recommendedPriority, selectedActionPreview, secondaryBottleneckPreview);
+  const secondaryChoiceRelapsePreview = buildSecondaryChoiceRelapsePreview(recommendedPriority, selectedActionPreview, secondaryBottleneckPreview, primarySecondaryTradeoff);
   const primaryLogisticsAction = buildPrimaryLogisticsQueueAction(recommendedPriority, selectedActionPreview, queuedLogisticsActions);
 
   return {
@@ -869,6 +914,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     selectedActionPreview,
     secondaryBottleneckPreview,
     primarySecondaryTradeoff,
+    secondaryChoiceRelapsePreview,
     primaryLogisticsAction,
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
