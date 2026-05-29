@@ -7105,6 +7105,8 @@ function renderCultureTurnReport(report) {
         <div class="culture-turn-report__replacement-recommendations culture-turn-report__replacement-recommendations--${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.state ?? 'quiet'}" aria-label="Remplacements recommandés pour bundles culturels périmés">
           <span>Remplacement recommandé</span>
           <strong>${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.summary ?? 'Aucun remplacement culturel nécessaire ce tour.'}</strong>
+          <small>Coût du report: ${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.skipConsequenceSummary ?? 'Fallback: conséquence au prochain tour non calculable.'}</small>
+          ${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.nextReviewWindow ? `<small>À reconsidérer: ${report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.nextReviewWindow}</small>` : ''}
           <small>${report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.rankingFallback ?? 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.'}</small>
           ${(report.commitmentBundles?.followThroughBundlePlan?.replacementRecommendations?.entries ?? []).length > 0 ? `
             <div class="culture-turn-report__replacement-recommendation-list">
@@ -7114,6 +7116,8 @@ function renderCultureTurnReport(report) {
                   <small>${entry.action}${entry.replacementPromptLabel ? ` · prompt: ${entry.replacementPromptLabel}` : ''}</small>
                   <small>Urgence ${entry.urgency} · payoff ${entry.payoff} · ${entry.mode === 'defensive' ? 'défensif' : 'opportuniste'}</small>
                   <small>Pourquoi: ${entry.rankReason}</small>
+                  <small>Si ignoré: ${entry.skipConsequence}${entry.skipAcceptable ? ' · acceptable ce tour' : ''}</small>
+                  <small>À revoir: ${entry.nextReviewWindow}</small>
                   <small>Évite: ${entry.avoidedConsequence}</small>
                 </span>
               `).join('')}
