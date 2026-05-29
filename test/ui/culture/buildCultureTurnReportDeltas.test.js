@@ -404,6 +404,19 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
           ],
         },
       ],
+      cleanupPrompts: [
+        {
+          cleanupId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle:cleanup-prompt',
+          bundleId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle',
+          clusterLabel: 'Compact d’Aurora',
+          state: 'risk-persists',
+          action: 'conserver: risque culturel encore actif',
+          reason: 'Compact d’Aurora: expansion prudente: verrouille le bénéfice culturel principal autour de Compact d’Aurora; Vérifier si Compact d’Aurora peut encore suivre Ouvrir le récit d’expansion.',
+          safeguard: 'Aucune répétition récente détectée: garder les prompts frais en priorité.',
+          replacesPromptLabel: null,
+        },
+      ],
+      cleanupSummary: '1 prompt de nettoyage: Compact d’Aurora → conserver: risque culturel encore actif.',
       detailMode: 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
     },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
@@ -480,6 +493,17 @@ test('buildCultureTurnReportDeltas marks stale cultural follow-through reminders
   assert.equal(report.commitmentBundles.followThroughBundlePlan.groups[0].clusterLabel, 'Compact d’Aurora');
   assert.match(report.commitmentBundles.followThroughBundlePlan.groups[0].groupingReason, /Même enjeu culturel|Même thème/);
   assert.match(report.commitmentBundles.followThroughBundlePlan.groups[0].avoidedLoss, /opportunité fraîche/);
+  assert.deepEqual(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts.map((prompt) => [
+    prompt.clusterLabel,
+    prompt.state,
+    prompt.action,
+  ]), [
+    ['Compact d’Aurora', 'obsolete', 'remplacer par Ouvrir le récit d’expansion'],
+    ['Harbor Compact', 'risk-persists', 'conserver: risque culturel encore actif'],
+  ]);
+  assert.match(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts[0].reason, /opportunités fraîches/);
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts[0].replacesPromptLabel, 'Ouvrir le récit d’expansion');
+  assert.match(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts[0].safeguard, /Rotation courte|Aucune répétition/);
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -585,6 +609,8 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         summary: 'Aucun plan de suivi culturel groupé.',
         bestBundleId: null,
         groups: [],
+        cleanupPrompts: [],
+        cleanupSummary: 'Aucun prompt de nettoyage culturel à proposer.',
         detailMode: 'Aucun détail individuel à ouvrir.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',

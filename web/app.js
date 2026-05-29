@@ -6879,6 +6879,21 @@ function renderCultureTurnReport(report) {
             `).join('')}
           </div>
         ` : `<small>${report.commitmentBundles?.followThroughBundlePlan?.detailMode ?? 'Aucun détail individuel à ouvrir.'}</small>`}
+        <div class="culture-turn-report__cleanup-prompts" aria-label="Prompts de nettoyage des bundles culturels">
+          <strong>${report.commitmentBundles?.followThroughBundlePlan?.cleanupSummary ?? 'Aucun prompt de nettoyage culturel à proposer.'}</strong>
+          ${(report.commitmentBundles?.followThroughBundlePlan?.cleanupPrompts ?? []).length > 0 ? `
+            <div class="culture-turn-report__cleanup-prompt-list">
+              ${report.commitmentBundles.followThroughBundlePlan.cleanupPrompts.map((prompt) => `
+                <span class="culture-turn-report__cleanup-prompt culture-turn-report__cleanup-prompt--${prompt.state}">
+                  <b>${prompt.clusterLabel}</b>
+                  <small>${prompt.action}${prompt.replacesPromptLabel ? ` · remplace: ${prompt.replacesPromptLabel}` : ''}</small>
+                  <small>${prompt.reason}</small>
+                  <small>Safeguard: ${prompt.safeguard}</small>
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
       </div>
       <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
         <summary>

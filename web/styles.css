@@ -2051,6 +2051,27 @@ button { font: inherit; }
   background: rgba(15, 23, 42, 0.35);
 }
 .culture-turn-report__follow-through-plan-detail b { color: #f8fafc; }
+.culture-turn-report__cleanup-prompts {
+  display: grid;
+  gap: 6px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(14, 165, 233, 0.12);
+}
+.culture-turn-report__cleanup-prompts > strong { color: #e0f2fe; font-size: 11px; }
+.culture-turn-report__cleanup-prompt-list { display: grid; gap: 5px; }
+.culture-turn-report__cleanup-prompt {
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+  border-radius: 9px;
+  background: rgba(2, 6, 23, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.culture-turn-report__cleanup-prompt b { color: #f8fafc; }
+.culture-turn-report__cleanup-prompt small { color: var(--muted); }
+.culture-turn-report__cleanup-prompt--obsolete { border-color: rgba(248, 113, 113, 0.42); }
+.culture-turn-report__cleanup-prompt--resolved { border-color: rgba(74, 222, 128, 0.3); }
+.culture-turn-report__cleanup-prompt--risk-persists { border-color: rgba(251, 191, 36, 0.42); }
 .culture-turn-report__history {
   display: grid;
   gap: 7px;
