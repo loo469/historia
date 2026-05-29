@@ -649,6 +649,11 @@ function buildSecondaryBottleneckPreview(priorityAction, routeChoices) {
       resource: null,
       summary: 'Aucun levier recommandé: impossible de projeter le prochain goulot logistique.',
       detail: 'Attendre un signal recovery avant d’afficher une alerte aval.',
+      nextRecommendation: {
+        action: 'Aucune suite immédiate',
+        target: '—',
+        reason: 'aucun bottleneck secondaire pertinent après ce levier; garder une veille légère.',
+      },
     };
   }
 
@@ -665,6 +670,40 @@ function buildSecondaryBottleneckPreview(priorityAction, routeChoices) {
   const route = shortage?.route ?? neighbor?.route ?? priorityAction.route;
   const city = shortage?.target ?? neighbor?.target ?? option?.affectedCity ?? 'ville liée';
   const resource = shortage?.resource ?? priorityAction.resource;
+  const candidates = [
+    ...(choice?.downstreamShortages ?? []).filter((candidate) => candidate.status !== 'résolue').map((candidate) => ({
+      route: candidate.route,
+      city: candidate.target,
+      resource: candidate.resource,
+      status: candidate.status,
+      detail: candidate.detail,
+      score: candidate.status === 'aggravée' ? 48 : candidate.status === 'déplacée' ? 34 : 20,
+    })),
+    ...(choice?.neighborEffects ?? []).filter((effect) => effect.tone !== 'low').map((effect) => ({
+      route: effect.route,
+      city: effect.target,
+      resource,
+      status: effect.tone === 'high' ? 'aggravée' : 'déplacée',
+      detail: effect.detail,
+      score: effect.tone === 'high' ? 42 : 28,
+    })),
+  ].sort((left, right) => right.score - left.score || left.route.localeCompare(right.route));
+  const next = candidates[0] ?? null;
+  const nextRecommendation = next
+    ? {
+        action: `Traiter ensuite ${next.route}`,
+        target: `${next.city} · ${next.resource}`,
+        reason: next.status === 'aggravée'
+          ? `évite que ${next.city} manque de ${next.resource} au tour suivant.`
+          : next.status === 'déplacée'
+            ? `empêche le déplacement de pression de devenir le nouveau goulot.`
+            : `clarifie la dette aval avant qu’elle bloque la reprise.`,
+      }
+    : {
+        action: 'Aucune suite immédiate',
+        target: `${route} · ${city}`,
+        reason: 'aucun bottleneck secondaire pertinent après ce levier; garder une veille légère.',
+      };
 
   return {
     state: status === 'bloquant' ? 'blocked' : status === 'à surveiller' ? 'watch' : 'absorbable',
@@ -675,6 +714,7 @@ function buildSecondaryBottleneckPreview(priorityAction, routeChoices) {
     resource,
     summary: `${priorityAction.action} appliqué: prochain goulot ${status} sur ${route} près de ${city}.`,
     detail: shortage?.detail ?? bottleneck?.detail ?? `${resource} reste à suivre après ${priorityAction.action}.`,
+    nextRecommendation,
   };
 }
 
