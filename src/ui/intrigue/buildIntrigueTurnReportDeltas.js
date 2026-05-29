@@ -154,11 +154,71 @@ function buildWaitVerificationRequirement(timingRecommendationChange, lowConfide
   };
 }
 
+function buildSafestMinimalVerification(prompt, timingRecommendationChange = null) {
+  if (!prompt || prompt.state !== 'low-confidence') {
+    return {
+      state: 'not-needed',
+      recommended: false,
+      label: 'Aucune vérification minimale prioritaire',
+      action: 'Conserver la recommandation actuelle.',
+      whyEnough: 'La confiance visible ne demande pas de déblocage avant attente.',
+      fullReviewRequired: false,
+      fallback: true,
+    };
+  }
+
+  const cause = prompt.cause ?? timingRecommendationChange?.confidenceShift?.cause ?? 'signal contradictoire';
+  const principalRisk = cause === 'exposition'
+    ? 'exposition excessive'
+    : cause === 'délai'
+      ? 'timing fragile'
+      : cause === 'signal contradictoire'
+        ? 'signal contradictoire'
+        : 'confiance basse';
+  const planByRisk = {
+    'exposition excessive': {
+      label: 'Contrôle exposition minimal',
+      action: 'Comparer seulement le niveau d’exposition visible au seuil sûr avant d’attendre.',
+      whyEnough: 'Ce contrôle suffit si l’exposition repasse sous le seuil lisible sans rouvrir la cible masquée.',
+      fullReviewRequired: false,
+    },
+    'timing fragile': {
+      label: 'Contrôle fraîcheur du signal',
+      action: 'Vérifier que le signal de timing n’a pas vieilli depuis le dernier tour.',
+      whyEnough: 'La fraîcheur confirmée suffit à débloquer une attente courte sans refaire toute l’enquête.',
+      fullReviewRequired: false,
+    },
+    'signal contradictoire': {
+      label: 'Recoupement fog-safe rapide',
+      action: 'Comparer le signal principal avec un second indice visible avant de choisir attendre.',
+      whyEnough: 'Un second indice aligné suffit; s’il diverge, une revue complète reste nécessaire.',
+      fullReviewRequired: true,
+    },
+    'confiance basse': {
+      label: 'Contrôle confiance minimal',
+      action: 'Relire la cause visible de perte de confiance et confirmer qu’elle n’empire pas.',
+      whyEnough: 'Cela suffit seulement si la cause reste stable; sinon il faut une revue complète.',
+      fullReviewRequired: prompt.confidence === 'reste instable',
+    },
+  };
+  const plan = planByRisk[principalRisk] ?? planByRisk['confiance basse'];
+
+  return {
+    state: plan.fullReviewRequired ? 'full-review-needed' : 'minimal-sufficient',
+    recommended: true,
+    principalRisk,
+    label: plan.label,
+    action: plan.action,
+    whyEnough: plan.whyEnough,
+    fullReviewRequired: plan.fullReviewRequired,
+    fallback: false,
+  };
+}
+
 function buildMinimumVerificationPrompt(timingRecommendationChange) {
   if (!timingRecommendationChange) {
     const waitVerificationRequirement = buildWaitVerificationRequirement(null, false);
-
-    return {
+    const prompt = {
       state: 'sufficient-confidence',
       confidence: 'suffisante',
       cause: 'aucun changement de timing confirmé',
@@ -166,6 +226,11 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
       waitLessRisky: false,
       summary: 'Confiance suffisante: garder la recommandation actuelle sans étape de vérification supplémentaire.',
       waitVerificationRequirement,
+    };
+
+    return {
+      ...prompt,
+      safestMinimalVerification: buildSafestMinimalVerification(prompt),
     };
   }
 
@@ -181,7 +246,7 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
   };
 
   if (!lowConfidence) {
-    return {
+    const prompt = {
       state: 'sufficient-confidence',
       confidence: 'suffisante',
       cause: confidenceShift?.cause ?? timingRecommendationChange.cause,
@@ -190,11 +255,15 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
       summary: 'Confiance suffisante: la variation soutient le timing recommandé sans étape supplémentaire.',
       waitVerificationRequirement,
     };
+
+    return {
+      ...prompt,
+      safestMinimalVerification: buildSafestMinimalVerification(prompt, timingRecommendationChange),
+    };
   }
 
   const waitLessRisky = timingRecommendationChange.currentTiming === 'short-wait';
-
-  return {
+  const prompt = {
     state: 'low-confidence',
     confidence: confidenceShift.variation,
     cause: confidenceShift.cause,
@@ -204,6 +273,11 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
       ? 'Attendre un tour est moins risqué que forcer l’action tant que la confiance reste basse.'
       : 'Agir maintenant reste indiqué, mais seulement après une vérification minimale du signal visible.',
     waitVerificationRequirement,
+  };
+
+  return {
+    ...prompt,
+    safestMinimalVerification: buildSafestMinimalVerification(prompt, timingRecommendationChange),
   };
 }
 

@@ -107,6 +107,16 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
         consequence: 'Conséquence probable: le signal vieillit et la vérification suivante sera moins fiable.',
         fallback: false,
       },
+      safestMinimalVerification: {
+        state: 'minimal-sufficient',
+        recommended: true,
+        principalRisk: 'exposition excessive',
+        label: 'Contrôle exposition minimal',
+        action: 'Comparer seulement le niveau d’exposition visible au seuil sûr avant d’attendre.',
+        whyEnough: 'Ce contrôle suffit si l’exposition repasse sous le seuil lisible sans rouvrir la cible masquée.',
+        fullReviewRequired: false,
+        fallback: false,
+      },
     },
   });
   assert.ok(report.deltas.some((delta) => delta.type === 'timing' && delta.detail === 'agir maintenant → attendre: cause visible exposition.'));
@@ -151,6 +161,46 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
       consequence: 'Conséquence probable: la réponse immédiate perd sa fenêtre et le prochain recheck coûtera plus cher.',
       fallback: false,
     },
+    safestMinimalVerification: {
+      state: 'minimal-sufficient',
+      recommended: true,
+      principalRisk: 'timing fragile',
+      label: 'Contrôle fraîcheur du signal',
+      action: 'Vérifier que le signal de timing n’a pas vieilli depuis le dernier tour.',
+      whyEnough: 'La fraîcheur confirmée suffit à débloquer une attente courte sans refaire toute l’enquête.',
+      fullReviewRequired: false,
+      fallback: false,
+    },
+  });
+});
+
+test('buildIntrigueTurnReportDeltas requires full review when minimal verification finds a contradictory signal', () => {
+  const view = buildIntrigueView();
+  view.selectedProvince.drillDown.postRecapStabilizationChoices = {
+    timingComparison: {
+      recommendedTiming: 'short-wait',
+      dominantReason: 'priorité inversée',
+      actNow: { risk: 'indice A pousse à agir' },
+      shortWait: { outcome: 'indice B pousse à temporiser' },
+      summary: 'Les indices visibles ne pointent pas dans le même sens.',
+    },
+  };
+
+  const report = buildIntrigueTurnReportDeltas(province, view, {
+    previousActionCode: 'contenir',
+    previousTimingRecommendation: 'act-now',
+  });
+
+  assert.equal(report.minimumVerificationPrompt.cause, 'signal contradictoire');
+  assert.deepEqual(report.minimumVerificationPrompt.safestMinimalVerification, {
+    state: 'full-review-needed',
+    recommended: true,
+    principalRisk: 'signal contradictoire',
+    label: 'Recoupement fog-safe rapide',
+    action: 'Comparer le signal principal avec un second indice visible avant de choisir attendre.',
+    whyEnough: 'Un second indice aligné suffit; s’il diverge, une revue complète reste nécessaire.',
+    fullReviewRequired: true,
+    fallback: false,
   });
 });
 
@@ -169,6 +219,15 @@ test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is 
       mandatory: false,
       reason: 'raison exacte non calculable ou confiance suffisante',
       consequence: 'Attendre ne demande pas de verrouillage supplémentaire avec les signaux visibles.',
+      fallback: true,
+    },
+    safestMinimalVerification: {
+      state: 'not-needed',
+      recommended: false,
+      label: 'Aucune vérification minimale prioritaire',
+      action: 'Conserver la recommandation actuelle.',
+      whyEnough: 'La confiance visible ne demande pas de déblocage avant attente.',
+      fullReviewRequired: false,
       fallback: true,
     },
   });
