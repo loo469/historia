@@ -1283,6 +1283,52 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
   };
 }
 
+function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview, replacementRecommendations) {
+  const urgentReplacementIds = new Set(replacementRecommendations.entries.map((entry) => entry.bundleId));
+  const candidates = cleanupPrompts
+    .map((prompt) => {
+      const group = groups.find((candidate) => candidate.bundleId === prompt.bundleId) ?? null;
+      const fallout = falloutPreview.entries.find((entry) => entry.bundleId === prompt.bundleId) ?? null;
+      const hasActiveSupport = (group?.details ?? []).some((detail) => detail.source === 'current');
+      const lowFallout = (fallout?.severity ?? 0) <= 1;
+      const alreadyCovered = prompt.state === 'resolved' || (hasActiveSupport && prompt.state === 'review');
+      const safe = !urgentReplacementIds.has(prompt.bundleId) && (lowFallout || alreadyCovered);
+
+      if (!safe) {
+        return null;
+      }
+
+      const condition = alreadyCovered
+        ? (hasActiveSupport
+          ? 'soutien actif déjà visible dans la rotation culturelle'
+          : 'risque stabilisé par l’historique lisible')
+        : 'fallout faible au prochain tour';
+
+      return {
+        deferId: `${prompt.cleanupId}:safe-to-defer`,
+        bundleId: prompt.bundleId,
+        clusterLabel: prompt.clusterLabel,
+        state: 'safe-to-defer',
+        label: 'Peut attendre',
+        condition,
+        reason: `${prompt.clusterLabel}: ${condition}; ${prompt.action}.`,
+        nextReviewWindow: lowFallout ? 'prochaine rotation culturelle' : 'prochain tour culturel',
+        falloutSeverity: fallout?.severity ?? 0,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.falloutSeverity - right.falloutSeverity || left.clusterLabel.localeCompare(right.clusterLabel));
+  const top = candidates[0] ?? null;
+
+  return {
+    state: candidates.length === 0 ? 'none' : 'ready',
+    summary: top
+      ? `${top.clusterLabel}: Peut attendre — ${top.condition}.`
+      : 'Aucun bundle culturel sûr à reporter ce tour.',
+    entries: candidates,
+  };
+}
+
 function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder) {
   const groups = promptHistoryDrawer.groups.map((group) => {
     const currentEntries = group.entries.filter((entry) => entry.source === 'current');
@@ -1347,6 +1393,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     : `${cleanupPrompts.length} prompt${cleanupPrompts.length > 1 ? 's' : ''} de nettoyage: ${cleanupPrompts.map((prompt) => `${prompt.clusterLabel} → ${prompt.action}`).join(' | ')}.`;
   const falloutPreview = buildCulturalBundleFalloutPreview(cleanupPrompts);
   const replacementRecommendations = buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, falloutPreview);
+  const safeToDeferBundles = buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview, replacementRecommendations);
 
   return {
     state: groups.length === 0
@@ -1365,6 +1412,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     cleanupSummary,
     falloutPreview,
     replacementRecommendations,
+    safeToDeferBundles,
     detailMode: groups.length === 0
       ? 'Aucun détail individuel à ouvrir.'
       : 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
@@ -1674,6 +1722,11 @@ export function buildCultureTurnReportDeltas({
             skipConsequenceSummary: 'Fallback: conséquence au prochain tour non calculable.',
             nextReviewWindow: null,
             rankingFallback: 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.',
+            entries: [],
+          },
+          safeToDeferBundles: {
+            state: 'none',
+            summary: 'Aucun bundle culturel sûr à reporter ce tour.',
             entries: [],
           },
           detailMode: 'Aucun détail individuel à ouvrir.',

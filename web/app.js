@@ -7245,6 +7245,21 @@ function renderCultureTurnReport(report) {
             </div>
           ` : ''}
         </div>
+        <div class="culture-turn-report__safe-defer-bundles culture-turn-report__safe-defer-bundles--${report.commitmentBundles?.followThroughBundlePlan?.safeToDeferBundles?.state ?? 'none'}" aria-label="Bundles culturels sûrs à reporter">
+          <span>Peut attendre</span>
+          <strong>${report.commitmentBundles?.followThroughBundlePlan?.safeToDeferBundles?.summary ?? 'Aucun bundle culturel sûr à reporter ce tour.'}</strong>
+          ${(report.commitmentBundles?.followThroughBundlePlan?.safeToDeferBundles?.entries ?? []).length > 0 ? `
+            <div class="culture-turn-report__safe-defer-list">
+              ${report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries.map((entry) => `
+                <span class="culture-turn-report__safe-defer-entry">
+                  <b>${entry.clusterLabel} · ${entry.label}</b>
+                  <small>Condition: ${entry.condition}</small>
+                  <small>À revoir: ${entry.nextReviewWindow}</small>
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
         <div class="culture-turn-report__cleanup-prompts" aria-label="Prompts de nettoyage des bundles culturels">
           <strong>${report.commitmentBundles?.followThroughBundlePlan?.cleanupSummary ?? 'Aucun prompt de nettoyage culturel à proposer.'}</strong>
           ${(report.commitmentBundles?.followThroughBundlePlan?.cleanupPrompts ?? []).length > 0 ? `

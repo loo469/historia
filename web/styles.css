@@ -2107,6 +2107,33 @@ button { font: inherit; }
   border-width: 2px;
   box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.18);
 }
+.culture-turn-report__safe-defer-bundles {
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: rgba(20, 83, 45, 0.14);
+  border: 1px solid rgba(74, 222, 128, 0.26);
+}
+.culture-turn-report__safe-defer-bundles > span {
+  color: #bbf7d0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.culture-turn-report__safe-defer-bundles > strong { color: #dcfce7; font-size: 11px; }
+.culture-turn-report__safe-defer-bundles--none { border-color: rgba(148, 163, 184, 0.18); background: rgba(30, 41, 59, 0.18); }
+.culture-turn-report__safe-defer-list { display: grid; gap: 5px; }
+.culture-turn-report__safe-defer-entry {
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+  border-radius: 9px;
+  background: rgba(2, 6, 23, 0.2);
+  border: 1px solid rgba(74, 222, 128, 0.22);
+}
+.culture-turn-report__safe-defer-entry b { color: #f0fdf4; }
+.culture-turn-report__safe-defer-entry small { color: var(--muted); }
 .culture-turn-report__cleanup-prompts {
   display: grid;
   gap: 6px;
