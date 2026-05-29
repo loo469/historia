@@ -13442,6 +13442,87 @@ function renderAtlasClimatePreventiveSecondaryProtection(view) {
   `;
 }
 
+function buildAtlasClimateRemainingCoverageGaps(preventiveView, secondaryProtectionView, protectionView, thresholdProgressView) {
+  if (!preventiveView || preventiveView.state === 'empty' || !thresholdProgressView?.progress) {
+    return {
+      state: 'empty',
+      activeProtections: [],
+      secondaryProtections: [],
+      blindSpots: [],
+      nextSmallAction: '',
+      summary: 'Aucune couverture climat restante à résumer après prévention.',
+    };
+  }
+
+  const progress = thresholdProgressView.progress;
+  const activeProtections = preventiveView.action
+    ? [{
+      label: preventiveView.action.target,
+      detail: preventiveView.action.avoidedLoss,
+      action: preventiveView.action.minimalAction,
+    }]
+    : [];
+  const secondaryProtections = secondaryProtectionView?.protection
+    ? [{
+      label: secondaryProtectionView.protection.target,
+      detail: secondaryProtectionView.protection.oneLine,
+      action: secondaryProtectionView.protection.action,
+    }]
+    : [];
+  const coveredLabels = new Set([
+    ...activeProtections.map((item) => item.label),
+    ...secondaryProtections.map((item) => item.label),
+  ].filter(Boolean));
+  const blindSpots = (protectionView?.actions ?? [])
+    .filter((action) => action.className !== 'protects-threshold' && !coveredLabels.has(action.label))
+    .slice(0, 3)
+    .map((action) => ({
+      label: action.label,
+      reason: action.className === 'stabilizes-short-term'
+        ? `reste partiellement couvert: ${action.thresholdLink}`
+        : `angle mort: ${action.thresholdLink}`,
+      nextAction: action.className === 'stabilizes-short-term'
+        ? action.action
+        : `relire ${progress.threshold} avant d’étendre la prévention`,
+    }));
+  const nextSmallAction = blindSpots[0]
+    ? `Prochaine petite prévention: ${blindSpots[0].nextAction}`
+    : secondaryProtections.length > 0
+      ? 'Prochaine petite prévention: surveiller seulement la couverture secondaire déjà gagnée.'
+      : 'Prochaine petite prévention: relire la carte climat avant nouvelle dépense.';
+
+  return {
+    state: blindSpots.length > 0 ? 'has-gaps' : 'covered',
+    activeProtections,
+    secondaryProtections,
+    blindSpots,
+    nextSmallAction,
+    summary: blindSpots.length > 0
+      ? `${blindSpots.length} angle${blindSpots.length > 1 ? 's' : ''} mort${blindSpots.length > 1 ? 's' : ''} climat reste${blindSpots.length > 1 ? 'nt' : ''} après prévention.`
+      : 'Les protections climat visibles couvrent le prochain seuil sans angle mort notable.',
+  };
+}
+
+function renderAtlasClimateRemainingCoverageGaps(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view || view.state === 'empty') {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-coverage-gaps map-world-climate-coverage-gaps--${view.state}" aria-label="Couverture climatique restante après protections préventives">
+      <div class="map-world-climate-coverage-gaps__header">
+        <strong>Couverture restante</strong>
+        <span>${view.state === 'has-gaps' ? 'angles morts' : 'couvert'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Protections actives</b> · ${view.activeProtections.length > 0 ? view.activeProtections.map((item) => `${item.label}: ${item.detail}`).join(' | ') : 'aucune protection active calculée'}</small>
+      <small><b>Protections secondaires</b> · ${view.secondaryProtections.length > 0 ? view.secondaryProtections.map((item) => `${item.label}: ${item.detail}`).join(' | ') : 'aucune protection secondaire utile'}</small>
+      <small><b>Angles morts restants</b> · ${view.blindSpots.length > 0 ? view.blindSpots.map((item) => `${item.label}: ${item.reason}`).join(' | ') : 'aucun angle mort prioritaire'}</small>
+      <small><b>Choix suivant</b> · ${view.nextSmallAction}</small>
+    </section>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -21713,6 +21794,12 @@ function render() {
     atlasClimateFollowUpThresholdProtection,
     atlasClimateThresholdProgressAfterReadinessAction,
   );
+  const atlasClimateRemainingCoverageGaps = buildAtlasClimateRemainingCoverageGaps(
+    atlasClimateSmallestPreventiveAction,
+    atlasClimatePreventiveSecondaryProtection,
+    atlasClimateFollowUpThresholdProtection,
+    atlasClimateThresholdProgressAfterReadinessAction,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -21775,6 +21862,7 @@ function render() {
           ${renderAtlasClimateNextTurnSafetyMarginLoss(atlasClimateNextTurnSafetyMarginLoss)}
           ${renderAtlasClimateSmallestPreventiveAction(atlasClimateSmallestPreventiveAction)}
           ${renderAtlasClimatePreventiveSecondaryProtection(atlasClimatePreventiveSecondaryProtection)}
+          ${renderAtlasClimateRemainingCoverageGaps(atlasClimateRemainingCoverageGaps)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
