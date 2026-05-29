@@ -8262,6 +8262,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               <span>${preview.adjacentRouteSpilloverRisk.summary}</span>
               <small>Critique: ${preview.adjacentRouteSpilloverRisk.criticalRoute.route} vers ${preview.adjacentRouteSpilloverRisk.criticalRoute.city}. ${preview.adjacentRouteSpilloverRisk.secondaryRoutes.length > 0 ? `Secondaires: ${preview.adjacentRouteSpilloverRisk.secondaryRoutes.map((route) => `${route.route} (${route.city})`).join(', ')}.` : 'Pas de route secondaire exposée.'}</small>
               <em>Dépendance: ${preview.adjacentRouteSpilloverRisk.dependencyTrace}</em>
+              <small>Garde: ${preview.adjacentRouteSpilloverRisk.guardAction.label} — ${preview.adjacentRouteSpilloverRisk.guardAction.reason}</small>
             </div>
           ` : ''}
         </div>

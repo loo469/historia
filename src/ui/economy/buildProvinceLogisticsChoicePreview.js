@@ -846,6 +846,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       secondaryRoutes: [],
       summary: 'Aucun spillover logistique: aucune récupération locale sélectionnée.',
       dependencyTrace: 'Dépendance inconnue: aucun levier local ne permet de tracer la source du spillover.',
+      guardAction: { label: 'Garde indisponible', reason: 'Aucune chaîne de spillover à réduire pour l’instant.', fallback: true },
     };
   }
 
@@ -888,11 +889,29 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       secondaryRoutes: [],
       summary: 'Aucun spillover logistique voisin concret après cette récupération locale.',
       dependencyTrace: 'Dépendance inconnue: aucune route voisine exposée ne confirme la chaîne source → route affectée → conséquence.',
+      guardAction: { label: 'Garde indisponible', reason: 'Aucun relais voisin confirmé; surveiller la route après résolution locale.', fallback: true },
     };
   }
 
   const source = choice?.bottleneck?.label ?? option?.causeLabel ?? 'source inconnue';
   const consequence = criticalRoute.detail ?? `${criticalRoute.route} peut récupérer la pression déplacée.`;
+  const guardAction = criticalRoute.tone === 'high'
+    ? {
+      label: `Sécuriser ${criticalRoute.route} juste après ${priorityAction.route}`,
+      reason: `${criticalRoute.city} absorbe la pression déplacée si ${priorityAction.cost} reste le seul levier engagé.`,
+      fallback: false,
+    }
+    : secondaryRoutes.length > 0
+      ? {
+        label: `Garder ${criticalRoute.route} en premier relais`,
+        reason: `Réduit la chaîne avant qu’elle n’atteigne ${secondaryRoutes[0].route}.`,
+        fallback: false,
+      }
+      : {
+        label: `Surveiller ${criticalRoute.route} après résolution`,
+        reason: `${criticalRoute.city} est le seul relais exposé identifié.`,
+        fallback: false,
+      };
 
   return {
     state: secondaryRoutes.length > 0 ? 'chain' : 'single',
@@ -900,6 +919,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     secondaryRoutes,
     summary: `${criticalRoute.route} est la route voisine critique; ${secondaryRoutes.length > 0 ? `${secondaryRoutes.length} route${secondaryRoutes.length > 1 ? 's' : ''} secondaire${secondaryRoutes.length > 1 ? 's' : ''} exposée${secondaryRoutes.length > 1 ? 's' : ''}.` : 'aucune autre route secondaire exposée.'}`,
     dependencyTrace: `${source} → ${criticalRoute.route}/${criticalRoute.city} → ${consequence}`,
+    guardAction,
   };
 }
 
