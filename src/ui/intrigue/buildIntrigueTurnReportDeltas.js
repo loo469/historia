@@ -26,6 +26,80 @@ function getResponseTone(response) {
   return 'masked';
 }
 
+const TIMING_LABELS = {
+  'act-now': 'agir maintenant',
+  'short-wait': 'attendre',
+};
+
+const TIMING_CAUSE_LABELS = {
+  exposition: 'exposition',
+  'information-manquante': 'nouvelle information',
+  'coût-opportunité': 'dette de chaleur',
+  'fenêtre-adverse': 'confiance',
+};
+
+function normalizeTimingRecommendation(value) {
+  if (value === 'act-now' || value === 'agir-maintenant' || value === 'agir maintenant') {
+    return 'act-now';
+  }
+
+  if (value === 'short-wait' || value === 'wait' || value === 'attendre' || value === 'attendre-court') {
+    return 'short-wait';
+  }
+
+  return null;
+}
+
+function getEntryForProvince(province, intrigueView) {
+  const provinceId = province?.provinceId;
+  return (intrigueView?.map?.entries ?? []).find((entry) => entry.locationId === provinceId) ?? null;
+}
+
+function getTimingChangeCause(timingComparison) {
+  const dominantReason = timingComparison?.dominantReason ?? null;
+
+  if (TIMING_CAUSE_LABELS[dominantReason]) {
+    return TIMING_CAUSE_LABELS[dominantReason];
+  }
+
+  if (/exposition|budget/i.test(`${timingComparison?.actNow?.risk ?? ''} ${timingComparison?.shortWait?.risk ?? ''}`)) {
+    return 'exposition';
+  }
+
+  if (/confiance|provenance|information/i.test(`${timingComparison?.summary ?? ''} ${timingComparison?.shortWait?.outcome ?? ''}`)) {
+    return 'nouvelle information';
+  }
+
+  if (/chaleur|coût|cout|dette/i.test(`${timingComparison?.summary ?? ''} ${timingComparison?.actNow?.outcome ?? ''}`)) {
+    return 'dette de chaleur';
+  }
+
+  return 'confiance';
+}
+
+function buildTimingRecommendationChange({ previousTimingRecommendation, currentTimingComparison }) {
+  const previous = normalizeTimingRecommendation(previousTimingRecommendation);
+  const current = normalizeTimingRecommendation(currentTimingComparison?.recommendedTiming);
+
+  if (!previous || !current || previous === current) {
+    return null;
+  }
+
+  const direction = `${TIMING_LABELS[previous]} → ${TIMING_LABELS[current]}`;
+  const cause = getTimingChangeCause(currentTimingComparison);
+
+  return {
+    previousTiming: previous,
+    currentTiming: current,
+    direction,
+    cause,
+    tone: current === 'act-now' ? 'worse' : 'watch',
+    label: 'Timing recommandé modifié',
+    detail: `${direction}: cause visible ${cause}.`,
+    fogSafe: true,
+  };
+}
+
 function buildResponseDeltas(response, fallbackSummary) {
   if (!response) {
     return [];
@@ -95,6 +169,7 @@ export function buildIntrigueTurnReportDeltas(province, intrigueView, options = 
   }
 
   const drillDown = findSelectedDrillDown(province, intrigueView);
+  const entry = getEntryForProvince(province, intrigueView);
 
   if (!drillDown) {
     return {
@@ -109,7 +184,27 @@ export function buildIntrigueTurnReportDeltas(province, intrigueView, options = 
     ?? drillDown.quickResponses?.find((candidate) => candidate.code === drillDown.recommendedResponseCode)
     ?? drillDown.quickResponses?.[0]
     ?? null;
-  const deltas = buildResponseDeltas(response, drillDown.responseAftermath?.summary)
+  const timingComparison = drillDown.postRecapStabilizationChoices?.timingComparison
+    ?? entry?.postRecapStabilizationChoices?.timingComparison
+    ?? null;
+  const timingRecommendationChange = buildTimingRecommendationChange({
+    previousTimingRecommendation: normalizedOptions.previousTimingRecommendation
+      ?? drillDown.previousTimingRecommendation
+      ?? entry?.previousTimingRecommendation
+      ?? entry?.lastTurn?.timingRecommendation
+      ?? null,
+    currentTimingComparison: timingComparison,
+  });
+  const deltas = [
+    ...buildResponseDeltas(response, drillDown.responseAftermath?.summary),
+    ...(timingRecommendationChange ? [{
+      type: 'timing',
+      tone: timingRecommendationChange.tone,
+      label: timingRecommendationChange.label,
+      detail: timingRecommendationChange.detail,
+      score: 110,
+    }] : []),
+  ]
     .sort((left, right) => right.score - left.score || left.label.localeCompare(right.label))
     .slice(0, 4);
   const worseCount = deltas.filter((delta) => delta.tone === 'worse').length;
@@ -126,5 +221,6 @@ export function buildIntrigueTurnReportDeltas(province, intrigueView, options = 
     previousAction: `Action Delta résolue: ${actionLabel} sur ${drillDown.locationName}.`,
     deltas,
     retaliationRisk: drillDown.responseAftermath?.retaliationRisk ?? 'inconnu',
+    timingRecommendationChange,
   };
 }
