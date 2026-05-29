@@ -2277,6 +2277,107 @@ function renderAtlasMilitaryRelapsePreventionCommitChecklist(checklist) {
   `;
 }
 
+
+function getAtlasMilitaryNeighborFrontShiftEffect(route, focusPoint, checklist) {
+  if (focusPoint?.tone === 'fragile' && (route.contested || route.pressure >= 58)) {
+    return {
+      tone: 'fragilise',
+      label: 'fragilise',
+      reason: 'pression voisine élevée après engagement',
+    };
+  }
+
+  if (route.pressure >= 74) {
+    return {
+      tone: 'rechute',
+      label: 'rechute probable',
+      reason: 'front voisin déjà sous tension critique',
+    };
+  }
+
+  if (checklist.safeToCommit && route.pressure < 64) {
+    return {
+      tone: 'soulage',
+      label: 'soulage',
+      reason: 'ordre principal absorbe la pression locale',
+    };
+  }
+
+  return {
+    tone: 'neutre',
+    label: 'neutre',
+    reason: 'changement voisin sous seuil de rechute',
+  };
+}
+
+function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, features) {
+  const focus = recommendation?.primary ?? null;
+  const focusProvince = focus?.provinceLabel ?? checklist?.points?.[0]?.detail?.split(':')?.[0] ?? null;
+  if (!focusProvince) {
+    return {
+      focusProvince: null,
+      focusOrder: 'ordre contesté non sélectionné',
+      shifts: [],
+      summary: 'Prévision voisins indisponible: aucun ordre de province en focus.',
+      empty: true,
+    };
+  }
+
+  const focusPoint = (checklist?.points ?? []).find((point) => point.detail.startsWith(`${focusProvince}:`)) ?? checklist?.points?.[0] ?? null;
+  const candidateRoutes = (features?.routes ?? [])
+    .filter((route) => route.sourceLabel === focusProvince || route.targetLabel === focusProvince);
+  const fallbackRoutes = candidateRoutes.length ? candidateRoutes : (features?.routes ?? []);
+  const shifts = fallbackRoutes.slice(0, 3).map((route, index) => {
+    const neighborLabel = route.sourceLabel === focusProvince ? route.targetLabel : route.sourceLabel;
+    const effect = getAtlasMilitaryNeighborFrontShiftEffect(route, focusPoint, checklist ?? { safeToCommit: false });
+    return {
+      shiftId: `neighbor-front-shift:${focusProvince}:${neighborLabel}:${index}`,
+      neighborLabel,
+      routeLabel: `${route.sourceLabel} ↔ ${route.targetLabel}`,
+      pressure: route.pressure,
+      effect: effect.label,
+      tone: effect.tone,
+      reason: effect.reason,
+    };
+  });
+
+  if (!shifts.length) {
+    return {
+      focusProvince,
+      focusOrder: focus?.nextAction ?? 'ordre contesté recommandé',
+      shifts: [],
+      summary: `${focusProvince}: aucun front voisin lisible après engagement.`,
+      empty: true,
+    };
+  }
+
+  return {
+    focusProvince,
+    focusOrder: focus?.nextAction ?? 'ordre contesté recommandé',
+    shifts,
+    summary: `${focusProvince}: ${shifts.length} front${shifts.length > 1 ? 's' : ''} voisin${shifts.length > 1 ? 's' : ''} à prévisualiser après ${focus?.nextAction ?? 'ordre'}.`,
+    empty: false,
+  };
+}
+
+function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
+  const height = preview.empty ? 6.1 : 5.6 + (preview.shifts.length * 3.45);
+  return `
+    <g class="atlas-military-neighbor-front-shift atlas-military-neighbor-front-shift--${preview.empty ? 'empty' : 'active'}" aria-label="Prévisualisation des fronts voisins après engagement: ${preview.summary}">
+      <rect class="atlas-military-neighbor-front-shift__panel" x="43" y="157" width="35" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-neighbor-front-shift__title" x="44.2" y="159.4">Voisins après ordre</text>
+      <text class="atlas-military-neighbor-front-shift__focus" x="44.2" y="160.75">${preview.focusProvince ?? 'Aucun focus'} · ${preview.focusOrder}</text>
+      ${preview.empty ? `<text class="atlas-military-neighbor-front-shift__empty" x="44.2" y="162.2">${preview.summary}</text>` : preview.shifts.map((shift, index) => `
+        <g class="atlas-military-neighbor-front-shift-row atlas-military-neighbor-front-shift-row--${shift.tone}" data-atlas-neighbor-front-shift="${shift.shiftId}" aria-label="${shift.routeLabel}: ${shift.effect}; ${shift.reason}; pression ${shift.pressure}">
+          <circle cx="44.8" cy="${162.45 + index * 3.45}" r="0.58"></circle>
+          <text class="atlas-military-neighbor-front-shift-row__label" x="46" y="${162.05 + index * 3.45}">${shift.neighborLabel} · ${shift.effect}</text>
+          <text class="atlas-military-neighbor-front-shift-row__reason" x="46" y="${163.38 + index * 3.45}">${shift.reason}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
 function getAtlasMilitaryBlockingHandoffDecision(item, confidence) {
   if (!item) return 'attente: visibilité insuffisante';
   if (item.kind === 'obligatoire' && item.dependencies?.includes('logistique')) return 'renfort: sécuriser logistique';
@@ -3339,6 +3440,7 @@ function renderAtlasMilitaryLayer(shell) {
   const closureAfterActionComparison = buildAtlasMilitaryClosureAfterActionComparison(nextBestClosureRecommendation);
   const postClosureRelapseWatchlist = buildAtlasMilitaryPostClosureRelapseWatchlist(closureAfterActionComparison, nextBestClosureRecommendation);
   const relapsePreventionCommitChecklist = buildAtlasMilitaryRelapsePreventionCommitChecklist(postClosureRelapseWatchlist);
+  const neighborFrontShiftPreview = buildAtlasMilitaryNeighborFrontShiftPreview(nextBestClosureRecommendation, relapsePreventionCommitChecklist, features);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -3380,6 +3482,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryClosureAfterActionComparison(closureAfterActionComparison)}
       ${renderAtlasMilitaryPostClosureRelapseWatchlist(postClosureRelapseWatchlist)}
       ${renderAtlasMilitaryRelapsePreventionCommitChecklist(relapsePreventionCommitChecklist)}
+      ${renderAtlasMilitaryNeighborFrontShiftPreview(neighborFrontShiftPreview)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `

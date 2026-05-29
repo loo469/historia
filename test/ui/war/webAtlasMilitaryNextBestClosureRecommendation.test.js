@@ -84,3 +84,22 @@ test('atlas military renders a relapse prevention checklist before committing pr
   assert.match(stylesSource, /\.atlas-military-relapse-commit-checklist-row--fragile circle/);
   assert.match(stylesSource, /\.atlas-military-relapse-commit-checklist-row--safe circle/);
 });
+
+// MAP-A23: preview the immediate neighbouring-front effects without expanding the
+// A22 checklist panel.
+test('atlas military previews neighboring front shifts after committing province orders', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborFrontShiftPreview\(recommendation, checklist, features\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborFrontShiftPreview\(preview\)/);
+  assert.match(webAppSource, /Prévisualisation des fronts voisins après engagement/);
+  assert.match(webAppSource, /Voisins après ordre/);
+  assert.match(webAppSource, /candidateRoutes = \(features\?\.routes \?\? \[\]\)/);
+  assert.match(webAppSource, /fallbackRoutes\.slice\(0, 3\)/);
+  assert.match(webAppSource, /label: 'soulage'/);
+  assert.match(webAppSource, /label: 'neutre'/);
+  assert.match(webAppSource, /label: 'rechute probable'/);
+  assert.match(webAppSource, /pression voisine élevée après engagement/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborFrontShiftPreview\(neighborFrontShiftPreview\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-front-shift__panel/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-front-shift-row--soulage circle/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-front-shift-row--rechute circle/);
+});
