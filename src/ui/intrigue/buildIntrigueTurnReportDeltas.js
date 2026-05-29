@@ -77,6 +77,48 @@ function getTimingChangeCause(timingComparison) {
   return 'confiance';
 }
 
+function getConfidenceCause(timingComparison) {
+  const joinedText = [
+    timingComparison?.dominantReason,
+    timingComparison?.summary,
+    timingComparison?.actNow?.risk,
+    timingComparison?.actNow?.outcome,
+    timingComparison?.shortWait?.risk,
+    timingComparison?.shortWait?.outcome,
+  ].filter(Boolean).join(' ');
+
+  if (/exposition|budget/i.test(joinedText)) return 'exposition';
+  if (/délai|delai|attendre|fenêtre|fenetre|vieilli|périmer|perimer/i.test(joinedText)) return 'délai';
+  if (/couverture|agent|relais/i.test(joinedText)) return 'couverture';
+  if (/cellule|réseau|reseau/i.test(joinedText)) return 'cellule';
+  return 'signal contradictoire';
+}
+
+function buildConfidenceShift(currentTiming, currentTimingComparison) {
+  const cause = getConfidenceCause(currentTimingComparison);
+  const dominantReason = currentTimingComparison?.dominantReason ?? null;
+  const variation = currentTiming === 'act-now'
+    ? 'baisse'
+    : dominantReason === 'information-manquante'
+      ? 'reste instable'
+      : cause === 'exposition' || cause === 'signal contradictoire'
+        ? 'baisse'
+        : 'augmente';
+  const justification = currentTiming === 'act-now'
+    ? 'la perte de confiance rend l’attente plus risquée que l’action immédiate'
+    : variation === 'augmente'
+      ? 'la confiance remonte assez pour laisser attendre sans perdre le signal visible'
+      : 'la confiance fragile justifie d’attendre un signal plus sûr avant d’agir';
+
+  return {
+    variation,
+    cause,
+    justifies: currentTiming,
+    label: `${variation}: ${cause}`,
+    justification,
+  };
+}
+
 function buildTimingRecommendationChange({ previousTimingRecommendation, currentTimingComparison }) {
   const previous = normalizeTimingRecommendation(previousTimingRecommendation);
   const current = normalizeTimingRecommendation(currentTimingComparison?.recommendedTiming);
@@ -87,6 +129,7 @@ function buildTimingRecommendationChange({ previousTimingRecommendation, current
 
   const direction = `${TIMING_LABELS[previous]} → ${TIMING_LABELS[current]}`;
   const cause = getTimingChangeCause(currentTimingComparison);
+  const confidenceShift = buildConfidenceShift(current, currentTimingComparison);
 
   return {
     previousTiming: previous,
@@ -96,6 +139,7 @@ function buildTimingRecommendationChange({ previousTimingRecommendation, current
     tone: current === 'act-now' ? 'worse' : 'watch',
     label: 'Timing recommandé modifié',
     detail: `${direction}: cause visible ${cause}.`,
+    confidenceShift,
     fogSafe: true,
   };
 }

@@ -85,9 +85,43 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
     tone: 'watch',
     label: 'Timing recommandé modifié',
     detail: 'agir maintenant → attendre: cause visible exposition.',
+    confidenceShift: {
+      variation: 'baisse',
+      cause: 'exposition',
+      justifies: 'short-wait',
+      label: 'baisse: exposition',
+      justification: 'la confiance fragile justifie d’attendre un signal plus sûr avant d’agir',
+    },
     fogSafe: true,
   });
   assert.ok(report.deltas.some((delta) => delta.type === 'timing' && delta.detail === 'agir maintenant → attendre: cause visible exposition.'));
+});
+
+test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips to act now', () => {
+  const view = buildIntrigueView();
+  view.selectedProvince.drillDown.postRecapStabilizationChoices = {
+    timingComparison: {
+      recommendedTiming: 'act-now',
+      dominantReason: 'fenêtre-adverse',
+      actNow: { outcome: 'Stabiliser verrouille la fenêtre sûre visible.' },
+      shortWait: { risk: 'signal vieilli et délai de recheck plus coûteux' },
+      summary: 'Choix urgent: la fenêtre visible se dégrade plus vite que le bénéfice d’attendre.',
+    },
+  };
+
+  const report = buildIntrigueTurnReportDeltas(province, view, {
+    previousActionCode: 'contenir',
+    previousTimingRecommendation: 'short-wait',
+  });
+
+  assert.equal(report.timingRecommendationChange.direction, 'attendre → agir maintenant');
+  assert.deepEqual(report.timingRecommendationChange.confidenceShift, {
+    variation: 'baisse',
+    cause: 'délai',
+    justifies: 'act-now',
+    label: 'baisse: délai',
+    justification: 'la perte de confiance rend l’attente plus risquée que l’action immédiate',
+  });
 });
 
 test('buildIntrigueTurnReportDeltas keeps unknown intelligence discreet', () => {

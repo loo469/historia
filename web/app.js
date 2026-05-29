@@ -7950,6 +7950,7 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
         <div class="province-intrigue-turn-report__timing-change province-intrigue-turn-report__timing-change--${report.timingRecommendationChange.tone}" aria-label="Changement de recommandation de timing intrigue">
           <b>${report.timingRecommendationChange.direction}</b>
           <span>Cause visible: ${report.timingRecommendationChange.cause}</span>
+          <small>Confiance ${report.timingRecommendationChange.confidenceShift?.label ?? 'instable: signal contradictoire'} · ${report.timingRecommendationChange.confidenceShift?.justification ?? 'justification à confirmer sans révéler de donnée masquée'}</small>
         </div>
       ` : ''}
       ${report.deltas.length > 0 ? `
