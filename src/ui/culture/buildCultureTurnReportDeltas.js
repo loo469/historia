@@ -1195,6 +1195,26 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
         ?? (prompt.state === 'obsolete'
           ? `${prompt.clusterLabel}: opportunité fraîche masquée.`
           : `${prompt.clusterLabel}: tension culturelle prolongée.`);
+      const urgencyScore = fallout?.severity ?? (prompt.state === 'obsolete' ? 3 : 1);
+      const payoffScore = alternativeType === 'renew'
+        ? 3
+        : alternativeType === 'replan'
+          ? 2
+          : 1;
+      const urgency = urgencyScore >= 3
+        ? 'immédiate'
+        : urgencyScore === 2
+          ? 'haute'
+          : 'modérée';
+      const payoff = payoffScore >= 3
+        ? 'fort'
+        : payoffScore === 2
+          ? 'moyen'
+          : 'léger';
+      const replacementMode = avoidedConsequence.includes('opportunité') && alternativeType === 'renew'
+        ? 'opportunistic'
+        : 'defensive';
+      const priority = urgencyScore * 2 + payoffScore + (replacementMode === 'opportunistic' ? 1 : 0);
 
       return {
         replacementId: `${prompt.cleanupId}:replacement`,
@@ -1204,13 +1224,24 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
         action,
         replacementPromptLabel: freshDetail?.promptLabel ?? null,
         avoidedConsequence,
+        urgency,
+        urgencyScore,
+        payoff,
+        payoffScore,
+        mode: replacementMode,
+        rankReason: `${urgency} urgence · payoff ${payoff} · ${replacementMode === 'defensive' ? 'évite une perte' : 'ouvre un bonus'}`,
         reason: `${prompt.reason} Alternative compacte: ${action}.`,
-        priority: (fallout?.severity ?? 0) + (prompt.state === 'obsolete' ? 2 : 1),
+        priority,
       };
     })
     .filter(Boolean)
-    .sort((left, right) => right.priority - left.priority || left.clusterLabel.localeCompare(right.clusterLabel))
-    .slice(0, 3);
+    .sort((left, right) => right.priority - left.priority || right.urgencyScore - left.urgencyScore || right.payoffScore - left.payoffScore || left.clusterLabel.localeCompare(right.clusterLabel))
+    .slice(0, 3)
+    .map((candidate, index) => ({
+      ...candidate,
+      rank: index + 1,
+      recommended: index === 0,
+    }));
   const top = candidates[0] ?? null;
 
   return {
@@ -1221,8 +1252,11 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
         : 'replan',
     summary: !top
       ? 'Aucun remplacement culturel nécessaire ce tour.'
-      : `${top.clusterLabel}: ${top.action} pour éviter ${top.avoidedConsequence}`,
+      : `${top.clusterLabel}: #1 ${top.action} — ${top.rankReason}; évite ${top.avoidedConsequence}`,
     primaryReplacementId: top?.replacementId ?? null,
+    rankingFallback: candidates.length === 0
+      ? 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.'
+      : 'Classement par urgence du fallout, payoff du remplacement, puis type défensif/opportuniste.',
     entries: candidates,
   };
 }
@@ -1615,6 +1649,7 @@ export function buildCultureTurnReportDeltas({
             state: 'quiet',
             summary: 'Aucun remplacement culturel nécessaire ce tour.',
             primaryReplacementId: null,
+            rankingFallback: 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.',
             entries: [],
           },
           detailMode: 'Aucun détail individuel à ouvrir.',
