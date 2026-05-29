@@ -13106,6 +13106,50 @@ button { font: inherit; }
 .map-world-climate-next-follow-up--safe-wait { border-color: rgba(251, 191, 36, 0.48); }
 .map-world-climate-next-follow-up--minimal-prep { border-color: rgba(56, 189, 248, 0.42); }
 
+.map-world-climate-threshold-protection {
+  display: grid;
+  gap: 7px;
+  max-width: 62ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(6, 78, 59, 0.45), rgba(15, 23, 42, 0.8));
+  border: 1px solid rgba(52, 211, 153, 0.38);
+}
+.map-world-climate-threshold-protection--stabilizes-short-term { border-color: rgba(251, 191, 36, 0.48); }
+.map-world-climate-threshold-protection--insufficient { border-color: rgba(248, 113, 113, 0.5); }
+.map-world-climate-threshold-protection__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-threshold-protection p,
+.map-world-climate-threshold-protection span,
+.map-world-climate-threshold-protection small {
+  color: #d1fae5;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-threshold-protection__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.map-world-climate-threshold-protection__item {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(52, 211, 153, 0.26);
+}
+.map-world-climate-threshold-protection__item--protects-threshold { border-color: rgba(74, 222, 128, 0.44); }
+.map-world-climate-threshold-protection__item--stabilizes-short-term { border-color: rgba(251, 191, 36, 0.46); }
+.map-world-climate-threshold-protection__item--insufficient { border-color: rgba(248, 113, 113, 0.5); }
+
 .province-node--action-available::before {
   border-color: rgba(74, 222, 128, 0.48);
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.12);

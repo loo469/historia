@@ -12568,6 +12568,120 @@ function renderAtlasNextClimateFollowUpAction(view) {
   `;
 }
 
+function buildAtlasClimateFollowUpThresholdProtection(nextFollowUpView, thresholdProgressView, queueView) {
+  if (!nextFollowUpView || nextFollowUpView.state === 'empty' || !nextFollowUpView.recommendation || !thresholdProgressView || thresholdProgressView.state === 'empty' || !thresholdProgressView.progress) {
+    return {
+      state: 'empty',
+      bestAction: null,
+      actions: [],
+      summary: 'Aucun classement de protection de seuil climat: follow-up ou seuil indisponible.',
+    };
+  }
+
+  const progress = thresholdProgressView.progress;
+  const primary = nextFollowUpView.recommendation;
+  const queueActions = (queueView?.items ?? [])
+    .filter((item) => item.label !== primary.label)
+    .map((item) => ({
+      label: item.label,
+      action: item.nextAction,
+      queueClassification: item.classification,
+      residualRisk: item.ignoredReboundRisk,
+    }));
+  const visibleActions = [
+    {
+      label: primary.label,
+      action: primary.action,
+      queueClassification: nextFollowUpView.state === 'immediate-action' ? 'primary-ready' : nextFollowUpView.state,
+      residualRisk: primary.residualRisk,
+      avoidedRisk: primary.avoidedRisk,
+      cooldownState: primary.cooldownState,
+    },
+    ...queueActions,
+  ].slice(0, 4);
+
+  const classifyAction = (action, index) => {
+    const protectsThreshold = index === 0
+      && thresholdProgressView.state === 'threshold-reached'
+      && (action.cooldownState === 'ready-now' || nextFollowUpView.state === 'immediate-action');
+    const stabilizesShortTerm = protectsThreshold
+      ? false
+      : index === 0 || action.queueClassification === 'urgent' || action.queueClassification === 'prudent' || /attendre|préparer|cooling-off|réserve|mitigation/i.test(action.action);
+    const className = protectsThreshold
+      ? 'protects-threshold'
+      : stabilizesShortTerm
+        ? 'stabilizes-short-term'
+        : 'insufficient';
+    const label = className === 'protects-threshold'
+      ? 'protège le seuil'
+      : className === 'stabilizes-short-term'
+        ? 'stabilise court terme'
+        : 'insuffisant';
+    const reason = className === 'protects-threshold'
+      ? `Protège ${progress.threshold} en évitant ${action.avoidedRisk ?? 'le rebond climatique'} avant ${progress.deadline}.`
+      : className === 'stabilizes-short-term'
+        ? `Stabilise la fenêtre ${progress.deadline}, mais demande encore une relecture du seuil avant d’élargir le plan.`
+        : `Repousse le risque sans sécuriser ${progress.threshold}: garder en attente tant que la fenêtre climatique reste fragile.`;
+    const thresholdLink = className === 'protects-threshold'
+      ? progress.nextMapFollowUp
+      : className === 'stabilizes-short-term'
+        ? (progress.missingLine || 'la protection reste partielle avant le prochain seuil')
+        : 'ne pas compter comme protection du prochain seuil';
+    const score = className === 'protects-threshold' ? 90 : className === 'stabilizes-short-term' ? 55 : 20;
+
+    return {
+      ...action,
+      rank: index + 1,
+      className,
+      label,
+      reason,
+      thresholdLink,
+      score,
+    };
+  };
+
+  const actions = visibleActions
+    .map(classifyAction)
+    .sort((left, right) => right.score - left.score || left.rank - right.rank)
+    .map((action, index) => ({ ...action, rank: index + 1 }));
+  const bestAction = actions[0] ?? null;
+
+  return {
+    state: bestAction?.className ?? 'empty',
+    bestAction,
+    actions,
+    summary: bestAction
+      ? `Meilleur follow-up seuil: ${bestAction.label} — ${bestAction.action}.`
+      : 'Aucun follow-up visible ne protège le prochain seuil climat.',
+  };
+}
+
+function renderAtlasClimateFollowUpThresholdProtection(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || !view.bestAction) {
+    return '';
+  }
+
+  return `
+    <section class="map-world-climate-threshold-protection map-world-climate-threshold-protection--${view.state}" aria-label="Classement des follow-ups climat qui protègent le prochain seuil readiness">
+      <div class="map-world-climate-threshold-protection__header">
+        <strong>Protection prochain seuil</strong>
+        <span>${view.bestAction.label}</span>
+      </div>
+      <p>${view.summary}</p>
+      <ol class="map-world-climate-threshold-protection__list">
+        ${view.actions.map((action) => `
+          <li class="map-world-climate-threshold-protection__item map-world-climate-threshold-protection__item--${action.className}">
+            <b>${action.rank}. ${action.label}</b>
+            <span>${action.action}</span>
+            <small><b>Pourquoi</b> · ${action.reason}</small>
+            <small><b>Lien seuil/fenêtre</b> · ${action.thresholdLink}</small>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -20814,6 +20928,11 @@ function render() {
     atlasSelectedClimateFollowUpReadinessRecap,
     atlasClimateFollowUpCompatibilityBundles,
   );
+  const atlasClimateFollowUpThresholdProtection = buildAtlasClimateFollowUpThresholdProtection(
+    atlasNextClimateFollowUpAction,
+    atlasClimateThresholdProgressAfterReadinessAction,
+    atlasClimateReboundFollowUpQueue,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -20871,6 +20990,7 @@ function render() {
           ${renderAtlasClimateFollowUpCompatibilityBundles(atlasClimateFollowUpCompatibilityBundles)}
           ${renderAtlasSelectedClimateFollowUpReadinessRecap(atlasSelectedClimateFollowUpReadinessRecap)}
           ${renderAtlasNextClimateFollowUpAction(atlasNextClimateFollowUpAction)}
+          ${renderAtlasClimateFollowUpThresholdProtection(atlasClimateFollowUpThresholdProtection)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
