@@ -840,7 +840,13 @@ function buildLocalRecoveryCapacityConflictWarning(priorityAction, routeChoices)
 
 function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
   if (!priorityAction) {
-    return { state: 'empty', criticalRoute: null, secondaryRoutes: [], summary: 'Aucun spillover logistique: aucune récupération locale sélectionnée.' };
+    return {
+      state: 'empty',
+      criticalRoute: null,
+      secondaryRoutes: [],
+      summary: 'Aucun spillover logistique: aucune récupération locale sélectionnée.',
+      dependencyTrace: 'Dépendance inconnue: aucun levier local ne permet de tracer la source du spillover.',
+    };
   }
 
   const option = routeChoices.find((candidate) => candidate.routeId === priorityAction.routeId) ?? null;
@@ -881,14 +887,19 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       criticalRoute: null,
       secondaryRoutes: [],
       summary: 'Aucun spillover logistique voisin concret après cette récupération locale.',
+      dependencyTrace: 'Dépendance inconnue: aucune route voisine exposée ne confirme la chaîne source → route affectée → conséquence.',
     };
   }
+
+  const source = choice?.bottleneck?.label ?? option?.causeLabel ?? 'source inconnue';
+  const consequence = criticalRoute.detail ?? `${criticalRoute.route} peut récupérer la pression déplacée.`;
 
   return {
     state: secondaryRoutes.length > 0 ? 'chain' : 'single',
     criticalRoute,
     secondaryRoutes,
     summary: `${criticalRoute.route} est la route voisine critique; ${secondaryRoutes.length > 0 ? `${secondaryRoutes.length} route${secondaryRoutes.length > 1 ? 's' : ''} secondaire${secondaryRoutes.length > 1 ? 's' : ''} exposée${secondaryRoutes.length > 1 ? 's' : ''}.` : 'aucune autre route secondaire exposée.'}`,
+    dependencyTrace: `${source} → ${criticalRoute.route}/${criticalRoute.city} → ${consequence}`,
   };
 }
 
