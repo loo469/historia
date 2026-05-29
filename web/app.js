@@ -12933,6 +12933,102 @@ function renderAtlasClimateFollowUpSafetyMargin(view) {
   `;
 }
 
+function buildAtlasClimateNextTurnSafetyMarginLoss(safetyMarginView, thresholdProgressView, protectionView) {
+  if (!safetyMarginView || safetyMarginView.state === 'empty' || !safetyMarginView.margin || !thresholdProgressView?.progress) {
+    return {
+      state: 'unknown',
+      projection: null,
+      summary: 'Projection prochain tour indisponible: marge actuelle non calculable.',
+    };
+  }
+
+  const current = safetyMarginView.margin;
+  const progress = thresholdProgressView.progress;
+  const nonProtectiveActions = (protectionView?.actions ?? []).filter((action) => action.className !== 'protects-threshold');
+  const currentWeak = safetyMarginView.state === 'weak' || safetyMarginView.state === 'unknown';
+  const hasPreventiveNeed = current.secondActionNeeded || nonProtectiveActions.some((action) => action.className === 'stabilizes-short-term');
+  const state = currentWeak
+    ? 'dangerous-next-turn'
+    : safetyMarginView.state === 'correct' || hasPreventiveNeed
+      ? 'slight-loss'
+      : 'stable';
+  const label = state === 'stable'
+    ? 'marge stable'
+    : state === 'slight-loss'
+      ? 'diminue légèrement'
+      : state === 'dangerous-next-turn'
+        ? 'devient dangereuse'
+        : 'projection inconnue';
+  const mainConsumer = state === 'stable'
+    ? 'aucun consommateur dominant: la veille carte suffit'
+    : current.consumesMargin || (nonProtectiveActions[0]?.reason ?? 'fenêtre climatique non confirmée');
+  const preferNow = state === 'dangerous-next-turn' || (state === 'slight-loss' && current.secondActionNeeded);
+  const recommendedTiming = preferNow
+    ? `Agir maintenant: ${current.recommendation}`
+    : state === 'stable'
+      ? 'Attendre possible: relire la marge au prochain tour avant nouveau bundle.'
+      : 'Préparer maintenant si le coût est faible, sinon relire dès le début du prochain tour.';
+  const nextTurnEffect = state === 'stable'
+    ? `${current.label} devrait rester stable avant ${progress.deadline}.`
+    : state === 'slight-loss'
+      ? `${current.label} devrait perdre un cran de confort si ${mainConsumer} continue.`
+      : state === 'dangerous-next-turn'
+        ? `${current.label} risque de devenir dangereuse au prochain tour avant ${progress.threshold}.`
+        : 'Projection non disponible: conserver un message de prudence.';
+
+  return {
+    state,
+    projection: {
+      label,
+      currentMargin: current.label,
+      protectedThreshold: progress.threshold,
+      deadline: progress.deadline,
+      nextTurnEffect,
+      mainConsumer,
+      preferNow,
+      recommendedTiming,
+      fallback: state === 'unknown' ? 'Fallback lisible: afficher projection inconnue et demander une relecture climat au début du tour suivant.' : '',
+    },
+    summary: state === 'unknown'
+      ? 'Perte de marge prochain tour inconnue: ne pas promettre de sécurité durable.'
+      : `${label}: ${preferNow ? 'action préventive préférable maintenant' : 'pas d’urgence immédiate'} avant le prochain seuil.`,
+  };
+}
+
+function renderAtlasClimateNextTurnSafetyMarginLoss(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view || view.state === 'empty') {
+    return '';
+  }
+
+  if (!view.projection) {
+    return `
+      <aside class="map-world-climate-next-turn-margin-loss map-world-climate-next-turn-margin-loss--unknown" aria-label="Projection de perte de marge climat au prochain tour">
+        <div class="map-world-climate-next-turn-margin-loss__header">
+          <strong>Marge prochain tour</strong>
+          <span>projection inconnue</span>
+        </div>
+        <p>${view.summary}</p>
+        <small><b>Fallback</b> · Projection indisponible: relire la carte climat au début du prochain tour.</small>
+      </aside>
+    `;
+  }
+
+  return `
+    <aside class="map-world-climate-next-turn-margin-loss map-world-climate-next-turn-margin-loss--${view.state}" aria-label="Projection de perte de marge climat au prochain tour">
+      <div class="map-world-climate-next-turn-margin-loss__header">
+        <strong>Marge prochain tour</strong>
+        <span>${view.projection.label}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Effet projeté</b> · ${view.projection.nextTurnEffect}</small>
+      <small><b>Consommateur principal</b> · ${view.projection.mainConsumer}</small>
+      <small><b>Timing recommandé</b> · ${view.projection.recommendedTiming}</small>
+      <small><b>Seuil concerné</b> · ${view.projection.protectedThreshold} · ${view.projection.deadline}</small>
+      ${view.projection.fallback ? `<small><b>Fallback</b> · ${view.projection.fallback}</small>` : ''}
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -21189,6 +21285,11 @@ function render() {
     atlasNextClimateFollowUpAction,
     atlasClimateThresholdProgressAfterReadinessAction,
   );
+  const atlasClimateNextTurnSafetyMarginLoss = buildAtlasClimateNextTurnSafetyMarginLoss(
+    atlasClimateFollowUpSafetyMargin,
+    atlasClimateThresholdProgressAfterReadinessAction,
+    atlasClimateFollowUpThresholdProtection,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -21248,6 +21349,7 @@ function render() {
           ${renderAtlasNextClimateFollowUpAction(atlasNextClimateFollowUpAction)}
           ${renderAtlasClimateFollowUpThresholdProtection(atlasClimateFollowUpThresholdProtection)}
           ${renderAtlasClimateFollowUpSafetyMargin(atlasClimateFollowUpSafetyMargin)}
+          ${renderAtlasClimateNextTurnSafetyMarginLoss(atlasClimateNextTurnSafetyMarginLoss)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
