@@ -1215,6 +1215,22 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
         ? 'opportunistic'
         : 'defensive';
       const priority = urgencyScore * 2 + payoffScore + (replacementMode === 'opportunistic' ? 1 : 0);
+      const skipAcceptable = urgencyScore <= 1;
+      const skipConsequenceType = skipAcceptable
+        ? 'acceptable-delay'
+        : replacementMode === 'opportunistic'
+          ? 'missed-bonus'
+          : 'unhandled-loss';
+      const nextReviewWindow = urgencyScore >= 3
+        ? 'prochain tour avant commit'
+        : urgencyScore === 2
+          ? 'début du prochain tour culturel'
+          : 'prochaine rotation culturelle';
+      const skipConsequence = skipAcceptable
+        ? `${prompt.clusterLabel}: report acceptable, urgence basse; reconsidérer à la ${nextReviewWindow}.`
+        : replacementMode === 'opportunistic'
+          ? `${prompt.clusterLabel}: bonus culturel probablement manqué si ${action} attend un tour.`
+          : `${prompt.clusterLabel}: perte évitée non traitée au prochain tour si ${action} est ignoré.`;
 
       return {
         replacementId: `${prompt.cleanupId}:replacement`,
@@ -1230,6 +1246,10 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
         payoffScore,
         mode: replacementMode,
         rankReason: `${urgency} urgence · payoff ${payoff} · ${replacementMode === 'defensive' ? 'évite une perte' : 'ouvre un bonus'}`,
+        skipConsequenceType,
+        skipConsequence,
+        skipAcceptable,
+        nextReviewWindow,
         reason: `${prompt.reason} Alternative compacte: ${action}.`,
         priority,
       };
@@ -1254,6 +1274,8 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
       ? 'Aucun remplacement culturel nécessaire ce tour.'
       : `${top.clusterLabel}: #1 ${top.action} — ${top.rankReason}; évite ${top.avoidedConsequence}`,
     primaryReplacementId: top?.replacementId ?? null,
+    skipConsequenceSummary: top?.skipConsequence ?? 'Fallback: conséquence au prochain tour non calculable.',
+    nextReviewWindow: top?.nextReviewWindow ?? null,
     rankingFallback: candidates.length === 0
       ? 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.'
       : 'Classement par urgence du fallout, payoff du remplacement, puis type défensif/opportuniste.',
@@ -1649,6 +1671,8 @@ export function buildCultureTurnReportDeltas({
             state: 'quiet',
             summary: 'Aucun remplacement culturel nécessaire ce tour.',
             primaryReplacementId: null,
+            skipConsequenceSummary: 'Fallback: conséquence au prochain tour non calculable.',
+            nextReviewWindow: null,
             rankingFallback: 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.',
             entries: [],
           },

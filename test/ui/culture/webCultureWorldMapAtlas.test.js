@@ -171,6 +171,9 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /Urgence/);
   assert.match(webAppSource, /payoff/);
   assert.match(webAppSource, /Pourquoi:/);
+  assert.match(webAppSource, /Coût du report:/);
+  assert.match(webAppSource, /Si ignoré:/);
+  assert.match(webAppSource, /À reconsidérer:/);
   assert.match(webAppSource, /Évite:/);
   assert.match(webAppSource, /culture-turn-report__cleanup-prompts/);
   assert.match(webAppSource, /Prompts de nettoyage des bundles culturels/);
