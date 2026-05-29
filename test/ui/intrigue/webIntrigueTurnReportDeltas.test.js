@@ -11,5 +11,7 @@ test('playable map wires intrigue aftermath deltas into selected province turn r
   assert.match(webAppSource, /Risque représailles/);
   assert.match(webAppSource, /previousTimingRecommendation/);
   assert.match(webAppSource, /Changement de recommandation de timing intrigue/);
+  assert.match(webAppSource, /Confiance/);
+  assert.match(webAppSource, /confidenceShift/);
   assert.match(webAppSource, /renderIntrigueTurnReportDeltas\(province, intrigueView\)/);
 });
