@@ -473,6 +473,11 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
           },
         ],
       },
+      safeToDeferBundles: {
+        state: 'none',
+        summary: 'Aucun bundle culturel sûr à reporter ce tour.',
+        entries: [],
+      },
       detailMode: 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
     },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
@@ -575,6 +580,49 @@ test('buildCultureTurnReportDeltas marks stale cultural follow-through reminders
     ['Harbor Compact', 'replan', 'replanifier après cleanup du risque', 'Ouvrir le récit d’expansion'],
   ]);
   assert.match(report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries[0].avoidedConsequence, /opportunité fraîche masquée/);
+});
+
+test('buildCultureTurnReportDeltas marks resolved cultural bundles safe to defer', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    localTimeline: {
+      items: [
+        {
+          timelineId: 'river-gate:event:quiet-followup',
+          kind: 'event',
+          signal: 'watch',
+          title: 'Suivi calme',
+          summary: 'Risque stabilisé.',
+          regionId: 'river-gate',
+          cultureName: 'Compact d’Aurora',
+        },
+      ],
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+    ],
+  });
+
+  assert.deepEqual(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.label,
+    entry.condition,
+    entry.nextReviewWindow,
+  ]), [
+    ['Compact d’Aurora', 'Peut attendre', 'risque stabilisé par l’historique lisible', 'prochaine rotation culturelle'],
+  ]);
+  assert.match(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.summary, /Peut attendre/);
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries.some((entry) => entry.clusterLabel === 'Compact d’Aurora'), false);
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -700,6 +748,11 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
           skipConsequenceSummary: 'Fallback: conséquence au prochain tour non calculable.',
           nextReviewWindow: null,
           rankingFallback: 'Fallback: aucun score disponible, garder les bundles dans l’ordre actuel.',
+          entries: [],
+        },
+        safeToDeferBundles: {
+          state: 'none',
+          summary: 'Aucun bundle culturel sûr à reporter ce tour.',
           entries: [],
         },
         detailMode: 'Aucun détail individuel à ouvrir.',
