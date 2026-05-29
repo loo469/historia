@@ -14177,11 +14177,13 @@ button { font: inherit; }
 .atlas-military-neighbor-front-shift__focus,
 .atlas-military-neighbor-front-shift-row__reason,
 .atlas-military-neighbor-front-shift__empty,
-.atlas-military-neighbor-review-priority__reason {
+.atlas-military-neighbor-review-priority__reason,
+.atlas-military-neighbor-review-staleness__action {
   fill: #ddd6fe;
   font-size: 0.42px;
 }
-.atlas-military-neighbor-review-priority__label {
+.atlas-military-neighbor-review-priority__label,
+.atlas-military-neighbor-review-staleness__label {
   fill: #f5f3ff;
   font-size: 0.55px;
   font-weight: 900;
@@ -14191,7 +14193,11 @@ button { font: inherit; }
 }
 .atlas-military-neighbor-review-priority--stable .atlas-military-neighbor-review-priority__label { fill: #bbf7d0; }
 .atlas-military-neighbor-review-priority--fragilise .atlas-military-neighbor-review-priority__label,
-.atlas-military-neighbor-review-priority--rechute .atlas-military-neighbor-review-priority__label { fill: #fecdd3; }
+.atlas-military-neighbor-review-priority--rechute .atlas-military-neighbor-review-priority__label,
+.atlas-military-neighbor-review-staleness--order .atlas-military-neighbor-review-staleness__label,
+.atlas-military-neighbor-review-staleness--front .atlas-military-neighbor-review-staleness__label,
+.atlas-military-neighbor-review-staleness--turn .atlas-military-neighbor-review-staleness__label { fill: #fecdd3; }
+.atlas-military-neighbor-review-staleness--unknown .atlas-military-neighbor-review-staleness__label { fill: #c4b5fd; }
 .atlas-military-neighbor-front-shift-row circle {
   fill: rgba(167, 139, 250, 0.84);
   stroke: rgba(245, 243, 255, 0.72);

@@ -123,3 +123,25 @@ test('atlas military summarizes post-commit neighboring province review priority
   assert.match(stylesSource, /\.atlas-military-neighbor-review-priority--stable/);
   assert.match(stylesSource, /\.atlas-military-neighbor-review-priority--rechute/);
 });
+
+// MAP-A25: flag stale neighboring review summaries when orders, fronts, or turns
+// move past the last analysis.
+test('atlas military warns when neighboring province reviews become stale', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborReviewStaleness\(recommendation, shifts\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborReviewStaleness\(staleness, y\)/);
+  assert.match(webAppSource, /Avertissement fraîcheur revue voisine/);
+  assert.match(webAppSource, /Revue voisine périmée/);
+  assert.match(webAppSource, /nouvel ordre: \$\{primary\.previousDecision\} → \$\{primary\.nextAction\}/);
+  assert.match(webAppSource, /Front voisin changé/);
+  assert.match(webAppSource, /front changé: \$\{frontChange\.routeLabel\}/);
+  assert.match(webAppSource, /Revue du tour précédent/);
+  assert.match(webAppSource, /tour passé: tour \$\{state\.turn\}/);
+  assert.match(webAppSource, /vérifier uniquement les provinces critiques/);
+  assert.match(webAppSource, /ignorer pour ce tour si aucun risque critique/);
+  assert.match(webAppSource, /âge\/cause non disponible: surveiller sans alerte/);
+  assert.match(webAppSource, /reviewStaleness: buildAtlasMilitaryNeighborReviewStaleness\(recommendation, \[\]\)/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborReviewStaleness\(preview\.reviewStaleness, staleY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-staleness__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-staleness--front/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-staleness--unknown/);
+});
