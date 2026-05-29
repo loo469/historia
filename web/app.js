@@ -8401,12 +8401,14 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
           ${report.minimumVerificationPrompt.safestMinimalVerification?.recommended ? `
             <small class="province-intrigue-turn-report__minimal-check">Plus sûre: ${report.minimumVerificationPrompt.safestMinimalVerification.label} · ${report.minimumVerificationPrompt.safestMinimalVerification.action} ${report.minimumVerificationPrompt.safestMinimalVerification.whyEnough}${report.minimumVerificationPrompt.safestMinimalVerification.fullReviewRequired ? ' Revue complète si le recoupement diverge.' : ''}</small>
             <small class="province-intrigue-turn-report__next-turn-unlock">Débloque: ${report.minimumVerificationPrompt.safestMinimalVerification.unlockNextTurn}</small>
+            <small class="province-intrigue-turn-report__expiry-summary">Échéance: ${report.minimumVerificationPrompt.safestMinimalVerification.followUpExpirySummary ?? 'Aucune information d’expiration visible.'}</small>
             ${report.minimumVerificationPrompt.safestMinimalVerification.followUpOptions?.length ? `
               <ul class="province-intrigue-turn-report__followups" aria-label="Suites débloquées par la vérification minimale">
                 ${report.minimumVerificationPrompt.safestMinimalVerification.followUpOptions.map((option) => `
-                  <li class="province-intrigue-turn-report__followup province-intrigue-turn-report__followup--${option.type}">
+                  <li class="province-intrigue-turn-report__followup province-intrigue-turn-report__followup--${option.type} province-intrigue-turn-report__followup--${option.expiry?.state ?? 'available'}">
                     <b>${option.label}</b>
                     <span>${option.consequence}</span>
+                    <small class="province-intrigue-turn-report__expiry province-intrigue-turn-report__expiry--${option.expiry?.state ?? 'available'}">${option.expiry?.label ?? 'échéance inconnue'} · ${option.expiry?.detail ?? 'aucune information d’expiration visible'}</small>
                   </li>
                 `).join('')}
               </ul>
