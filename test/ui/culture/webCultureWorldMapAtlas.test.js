@@ -168,6 +168,9 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /culture-turn-report__replacement-recommendations/);
   assert.match(webAppSource, /Remplacement recommandé/);
   assert.match(webAppSource, /replacementRecommendations/);
+  assert.match(webAppSource, /Urgence/);
+  assert.match(webAppSource, /payoff/);
+  assert.match(webAppSource, /Pourquoi:/);
   assert.match(webAppSource, /Évite:/);
   assert.match(webAppSource, /culture-turn-report__cleanup-prompts/);
   assert.match(webAppSource, /Prompts de nettoyage des bundles culturels/);
@@ -252,6 +255,9 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.culture-turn-report__replacement-recommendations--action-needed/);
   assert.match(stylesSource, /\.culture-turn-report__replacement-recommendation--renew/);
   assert.match(stylesSource, /\.culture-turn-report__replacement-recommendation--abandon/);
+  assert.match(stylesSource, /\.culture-turn-report__replacement-recommendation--defensive/);
+  assert.match(stylesSource, /\.culture-turn-report__replacement-recommendation--opportunistic/);
+  assert.match(stylesSource, /\.culture-turn-report__replacement-recommendation\.is-recommended/);
   assert.match(stylesSource, /\.culture-turn-report__cleanup-prompts/);
   assert.match(stylesSource, /\.culture-turn-report__cleanup-prompt--obsolete/);
   assert.match(stylesSource, /\.culture-turn-report__cleanup-prompt--resolved/);

@@ -2101,6 +2101,12 @@ button { font: inherit; }
 .culture-turn-report__replacement-recommendation--renew { border-color: rgba(74, 222, 128, 0.34); }
 .culture-turn-report__replacement-recommendation--abandon { border-color: rgba(248, 113, 113, 0.4); }
 .culture-turn-report__replacement-recommendation--replan { border-color: rgba(251, 191, 36, 0.4); }
+.culture-turn-report__replacement-recommendation--defensive { background: rgba(127, 29, 29, 0.18); }
+.culture-turn-report__replacement-recommendation--opportunistic { background: rgba(20, 83, 45, 0.18); }
+.culture-turn-report__replacement-recommendation.is-recommended {
+  border-width: 2px;
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.18);
+}
 .culture-turn-report__cleanup-prompts {
   display: grid;
   gap: 6px;
