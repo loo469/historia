@@ -7837,6 +7837,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           <strong>${preview.secondaryBottleneckPreview.route} · ${preview.secondaryBottleneckPreview.city}</strong>
           <p>${preview.secondaryBottleneckPreview.summary}</p>
           <small>${preview.secondaryBottleneckPreview.resource}: ${preview.secondaryBottleneckPreview.detail}</small>
+          <em>Suite recommandée: ${preview.secondaryBottleneckPreview.nextRecommendation.action} (${preview.secondaryBottleneckPreview.nextRecommendation.target}) — ${preview.secondaryBottleneckPreview.nextRecommendation.reason}</em>
         </div>
       ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">

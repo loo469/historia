@@ -76,6 +76,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Goulot suivant/);
   assert.match(webAppSource, /secondaryBottleneckPreview/);
   assert.match(webAppSource, /Prochain goulot logistique après le levier recovery/);
+  assert.match(webAppSource, /Suite recommandée/);
+  assert.match(webAppSource, /nextRecommendation/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);
   assert.match(webAppSource, /Engager récupération/);
