@@ -1057,6 +1057,85 @@ function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary,
   };
 }
 
+
+function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder) {
+  const groups = promptHistoryDrawer.groups.map((group) => {
+    const currentEntries = group.entries.filter((entry) => entry.source === 'current');
+    const historyEntries = group.entries.filter((entry) => entry.source === 'history');
+    const matchingCommitment = rotationCommitmentSummary.entries.find((entry) => entry.clusterLabel === group.clusterLabel)
+      ?? null;
+    const isReminderGroup = commitmentFollowThroughReminder.clusterLabel === group.clusterLabel;
+    const agePriority = isReminderGroup ? commitmentFollowThroughReminder.agePriority : null;
+    const unlockScore = (agePriority?.priority ?? 0)
+      + (matchingCommitment && !matchingCommitment.hasUnresolvedDependencies ? 2 : 0)
+      + currentEntries.length
+      + Math.min(historyEntries.length, 2);
+    const firstDetail = currentEntries[0] ?? historyEntries[0] ?? null;
+
+    return {
+      bundleId: `${group.groupId}:follow-through-bundle`,
+      clusterLabel: group.clusterLabel,
+      theme: group.theme,
+      state: agePriority?.stale
+        ? 'stale'
+        : agePriority?.almostExpired
+          ? 'urgent'
+          : matchingCommitment?.rotationState === 'available-now'
+            ? 'ready'
+            : historyEntries.length > 0
+              ? 'watch'
+              : 'context',
+      summary: `${group.clusterLabel}: ${group.entries.length} suivi${group.entries.length > 1 ? 's' : ''} regroupé${group.entries.length > 1 ? 's' : ''} sur ${group.theme}.`,
+      groupingReason: historyEntries.length > 0 && currentEntries.length > 0
+        ? 'Même région et même thème: comparer la promesse récente avec le suivi proposé.'
+        : historyEntries.length > 1
+          ? 'Même thème récurrent: traiter ensemble avant de relancer une action.'
+          : currentEntries.length > 1
+            ? 'Même enjeu actif: choisir un premier suivi au lieu de lire chaque alerte.'
+            : 'Même enjeu culturel: garder le contexte visible sans grossir la file.',
+      unlockScore,
+      bestFirstFollowUp: matchingCommitment
+        ? `${matchingCommitment.promptLabel} — ${matchingCommitment.hasUnresolvedDependencies ? matchingCommitment.dependencyWarning : matchingCommitment.benefit}`
+        : firstDetail
+          ? `${firstDetail.promptLabel} — ${firstDetail.outcome ?? firstDetail.repeatReason ?? 'contexte à confirmer'}`
+          : 'Aucun premier suivi disponible.',
+      avoidedLoss: agePriority?.stale
+        ? 'évite de laisser un ancien suivi masquer une opportunité fraîche'
+        : agePriority?.almostExpired
+          ? 'évite de perdre la fenêtre avant le prochain tour'
+          : matchingCommitment?.benefit ?? 'préserve le contexte culturel groupé',
+      detailCount: group.entries.length,
+      details: group.entries.map((entry) => ({
+        detailId: entry.promptId ?? entry.historyId,
+        source: entry.source,
+        promptLabel: entry.promptLabel,
+        clusterLabel: entry.clusterLabel,
+        state: entry.source === 'history' ? entry.choiceState : entry.role,
+        note: entry.source === 'history' ? entry.outcome : entry.repeatReason,
+      })),
+    };
+  }).sort((left, right) => right.unlockScore - left.unlockScore || right.detailCount - left.detailCount || left.clusterLabel.localeCompare(right.clusterLabel));
+  const top = groups[0] ?? null;
+
+  return {
+    state: groups.length === 0
+      ? 'quiet'
+      : groups.some((group) => group.state === 'urgent' || group.state === 'stale')
+        ? 'actionable'
+        : groups.some((group) => group.state === 'ready')
+          ? 'ready'
+          : 'watch',
+    summary: groups.length === 0
+      ? 'Aucun plan de suivi culturel groupé.'
+      : `${groups.length} plan${groups.length > 1 ? 's' : ''} de suivi culturel groupé${groups.length > 1 ? 's' : ''}; premier: ${top.clusterLabel}.`,
+    bestBundleId: top?.bundleId ?? null,
+    groups,
+    detailMode: groups.length === 0
+      ? 'Aucun détail individuel à ouvrir.'
+      : 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
+  };
+}
+
 function buildCulturalCommitmentBundles(stabilizationRecommendations, activeRecommendations = [], promptHistory = [], regionId = 'province', turn = 1) {
   const recommendations = collectNormalizedRecommendations(stabilizationRecommendations, activeRecommendations);
   const trajectories = ['apaisement', 'consolidation', 'enquête', 'expansion', 'attente'];
@@ -1163,6 +1242,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
   const recommendationRotationPreview = buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promptHistoryDrawer);
   const rotationCommitmentSummary = buildCulturalRotationCommitmentSummary(recommendationRotationPreview, promptChoiceComparison, bundles, incompatibilities);
   const commitmentFollowThroughReminder = buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary, promptHistoryDrawer, turn);
+  const followThroughBundlePlan = buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
@@ -1182,6 +1262,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
     recommendationRotationPreview,
     rotationCommitmentSummary,
     commitmentFollowThroughReminder,
+    followThroughBundlePlan,
     dependencyExplanation: bundles.length === 0
       ? 'Aucune dépendance entre marqueurs culturels.'
       : bundles
@@ -1332,6 +1413,13 @@ export function buildCultureTurnReportDeltas({
           priorityLabel: 'aucun engagement actif · priorité 0/4',
           nextCheck: 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.',
           expectedAction: 'attendre un engagement culturel explicite avant de rappeler une promesse',
+        },
+        followThroughBundlePlan: {
+          state: 'quiet',
+          summary: 'Aucun plan de suivi culturel groupé.',
+          bestBundleId: null,
+          groups: [],
+          detailMode: 'Aucun détail individuel à ouvrir.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
       },

@@ -6786,6 +6786,33 @@ function renderCultureTurnReport(report) {
         <small>Prochaine vérification: ${report.commitmentBundles?.commitmentFollowThroughReminder?.nextCheck ?? 'Continuer à surveiller les signaux culturels visibles avant d’annoncer un suivi.'}</small>
         <small>Action attendue: ${report.commitmentBundles?.commitmentFollowThroughReminder?.expectedAction ?? 'attendre un engagement culturel explicite avant de rappeler une promesse'}</small>
       </div>
+      <div class="culture-turn-report__follow-through-plan culture-turn-report__follow-through-plan--${report.commitmentBundles?.followThroughBundlePlan?.state ?? 'quiet'}" aria-label="Plans de suivi culturel groupés">
+        <span>Plans de suivi groupés</span>
+        <strong>${report.commitmentBundles?.followThroughBundlePlan?.summary ?? 'Aucun plan de suivi culturel groupé.'}</strong>
+        ${(report.commitmentBundles?.followThroughBundlePlan?.groups ?? []).length > 0 ? `
+          <div class="culture-turn-report__follow-through-plan-list">
+            ${report.commitmentBundles.followThroughBundlePlan.groups.map((group) => `
+              <details class="culture-turn-report__follow-through-plan-group culture-turn-report__follow-through-plan-group--${group.state}" ${group.bundleId === report.commitmentBundles.followThroughBundlePlan.bestBundleId ? 'open' : ''}>
+                <summary>
+                  <b>${group.clusterLabel}</b>
+                  <em>${group.state === 'urgent' ? 'à traiter' : group.state === 'stale' ? 'à remplacer' : group.state === 'ready' ? 'prêt' : 'à surveiller'} · score ${group.unlockScore}</em>
+                </summary>
+                <small>${group.groupingReason}</small>
+                <small>Premier suivi: ${group.bestFirstFollowUp}</small>
+                <small>Perte évitée: ${group.avoidedLoss}</small>
+                <div class="culture-turn-report__follow-through-plan-details">
+                  ${group.details.map((detail) => `
+                    <span class="culture-turn-report__follow-through-plan-detail culture-turn-report__follow-through-plan-detail--${detail.source}">
+                      <b>${detail.promptLabel}</b>
+                      <small>${detail.source === 'history' ? 'historique' : 'courant'} · ${detail.state} · ${detail.note}</small>
+                    </span>
+                  `).join('')}
+                </div>
+              </details>
+            `).join('')}
+          </div>
+        ` : `<small>${report.commitmentBundles?.followThroughBundlePlan?.detailMode ?? 'Aucun détail individuel à ouvrir.'}</small>`}
+      </div>
       <details class="culture-turn-report__history culture-turn-report__history--${report.commitmentBundles?.promptHistoryDrawer?.state ?? 'quiet'}" aria-label="Historique des prompts culturels de carte">
         <summary>
           <span>Historique culturel</span>
