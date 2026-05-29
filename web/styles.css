@@ -13316,6 +13316,35 @@ button { font: inherit; }
 .map-world-climate-smallest-prevention--unavailable span,
 .map-world-climate-smallest-prevention--unavailable small { color: #e2e8f0; }
 
+.map-world-climate-secondary-protection {
+  display: grid;
+  gap: 6px;
+  max-width: 62ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(88, 28, 135, 0.42), rgba(15, 23, 42, 0.84));
+  border: 1px solid rgba(196, 181, 253, 0.38);
+}
+.map-world-climate-secondary-protection--catastrophe { border-color: rgba(248, 113, 113, 0.5); }
+.map-world-climate-secondary-protection--myth-track { border-color: rgba(216, 180, 254, 0.5); }
+.map-world-climate-secondary-protection--threshold { border-color: rgba(74, 222, 128, 0.4); }
+.map-world-climate-secondary-protection--zone { border-color: rgba(125, 211, 252, 0.42); }
+.map-world-climate-secondary-protection__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-secondary-protection p,
+.map-world-climate-secondary-protection span,
+.map-world-climate-secondary-protection small {
+  color: #ede9fe;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+
 .province-node--action-available::before {
   border-color: rgba(74, 222, 128, 0.48);
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.12);
