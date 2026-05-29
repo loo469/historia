@@ -10159,6 +10159,80 @@ function renderAtlasClimateNextReadinessThreshold(view) {
   `;
 }
 
+function buildAtlasClimateThresholdProgressAfterReadinessAction(nextThresholdView, consequenceView, boostView, postBoostView) {
+  if (!nextThresholdView || nextThresholdView.state === 'empty' || !nextThresholdView.recommendation) {
+    return {
+      state: 'empty',
+      progress: null,
+      summary: 'Aucune progression de seuil climat à comparer après action readiness.',
+    };
+  }
+
+  const recommendation = nextThresholdView.recommendation;
+  const hint = (consequenceView?.hints ?? []).find((candidate) => candidate.provinceId === recommendation.provinceId);
+  const boost = (boostView?.boosts ?? []).find((candidate) => candidate.provinceId === recommendation.provinceId);
+  const preview = (postBoostView?.previews ?? []).find((candidate) => candidate.provinceId === recommendation.provinceId);
+  const beforeGap = boost?.concreteReason ?? hint?.likelyMapEffect ?? recommendation.reason;
+  const reached = preview?.outcome === 'executable' || preview?.outcome === 'still-tight';
+  const stillMissing = preview?.outcome === 'still-tight'
+    ? 'Seuil atteint mais marge courte: rejouer la carte climat au prochain tour avant d’empiler un autre plan.'
+    : preview?.outcome === 'insufficient'
+      ? `${recommendation.threshold} non atteint: ${preview.postBoostSignal}`
+      : nextThresholdView.state === 'no-threshold-change'
+        ? `${recommendation.threshold} non atteint: ${recommendation.signal}.`
+        : 'Il manque une confirmation carte du bénéfice avant de masquer la conséquence readiness.';
+  const nextMapFollowUp = reached
+    ? (preview?.outcome === 'still-tight'
+      ? `Suivi carte suivant: surveiller ${recommendation.deadline} et relire la pression résiduelle avant nouvelle action.`
+      : `Suivi carte suivant: afficher ${recommendation.expectedBenefit} puis classer le prochain marqueur climat régional.`)
+    : `Encore manquant: ${stillMissing}`;
+  const afterGap = reached
+    ? (preview?.postBoostSignal ?? recommendation.expectedBenefit)
+    : stillMissing;
+
+  return {
+    state: reached ? 'threshold-reached' : 'threshold-pending',
+    progress: {
+      provinceId: recommendation.provinceId,
+      provinceLabel: recommendation.provinceLabel,
+      deadline: recommendation.deadline,
+      threshold: recommendation.threshold,
+      readinessAction: boost?.smallestBoost ?? recommendation.investment,
+      beforeGap,
+      afterGap,
+      missingLine: reached ? '' : stillMissing,
+      nextMapFollowUp,
+      consequenceCompatibility: hint?.followUpEffect ?? recommendation.expectedBenefit,
+    },
+    summary: reached
+      ? `${recommendation.provinceLabel}: l’action readiness franchit le seuil recommandé; proposer le suivi climat lisible sur la carte.`
+      : `${recommendation.provinceLabel}: l’action readiness réduit l’écart mais ne franchit pas encore le seuil recommandé.`,
+  };
+}
+
+function renderAtlasClimateThresholdProgressAfterReadinessAction(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty' || !view.progress) {
+    return '';
+  }
+
+  const progress = view.progress;
+  return `
+    <aside class="map-world-climate-threshold-progress map-world-climate-threshold-progress--${view.state}" aria-label="Progression vers le seuil climatique après action readiness">
+      <div class="map-world-climate-threshold-progress__header">
+        <strong>Progression seuil climat</strong>
+        <span>${view.state === 'threshold-reached' ? 'seuil atteint' : 'écart restant'}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>${progress.provinceLabel}</b> · ${progress.deadline} · ${progress.threshold}</small>
+      <small><b>Action readiness</b> · ${progress.readinessAction}</small>
+      <small><b>Avant</b> · ${progress.beforeGap}</small>
+      <small><b>Après</b> · ${progress.afterGap}</small>
+      ${progress.missingLine ? `<small><b>Manque encore</b> · ${progress.missingLine}</small>` : `<small><b>Prochain suivi carte</b> · ${progress.nextMapFollowUp}</small>`}
+      <small><b>Compatibilité conséquences</b> · ${progress.consequenceCompatibility}</small>
+    </aside>
+  `;
+}
+
 function buildAtlasClimateReadinessBoostReliefRanking(postBoostView) {
   if (!postBoostView || postBoostView.state === 'empty' || postBoostView.previews.length === 0) {
     return {
@@ -20588,6 +20662,12 @@ function render() {
     atlasClimateReadinessBoostRecommendations,
     atlasClimatePostBoostDeadlineRiskPreview,
   );
+  const atlasClimateThresholdProgressAfterReadinessAction = buildAtlasClimateThresholdProgressAfterReadinessAction(
+    atlasClimateNextReadinessThreshold,
+    atlasClimateReadinessConsequenceHints,
+    atlasClimateReadinessBoostRecommendations,
+    atlasClimatePostBoostDeadlineRiskPreview,
+  );
   const atlasClimateReadinessBoostReliefRanking = buildAtlasClimateReadinessBoostReliefRanking(atlasClimatePostBoostDeadlineRiskPreview);
   const atlasClimateMinimumViableBoostHint = buildAtlasClimateMinimumViableBoostHint(atlasClimateReadinessBoostReliefRanking);
   const atlasClimateMinimumBoostDeadlineMissWarning = buildAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumViableBoostHint);
@@ -20653,6 +20733,7 @@ function render() {
           ${renderAtlasClimatePostBoostDeadlineRiskPreview(atlasClimatePostBoostDeadlineRiskPreview)}
           ${renderAtlasClimateReadinessConsequenceHints(atlasClimateReadinessConsequenceHints)}
           ${renderAtlasClimateNextReadinessThreshold(atlasClimateNextReadinessThreshold)}
+          ${renderAtlasClimateThresholdProgressAfterReadinessAction(atlasClimateThresholdProgressAfterReadinessAction)}
           ${renderAtlasClimateReadinessBoostReliefRanking(atlasClimateReadinessBoostReliefRanking)}
           ${renderAtlasClimateMinimumViableBoostHint(atlasClimateMinimumViableBoostHint)}
           ${renderAtlasClimateMinimumBoostDeadlineMissWarning(atlasClimateMinimumBoostDeadlineMissWarning)}
