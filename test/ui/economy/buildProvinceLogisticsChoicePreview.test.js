@@ -102,6 +102,10 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.secondaryBottleneckPreview.nextRecommendation.action, /Traiter ensuite/);
   assert.match(preview.secondaryBottleneckPreview.nextRecommendation.target, /Iron Plain|Hill Hub|Outils/);
   assert.match(preview.secondaryBottleneckPreview.nextRecommendation.reason, /évite|empêche|clarifie/);
+  assert.equal(preview.primarySecondaryTradeoff.secondaryBetter, true);
+  assert.equal(preview.primarySecondaryTradeoff.state, 'secondary');
+  assert.match(preview.primarySecondaryTradeoff.summary, /Principal: .*Secondaire:/);
+  assert.match(preview.primarySecondaryTradeoff.opportunityCost, /Coût d’opportunité|consomme|bloquer/);
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
   assert.match(preview.primaryLogisticsAction.downstreamImpact, /pénurie|route|province|délai/);
@@ -165,6 +169,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.equal(preview.secondaryBottleneckPreview.state, 'empty');
   assert.match(preview.secondaryBottleneckPreview.summary, /impossible de projeter/);
   assert.match(preview.secondaryBottleneckPreview.nextRecommendation.reason, /aucun bottleneck secondaire pertinent/);
+  assert.equal(preview.primarySecondaryTradeoff.state, 'empty');
+  assert.match(preview.primarySecondaryTradeoff.summary, /indisponible|aucun bottleneck secondaire/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);

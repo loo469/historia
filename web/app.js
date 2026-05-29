@@ -7908,6 +7908,13 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           <p>${preview.secondaryBottleneckPreview.summary}</p>
           <small>${preview.secondaryBottleneckPreview.resource}: ${preview.secondaryBottleneckPreview.detail}</small>
           <em>Suite recommandée: ${preview.secondaryBottleneckPreview.nextRecommendation.action} (${preview.secondaryBottleneckPreview.nextRecommendation.target}) — ${preview.secondaryBottleneckPreview.nextRecommendation.reason}</em>
+          ${preview.primarySecondaryTradeoff && preview.primarySecondaryTradeoff.state !== 'empty' ? `
+            <div class="province-logistics-primary-secondary-tradeoff province-logistics-primary-secondary-tradeoff--${preview.primarySecondaryTradeoff.state}" aria-label="Compromis entre levier principal et bottleneck secondaire">
+              <b>${preview.primarySecondaryTradeoff.secondaryBetter ? 'Secondaire prioritaire' : 'Principal prioritaire'}</b>
+              <span>${preview.primarySecondaryTradeoff.summary}</span>
+              <small>${preview.primarySecondaryTradeoff.opportunityCost}</small>
+            </div>
+          ` : ''}
         </div>
       ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">
