@@ -119,6 +119,53 @@ function buildConfidenceShift(currentTiming, currentTimingComparison) {
   };
 }
 
+function buildMinimumVerificationPrompt(timingRecommendationChange) {
+  if (!timingRecommendationChange) {
+    return {
+      state: 'sufficient-confidence',
+      confidence: 'suffisante',
+      cause: 'aucun changement de timing confirmé',
+      verification: 'Aucune vérification minimale requise avant l’action recommandée.',
+      waitLessRisky: false,
+      summary: 'Confiance suffisante: garder la recommandation actuelle sans étape de vérification supplémentaire.',
+    };
+  }
+
+  const confidenceShift = timingRecommendationChange.confidenceShift;
+  const lowConfidence = confidenceShift?.variation === 'baisse' || confidenceShift?.variation === 'reste instable';
+  const verificationByCause = {
+    exposition: 'Vérifier le niveau d’exposition visible avant d’engager une réponse lourde.',
+    délai: 'Confirmer que le signal n’a pas vieilli avant de forcer l’action immédiate.',
+    couverture: 'Contrôler qu’une couverture minimale reste disponible avant d’exposer un agent.',
+    cellule: 'Recouper l’état public de la cellule avant de transformer le timing en ordre.',
+    'signal contradictoire': 'Comparer le signal principal avec un second indice fog-safe avant action.',
+  };
+
+  if (!lowConfidence) {
+    return {
+      state: 'sufficient-confidence',
+      confidence: 'suffisante',
+      cause: confidenceShift?.cause ?? timingRecommendationChange.cause,
+      verification: 'Aucune vérification minimale requise avant l’action recommandée.',
+      waitLessRisky: false,
+      summary: 'Confiance suffisante: la variation soutient le timing recommandé sans étape supplémentaire.',
+    };
+  }
+
+  const waitLessRisky = timingRecommendationChange.currentTiming === 'short-wait';
+
+  return {
+    state: 'low-confidence',
+    confidence: confidenceShift.variation,
+    cause: confidenceShift.cause,
+    verification: verificationByCause[confidenceShift.cause] ?? verificationByCause['signal contradictoire'],
+    waitLessRisky,
+    summary: waitLessRisky
+      ? 'Attendre un tour est moins risqué que forcer l’action tant que la confiance reste basse.'
+      : 'Agir maintenant reste indiqué, mais seulement après une vérification minimale du signal visible.',
+  };
+}
+
 function buildTimingRecommendationChange({ previousTimingRecommendation, currentTimingComparison }) {
   const previous = normalizeTimingRecommendation(previousTimingRecommendation);
   const current = normalizeTimingRecommendation(currentTimingComparison?.recommendedTiming);
@@ -131,7 +178,7 @@ function buildTimingRecommendationChange({ previousTimingRecommendation, current
   const cause = getTimingChangeCause(currentTimingComparison);
   const confidenceShift = buildConfidenceShift(current, currentTimingComparison);
 
-  return {
+  const timingRecommendationChange = {
     previousTiming: previous,
     currentTiming: current,
     direction,
@@ -141,6 +188,11 @@ function buildTimingRecommendationChange({ previousTimingRecommendation, current
     detail: `${direction}: cause visible ${cause}.`,
     confidenceShift,
     fogSafe: true,
+  };
+
+  return {
+    ...timingRecommendationChange,
+    minimumVerificationPrompt: buildMinimumVerificationPrompt(timingRecommendationChange),
   };
 }
 
@@ -239,6 +291,8 @@ export function buildIntrigueTurnReportDeltas(province, intrigueView, options = 
       ?? null,
     currentTimingComparison: timingComparison,
   });
+  const minimumVerificationPrompt = timingRecommendationChange?.minimumVerificationPrompt
+    ?? buildMinimumVerificationPrompt(null);
   const deltas = [
     ...buildResponseDeltas(response, drillDown.responseAftermath?.summary),
     ...(timingRecommendationChange ? [{
@@ -266,5 +320,6 @@ export function buildIntrigueTurnReportDeltas(province, intrigueView, options = 
     deltas,
     retaliationRisk: drillDown.responseAftermath?.retaliationRisk ?? 'inconnu',
     timingRecommendationChange,
+    minimumVerificationPrompt,
   };
 }
