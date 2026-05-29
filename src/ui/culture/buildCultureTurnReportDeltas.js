@@ -1315,6 +1315,10 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
           ? 'fallout en hausse'
           : 'suivi absent';
       const riskThreshold = `Devient risqué si ${riskTrigger} avant la ${nextReviewWindow}.`;
+      const deadlineStatus = hasActiveSupport ? 'near-deadline' : 'safe-this-turn';
+      const deadlineHint = deadlineStatus === 'near-deadline'
+        ? 'à revoir dès le prochain tour'
+        : 'sûr ce tour';
 
       return {
         deferId: `${prompt.cleanupId}:safe-to-defer`,
@@ -1326,6 +1330,8 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         reason: `${prompt.clusterLabel}: ${condition}; ${prompt.action}.`,
         riskThreshold,
         turningSignal,
+        deadlineHint,
+        deadlineStatus,
         nextReviewWindow,
         falloutSeverity: fallout?.severity ?? 0,
       };
@@ -1337,7 +1343,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
   return {
     state: candidates.length === 0 ? 'none' : 'ready',
     summary: top
-      ? `${top.clusterLabel}: Peut attendre — ${top.condition}; ${top.riskThreshold}`
+      ? `${top.clusterLabel}: Peut attendre — ${top.deadlineHint}; ${top.riskThreshold}`
       : 'Aucun bundle culturel sûr à reporter ce tour.',
     entries: candidates,
   };
