@@ -617,11 +617,20 @@ test('buildCultureTurnReportDeltas marks resolved cultural bundles safe to defer
     entry.clusterLabel,
     entry.label,
     entry.condition,
+    entry.turningSignal,
+    entry.riskThreshold,
     entry.nextReviewWindow,
   ]), [
-    ['Compact d’Aurora', 'Peut attendre', 'risque stabilisé par l’historique lisible', 'prochaine rotation culturelle'],
+    [
+      'Compact d’Aurora',
+      'Peut attendre',
+      'risque stabilisé par l’historique lisible',
+      'fallout en hausse',
+      'Devient risqué si le fallout dépasse le niveau faible avant la prochaine rotation culturelle.',
+      'prochaine rotation culturelle',
+    ],
   ]);
-  assert.match(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.summary, /Peut attendre/);
+  assert.match(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.summary, /Devient risqué/);
   assert.equal(report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries.some((entry) => entry.clusterLabel === 'Compact d’Aurora'), false);
 });
 

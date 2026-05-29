@@ -1303,6 +1303,18 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
           ? 'soutien actif déjà visible dans la rotation culturelle'
           : 'risque stabilisé par l’historique lisible')
         : 'fallout faible au prochain tour';
+      const nextReviewWindow = lowFallout ? 'prochaine rotation culturelle' : 'prochain tour culturel';
+      const riskTrigger = hasActiveSupport
+        ? 'le soutien actif disparaît'
+        : lowFallout
+          ? 'le fallout dépasse le niveau faible'
+          : 'aucun suivi courant ne couvre le bundle';
+      const turningSignal = hasActiveSupport
+        ? 'perte du soutien actif'
+        : lowFallout
+          ? 'fallout en hausse'
+          : 'suivi absent';
+      const riskThreshold = `Devient risqué si ${riskTrigger} avant la ${nextReviewWindow}.`;
 
       return {
         deferId: `${prompt.cleanupId}:safe-to-defer`,
@@ -1312,7 +1324,9 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         label: 'Peut attendre',
         condition,
         reason: `${prompt.clusterLabel}: ${condition}; ${prompt.action}.`,
-        nextReviewWindow: lowFallout ? 'prochaine rotation culturelle' : 'prochain tour culturel',
+        riskThreshold,
+        turningSignal,
+        nextReviewWindow,
         falloutSeverity: fallout?.severity ?? 0,
       };
     })
@@ -1323,7 +1337,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
   return {
     state: candidates.length === 0 ? 'none' : 'ready',
     summary: top
-      ? `${top.clusterLabel}: Peut attendre — ${top.condition}.`
+      ? `${top.clusterLabel}: Peut attendre — ${top.condition}; ${top.riskThreshold}`
       : 'Aucun bundle culturel sûr à reporter ce tour.',
     entries: candidates,
   };
