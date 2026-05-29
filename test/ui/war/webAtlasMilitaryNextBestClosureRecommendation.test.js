@@ -169,3 +169,24 @@ test('atlas military explains what changed since the stale neighboring review', 
   assert.match(stylesSource, /\.atlas-military-neighbor-review-change--invalidant/);
   assert.match(stylesSource, /\.atlas-military-neighbor-review-change--mineur/);
 });
+
+// MAP-A27: when several neighboring contested provinces are readable, recommend
+// the first one to handle without adding noise for single/equivalent priorities.
+test('atlas military prioritizes the first neighboring contested province to handle', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborContestedHandlingPriority\(shifts, reviewStaleness, reviewChange\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborContestedHandlingPriority\(priority, y\)/);
+  assert.match(webAppSource, /Priorité de premier front voisin/);
+  assert.match(webAppSource, /Traiter d'abord \$\{primary\.neighborLabel\}/);
+  assert.match(webAppSource, /risque de rechute/);
+  assert.match(webAppSource, /stale review/);
+  assert.match(webAppSource, /urgence front contesté/);
+  assert.match(webAppSource, /opportunité/);
+  assert.match(webAppSource, /une seule province concernée ou priorités équivalentes/);
+  assert.match(webAppSource, /ordre défensif en premier/);
+  assert.match(webAppSource, /ordre offensif court/);
+  assert.match(webAppSource, /contestedPriority: buildAtlasMilitaryNeighborContestedHandlingPriority/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborContestedHandlingPriority\(preview\.contestedPriority, contestedY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-contested-priority__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-contested-priority--critical/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-contested-priority--contested/);
+});
