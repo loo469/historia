@@ -8338,6 +8338,16 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
           ${report.minimumVerificationPrompt.safestMinimalVerification?.recommended ? `
             <small class="province-intrigue-turn-report__minimal-check">Plus sûre: ${report.minimumVerificationPrompt.safestMinimalVerification.label} · ${report.minimumVerificationPrompt.safestMinimalVerification.action} ${report.minimumVerificationPrompt.safestMinimalVerification.whyEnough}${report.minimumVerificationPrompt.safestMinimalVerification.fullReviewRequired ? ' Revue complète si le recoupement diverge.' : ''}</small>
             <small class="province-intrigue-turn-report__next-turn-unlock">Débloque: ${report.minimumVerificationPrompt.safestMinimalVerification.unlockNextTurn}</small>
+            ${report.minimumVerificationPrompt.safestMinimalVerification.followUpOptions?.length ? `
+              <ul class="province-intrigue-turn-report__followups" aria-label="Suites débloquées par la vérification minimale">
+                ${report.minimumVerificationPrompt.safestMinimalVerification.followUpOptions.map((option) => `
+                  <li class="province-intrigue-turn-report__followup province-intrigue-turn-report__followup--${option.type}">
+                    <b>${option.label}</b>
+                    <span>${option.consequence}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            ` : ''}
           ` : `<small class="province-intrigue-turn-report__minimal-check">${report.minimumVerificationPrompt.safestMinimalVerification?.whyEnough ?? 'Aucune vérification minimale fiable à proposer.'}</small>`}
         </div>
       ` : ''}

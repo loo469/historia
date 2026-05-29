@@ -115,6 +115,11 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
         action: 'Comparer seulement le niveau d’exposition visible au seuil sûr avant d’attendre.',
         whyEnough: 'Ce contrôle suffit si l’exposition repasse sous le seuil lisible sans rouvrir la cible masquée.',
         unlockNextTurn: 'Au prochain tour, elle permettra de choisir plus sûrement entre attendre encore ou agir sans surcharger la revue.',
+        followUpOptions: [
+          { type: 'defensive', label: 'Défensif', consequence: 'réduire l’exposition avant toute réponse lourde' },
+          { type: 'wait', label: 'Attente', consequence: 'attendre un tour si le seuil visible redevient sûr' },
+          { type: 'offensive', label: 'Offensif', consequence: 'agir seulement si l’exposition reste maîtrisée' },
+        ],
         fullReviewRequired: false,
         fallback: false,
       },
@@ -170,6 +175,10 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
       action: 'Vérifier que le signal de timing n’a pas vieilli depuis le dernier tour.',
       whyEnough: 'La fraîcheur confirmée suffit à débloquer une attente courte sans refaire toute l’enquête.',
       unlockNextTurn: 'Au prochain tour, elle permettra de confirmer si l’action immédiate reste nécessaire ou si attendre redevient sûr.',
+      followUpOptions: [
+        { type: 'offensive', label: 'Offensif', consequence: 'agir vite si la fenêtre visible se ferme' },
+        { type: 'defensive', label: 'Défensif', consequence: 'limiter le coût d’un recheck si la fenêtre est perdue' },
+      ],
       fullReviewRequired: false,
       fallback: false,
     },
@@ -202,6 +211,10 @@ test('buildIntrigueTurnReportDeltas requires full review when minimal verificati
     action: 'Comparer le signal principal avec un second indice visible avant de choisir attendre.',
     whyEnough: 'Un second indice aligné suffit; s’il diverge, une revue complète reste nécessaire.',
     unlockNextTurn: 'Au prochain tour, elle réduira l’incertitude pour choisir entre agir maintenant ou lancer une revue complète.',
+    followUpOptions: [
+      { type: 'offensive', label: 'Offensif', consequence: 'agir si les deux indices visibles convergent' },
+      { type: 'defensive', label: 'Défensif', consequence: 'basculer en revue complète si le recoupement diverge' },
+    ],
     fullReviewRequired: true,
     fallback: false,
   });
@@ -231,6 +244,7 @@ test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is 
       action: 'Conserver la recommandation actuelle.',
       whyEnough: 'La confiance visible ne demande pas de déblocage avant attente.',
       unlockNextTurn: 'Aucun choix supplémentaire à débloquer au prochain tour.',
+      followUpOptions: [],
       fullReviewRequired: false,
       fallback: true,
     },
