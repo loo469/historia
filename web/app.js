@@ -2310,6 +2310,46 @@ function getAtlasMilitaryNeighborFrontShiftEffect(route, focusPoint, checklist) 
   };
 }
 
+function getAtlasMilitaryNeighborReviewUrgency(shift) {
+  const toneScore = {
+    rechute: 4,
+    fragilise: 3,
+    neutre: 1,
+    soulage: 0,
+  }[shift.tone] ?? 0;
+  return toneScore * 100 + shift.pressure;
+}
+
+function getAtlasMilitaryNeighborReviewReason(shift) {
+  if (shift.tone === 'rechute') return `pression ${shift.pressure}: rechute probable à relire en premier`;
+  if (shift.tone === 'fragilise') return `instabilité: ${shift.reason}`;
+  if (shift.tone === 'soulage') return `opportunité: ${shift.reason}`;
+  return `manque d'ordres: ${shift.reason}`;
+}
+
+function buildAtlasMilitaryNeighborReviewPriority(shifts) {
+  const urgent = shifts
+    .filter((shift) => shift.tone === 'rechute' || shift.tone === 'fragilise')
+    .sort((left, right) => getAtlasMilitaryNeighborReviewUrgency(right) - getAtlasMilitaryNeighborReviewUrgency(left)
+      || left.neighborLabel.localeCompare(right.neighborLabel))[0] ?? null;
+
+  if (!urgent) {
+    return {
+      provinceLabel: null,
+      tone: 'stable',
+      label: 'Revue voisins: aucun risque prioritaire',
+      reason: 'fallback: garder une surveillance légère après engagement',
+    };
+  }
+
+  return {
+    provinceLabel: urgent.neighborLabel,
+    tone: urgent.tone,
+    label: `Revoir ${urgent.neighborLabel} en premier`,
+    reason: getAtlasMilitaryNeighborReviewReason(urgent),
+  };
+}
+
 function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, features) {
   const focus = recommendation?.primary ?? null;
   const focusProvince = focus?.provinceLabel ?? checklist?.points?.[0]?.detail?.split(':')?.[0] ?? null;
@@ -2318,6 +2358,7 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
       focusProvince: null,
       focusOrder: 'ordre contesté non sélectionné',
       shifts: [],
+      reviewPriority: buildAtlasMilitaryNeighborReviewPriority([]),
       summary: 'Prévision voisins indisponible: aucun ordre de province en focus.',
       empty: true,
     };
@@ -2340,12 +2381,14 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
       reason: effect.reason,
     };
   });
+  const reviewPriority = buildAtlasMilitaryNeighborReviewPriority(shifts);
 
   if (!shifts.length) {
     return {
       focusProvince,
       focusOrder: focus?.nextAction ?? 'ordre contesté recommandé',
       shifts: [],
+      reviewPriority,
       summary: `${focusProvince}: aucun front voisin lisible après engagement.`,
       empty: true,
     };
@@ -2355,13 +2398,24 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
     focusProvince,
     focusOrder: focus?.nextAction ?? 'ordre contesté recommandé',
     shifts,
-    summary: `${focusProvince}: ${shifts.length} front${shifts.length > 1 ? 's' : ''} voisin${shifts.length > 1 ? 's' : ''} à prévisualiser après ${focus?.nextAction ?? 'ordre'}.`,
+    reviewPriority,
+    summary: `${focusProvince}: ${shifts.length} front${shifts.length > 1 ? 's' : ''} voisin${shifts.length > 1 ? 's' : ''} à prévisualiser après ${focus?.nextAction ?? 'ordre'}; ${reviewPriority.label}.`,
     empty: false,
   };
 }
 
+function renderAtlasMilitaryNeighborReviewPriority(priority, y) {
+  return `
+    <g class="atlas-military-neighbor-review-priority atlas-military-neighbor-review-priority--${priority.tone}" aria-label="Priorité de revue post-engagement: ${priority.label}; ${priority.reason}">
+      <text class="atlas-military-neighbor-review-priority__label" x="44.2" y="${y}">${priority.label}</text>
+      <text class="atlas-military-neighbor-review-priority__reason" x="44.2" y="${y + 1.35}">${priority.reason}</text>
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
-  const height = preview.empty ? 6.1 : 5.6 + (preview.shifts.length * 3.45);
+  const priorityY = preview.empty ? 163.8 : 163.85 + (preview.shifts.length * 3.45);
+  const height = preview.empty ? 8.3 : 8.3 + (preview.shifts.length * 3.45);
   return `
     <g class="atlas-military-neighbor-front-shift atlas-military-neighbor-front-shift--${preview.empty ? 'empty' : 'active'}" aria-label="Prévisualisation des fronts voisins après engagement: ${preview.summary}">
       <rect class="atlas-military-neighbor-front-shift__panel" x="43" y="157" width="35" height="${height}" rx="2.1"></rect>
@@ -2374,6 +2428,7 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
           <text class="atlas-military-neighbor-front-shift-row__reason" x="46" y="${163.38 + index * 3.45}">${shift.reason}</text>
         </g>
       `).join('')}
+      ${renderAtlasMilitaryNeighborReviewPriority(preview.reviewPriority, priorityY)}
     </g>
   `;
 }

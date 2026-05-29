@@ -103,3 +103,23 @@ test('atlas military previews neighboring front shifts after committing province
   assert.match(stylesSource, /\.atlas-military-neighbor-front-shift-row--soulage circle/);
   assert.match(stylesSource, /\.atlas-military-neighbor-front-shift-row--rechute circle/);
 });
+
+// MAP-A24: summarize which neighboring province should be reviewed first after
+// the post-commit preview.
+test('atlas military summarizes post-commit neighboring province review priority', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborReviewPriority\(shifts\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborReviewPriority\(priority, y\)/);
+  assert.match(webAppSource, /Priorité de revue post-engagement/);
+  assert.match(webAppSource, /Revoir \$\{urgent\.neighborLabel\} en premier/);
+  assert.match(webAppSource, /pression \$\{shift\.pressure\}: rechute probable à relire en premier/);
+  assert.match(webAppSource, /instabilité: \$\{shift\.reason\}/);
+  assert.match(webAppSource, /opportunité: \$\{shift\.reason\}/);
+  assert.match(webAppSource, /manque d'ordres: \$\{shift\.reason\}/);
+  assert.match(webAppSource, /Revue voisins: aucun risque prioritaire/);
+  assert.match(webAppSource, /fallback: garder une surveillance légère après engagement/);
+  assert.match(webAppSource, /reviewPriority: buildAtlasMilitaryNeighborReviewPriority\(\[\]\)/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborReviewPriority\(preview\.reviewPriority, priorityY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-priority__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-priority--stable/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-review-priority--rechute/);
+});
