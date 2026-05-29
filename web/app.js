@@ -8109,6 +8109,9 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
           <b>${report.minimumVerificationPrompt.state === 'low-confidence' ? 'Vérification minimale' : 'Confiance suffisante'}</b>
           <span>${report.minimumVerificationPrompt.verification}</span>
           <small>${report.minimumVerificationPrompt.summary}</small>
+          ${report.minimumVerificationPrompt.waitVerificationRequirement?.mandatory ? `
+            <small class="province-intrigue-turn-report__wait-risk">Obligatoire avant d’attendre: ${report.minimumVerificationPrompt.waitVerificationRequirement.reason}. ${report.minimumVerificationPrompt.waitVerificationRequirement.consequence}</small>
+          ` : `<small class="province-intrigue-turn-report__wait-risk">${report.minimumVerificationPrompt.waitVerificationRequirement?.consequence ?? 'Attendre ne demande pas de verrouillage supplémentaire avec les signaux visibles.'}</small>`}
         </div>
       ` : ''}
       ${report.deltas.length > 0 ? `
