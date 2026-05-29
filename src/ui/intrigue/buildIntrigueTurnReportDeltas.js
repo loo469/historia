@@ -172,41 +172,91 @@ function buildNextTurnUnlock(principalRisk, fullReviewRequired, timingRecommenda
   return 'Au prochain tour, elle réduira l’incertitude avant de choisir entre agir et attendre.';
 }
 
+function withExpiry(option, expiry = null) {
+  if (!expiry) {
+    return {
+      ...option,
+      expiry: {
+        state: 'available',
+        label: 'reste disponible',
+        detail: 'aucune expiration visible avec les signaux actuels',
+      },
+    };
+  }
+
+  return {
+    ...option,
+    expiry: {
+      state: 'expiring',
+      ...expiry,
+    },
+  };
+}
+
+function summarizeFollowUpExpiry(options) {
+  if (options.length === 0) {
+    return 'Aucune suite débloquée: pas d’échéance à signaler.';
+  }
+
+  const expiring = options.filter((option) => option.expiry?.state === 'expiring');
+
+  if (expiring.length === 0) {
+    return 'Aucune suite ne montre d’expiration visible pour le prochain tour.';
+  }
+
+  return `${expiring.length} suite${expiring.length > 1 ? 's' : ''} à traiter vite avant dégradation.`;
+}
+
 function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingRecommendationChange) {
   const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
   const optionsByRisk = {
     'exposition excessive': [
-      { type: 'defensive', label: 'Défensif', consequence: 'réduire l’exposition avant toute réponse lourde' },
-      { type: 'wait', label: 'Attente', consequence: 'attendre un tour si le seuil visible redevient sûr' },
-      { type: 'offensive', label: 'Offensif', consequence: 'agir seulement si l’exposition reste maîtrisée' },
+      withExpiry(
+        { type: 'defensive', label: 'Défensif', consequence: 'réduire l’exposition avant toute réponse lourde' },
+        { label: 'à traiter maintenant', detail: 'l’exposition peut devenir moins récupérable après le prochain tour' },
+      ),
+      withExpiry({ type: 'wait', label: 'Attente', consequence: 'attendre un tour si le seuil visible redevient sûr' }),
+      withExpiry({ type: 'offensive', label: 'Offensif', consequence: 'agir seulement si l’exposition reste maîtrisée' }),
     ],
     'timing fragile': [
-      { type: 'offensive', label: 'Offensif', consequence: 'agir vite si la fenêtre visible se ferme' },
-      { type: 'wait', label: 'Attente', consequence: 'attendre si le signal reste frais au prochain tour' },
-      { type: 'defensive', label: 'Défensif', consequence: 'limiter le coût d’un recheck si la fenêtre est perdue' },
+      withExpiry(
+        { type: 'offensive', label: 'Offensif', consequence: 'agir vite si la fenêtre visible se ferme' },
+        { label: 'expire vite', detail: 'la fenêtre peut se refermer après ce tour' },
+      ),
+      withExpiry({ type: 'wait', label: 'Attente', consequence: 'attendre si le signal reste frais au prochain tour' }),
+      withExpiry(
+        { type: 'defensive', label: 'Défensif', consequence: 'limiter le coût d’un recheck si la fenêtre est perdue' },
+        { label: 'fiabilité en baisse', detail: 'le recheck devient moins fiable si le signal vieillit' },
+      ),
     ],
     'signal contradictoire': [
-      { type: 'offensive', label: 'Offensif', consequence: 'agir si les deux indices visibles convergent' },
-      { type: 'defensive', label: 'Défensif', consequence: 'basculer en revue complète si le recoupement diverge' },
-      { type: 'wait', label: 'Attente', consequence: 'différer seulement si l’incertitude baisse sans contradiction' },
+      withExpiry({ type: 'offensive', label: 'Offensif', consequence: 'agir si les deux indices visibles convergent' }),
+      withExpiry(
+        { type: 'defensive', label: 'Défensif', consequence: 'basculer en revue complète si le recoupement diverge' },
+        { label: 'à recouper vite', detail: 'la contradiction devient moins lisible si elle attend' },
+      ),
+      withExpiry({ type: 'wait', label: 'Attente', consequence: 'différer seulement si l’incertitude baisse sans contradiction' }),
     ],
     'confiance basse': [
-      { type: 'defensive', label: 'Défensif', consequence: 'stabiliser la lecture si la confiance reste basse' },
-      { type: 'wait', label: 'Attente', consequence: 'attendre si la cause visible n’empire pas' },
-      { type: 'offensive', label: 'Offensif', consequence: 'agir si le contrôle confirme un signal exploitable' },
+      withExpiry({ type: 'defensive', label: 'Défensif', consequence: 'stabiliser la lecture si la confiance reste basse' }),
+      withExpiry({ type: 'wait', label: 'Attente', consequence: 'attendre si la cause visible n’empire pas' }),
+      withExpiry(
+        { type: 'offensive', label: 'Offensif', consequence: 'agir si le contrôle confirme un signal exploitable' },
+        { label: 'signal fragile', detail: 'l’opportunité peut perdre en fiabilité au prochain tour' },
+      ),
     ],
   };
   const options = optionsByRisk[principalRisk] ?? optionsByRisk['confiance basse'];
+  const selectedOptions = fullReviewRequired
+    ? options.slice(0, 2)
+    : !canWaitNextTurn
+      ? options.filter((option) => option.type !== 'wait').slice(0, 2)
+      : options.slice(0, 3);
 
-  if (fullReviewRequired) {
-    return options.slice(0, 2);
-  }
-
-  if (!canWaitNextTurn) {
-    return options.filter((option) => option.type !== 'wait').slice(0, 2);
-  }
-
-  return options.slice(0, 3);
+  return {
+    options: selectedOptions,
+    expirySummary: summarizeFollowUpExpiry(selectedOptions),
+  };
 }
 
 function buildSafestMinimalVerification(prompt, timingRecommendationChange = null) {
@@ -219,6 +269,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
       whyEnough: 'La confiance visible ne demande pas de déblocage avant attente.',
       unlockNextTurn: 'Aucun choix supplémentaire à débloquer au prochain tour.',
       followUpOptions: [],
+      followUpExpirySummary: 'Aucune suite débloquée: pas d’échéance à signaler.',
       fullReviewRequired: false,
       fallback: true,
     };
@@ -259,6 +310,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     },
   };
   const plan = planByRisk[principalRisk] ?? planByRisk['confiance basse'];
+  const followUp = buildUnlockedFollowUpOptions(principalRisk, plan.fullReviewRequired, timingRecommendationChange);
 
   return {
     state: plan.fullReviewRequired ? 'full-review-needed' : 'minimal-sufficient',
@@ -268,7 +320,8 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     action: plan.action,
     whyEnough: plan.whyEnough,
     unlockNextTurn: buildNextTurnUnlock(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
-    followUpOptions: buildUnlockedFollowUpOptions(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
+    followUpOptions: followUp.options,
+    followUpExpirySummary: followUp.expirySummary,
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };
