@@ -7373,8 +7373,9 @@ function renderCultureTurnReport(report) {
           ${(report.commitmentBundles?.followThroughBundlePlan?.safeToDeferBundles?.entries ?? []).length > 0 ? `
             <div class="culture-turn-report__safe-defer-list">
               ${report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries.map((entry) => `
-                <span class="culture-turn-report__safe-defer-entry">
+                <span class="culture-turn-report__safe-defer-entry culture-turn-report__safe-defer-entry--${entry.deadlineStatus ?? 'no-deadline'}">
                   <b>${entry.clusterLabel} · ${entry.label}</b>
+                  <small>Délai: ${entry.deadlineHint ?? 'fenêtre non calculable'}</small>
                   <small>Condition: ${entry.condition}</small>
                   <small>Bascule: ${entry.turningSignal}</small>
                   <small>${entry.riskThreshold}</small>

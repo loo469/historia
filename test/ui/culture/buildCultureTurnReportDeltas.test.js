@@ -619,6 +619,8 @@ test('buildCultureTurnReportDeltas marks resolved cultural bundles safe to defer
     entry.condition,
     entry.turningSignal,
     entry.riskThreshold,
+    entry.deadlineHint,
+    entry.deadlineStatus,
     entry.nextReviewWindow,
   ]), [
     [
@@ -627,11 +629,62 @@ test('buildCultureTurnReportDeltas marks resolved cultural bundles safe to defer
       'risque stabilisé par l’historique lisible',
       'fallout en hausse',
       'Devient risqué si le fallout dépasse le niveau faible avant la prochaine rotation culturelle.',
+      'sûr ce tour',
+      'safe-this-turn',
       'prochaine rotation culturelle',
     ],
   ]);
-  assert.match(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.summary, /Devient risqué/);
+  assert.match(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.summary, /sûr ce tour/);
   assert.equal(report.commitmentBundles.followThroughBundlePlan.replacementRecommendations.entries.some((entry) => entry.clusterLabel === 'Compact d’Aurora'), false);
+});
+
+test('buildCultureTurnReportDeltas escalates safe defer deadline when current support must be reviewed soon', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'explorer',
+      },
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+    ],
+  });
+
+  assert.deepEqual(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.condition,
+    entry.turningSignal,
+    entry.deadlineHint,
+    entry.deadlineStatus,
+  ]), [
+    [
+      'Compact d’Aurora',
+      'soutien actif déjà visible dans la rotation culturelle',
+      'perte du soutien actif',
+      'à revoir dès le prochain tour',
+      'near-deadline',
+    ],
+  ]);
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
