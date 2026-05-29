@@ -6879,6 +6879,12 @@ function renderCultureTurnReport(report) {
             `).join('')}
           </div>
         ` : `<small>${report.commitmentBundles?.followThroughBundlePlan?.detailMode ?? 'Aucun détail individuel à ouvrir.'}</small>`}
+        <div class="culture-turn-report__fallout-preview culture-turn-report__fallout-preview--${report.commitmentBundles?.followThroughBundlePlan?.falloutPreview?.state ?? 'quiet'}" aria-label="Fallout culturel si les bundles obsolètes restent visibles">
+          <span>Fallout si ignoré</span>
+          <strong>${report.commitmentBundles?.followThroughBundlePlan?.falloutPreview?.summary ?? 'Aucun fallout culturel si les bundles restent en place ce tour.'}</strong>
+          <small>Conséquence: ${report.commitmentBundles?.followThroughBundlePlan?.falloutPreview?.consequence ?? 'Aucun fallout immédiat détecté.'}</small>
+          ${report.commitmentBundles?.followThroughBundlePlan?.falloutPreview?.minimalCleanupAction ? `<small>Cleanup minimal: ${report.commitmentBundles.followThroughBundlePlan.falloutPreview.minimalCleanupAction}</small>` : ''}
+        </div>
         <div class="culture-turn-report__cleanup-prompts" aria-label="Prompts de nettoyage des bundles culturels">
           <strong>${report.commitmentBundles?.followThroughBundlePlan?.cleanupSummary ?? 'Aucun prompt de nettoyage culturel à proposer.'}</strong>
           ${(report.commitmentBundles?.followThroughBundlePlan?.cleanupPrompts ?? []).length > 0 ? `

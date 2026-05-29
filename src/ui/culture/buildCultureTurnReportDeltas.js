@@ -1110,6 +1110,65 @@ function buildCulturalBundleCleanupPrompts(groups, commitmentFollowThroughRemind
   });
 }
 
+function buildCulturalBundleFalloutPreview(cleanupPrompts) {
+  const falloutCandidates = cleanupPrompts
+    .map((prompt) => {
+      const consequenceType = prompt.state === 'obsolete'
+        ? 'opportunity-lost'
+        : prompt.state === 'risk-persists'
+          ? 'tension'
+          : prompt.state === 'review'
+            ? 'consolidation-delay'
+            : 'none';
+      const severity = consequenceType === 'opportunity-lost'
+        ? 3
+        : consequenceType === 'tension'
+          ? 2
+          : consequenceType === 'consolidation-delay'
+            ? 1
+            : 0;
+      const consequence = consequenceType === 'opportunity-lost'
+        ? `${prompt.clusterLabel}: opportunité fraîche masquée si le bundle obsolète reste visible.`
+        : consequenceType === 'tension'
+          ? `${prompt.clusterLabel}: tension culturelle maintenue si le nettoyage est ignoré.`
+          : consequenceType === 'consolidation-delay'
+            ? `${prompt.clusterLabel}: consolidation retardée d’un tour si le bundle n’est pas réévalué.`
+            : `${prompt.clusterLabel}: aucun fallout immédiat détecté.`;
+
+      return {
+        falloutId: `${prompt.cleanupId}:fallout-preview`,
+        bundleId: prompt.bundleId,
+        clusterLabel: prompt.clusterLabel,
+        cleanupState: prompt.state,
+        consequenceType,
+        consequence,
+        severity,
+        exceedsThreshold: severity >= 2,
+        minimalCleanupAction: severity >= 2 ? prompt.action : null,
+      };
+    })
+    .sort((left, right) => right.severity - left.severity || left.clusterLabel.localeCompare(right.clusterLabel));
+  const priority = falloutCandidates.find((candidate) => candidate.severity > 0) ?? null;
+
+  return {
+    state: !priority
+      ? 'quiet'
+      : priority.exceedsThreshold
+        ? 'action-needed'
+        : 'watch',
+    summary: !priority
+      ? 'Aucun fallout culturel si les bundles restent en place ce tour.'
+      : `${priority.consequence}${priority.exceedsThreshold ? ` Cleanup minimal: ${priority.minimalCleanupAction}.` : ''}`,
+    priorityBundleId: priority?.bundleId ?? null,
+    affectedCulture: priority?.clusterLabel ?? null,
+    consequenceType: priority?.consequenceType ?? 'none',
+    consequence: priority?.consequence ?? 'Aucun fallout immédiat détecté.',
+    severity: priority?.severity ?? 0,
+    minimalCleanupAction: priority?.minimalCleanupAction ?? null,
+    entries: falloutCandidates,
+  };
+}
+
 function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder) {
   const groups = promptHistoryDrawer.groups.map((group) => {
     const currentEntries = group.entries.filter((entry) => entry.source === 'current');
@@ -1172,6 +1231,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
   const cleanupSummary = cleanupPrompts.length === 0
     ? 'Aucun prompt de nettoyage culturel à proposer.'
     : `${cleanupPrompts.length} prompt${cleanupPrompts.length > 1 ? 's' : ''} de nettoyage: ${cleanupPrompts.map((prompt) => `${prompt.clusterLabel} → ${prompt.action}`).join(' | ')}.`;
+  const falloutPreview = buildCulturalBundleFalloutPreview(cleanupPrompts);
 
   return {
     state: groups.length === 0
@@ -1188,6 +1248,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     groups,
     cleanupPrompts,
     cleanupSummary,
+    falloutPreview,
     detailMode: groups.length === 0
       ? 'Aucun détail individuel à ouvrir.'
       : 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
@@ -1479,6 +1540,17 @@ export function buildCultureTurnReportDeltas({
           groups: [],
           cleanupPrompts: [],
           cleanupSummary: 'Aucun prompt de nettoyage culturel à proposer.',
+          falloutPreview: {
+            state: 'quiet',
+            summary: 'Aucun fallout culturel si les bundles restent en place ce tour.',
+            priorityBundleId: null,
+            affectedCulture: null,
+            consequenceType: 'none',
+            consequence: 'Aucun fallout immédiat détecté.',
+            severity: 0,
+            minimalCleanupAction: null,
+            entries: [],
+          },
           detailMode: 'Aucun détail individuel à ouvrir.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',

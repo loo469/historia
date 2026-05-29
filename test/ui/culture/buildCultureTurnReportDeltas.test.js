@@ -417,6 +417,29 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         },
       ],
       cleanupSummary: '1 prompt de nettoyage: Compact d’Aurora → conserver: risque culturel encore actif.',
+      falloutPreview: {
+        state: 'action-needed',
+        summary: 'Compact d’Aurora: tension culturelle maintenue si le nettoyage est ignoré. Cleanup minimal: conserver: risque culturel encore actif.',
+        priorityBundleId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle',
+        affectedCulture: 'Compact d’Aurora',
+        consequenceType: 'tension',
+        consequence: 'Compact d’Aurora: tension culturelle maintenue si le nettoyage est ignoré.',
+        severity: 2,
+        minimalCleanupAction: 'conserver: risque culturel encore actif',
+        entries: [
+          {
+            falloutId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle:cleanup-prompt:fallout-preview',
+            bundleId: 'culture-prompt-history:Compact d’Aurora:Ouvrir le récit d’expansion:follow-through-bundle',
+            clusterLabel: 'Compact d’Aurora',
+            cleanupState: 'risk-persists',
+            consequenceType: 'tension',
+            consequence: 'Compact d’Aurora: tension culturelle maintenue si le nettoyage est ignoré.',
+            severity: 2,
+            exceedsThreshold: true,
+            minimalCleanupAction: 'conserver: risque culturel encore actif',
+          },
+        ],
+      },
       detailMode: 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
     },
     dependencyExplanation: 'expansion prudente: archive-routes → amplifier → expansion prudente',
@@ -504,6 +527,11 @@ test('buildCultureTurnReportDeltas marks stale cultural follow-through reminders
   assert.match(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts[0].reason, /opportunités fraîches/);
   assert.equal(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts[0].replacesPromptLabel, 'Ouvrir le récit d’expansion');
   assert.match(report.commitmentBundles.followThroughBundlePlan.cleanupPrompts[0].safeguard, /Rotation courte|Aucune répétition/);
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.falloutPreview.state, 'action-needed');
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.falloutPreview.affectedCulture, 'Compact d’Aurora');
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.falloutPreview.consequenceType, 'opportunity-lost');
+  assert.match(report.commitmentBundles.followThroughBundlePlan.falloutPreview.consequence, /opportunité fraîche masquée/);
+  assert.equal(report.commitmentBundles.followThroughBundlePlan.falloutPreview.minimalCleanupAction, 'remplacer par Ouvrir le récit d’expansion');
 });
 
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
@@ -611,6 +639,17 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         groups: [],
         cleanupPrompts: [],
         cleanupSummary: 'Aucun prompt de nettoyage culturel à proposer.',
+        falloutPreview: {
+          state: 'quiet',
+          summary: 'Aucun fallout culturel si les bundles restent en place ce tour.',
+          priorityBundleId: null,
+          affectedCulture: null,
+          consequenceType: 'none',
+          consequence: 'Aucun fallout immédiat détecté.',
+          severity: 0,
+          minimalCleanupAction: null,
+          entries: [],
+        },
         detailMode: 'Aucun détail individuel à ouvrir.',
       },
       dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',

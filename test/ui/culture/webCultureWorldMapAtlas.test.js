@@ -161,6 +161,10 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /safetyJustification\.state === 'no-safe-justification'/);
   assert.match(webAppSource, /risque retiré:/);
   assert.match(webAppSource, /atlas-cultural-border-zone__risk-relief/);
+  assert.match(webAppSource, /culture-turn-report__fallout-preview/);
+  assert.match(webAppSource, /Fallout si ignoré/);
+  assert.match(webAppSource, /falloutPreview/);
+  assert.match(webAppSource, /Cleanup minimal:/);
   assert.match(webAppSource, /culture-turn-report__cleanup-prompts/);
   assert.match(webAppSource, /Prompts de nettoyage des bundles culturels/);
   assert.match(webAppSource, /cleanupPrompts/);
@@ -237,6 +241,9 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action__safest-support/);
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action__support-justification/);
   assert.match(stylesSource, /\.atlas-cultural-consolidation-action__risk-relief/);
+  assert.match(stylesSource, /\.culture-turn-report__fallout-preview/);
+  assert.match(stylesSource, /\.culture-turn-report__fallout-preview--action-needed/);
+  assert.match(stylesSource, /\.culture-turn-report__fallout-preview--watch/);
   assert.match(stylesSource, /\.culture-turn-report__cleanup-prompts/);
   assert.match(stylesSource, /\.culture-turn-report__cleanup-prompt--obsolete/);
   assert.match(stylesSource, /\.culture-turn-report__cleanup-prompt--resolved/);
