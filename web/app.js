@@ -8179,6 +8179,9 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
           ${report.minimumVerificationPrompt.waitVerificationRequirement?.mandatory ? `
             <small class="province-intrigue-turn-report__wait-risk">Obligatoire avant d’attendre: ${report.minimumVerificationPrompt.waitVerificationRequirement.reason}. ${report.minimumVerificationPrompt.waitVerificationRequirement.consequence}</small>
           ` : `<small class="province-intrigue-turn-report__wait-risk">${report.minimumVerificationPrompt.waitVerificationRequirement?.consequence ?? 'Attendre ne demande pas de verrouillage supplémentaire avec les signaux visibles.'}</small>`}
+          ${report.minimumVerificationPrompt.safestMinimalVerification?.recommended ? `
+            <small class="province-intrigue-turn-report__minimal-check">Plus sûre: ${report.minimumVerificationPrompt.safestMinimalVerification.label} · ${report.minimumVerificationPrompt.safestMinimalVerification.action} ${report.minimumVerificationPrompt.safestMinimalVerification.whyEnough}${report.minimumVerificationPrompt.safestMinimalVerification.fullReviewRequired ? ' Revue complète si le recoupement diverge.' : ''}</small>
+          ` : `<small class="province-intrigue-turn-report__minimal-check">${report.minimumVerificationPrompt.safestMinimalVerification?.whyEnough ?? 'Aucune vérification minimale fiable à proposer.'}</small>`}
         </div>
       ` : ''}
       ${report.deltas.length > 0 ? `

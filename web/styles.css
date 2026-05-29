@@ -9609,6 +9609,11 @@ button { font: inherit; }
   border-top: 1px solid rgba(148, 163, 184, 0.14);
 }
 .province-intrigue-turn-report__verification--low-confidence .province-intrigue-turn-report__wait-risk { color: rgba(253, 224, 71, 0.88); }
+.province-intrigue-turn-report__minimal-check {
+  padding-top: 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-intrigue-turn-report__verification--low-confidence .province-intrigue-turn-report__minimal-check { color: rgba(191, 219, 254, 0.9); }
 .province-intrigue-turn-report__list {
   display: grid;
   gap: 8px;
