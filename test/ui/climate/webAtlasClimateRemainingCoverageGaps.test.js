@@ -14,6 +14,11 @@ test('atlas shows remaining climate coverage gaps after prevention', () => {
   assert.match(webAppSource, /Angles morts restants/);
   assert.match(webAppSource, /Prochaine petite prévention/);
   assert.match(webAppSource, /aucun angle mort prioritaire/);
+  assert.match(webAppSource, /nearestThresholdScore/);
+  assert.match(webAppSource, /risque de seuil le plus proche/);
+  assert.match(webAppSource, /plus proche seuil/);
+  assert.match(webAppSource, /localeCompare\(right\.label\)/);
+  assert.match(webAppSource, /Risque seuil le plus proche/);
   assert.match(webAppSource, /buildAtlasClimateRemainingCoverageGaps\(\s*atlasClimateSmallestPreventiveAction,\s*atlasClimatePreventiveSecondaryProtection,\s*atlasClimateFollowUpThresholdProtection,\s*atlasClimateThresholdProgressAfterReadinessAction,\s*\)/);
   assert.match(webAppSource, /renderAtlasClimatePreventiveSecondaryProtection\(atlasClimatePreventiveSecondaryProtection\)\}\s*\$\{renderAtlasClimateRemainingCoverageGaps\(atlasClimateRemainingCoverageGaps\)\}/);
 

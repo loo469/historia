@@ -13529,18 +13529,32 @@ function buildAtlasClimateRemainingCoverageGaps(preventiveView, secondaryProtect
     ...activeProtections.map((item) => item.label),
     ...secondaryProtections.map((item) => item.label),
   ].filter(Boolean));
+  const nearestRiskScoreByClass = {
+    'stabilizes-short-term': 80,
+    insufficient: 55,
+    'protects-threshold': 10,
+  };
   const blindSpots = (protectionView?.actions ?? [])
     .filter((action) => action.className !== 'protects-threshold' && !coveredLabels.has(action.label))
+    .map((action) => {
+      const nearestThresholdScore = (nearestRiskScoreByClass[action.className] ?? 40) + (action.rank ? Math.max(0, 8 - action.rank) : 0);
+      return {
+        label: action.label,
+        reason: action.className === 'stabilizes-short-term'
+          ? `reste partiellement couvert: ${action.thresholdLink}`
+          : `angle mort: ${action.thresholdLink}`,
+        nextAction: action.className === 'stabilizes-short-term'
+          ? action.action
+          : `relire ${progress.threshold} avant d’étendre la prévention`,
+        nearestThresholdScore,
+        nearestRiskLabel: action.className === 'stabilizes-short-term'
+          ? 'risque de seuil le plus proche'
+          : 'risque de seuil secondaire',
+      };
+    })
+    .sort((left, right) => right.nearestThresholdScore - left.nearestThresholdScore || left.label.localeCompare(right.label))
     .slice(0, 3)
-    .map((action) => ({
-      label: action.label,
-      reason: action.className === 'stabilizes-short-term'
-        ? `reste partiellement couvert: ${action.thresholdLink}`
-        : `angle mort: ${action.thresholdLink}`,
-      nextAction: action.className === 'stabilizes-short-term'
-        ? action.action
-        : `relire ${progress.threshold} avant d’étendre la prévention`,
-    }));
+    .map((gap, index) => ({ ...gap, rank: index + 1, nearest: index === 0 }));
   const nextSmallAction = blindSpots[0]
     ? `Prochaine petite prévention: ${blindSpots[0].nextAction}`
     : secondaryProtections.length > 0
@@ -13573,7 +13587,8 @@ function renderAtlasClimateRemainingCoverageGaps(view) {
       <p>${view.summary}</p>
       <small><b>Protections actives</b> · ${view.activeProtections.length > 0 ? view.activeProtections.map((item) => `${item.label}: ${item.detail}`).join(' | ') : 'aucune protection active calculée'}</small>
       <small><b>Protections secondaires</b> · ${view.secondaryProtections.length > 0 ? view.secondaryProtections.map((item) => `${item.label}: ${item.detail}`).join(' | ') : 'aucune protection secondaire utile'}</small>
-      <small><b>Angles morts restants</b> · ${view.blindSpots.length > 0 ? view.blindSpots.map((item) => `${item.label}: ${item.reason}`).join(' | ') : 'aucun angle mort prioritaire'}</small>
+      <small><b>Angles morts restants</b> · ${view.blindSpots.length > 0 ? view.blindSpots.map((item) => `${item.rank}. ${item.label}${item.nearest ? ' (plus proche seuil)' : ''}: ${item.reason}`).join(' | ') : 'aucun angle mort prioritaire'}</small>
+      ${view.blindSpots[0] ? `<small><b>Risque seuil le plus proche</b> · ${view.blindSpots[0].label}: ${view.blindSpots[0].nearestRiskLabel}, score ${view.blindSpots[0].nearestThresholdScore}</small>` : ''}
       <small><b>Choix suivant</b> · ${view.nextSmallAction}</small>
     </section>
   `;
