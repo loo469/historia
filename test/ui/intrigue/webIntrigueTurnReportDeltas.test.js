@@ -9,5 +9,7 @@ test('playable map wires intrigue aftermath deltas into selected province turn r
   assert.match(webAppSource, /function renderIntrigueTurnReportDeltas/);
   assert.match(webAppSource, /Rapport intrigue dernier tour/);
   assert.match(webAppSource, /Risque représailles/);
+  assert.match(webAppSource, /previousTimingRecommendation/);
+  assert.match(webAppSource, /Changement de recommandation de timing intrigue/);
   assert.match(webAppSource, /renderIntrigueTurnReportDeltas\(province, intrigueView\)/);
 });

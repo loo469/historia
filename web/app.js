@@ -7810,6 +7810,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
 function renderIntrigueTurnReportDeltas(province, intrigueView) {
   const report = buildIntrigueTurnReportDeltas(province, intrigueView, {
     previousActionCode: intrigueView?.selectedProvince?.drillDown?.recommendedResponseCode ?? null,
+    previousTimingRecommendation: intrigueView?.selectedProvince?.previousTimingRecommendation ?? null,
   });
 
   return `
@@ -7821,6 +7822,12 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
       <p>${report.summary}</p>
       ${report.previousAction ? `<small>${report.previousAction}</small>` : ''}
       ${report.retaliationRisk ? `<small>Risque représailles: ${report.retaliationRisk}</small>` : ''}
+      ${report.timingRecommendationChange ? `
+        <div class="province-intrigue-turn-report__timing-change province-intrigue-turn-report__timing-change--${report.timingRecommendationChange.tone}" aria-label="Changement de recommandation de timing intrigue">
+          <b>${report.timingRecommendationChange.direction}</b>
+          <span>Cause visible: ${report.timingRecommendationChange.cause}</span>
+        </div>
+      ` : ''}
       ${report.deltas.length > 0 ? `
         <ul class="province-intrigue-turn-report__list">
           ${report.deltas.map((delta) => `
@@ -17928,6 +17935,7 @@ function getIntrigueViewModel() {
       sleeperCellCount: selectedEntry.metrics.sleeperCellCount,
       activeOperationCount: selectedOperations.length,
       drillDown: selectedEntry.drillDown,
+      previousTimingRecommendation: selectedEntry.previousTimingRecommendation ?? selectedEntry.lastTurn?.timingRecommendation ?? null,
       fogHint: selectedFogHint,
       responseChoices: selectedResponseChoices,
       reasons: selectedRiskReasons.length > 0 ? selectedRiskReasons : ['Aucun signal Delta notable'],

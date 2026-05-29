@@ -60,6 +60,36 @@ test('buildIntrigueTurnReportDeltas marks aggravated and exposed aftermath clear
   assert.ok(report.deltas.some((delta) => delta.label === 'Réseau exposé'));
 });
 
+test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-safely', () => {
+  const view = buildIntrigueView();
+  view.selectedProvince.drillDown.postRecapStabilizationChoices = {
+    timingComparison: {
+      recommendedTiming: 'short-wait',
+      dominantReason: 'exposition',
+      actNow: { risk: 'exposition visible défavorable' },
+      shortWait: { outcome: 'Attendre un tour peut rouvrir une fenêtre moins coûteuse.' },
+      summary: 'Temporiser est meilleur maintenant: l’exposition domine la décision visible.',
+    },
+  };
+
+  const report = buildIntrigueTurnReportDeltas(province, view, {
+    previousActionCode: 'contenir',
+    previousTimingRecommendation: 'act-now',
+  });
+
+  assert.deepEqual(report.timingRecommendationChange, {
+    previousTiming: 'act-now',
+    currentTiming: 'short-wait',
+    direction: 'agir maintenant → attendre',
+    cause: 'exposition',
+    tone: 'watch',
+    label: 'Timing recommandé modifié',
+    detail: 'agir maintenant → attendre: cause visible exposition.',
+    fogSafe: true,
+  });
+  assert.ok(report.deltas.some((delta) => delta.type === 'timing' && delta.detail === 'agir maintenant → attendre: cause visible exposition.'));
+});
+
 test('buildIntrigueTurnReportDeltas keeps unknown intelligence discreet', () => {
   assert.deepEqual(buildIntrigueTurnReportDeltas(province, null), {
     tone: 'masked',
