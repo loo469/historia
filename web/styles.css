@@ -12444,6 +12444,39 @@ button { font: inherit; }
 .map-world-climate-next-threshold--no-threshold-change span,
 .map-world-climate-next-threshold--no-threshold-change small { color: #fee2e2; }
 
+.map-world-climate-threshold-progress {
+  display: grid;
+  gap: 6px;
+  max-width: 74ch;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(8, 145, 178, 0.18));
+  border: 1px solid rgba(103, 232, 249, 0.34);
+}
+.map-world-climate-threshold-progress--threshold-reached { border-color: rgba(110, 231, 183, 0.44); }
+.map-world-climate-threshold-progress--threshold-pending { border-color: rgba(251, 191, 36, 0.48); }
+.map-world-climate-threshold-progress__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-threshold-progress p,
+.map-world-climate-threshold-progress span,
+.map-world-climate-threshold-progress small {
+  color: #cffafe;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-threshold-progress--threshold-reached p,
+.map-world-climate-threshold-progress--threshold-reached span,
+.map-world-climate-threshold-progress--threshold-reached small { color: #dcfce7; }
+.map-world-climate-threshold-progress--threshold-pending p,
+.map-world-climate-threshold-progress--threshold-pending span,
+.map-world-climate-threshold-progress--threshold-pending small { color: #fef3c7; }
+
 .atlas-cultural-border-zone__recommendation {
   fill: #ddd6fe;
   font-size: 0.86px;
