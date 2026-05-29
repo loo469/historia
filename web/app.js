@@ -8131,6 +8131,13 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               <small>${preview.localRecoveryCapacityConflictWarning.detail}</small>
             </div>
           ` : ''}
+          ${preview.adjacentRouteSpilloverRisk && preview.adjacentRouteSpilloverRisk.state !== 'empty' ? `
+            <div class="province-logistics-spillover-risk province-logistics-spillover-risk--${preview.adjacentRouteSpilloverRisk.state}" aria-label="Risque de spillover logistique sur routes voisines">
+              <b>Spillover voisin</b>
+              <span>${preview.adjacentRouteSpilloverRisk.summary}</span>
+              <small>Critique: ${preview.adjacentRouteSpilloverRisk.criticalRoute.route} vers ${preview.adjacentRouteSpilloverRisk.criticalRoute.city}. ${preview.adjacentRouteSpilloverRisk.secondaryRoutes.length > 0 ? `Secondaires: ${preview.adjacentRouteSpilloverRisk.secondaryRoutes.map((route) => `${route.route} (${route.city})`).join(', ')}.` : 'Pas de route secondaire exposée.'}</small>
+            </div>
+          ` : ''}
         </div>
       ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">

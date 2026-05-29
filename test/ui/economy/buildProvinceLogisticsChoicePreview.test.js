@@ -114,6 +114,10 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(['warning', 'critical'].includes(preview.localRecoveryCapacityConflictWarning.state));
   assert.match(preview.localRecoveryCapacityConflictWarning.summary, /Attention: ce choix retarde aussi/);
   assert.match(preview.localRecoveryCapacityConflictWarning.detail, /consomme|partage|Outils/);
+  assert.ok(['single', 'chain'].includes(preview.adjacentRouteSpilloverRisk.state));
+  assert.match(preview.adjacentRouteSpilloverRisk.summary, /route voisine critique|secondaire|exposée/);
+  assert.match(preview.adjacentRouteSpilloverRisk.criticalRoute.route, /Ember Line|Hill Spur|Safe Road/);
+  assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
   assert.match(preview.primaryLogisticsAction.downstreamImpact, /pénurie|route|province|délai/);
@@ -183,6 +187,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.secondaryChoiceRelapsePreview.summary, /Rechute non chiffrable/);
   assert.equal(preview.localRecoveryCapacityConflictWarning.state, 'empty');
   assert.match(preview.localRecoveryCapacityConflictWarning.summary, /Aucun conflit transversal/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.state, 'empty');
+  assert.match(preview.adjacentRouteSpilloverRisk.summary, /Aucun spillover/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);

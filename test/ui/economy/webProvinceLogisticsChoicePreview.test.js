@@ -90,6 +90,11 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Conflit capacité/);
   assert.match(webAppSource, /Conflit de capacité entre récupération locale et route critique/);
   assert.match(webAppSource, /localRecoveryCapacityConflictWarning/);
+  assert.match(webAppSource, /province-logistics-spillover-risk/);
+  assert.match(webAppSource, /Spillover voisin/);
+  assert.match(webAppSource, /Risque de spillover logistique sur routes voisines/);
+  assert.match(webAppSource, /adjacentRouteSpilloverRisk/);
+  assert.match(webAppSource, /Critique:/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);
   assert.match(webAppSource, /Engager récupération/);

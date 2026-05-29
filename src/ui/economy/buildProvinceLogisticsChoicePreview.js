@@ -837,6 +837,61 @@ function buildLocalRecoveryCapacityConflictWarning(priorityAction, routeChoices)
   };
 }
 
+
+function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
+  if (!priorityAction) {
+    return { state: 'empty', criticalRoute: null, secondaryRoutes: [], summary: 'Aucun spillover logistique: aucune récupération locale sélectionnée.' };
+  }
+
+  const option = routeChoices.find((candidate) => candidate.routeId === priorityAction.routeId) ?? null;
+  const choice = option?.recoveryChoices.find((candidate) => candidate.choiceId === priorityAction.choiceId) ?? option?.recoveryChoices[0] ?? null;
+  const signals = [
+    ...(choice?.downstreamShortages ?? []).filter((shortage) => shortage.status !== 'résolue').map((shortage) => ({
+      route: shortage.route,
+      city: shortage.target,
+      resource: shortage.resource,
+      tone: shortage.status === 'aggravée' ? 'high' : 'medium',
+      detail: shortage.detail,
+      score: shortage.status === 'aggravée' ? 50 : shortage.status === 'déplacée' ? 36 : 24,
+    })),
+    ...(choice?.neighborEffects ?? []).filter((effect) => effect.tone !== 'low').map((effect) => ({
+      route: effect.route,
+      city: effect.target,
+      resource: priorityAction.resource,
+      tone: effect.tone,
+      detail: effect.detail,
+      score: effect.tone === 'high' ? 44 : 30,
+    })),
+  ].filter((signal) => signal.route && signal.route !== priorityAction.route)
+    .sort((left, right) => right.score - left.score || left.route.localeCompare(right.route));
+
+  const deduped = [];
+  for (const signal of signals) {
+    if (!deduped.some((entry) => entry.route === signal.route)) {
+      deduped.push(signal);
+    }
+  }
+
+  const criticalRoute = deduped[0] ?? null;
+  const secondaryRoutes = deduped.slice(1, 3);
+
+  if (!criticalRoute) {
+    return {
+      state: 'empty',
+      criticalRoute: null,
+      secondaryRoutes: [],
+      summary: 'Aucun spillover logistique voisin concret après cette récupération locale.',
+    };
+  }
+
+  return {
+    state: secondaryRoutes.length > 0 ? 'chain' : 'single',
+    criticalRoute,
+    secondaryRoutes,
+    summary: `${criticalRoute.route} est la route voisine critique; ${secondaryRoutes.length > 0 ? `${secondaryRoutes.length} route${secondaryRoutes.length > 1 ? 's' : ''} secondaire${secondaryRoutes.length > 1 ? 's' : ''} exposée${secondaryRoutes.length > 1 ? 's' : ''}.` : 'aucune autre route secondaire exposée.'}`,
+  };
+}
+
 function buildPrimaryLogisticsQueueAction(priorityAction, selectedActionPreview, queuedLogisticsActions = []) {
   if (!priorityAction) {
     return {
@@ -887,7 +942,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const queuedLogisticsActions = Array.isArray(normalizedOptions.queuedLogisticsActions) ? normalizedOptions.queuedLogisticsActions : [];
 
   if (!province || !economyView) {
-    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', recoveryLeverRanking: buildRecoveryLeverRanking([], [], false), selectedActionPreview: buildSelectedActionImpactPreview(null, []), secondaryBottleneckPreview: buildSecondaryBottleneckPreview(null, []), primarySecondaryTradeoff: buildPrimarySecondaryTradeoff(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, [])), secondaryChoiceRelapsePreview: buildSecondaryChoiceRelapsePreview(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, []), null), localRecoveryCapacityConflictWarning: buildLocalRecoveryCapacityConflictWarning(null, []), primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
+    return { recommendedOptionId: null, timelineStatus: 'empty', timelineSummary: 'Aucune action route/logistique en file: timeline vide.', downstreamStatus: 'neutre', downstreamSummary: 'Aucune pénurie aval claire détectée.', priorityActions: [], prioritySummary: 'Aucune action logistique prioritaire disponible.', recoveryLeverRanking: buildRecoveryLeverRanking([], [], false), selectedActionPreview: buildSelectedActionImpactPreview(null, []), secondaryBottleneckPreview: buildSecondaryBottleneckPreview(null, []), primarySecondaryTradeoff: buildPrimarySecondaryTradeoff(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, [])), secondaryChoiceRelapsePreview: buildSecondaryChoiceRelapsePreview(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, []), null), localRecoveryCapacityConflictWarning: buildLocalRecoveryCapacityConflictWarning(null, []), adjacentRouteSpilloverRisk: buildAdjacentRouteSpilloverRisk(null, []), primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions), status: 'stable', summary: 'Aucune donnée logistique disponible.', options: [] };
   }
 
   const cities = economyView.overlay?.cities ?? [];
@@ -928,6 +983,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
       primarySecondaryTradeoff: buildPrimarySecondaryTradeoff(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, [])),
       secondaryChoiceRelapsePreview: buildSecondaryChoiceRelapsePreview(null, buildSelectedActionImpactPreview(null, []), buildSecondaryBottleneckPreview(null, []), null),
       localRecoveryCapacityConflictWarning: buildLocalRecoveryCapacityConflictWarning(null, []),
+      adjacentRouteSpilloverRisk: buildAdjacentRouteSpilloverRisk(null, []),
       primaryLogisticsAction: buildPrimaryLogisticsQueueAction(null, buildSelectedActionImpactPreview(null, []), queuedLogisticsActions),
       status: 'stable',
       summary: 'Logistique stable: aucune route liée à la province sélectionnée.',
@@ -945,6 +1001,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
   const primarySecondaryTradeoff = buildPrimarySecondaryTradeoff(recommendedPriority, selectedActionPreview, secondaryBottleneckPreview);
   const secondaryChoiceRelapsePreview = buildSecondaryChoiceRelapsePreview(recommendedPriority, selectedActionPreview, secondaryBottleneckPreview, primarySecondaryTradeoff);
   const localRecoveryCapacityConflictWarning = buildLocalRecoveryCapacityConflictWarning(recommendedPriority, routeChoices);
+  const adjacentRouteSpilloverRisk = buildAdjacentRouteSpilloverRisk(recommendedPriority, routeChoices);
   const primaryLogisticsAction = buildPrimaryLogisticsQueueAction(recommendedPriority, selectedActionPreview, queuedLogisticsActions);
 
   return {
@@ -968,6 +1025,7 @@ export function buildProvinceLogisticsChoicePreview(province, economyView, optio
     primarySecondaryTradeoff,
     secondaryChoiceRelapsePreview,
     localRecoveryCapacityConflictWarning,
+    adjacentRouteSpilloverRisk,
     primaryLogisticsAction,
     status: hasBlocker ? recommended.tone : 'stable',
     summary: hasBlocker
