@@ -19,6 +19,9 @@ test('playable map wires intrigue aftermath deltas into selected province turn r
   assert.match(webAppSource, /waitVerificationRequirement/);
   assert.match(webAppSource, /safestMinimalVerification/);
   assert.match(webAppSource, /Plus sûre:/);
+  assert.match(webAppSource, /Débloque:/);
+  assert.match(webAppSource, /unlockNextTurn/);
+  assert.match(webAppSource, /province-intrigue-turn-report__next-turn-unlock/);
   assert.match(webAppSource, /Revue complète si le recoupement diverge/);
   assert.match(webAppSource, /renderIntrigueTurnReportDeltas\(province, intrigueView\)/);
 });
