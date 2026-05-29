@@ -119,8 +119,45 @@ function buildConfidenceShift(currentTiming, currentTimingComparison) {
   };
 }
 
+function buildWaitVerificationRequirement(timingRecommendationChange, lowConfidence) {
+  if (!timingRecommendationChange || !lowConfidence) {
+    return {
+      state: 'not-required',
+      mandatory: false,
+      reason: 'raison exacte non calculable ou confiance suffisante',
+      consequence: 'Attendre ne demande pas de verrouillage supplémentaire avec les signaux visibles.',
+      fallback: true,
+    };
+  }
+
+  const cause = timingRecommendationChange.confidenceShift?.cause ?? timingRecommendationChange.cause;
+  const timingFragile = timingRecommendationChange.currentTiming === 'act-now' || cause === 'délai';
+  const contradictory = cause === 'signal contradictoire';
+  const mandatory = timingFragile || contradictory || timingRecommendationChange.confidenceShift?.variation === 'baisse';
+  const reason = contradictory
+    ? 'signal contradictoire: attendre sans recouper peut valider le mauvais timing'
+    : timingFragile
+      ? 'timing fragile: la fenêtre visible peut se refermer avant le prochain tour'
+      : 'confiance basse: attendre sans vérifier risque de figer une lecture dégradée';
+  const consequence = timingRecommendationChange.currentTiming === 'act-now'
+    ? 'Conséquence probable: la réponse immédiate perd sa fenêtre et le prochain recheck coûtera plus cher.'
+    : contradictory
+      ? 'Conséquence probable: le prochain tour peut partir sur une priorité inversée.'
+      : 'Conséquence probable: le signal vieillit et la vérification suivante sera moins fiable.';
+
+  return {
+    state: mandatory ? 'mandatory-before-wait' : 'optional-before-wait',
+    mandatory,
+    reason,
+    consequence,
+    fallback: false,
+  };
+}
+
 function buildMinimumVerificationPrompt(timingRecommendationChange) {
   if (!timingRecommendationChange) {
+    const waitVerificationRequirement = buildWaitVerificationRequirement(null, false);
+
     return {
       state: 'sufficient-confidence',
       confidence: 'suffisante',
@@ -128,11 +165,13 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
       verification: 'Aucune vérification minimale requise avant l’action recommandée.',
       waitLessRisky: false,
       summary: 'Confiance suffisante: garder la recommandation actuelle sans étape de vérification supplémentaire.',
+      waitVerificationRequirement,
     };
   }
 
   const confidenceShift = timingRecommendationChange.confidenceShift;
   const lowConfidence = confidenceShift?.variation === 'baisse' || confidenceShift?.variation === 'reste instable';
+  const waitVerificationRequirement = buildWaitVerificationRequirement(timingRecommendationChange, lowConfidence);
   const verificationByCause = {
     exposition: 'Vérifier le niveau d’exposition visible avant d’engager une réponse lourde.',
     délai: 'Confirmer que le signal n’a pas vieilli avant de forcer l’action immédiate.',
@@ -149,6 +188,7 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
       verification: 'Aucune vérification minimale requise avant l’action recommandée.',
       waitLessRisky: false,
       summary: 'Confiance suffisante: la variation soutient le timing recommandé sans étape supplémentaire.',
+      waitVerificationRequirement,
     };
   }
 
@@ -163,6 +203,7 @@ function buildMinimumVerificationPrompt(timingRecommendationChange) {
     summary: waitLessRisky
       ? 'Attendre un tour est moins risqué que forcer l’action tant que la confiance reste basse.'
       : 'Agir maintenant reste indiqué, mais seulement après une vérification minimale du signal visible.',
+    waitVerificationRequirement,
   };
 }
 

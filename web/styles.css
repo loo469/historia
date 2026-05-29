@@ -9598,6 +9598,11 @@ button { font: inherit; }
 .province-intrigue-turn-report__verification--low-confidence { border-color: rgba(250, 204, 21, 0.28); }
 .province-intrigue-turn-report__verification span,
 .province-intrigue-turn-report__verification small { color: var(--muted); }
+.province-intrigue-turn-report__wait-risk {
+  padding-top: 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+.province-intrigue-turn-report__verification--low-confidence .province-intrigue-turn-report__wait-risk { color: rgba(253, 224, 71, 0.88); }
 .province-intrigue-turn-report__list {
   display: grid;
   gap: 8px;

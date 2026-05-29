@@ -100,6 +100,13 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
       verification: 'Vérifier le niveau d’exposition visible avant d’engager une réponse lourde.',
       waitLessRisky: true,
       summary: 'Attendre un tour est moins risqué que forcer l’action tant que la confiance reste basse.',
+      waitVerificationRequirement: {
+        state: 'mandatory-before-wait',
+        mandatory: true,
+        reason: 'confiance basse: attendre sans vérifier risque de figer une lecture dégradée',
+        consequence: 'Conséquence probable: le signal vieillit et la vérification suivante sera moins fiable.',
+        fallback: false,
+      },
     },
   });
   assert.ok(report.deltas.some((delta) => delta.type === 'timing' && delta.detail === 'agir maintenant → attendre: cause visible exposition.'));
@@ -137,6 +144,13 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
     verification: 'Confirmer que le signal n’a pas vieilli avant de forcer l’action immédiate.',
     waitLessRisky: false,
     summary: 'Agir maintenant reste indiqué, mais seulement après une vérification minimale du signal visible.',
+    waitVerificationRequirement: {
+      state: 'mandatory-before-wait',
+      mandatory: true,
+      reason: 'timing fragile: la fenêtre visible peut se refermer avant le prochain tour',
+      consequence: 'Conséquence probable: la réponse immédiate perd sa fenêtre et le prochain recheck coûtera plus cher.',
+      fallback: false,
+    },
   });
 });
 
@@ -150,6 +164,13 @@ test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is 
     verification: 'Aucune vérification minimale requise avant l’action recommandée.',
     waitLessRisky: false,
     summary: 'Confiance suffisante: garder la recommandation actuelle sans étape de vérification supplémentaire.',
+    waitVerificationRequirement: {
+      state: 'not-required',
+      mandatory: false,
+      reason: 'raison exacte non calculable ou confiance suffisante',
+      consequence: 'Attendre ne demande pas de verrouillage supplémentaire avec les signaux visibles.',
+      fallback: true,
+    },
   });
 });
 
