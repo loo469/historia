@@ -7696,6 +7696,8 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               <li class="province-logistics-recovery-lever province-logistics-recovery-lever--${lever.tone} ${lever.recommended ? 'is-recommended' : ''}">
                 <strong>#${lever.rank} ${lever.label}</strong>
                 <span>Coût: ${lever.primaryCost} · Risque évité: ${lever.avoidedRisk}</span>
+                ${lever.recommended ? `<span>Capacité: ${lever.capacityCostDetail}</span>` : ''}
+                ${lever.recommended ? `<small>${lever.capacityComparison} · ${lever.debtWatch}</small>` : ''}
                 <small>${lever.tradeoff} · ${lever.mutualBlocker}</small>
               </li>
             `).join('')}

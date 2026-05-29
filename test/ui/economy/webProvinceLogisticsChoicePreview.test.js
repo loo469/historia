@@ -62,6 +62,10 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Leviers recovery/);
   assert.match(webAppSource, /preview\.recoveryLeverRanking/);
   assert.match(webAppSource, /lever\.primaryCost/);
+  assert.match(webAppSource, /lever\.capacityCostDetail/);
+  assert.match(webAppSource, /lever\.capacityComparison/);
+  assert.match(webAppSource, /lever\.debtWatch/);
+  assert.match(webAppSource, /Capacité:/);
   assert.match(webAppSource, /lever\.avoidedRisk/);
   assert.match(webAppSource, /lever\.mutualBlocker/);
   assert.match(webAppSource, /province-logistics-impact-preview/);

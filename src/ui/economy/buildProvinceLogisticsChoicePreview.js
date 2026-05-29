@@ -525,16 +525,25 @@ function buildRecoveryLeverRanking(routeChoices, priorityActions, hasBlocker) {
     .map((action) => {
       const option = optionByRouteId.get(action.routeId) ?? null;
       const choice = option?.recoveryChoices.find((candidate) => candidate.choiceId === action.choiceId) ?? null;
+      const unresolvedDebt = choice?.downstreamShortages.find((shortage) => shortage.status === 'aggravée' || shortage.status === 'déplacée' || shortage.status === 'inconnue') ?? null;
       const criticalAvoided = Math.max(
         action.shortagesAvoided,
         choice?.downstreamShortages.filter((shortage) => shortage.status === 'aggravée' || shortage.status === 'déplacée').length ?? 0,
       );
       const capacityKey = `${action.resource}:${choice?.blocker ?? option?.cost ?? action.cost}`;
+      const capacityCostDetail = option
+        ? `${action.cost} sur ${action.route} vers ${option.affectedCity}, délai ${action.delay}; capacité requise: ${choice?.blocker ?? action.resource}.`
+        : `${action.cost}, délai ${action.delay}; capacité requise: ${choice?.blocker ?? action.resource}.`;
       const avoidedRisk = criticalAvoided > 0
         ? `${criticalAvoided} pénurie${criticalAvoided > 1 ? 's' : ''}/goulot${criticalAvoided > 1 ? 's' : ''} évité${criticalAvoided > 1 ? 's' : ''}`
         : choice?.bottleneck?.tone === 'high'
           ? `${choice.bottleneck.label} neutralisé avant rechute`
           : `${action.downstreamStatus} contenu avant prochain tour`;
+      const debtWatch = unresolvedDebt
+        ? `Dette à surveiller: ${unresolvedDebt.target} (${unresolvedDebt.status}) après ${action.route}.`
+        : choice?.bottleneck?.tone === 'high'
+          ? `Dette à surveiller: ${choice.bottleneck.label} peut rester active sur ${action.route}.`
+          : 'Dette aval résiduelle faible après ce levier.';
 
       return {
         leverId: `lever:${action.actionId}`,
@@ -543,7 +552,9 @@ function buildRecoveryLeverRanking(routeChoices, priorityActions, hasBlocker) {
         resource: action.resource,
         tone: action.tone,
         primaryCost: action.cost,
+        capacityCostDetail,
         avoidedRisk,
+        debtWatch,
         tradeoff: action.tradeoff,
         blocker: choice?.blocker ?? 'capacité à confirmer',
         capacityKey,
@@ -556,10 +567,14 @@ function buildRecoveryLeverRanking(routeChoices, priorityActions, hasBlocker) {
   const capacityCounts = candidates.reduce((counts, lever) => counts.set(lever.capacityKey, (counts.get(lever.capacityKey) ?? 0) + 1), new Map());
   const levers = candidates.map((lever, index, ordered) => {
     const conflict = ordered.find((candidate, candidateIndex) => candidateIndex !== index && candidate.capacityKey === lever.capacityKey) ?? null;
+    const nextLever = ordered[index + 1] ?? null;
     return {
       ...lever,
       rank: index + 1,
       recommended: index === 0,
+      capacityComparison: nextLever
+        ? `${nextLever.label} demande ${nextLever.primaryCost}; ${lever.label} garde le meilleur ratio capacité/risque.`
+        : 'Aucun second levier assez utile pour comparer le coût de capacité.',
       mutualBlocker: conflict
         ? `Partage ${lever.resource}/${lever.blocker} avec ${conflict.label}: choisir l’un retarde l’autre.`
         : (capacityCounts.get(lever.capacityKey) ?? 0) > 1
