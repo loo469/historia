@@ -209,3 +209,21 @@ test('atlas military groups neighboring contested provinces by shared front urge
   assert.match(stylesSource, /\.atlas-military-neighbor-front-cluster--critical/);
   assert.match(stylesSource, /\.atlas-military-neighbor-front-cluster--contested/);
 });
+
+// MAP-A29: show when a grouped neighboring front can be covered by one order
+// versus when the cluster still needs separate follow-up.
+test('atlas military shows safe shared handling hints for grouped front urgency', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborSharedHandlingHint\(cluster\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborSharedHandlingHint\(hint, y\)/);
+  assert.match(webAppSource, /Indice de traitement groupé du front voisin/);
+  assert.match(webAppSource, /Même ordre possible/);
+  assert.match(webAppSource, /Suivi séparé requis/);
+  assert.match(webAppSource, /front lié, causes\/actions mixtes/);
+  assert.match(webAppSource, /cause liée sans ordre commun sûr/);
+  assert.match(webAppSource, /cluster\.actions\.length === 1 && cluster\.factors\.length === 1/);
+  assert.match(webAppSource, /sharedHandlingHint: buildAtlasMilitaryNeighborSharedHandlingHint/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborSharedHandlingHint\(preview\.sharedHandlingHint, hintY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-shared-handling__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-shared-handling--shared/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-shared-handling--separate/);
+});
