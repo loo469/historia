@@ -154,6 +154,24 @@ function buildWaitVerificationRequirement(timingRecommendationChange, lowConfide
   };
 }
 
+function buildNextTurnUnlock(principalRisk, fullReviewRequired, timingRecommendationChange) {
+  const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
+
+  if (fullReviewRequired) {
+    return 'Au prochain tour, elle réduira l’incertitude pour choisir entre agir maintenant ou lancer une revue complète.';
+  }
+
+  if (principalRisk === 'timing fragile') {
+    return 'Au prochain tour, elle permettra de confirmer si l’action immédiate reste nécessaire ou si attendre redevient sûr.';
+  }
+
+  if (canWaitNextTurn) {
+    return 'Au prochain tour, elle permettra de choisir plus sûrement entre attendre encore ou agir sans surcharger la revue.';
+  }
+
+  return 'Au prochain tour, elle réduira l’incertitude avant de choisir entre agir et attendre.';
+}
+
 function buildSafestMinimalVerification(prompt, timingRecommendationChange = null) {
   if (!prompt || prompt.state !== 'low-confidence') {
     return {
@@ -162,6 +180,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
       label: 'Aucune vérification minimale prioritaire',
       action: 'Conserver la recommandation actuelle.',
       whyEnough: 'La confiance visible ne demande pas de déblocage avant attente.',
+      unlockNextTurn: 'Aucun choix supplémentaire à débloquer au prochain tour.',
       fullReviewRequired: false,
       fallback: true,
     };
@@ -210,6 +229,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     label: plan.label,
     action: plan.action,
     whyEnough: plan.whyEnough,
+    unlockNextTurn: buildNextTurnUnlock(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };

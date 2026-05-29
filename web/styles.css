@@ -9613,7 +9613,12 @@ button { font: inherit; }
   padding-top: 4px;
   border-top: 1px solid rgba(148, 163, 184, 0.14);
 }
+.province-intrigue-turn-report__next-turn-unlock {
+  color: rgba(226, 232, 240, 0.82);
+  font-weight: 700;
+}
 .province-intrigue-turn-report__verification--low-confidence .province-intrigue-turn-report__minimal-check { color: rgba(191, 219, 254, 0.9); }
+.province-intrigue-turn-report__verification--low-confidence .province-intrigue-turn-report__next-turn-unlock { color: rgba(165, 243, 252, 0.9); }
 .province-intrigue-turn-report__list {
   display: grid;
   gap: 8px;

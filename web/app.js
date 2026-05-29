@@ -8253,6 +8253,7 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
           ` : `<small class="province-intrigue-turn-report__wait-risk">${report.minimumVerificationPrompt.waitVerificationRequirement?.consequence ?? 'Attendre ne demande pas de verrouillage supplémentaire avec les signaux visibles.'}</small>`}
           ${report.minimumVerificationPrompt.safestMinimalVerification?.recommended ? `
             <small class="province-intrigue-turn-report__minimal-check">Plus sûre: ${report.minimumVerificationPrompt.safestMinimalVerification.label} · ${report.minimumVerificationPrompt.safestMinimalVerification.action} ${report.minimumVerificationPrompt.safestMinimalVerification.whyEnough}${report.minimumVerificationPrompt.safestMinimalVerification.fullReviewRequired ? ' Revue complète si le recoupement diverge.' : ''}</small>
+            <small class="province-intrigue-turn-report__next-turn-unlock">Débloque: ${report.minimumVerificationPrompt.safestMinimalVerification.unlockNextTurn}</small>
           ` : `<small class="province-intrigue-turn-report__minimal-check">${report.minimumVerificationPrompt.safestMinimalVerification?.whyEnough ?? 'Aucune vérification minimale fiable à proposer.'}</small>`}
         </div>
       ` : ''}
