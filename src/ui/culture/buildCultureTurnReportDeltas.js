@@ -1058,6 +1058,58 @@ function buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary,
 }
 
 
+function buildCulturalBundleCleanupPrompts(groups, commitmentFollowThroughReminder, promptHistoryDrawer) {
+  const repetitionSafeguard = promptHistoryDrawer.repetitionSafeguard;
+
+  return groups.map((group) => {
+    const currentEntries = group.details.filter((entry) => entry.source === 'current');
+    const historyEntries = group.details.filter((entry) => entry.source === 'history');
+    const hasCurrentFollowUp = currentEntries.length > 0;
+    const replacementEntry = currentEntries[0]
+      ?? groups.find((candidate) => candidate.bundleId !== group.bundleId)?.details.find((entry) => entry.source === 'current')
+      ?? null;
+    const reminderTargetsGroup = commitmentFollowThroughReminder.clusterLabel === group.clusterLabel;
+    const isStaleReminder = reminderTargetsGroup && commitmentFollowThroughReminder.agePriority?.stale === true;
+    const resolvedWithoutCurrentAction = !hasCurrentFollowUp && historyEntries.length > 0 && !isStaleReminder;
+    const riskPersists = group.state === 'urgent'
+      || group.state === 'ready'
+      || (group.state === 'context' && hasCurrentFollowUp)
+      || (reminderTargetsGroup && commitmentFollowThroughReminder.agePriority?.priority >= 3 && !isStaleReminder);
+    const cleanupState = isStaleReminder || group.state === 'stale'
+      ? 'obsolete'
+      : riskPersists
+        ? 'risk-persists'
+        : resolvedWithoutCurrentAction || group.state === 'context'
+          ? 'resolved'
+          : 'review';
+    const action = cleanupState === 'obsolete'
+      ? (replacementEntry ? `remplacer par ${replacementEntry.promptLabel}` : 'archiver le bundle obsolète')
+      : cleanupState === 'resolved'
+        ? 'archiver le bundle résolu'
+        : cleanupState === 'risk-persists'
+          ? 'conserver: risque culturel encore actif'
+          : 'revoir au prochain tour avant archivage';
+    const reason = cleanupState === 'obsolete'
+      ? `${group.clusterLabel}: ${commitmentFollowThroughReminder.agePriority?.relevance ?? 'ancien suivi dépassé par le contexte récent'}.`
+      : cleanupState === 'resolved'
+        ? `${group.clusterLabel}: aucun suivi courant immédiat; l’historique suffit comme trace lisible.`
+        : cleanupState === 'risk-persists'
+          ? `${group.clusterLabel}: ${group.avoidedLoss}; ${commitmentFollowThroughReminder.nextCheck}`
+          : `${group.clusterLabel}: état à surveiller sans relancer toute la répétition.`;
+
+    return {
+      cleanupId: `${group.bundleId}:cleanup-prompt`,
+      bundleId: group.bundleId,
+      clusterLabel: group.clusterLabel,
+      state: cleanupState,
+      action,
+      reason,
+      safeguard: repetitionSafeguard,
+      replacesPromptLabel: cleanupState === 'obsolete' ? replacementEntry?.promptLabel ?? null : null,
+    };
+  });
+}
+
 function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder) {
   const groups = promptHistoryDrawer.groups.map((group) => {
     const currentEntries = group.entries.filter((entry) => entry.source === 'current');
@@ -1116,6 +1168,10 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     };
   }).sort((left, right) => right.unlockScore - left.unlockScore || right.detailCount - left.detailCount || left.clusterLabel.localeCompare(right.clusterLabel));
   const top = groups[0] ?? null;
+  const cleanupPrompts = buildCulturalBundleCleanupPrompts(groups, commitmentFollowThroughReminder, promptHistoryDrawer);
+  const cleanupSummary = cleanupPrompts.length === 0
+    ? 'Aucun prompt de nettoyage culturel à proposer.'
+    : `${cleanupPrompts.length} prompt${cleanupPrompts.length > 1 ? 's' : ''} de nettoyage: ${cleanupPrompts.map((prompt) => `${prompt.clusterLabel} → ${prompt.action}`).join(' | ')}.`;
 
   return {
     state: groups.length === 0
@@ -1130,6 +1186,8 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
       : `${groups.length} plan${groups.length > 1 ? 's' : ''} de suivi culturel groupé${groups.length > 1 ? 's' : ''}; premier: ${top.clusterLabel}.`,
     bestBundleId: top?.bundleId ?? null,
     groups,
+    cleanupPrompts,
+    cleanupSummary,
     detailMode: groups.length === 0
       ? 'Aucun détail individuel à ouvrir.'
       : 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
@@ -1419,6 +1477,8 @@ export function buildCultureTurnReportDeltas({
           summary: 'Aucun plan de suivi culturel groupé.',
           bestBundleId: null,
           groups: [],
+          cleanupPrompts: [],
+          cleanupSummary: 'Aucun prompt de nettoyage culturel à proposer.',
           detailMode: 'Aucun détail individuel à ouvrir.',
         },
         dependencyExplanation: 'Aucune dépendance entre marqueurs culturels.',
