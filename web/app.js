@@ -13102,6 +13102,101 @@ function renderAtlasClimateNextTurnSafetyMarginLoss(view) {
   `;
 }
 
+function buildAtlasClimateSmallestPreventiveAction(nextTurnLossView, protectionView, thresholdProgressView) {
+  if (!nextTurnLossView || nextTurnLossView.state === 'empty' || !nextTurnLossView.projection || !thresholdProgressView?.progress) {
+    return {
+      state: 'unavailable',
+      action: null,
+      summary: 'Aucune action préventive minimale calculable pour la marge climat.',
+    };
+  }
+
+  const projection = nextTurnLossView.projection;
+  const progress = thresholdProgressView.progress;
+  const candidate = (protectionView?.actions ?? []).find((action) => action.className === 'stabilizes-short-term')
+    ?? protectionView?.bestAction
+    ?? null;
+  const mustActNow = projection.preferNow || nextTurnLossView.state === 'dangerous-next-turn';
+  const safeToWait = nextTurnLossView.state === 'stable' || (!mustActNow && nextTurnLossView.state === 'slight-loss');
+
+  if (!candidate) {
+    return {
+      state: 'unavailable',
+      action: null,
+      summary: 'Fallback discret: aucune action minimale fiable; relire la carte climat avant engagement.',
+    };
+  }
+
+  const minimalAction = mustActNow
+    ? candidate.action
+    : safeToWait
+      ? 'Attendre reste sûr: conserver la veille et ne pas consommer de réserve maintenant.'
+      : 'Préparer une option légère sans la jouer tant que la projection reste inconnue.';
+  const avoidedLoss = mustActNow
+    ? `évite que ${projection.currentMargin} devienne dangereuse avant ${progress.threshold}`
+    : safeToWait
+      ? 'évite une dépense inutile: la marge ne se dégrade pas assez vite'
+      : 'évite de promettre une prévention sans projection fiable';
+  const target = candidate.label ?? progress.provinceLabel ?? projection.protectedThreshold;
+
+  return {
+    state: mustActNow ? 'act-now' : safeToWait ? 'safe-to-wait' : 'unavailable',
+    action: {
+      label: mustActNow ? 'action préventive minimale' : safeToWait ? 'attente sûre' : 'fallback discret',
+      target,
+      minimalAction,
+      avoidedLoss,
+      mainConsumer: projection.mainConsumer,
+      threshold: progress.threshold,
+      deadline: progress.deadline,
+      reason: mustActNow
+        ? `Intervenir maintenant limite ${projection.mainConsumer}.`
+        : safeToWait
+          ? 'La projection ne justifie pas encore une action immédiate.'
+          : 'Projection insuffisante pour calculer une action minimale.',
+    },
+    summary: mustActNow
+      ? `${target}: plus petite prévention recommandée maintenant avant perte de marge.`
+      : safeToWait
+        ? `${target}: attendre reste sûr; garder la prévention en réserve.`
+        : 'Action préventive minimale non calculable; afficher un fallback discret.',
+  };
+}
+
+function renderAtlasClimateSmallestPreventiveAction(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view || view.state === 'empty') {
+    return '';
+  }
+
+  if (!view.action) {
+    return `
+      <aside class="map-world-climate-smallest-prevention map-world-climate-smallest-prevention--unavailable" aria-label="Action préventive climatique minimale avant perte de marge">
+        <div class="map-world-climate-smallest-prevention__header">
+          <strong>Prévention minimale</strong>
+          <span>fallback discret</span>
+        </div>
+        <p>${view.summary}</p>
+        <small><b>Fallback</b> · Aucune action minimale calculable: relire la marge climat au prochain signal.</small>
+      </aside>
+    `;
+  }
+
+  return `
+    <aside class="map-world-climate-smallest-prevention map-world-climate-smallest-prevention--${view.state}" aria-label="Action préventive climatique minimale avant perte de marge">
+      <div class="map-world-climate-smallest-prevention__header">
+        <strong>Prévention minimale</strong>
+        <span>${view.action.label}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Cible</b> · ${view.action.target} · ${view.action.threshold} · ${view.action.deadline}</small>
+      <small><b>Plus petite action</b> · ${view.action.minimalAction}</small>
+      <small><b>Perte évitée</b> · ${view.action.avoidedLoss}</small>
+      <small><b>Pourquoi</b> · ${view.action.reason}</small>
+      <small><b>Consommateur</b> · ${view.action.mainConsumer}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -21363,6 +21458,11 @@ function render() {
     atlasClimateThresholdProgressAfterReadinessAction,
     atlasClimateFollowUpThresholdProtection,
   );
+  const atlasClimateSmallestPreventiveAction = buildAtlasClimateSmallestPreventiveAction(
+    atlasClimateNextTurnSafetyMarginLoss,
+    atlasClimateFollowUpThresholdProtection,
+    atlasClimateThresholdProgressAfterReadinessAction,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -21423,6 +21523,7 @@ function render() {
           ${renderAtlasClimateFollowUpThresholdProtection(atlasClimateFollowUpThresholdProtection)}
           ${renderAtlasClimateFollowUpSafetyMargin(atlasClimateFollowUpSafetyMargin)}
           ${renderAtlasClimateNextTurnSafetyMarginLoss(atlasClimateNextTurnSafetyMarginLoss)}
+          ${renderAtlasClimateSmallestPreventiveAction(atlasClimateSmallestPreventiveAction)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
