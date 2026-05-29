@@ -190,3 +190,22 @@ test('atlas military prioritizes the first neighboring contested province to han
   assert.match(stylesSource, /\.atlas-military-neighbor-contested-priority--critical/);
   assert.match(stylesSource, /\.atlas-military-neighbor-contested-priority--contested/);
 });
+
+// MAP-A28: group neighboring contested provinces by shared front urgency so the
+// player sees the first cluster before scanning province-level details.
+test('atlas military groups neighboring contested provinces by shared front urgency', () => {
+  assert.match(webAppSource, /function getAtlasMilitaryNeighborContestedCandidates\(shifts, reviewStaleness, reviewChange\)/);
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborFrontUrgencyCluster\(shifts, reviewStaleness, reviewChange\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborFrontUrgencyCluster\(cluster, y\)/);
+  assert.match(webAppSource, /Cluster prioritaire de provinces contestées voisines/);
+  assert.match(webAppSource, /Groupe prioritaire: \$\{provinceList\}/);
+  assert.match(webAppSource, /front partagé/);
+  assert.match(webAppSource, /cause:\$\{candidate\.factor\}/);
+  assert.match(webAppSource, /détail province par province suffisant/);
+  assert.match(webAppSource, /traiter ce front avant le détail province/);
+  assert.match(webAppSource, /urgencyCluster: buildAtlasMilitaryNeighborFrontUrgencyCluster/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborFrontUrgencyCluster\(preview\.urgencyCluster, clusterY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-front-cluster__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-front-cluster--critical/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-front-cluster--contested/);
+});
