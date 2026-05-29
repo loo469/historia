@@ -13240,6 +13240,43 @@ button { font: inherit; }
 .map-world-climate-follow-up-safety-margin--unknown span,
 .map-world-climate-follow-up-safety-margin--unknown small { color: #e2e8f0; }
 
+.map-world-climate-next-turn-margin-loss {
+  display: grid;
+  gap: 6px;
+  max-width: 62ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(30, 64, 175, 0.36), rgba(15, 23, 42, 0.84));
+  border: 1px solid rgba(96, 165, 250, 0.36);
+}
+.map-world-climate-next-turn-margin-loss--slight-loss { border-color: rgba(251, 191, 36, 0.48); }
+.map-world-climate-next-turn-margin-loss--dangerous-next-turn { border-color: rgba(248, 113, 113, 0.54); }
+.map-world-climate-next-turn-margin-loss--unknown { border-color: rgba(148, 163, 184, 0.36); }
+.map-world-climate-next-turn-margin-loss__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-next-turn-margin-loss p,
+.map-world-climate-next-turn-margin-loss span,
+.map-world-climate-next-turn-margin-loss small {
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-next-turn-margin-loss--slight-loss p,
+.map-world-climate-next-turn-margin-loss--slight-loss span,
+.map-world-climate-next-turn-margin-loss--slight-loss small { color: #fef3c7; }
+.map-world-climate-next-turn-margin-loss--dangerous-next-turn p,
+.map-world-climate-next-turn-margin-loss--dangerous-next-turn span,
+.map-world-climate-next-turn-margin-loss--dangerous-next-turn small { color: #fee2e2; }
+.map-world-climate-next-turn-margin-loss--unknown p,
+.map-world-climate-next-turn-margin-loss--unknown span,
+.map-world-climate-next-turn-margin-loss--unknown small { color: #e2e8f0; }
+
 .province-node--action-available::before {
   border-color: rgba(74, 222, 128, 0.48);
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.12);
