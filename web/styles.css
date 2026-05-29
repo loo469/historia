@@ -13183,6 +13183,40 @@ button { font: inherit; }
 .map-world-climate-threshold-protection__item--stabilizes-short-term { border-color: rgba(251, 191, 36, 0.46); }
 .map-world-climate-threshold-protection__item--insufficient { border-color: rgba(248, 113, 113, 0.5); }
 
+.map-world-climate-follow-up-safety-margin {
+  display: grid;
+  gap: 6px;
+  max-width: 62ch;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(20, 83, 45, 0.42), rgba(15, 23, 42, 0.82));
+  border: 1px solid rgba(74, 222, 128, 0.36);
+}
+.map-world-climate-follow-up-safety-margin--correct { border-color: rgba(125, 211, 252, 0.4); }
+.map-world-climate-follow-up-safety-margin--weak { border-color: rgba(251, 191, 36, 0.5); }
+.map-world-climate-follow-up-safety-margin--unknown { border-color: rgba(148, 163, 184, 0.36); }
+.map-world-climate-follow-up-safety-margin__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.map-world-climate-follow-up-safety-margin p,
+.map-world-climate-follow-up-safety-margin span,
+.map-world-climate-follow-up-safety-margin small {
+  color: #dcfce7;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+.map-world-climate-follow-up-safety-margin--weak p,
+.map-world-climate-follow-up-safety-margin--weak span,
+.map-world-climate-follow-up-safety-margin--weak small { color: #fef3c7; }
+.map-world-climate-follow-up-safety-margin--unknown p,
+.map-world-climate-follow-up-safety-margin--unknown span,
+.map-world-climate-follow-up-safety-margin--unknown small { color: #e2e8f0; }
+
 .province-node--action-available::before {
   border-color: rgba(74, 222, 128, 0.48);
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.12);

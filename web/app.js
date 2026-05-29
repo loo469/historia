@@ -12765,6 +12765,101 @@ function renderAtlasClimateFollowUpThresholdProtection(view) {
   `;
 }
 
+function buildAtlasClimateFollowUpSafetyMargin(protectionView, nextFollowUpView, thresholdProgressView) {
+  if (!protectionView || protectionView.state === 'empty' || !protectionView.bestAction || !thresholdProgressView?.progress) {
+    return {
+      state: 'unknown',
+      margin: null,
+      summary: 'Marge de sécurité non calculable: aucun follow-up de seuil exploitable.',
+    };
+  }
+
+  const bestAction = protectionView.bestAction;
+  const progress = thresholdProgressView.progress;
+  const pendingCount = protectionView.actions.filter((action) => action.className !== 'protects-threshold').length;
+  const secondPreventiveAction = protectionView.actions.find((action) => action.rank > 1 && action.className === 'stabilizes-short-term') ?? null;
+  const consumesMargin = bestAction.className === 'protects-threshold'
+    ? (pendingCount > 1 ? 'files de suivi concurrentes' : 'pression de fenêtre climatique restante')
+    : bestAction.className === 'stabilizes-short-term'
+      ? 'seuil encore relu comme fragile après l’action recommandée'
+      : 'action qui repousse le risque sans protéger le seuil';
+  const marginLevel = bestAction.className === 'protects-threshold' && pendingCount === 0
+    ? 'comfortable'
+    : bestAction.className === 'protects-threshold'
+      ? 'correct'
+      : bestAction.className === 'stabilizes-short-term'
+        ? 'weak'
+        : 'unknown';
+  const label = marginLevel === 'comfortable'
+    ? 'marge confortable'
+    : marginLevel === 'correct'
+      ? 'marge correcte'
+      : marginLevel === 'weak'
+        ? 'marge faible'
+        : 'marge inconnue';
+  const secondActionNeeded = marginLevel === 'weak' || (marginLevel === 'correct' && Boolean(secondPreventiveAction));
+  const recommendation = secondActionNeeded
+    ? (secondPreventiveAction
+      ? `Seconde action préventive: ${secondPreventiveAction.action}`
+      : 'Seconde action préventive nécessaire avant d’élargir le plan climat.')
+    : marginLevel === 'comfortable'
+      ? 'Aucune seconde action immédiate: garder la veille carte.'
+      : 'Seconde action non urgente: relire le seuil au prochain tour.';
+
+  return {
+    state: marginLevel,
+    margin: {
+      label,
+      bestAction: bestAction.action,
+      protectedThreshold: progress.threshold,
+      deadline: progress.deadline,
+      consumesMargin,
+      secondActionNeeded,
+      recommendation,
+      fallback: marginLevel === 'unknown' ? 'Fallback lisible: afficher marge inconnue et demander une relecture climat avant promesse de seuil.' : '',
+      rationale: nextFollowUpView?.recommendation?.residualRisk ?? bestAction.thresholdLink,
+    },
+    summary: marginLevel === 'unknown'
+      ? 'Marge de sécurité climat inconnue après follow-up: rester prudent.'
+      : `${label}: ${bestAction.label} laisse ${secondActionNeeded ? 'un besoin de prévention' : 'assez de place'} avant le prochain seuil.`,
+  };
+}
+
+function renderAtlasClimateFollowUpSafetyMargin(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view || view.state === 'empty') {
+    return '';
+  }
+
+  if (!view.margin) {
+    return `
+      <aside class="map-world-climate-follow-up-safety-margin map-world-climate-follow-up-safety-margin--unknown" aria-label="Marge de sécurité après follow-up climat recommandée">
+        <div class="map-world-climate-follow-up-safety-margin__header">
+          <strong>Marge après follow-up</strong>
+          <span>marge inconnue</span>
+        </div>
+        <p>${view.summary}</p>
+        <small><b>Fallback</b> · Relecture climat requise avant de promettre un seuil sécurisé.</small>
+      </aside>
+    `;
+  }
+
+  return `
+    <aside class="map-world-climate-follow-up-safety-margin map-world-climate-follow-up-safety-margin--${view.state}" aria-label="Marge de sécurité après follow-up climat recommandée">
+      <div class="map-world-climate-follow-up-safety-margin__header">
+        <strong>Marge après follow-up</strong>
+        <span>${view.margin.label}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Action retenue</b> · ${view.margin.bestAction}</small>
+      <small><b>Seuil protégé</b> · ${view.margin.protectedThreshold} · ${view.margin.deadline}</small>
+      <small><b>Consomme la marge</b> · ${view.margin.consumesMargin}</small>
+      <small><b>Prévention</b> · ${view.margin.recommendation}</small>
+      <small><b>Risque résiduel</b> · ${view.margin.rationale}</small>
+      ${view.margin.fallback ? `<small><b>Fallback</b> · ${view.margin.fallback}</small>` : ''}
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -21016,6 +21111,11 @@ function render() {
     atlasClimateThresholdProgressAfterReadinessAction,
     atlasClimateReboundFollowUpQueue,
   );
+  const atlasClimateFollowUpSafetyMargin = buildAtlasClimateFollowUpSafetyMargin(
+    atlasClimateFollowUpThresholdProtection,
+    atlasNextClimateFollowUpAction,
+    atlasClimateThresholdProgressAfterReadinessAction,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -21074,6 +21174,7 @@ function render() {
           ${renderAtlasSelectedClimateFollowUpReadinessRecap(atlasSelectedClimateFollowUpReadinessRecap)}
           ${renderAtlasNextClimateFollowUpAction(atlasNextClimateFollowUpAction)}
           ${renderAtlasClimateFollowUpThresholdProtection(atlasClimateFollowUpThresholdProtection)}
+          ${renderAtlasClimateFollowUpSafetyMargin(atlasClimateFollowUpSafetyMargin)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
