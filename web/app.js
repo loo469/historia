@@ -7323,6 +7323,8 @@ function renderCultureTurnReport(report) {
                 <span class="culture-turn-report__safe-defer-entry">
                   <b>${entry.clusterLabel} · ${entry.label}</b>
                   <small>Condition: ${entry.condition}</small>
+                  <small>Bascule: ${entry.turningSignal}</small>
+                  <small>${entry.riskThreshold}</small>
                   <small>À revoir: ${entry.nextReviewWindow}</small>
                 </span>
               `).join('')}

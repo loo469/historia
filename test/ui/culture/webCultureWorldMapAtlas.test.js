@@ -178,6 +178,8 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /culture-turn-report__safe-defer-bundles/);
   assert.match(webAppSource, /Peut attendre/);
   assert.match(webAppSource, /Condition:/);
+  assert.match(webAppSource, /Bascule:/);
+  assert.match(webAppSource, /riskThreshold/);
   assert.match(webAppSource, /safeToDeferBundles/);
   assert.match(webAppSource, /culture-turn-report__cleanup-prompts/);
   assert.match(webAppSource, /Prompts de nettoyage des bundles culturels/);
