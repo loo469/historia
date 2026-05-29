@@ -7828,6 +7828,17 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
           </ol>
         </div>
       ` : ''}
+      ${preview.secondaryBottleneckPreview && preview.secondaryBottleneckPreview.state !== 'empty' ? `
+        <div class="province-logistics-secondary-bottleneck province-logistics-secondary-bottleneck--${preview.secondaryBottleneckPreview.state}" aria-label="Prochain goulot logistique après le levier recovery">
+          <div>
+            <b>Goulot suivant</b>
+            <span>${preview.secondaryBottleneckPreview.status}</span>
+          </div>
+          <strong>${preview.secondaryBottleneckPreview.route} · ${preview.secondaryBottleneckPreview.city}</strong>
+          <p>${preview.secondaryBottleneckPreview.summary}</p>
+          <small>${preview.secondaryBottleneckPreview.resource}: ${preview.secondaryBottleneckPreview.detail}</small>
+        </div>
+      ` : ''}
       <div class="province-logistics-queue-action province-logistics-queue-action--${preview.primaryLogisticsAction.status}" aria-label="Engager une action logistique depuis la carte">
         <div>
           <b>Action carte</b>

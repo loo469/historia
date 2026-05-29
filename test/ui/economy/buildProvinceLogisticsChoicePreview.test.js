@@ -95,6 +95,10 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(['critical', 'improved', 'limited'].includes(preview.selectedActionPreview.status));
   assert.equal(preview.selectedActionPreview.badges.length, 3);
   assert.match(`${preview.selectedActionPreview.currentState} ${preview.selectedActionPreview.projectedState}`, /Actuel|Projeté/);
+  assert.equal(preview.secondaryBottleneckPreview.state, 'blocked');
+  assert.equal(preview.secondaryBottleneckPreview.status, 'bloquant');
+  assert.match(preview.secondaryBottleneckPreview.summary, /prochain goulot|Ember Line|Hill Spur|Iron Plain|Hill Hub/);
+  assert.match(preview.secondaryBottleneckPreview.detail, /Outils|pression aval|manquer|retarder|reste à surveiller/);
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
   assert.match(preview.primaryLogisticsAction.downstreamImpact, /pénurie|route|province|délai/);
@@ -155,6 +159,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.deepEqual(preview.recoveryLeverRanking.levers, []);
   assert.equal(preview.selectedActionPreview.status, 'empty');
   assert.deepEqual(preview.selectedActionPreview.badges, []);
+  assert.equal(preview.secondaryBottleneckPreview.state, 'empty');
+  assert.match(preview.secondaryBottleneckPreview.summary, /impossible de projeter/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
