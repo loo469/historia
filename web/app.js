@@ -2193,6 +2193,54 @@ function buildAtlasMilitaryPostClosureRelapseWatchlist(comparison, recommendatio
   };
 }
 
+function buildAtlasMilitaryRelapseCommitPoint(row) {
+  if (row.statusKey === 'stable') {
+    return {
+      tone: 'safe',
+      label: 'Safe to commit',
+      detail: `${row.provinceLabel}: aucun signal de rechute significatif; ${row.safeWaitWindow}.`,
+    };
+  }
+
+  if (row.statusKey === 'fragile') {
+    return {
+      tone: 'fragile',
+      label: 'Prévenir rechute',
+      detail: `${row.provinceLabel}: risque restant ${row.remainingRisk}; prérequis ${row.dominantFactor.replace('facteur: ', '')}.`,
+    };
+  }
+
+  return {
+    tone: 'watch',
+    label: 'Attendre signal',
+    detail: `${row.provinceLabel}: ${row.reason}; raison d'attendre: ${row.nextCheck}.`,
+  };
+}
+
+function buildAtlasMilitaryRelapsePreventionCommitChecklist(watchlist) {
+  const visibleRows = (watchlist?.items ?? []).slice(0, 4);
+  if (!visibleRows.length || watchlist?.empty) {
+    return {
+      points: [],
+      summary: 'Safe to commit: aucune rechute provinciale significative détectée.',
+      empty: true,
+      safeToCommit: true,
+    };
+  }
+
+  const points = visibleRows.map(buildAtlasMilitaryRelapseCommitPoint);
+  const significantRelapseCount = points.filter((point) => point.tone === 'fragile' || point.tone === 'watch').length;
+
+  return {
+    points,
+    summary: significantRelapseCount === 0
+      ? 'Safe to commit: aucune rechute provinciale significative détectée.'
+      : `${significantRelapseCount} point${significantRelapseCount > 1 ? 's' : ''} à vérifier avant confirmation d'ordre.`,
+    empty: false,
+    safeToCommit: significantRelapseCount === 0,
+  };
+}
+
 function renderAtlasMilitaryPostClosureRelapseWatchlist(watchlist) {
   const height = watchlist.empty ? 6.8 : 5.8 + (watchlist.items.length * 5.1);
   return `
@@ -2206,6 +2254,23 @@ function renderAtlasMilitaryPostClosureRelapseWatchlist(watchlist) {
           <text class="atlas-military-post-closure-watchlist-row__window" x="46" y="${126.45 + index * 5.1}">${row.safeWaitWindow}</text>
           <text class="atlas-military-post-closure-watchlist-row__factor" x="46" y="${127.8 + index * 5.1}">${row.dominantFactor}</text>
           <text class="atlas-military-post-closure-watchlist-row__check" x="46" y="${129.15 + index * 5.1}">${row.nextCheck}</text>
+        </g>
+      `).join('')}
+    </g>
+  `;
+}
+
+function renderAtlasMilitaryRelapsePreventionCommitChecklist(checklist) {
+  const height = checklist.empty ? 6.2 : 5.4 + (checklist.points.length * 3.65);
+  return `
+    <g class="atlas-military-relapse-commit-checklist atlas-military-relapse-commit-checklist--${checklist.safeToCommit ? 'safe' : 'active'}" aria-label="Checklist prévention rechute avant confirmation d'ordre: ${checklist.summary}">
+      <rect class="atlas-military-relapse-commit-checklist__panel" x="43" y="139" width="35" height="${height}" rx="2.1"></rect>
+      <text class="atlas-military-relapse-commit-checklist__title" x="44.2" y="141.4">Check avant ordre</text>
+      ${checklist.empty ? `<text class="atlas-military-relapse-commit-checklist__empty" x="44.2" y="144.1">${checklist.summary}</text>` : checklist.points.map((point, index) => `
+        <g class="atlas-military-relapse-commit-checklist-row atlas-military-relapse-commit-checklist-row--${point.tone}" aria-label="${point.label}: ${point.detail}">
+          <circle cx="44.8" cy="${143.5 + index * 3.65}" r="0.58"></circle>
+          <text class="atlas-military-relapse-commit-checklist-row__label" x="46" y="${143.1 + index * 3.65}">${point.label}</text>
+          <text class="atlas-military-relapse-commit-checklist-row__detail" x="46" y="${144.45 + index * 3.65}">${point.detail}</text>
         </g>
       `).join('')}
     </g>
@@ -3273,6 +3338,7 @@ function renderAtlasMilitaryLayer(shell) {
   const nextBestClosureRecommendation = buildAtlasMilitaryNextBestClosureRecommendation(blockerResolutionChecklist);
   const closureAfterActionComparison = buildAtlasMilitaryClosureAfterActionComparison(nextBestClosureRecommendation);
   const postClosureRelapseWatchlist = buildAtlasMilitaryPostClosureRelapseWatchlist(closureAfterActionComparison, nextBestClosureRecommendation);
+  const relapsePreventionCommitChecklist = buildAtlasMilitaryRelapsePreventionCommitChecklist(postClosureRelapseWatchlist);
   const commitmentWarningStack = buildAtlasMilitaryWarningPriorityStack(commitmentWarnings, features);
 
   if (!features.routes.length && !features.riskZones.length) {
@@ -3313,6 +3379,7 @@ function renderAtlasMilitaryLayer(shell) {
       ${renderAtlasMilitaryNextBestClosureRecommendation(nextBestClosureRecommendation)}
       ${renderAtlasMilitaryClosureAfterActionComparison(closureAfterActionComparison)}
       ${renderAtlasMilitaryPostClosureRelapseWatchlist(postClosureRelapseWatchlist)}
+      ${renderAtlasMilitaryRelapsePreventionCommitChecklist(relapsePreventionCommitChecklist)}
       ${renderAtlasMilitaryWarningPriorityStack(commitmentWarningStack, stagedCommitment, shell)}
       ${renderAtlasMilitaryCommitmentFrontConflicts(commitmentConflicts)}
       ${features.riskZones.map((zone) => `

@@ -66,3 +66,21 @@ test('atlas military adds safe-wait windows to post-closure relapse risks', () =
   assert.match(webAppSource, /row\.dominantFactor/);
   assert.match(stylesSource, /\.atlas-military-post-closure-watchlist-row__window/);
 });
+
+// MAP-A22: keep this source-level contract compact because the atlas demo data is
+// assembled inside web/app.js rather than exported as a unit-testable builder.
+test('atlas military renders a relapse prevention checklist before committing province orders', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryRelapsePreventionCommitChecklist\(watchlist\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryRelapsePreventionCommitChecklist\(checklist\)/);
+  assert.match(webAppSource, /Checklist prévention rechute avant confirmation d'ordre/);
+  assert.match(webAppSource, /Check avant ordre/);
+  assert.match(webAppSource, /Safe to commit: aucune rechute provinciale significative détectée/);
+  assert.match(webAppSource, /Prévenir rechute/);
+  assert.match(webAppSource, /risque restant \$\{row\.remainingRisk\}; prérequis/);
+  assert.match(webAppSource, /raison d'attendre: \$\{row\.nextCheck\}/);
+  assert.match(webAppSource, /visibleRows = \(watchlist\?\.items \?\? \[\]\)\.slice\(0, 4\)/);
+  assert.match(webAppSource, /renderAtlasMilitaryRelapsePreventionCommitChecklist\(relapsePreventionCommitChecklist\)/);
+  assert.match(stylesSource, /\.atlas-military-relapse-commit-checklist__panel/);
+  assert.match(stylesSource, /\.atlas-military-relapse-commit-checklist-row--fragile circle/);
+  assert.match(stylesSource, /\.atlas-military-relapse-commit-checklist-row--safe circle/);
+});

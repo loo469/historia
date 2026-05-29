@@ -13917,3 +13917,34 @@ button { font: inherit; }
 .atlas-military-post-closure-watchlist-row--climate circle { stroke: rgba(134, 239, 172, 0.78); }
 .atlas-military-post-closure-watchlist-row--intel circle { stroke: rgba(216, 180, 254, 0.78); }
 .atlas-military-post-closure-watchlist-row--culture circle { stroke: rgba(251, 207, 232, 0.78); }
+
+.atlas-military-relapse-commit-checklist__panel {
+  fill: rgba(15, 23, 42, 0.76);
+  stroke: rgba(147, 197, 253, 0.42);
+  stroke-width: 0.26;
+  filter: drop-shadow(0 2px 5px rgba(2, 6, 23, 0.42));
+}
+.atlas-military-relapse-commit-checklist__title,
+.atlas-military-relapse-commit-checklist-row text,
+.atlas-military-relapse-commit-checklist__empty {
+  fill: #dbeafe;
+  font-size: 0.68px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.2;
+}
+.atlas-military-relapse-commit-checklist-row circle {
+  fill: rgba(96, 165, 250, 0.82);
+  stroke: rgba(239, 246, 255, 0.72);
+  stroke-width: 0.12;
+}
+.atlas-military-relapse-commit-checklist-row__detail,
+.atlas-military-relapse-commit-checklist__empty {
+  fill: #bfdbfe;
+  font-size: 0.43px;
+}
+.atlas-military-relapse-commit-checklist-row--safe circle { fill: rgba(74, 222, 128, 0.84); }
+.atlas-military-relapse-commit-checklist-row--fragile circle { fill: rgba(251, 191, 36, 0.88); }
+.atlas-military-relapse-commit-checklist-row--watch circle { fill: rgba(96, 165, 250, 0.84); }
+.atlas-military-relapse-commit-checklist-row--fragile .atlas-military-relapse-commit-checklist-row__detail { fill: #fed7aa; }
