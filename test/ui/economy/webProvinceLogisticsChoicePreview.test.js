@@ -82,6 +82,10 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /Compromis entre levier principal et bottleneck secondaire/);
   assert.match(webAppSource, /Secondaire prioritaire|Principal prioritaire/);
   assert.match(webAppSource, /primarySecondaryTradeoff/);
+  assert.match(webAppSource, /province-logistics-secondary-relapse/);
+  assert.match(webAppSource, /Risque après choix secondaire/);
+  assert.match(webAppSource, /secondaryChoiceRelapsePreview/);
+  assert.match(webAppSource, /Risque de rechute si le bottleneck secondaire est choisi/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);
   assert.match(webAppSource, /Engager récupération/);
