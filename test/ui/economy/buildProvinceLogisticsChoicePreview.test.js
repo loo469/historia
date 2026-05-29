@@ -83,7 +83,10 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.ok(preview.recoveryLeverRanking.levers.length >= 2);
   assert.equal(preview.recoveryLeverRanking.levers[0].recommended, true);
   assert.match(preview.recoveryLeverRanking.summary, /coût|risque évité/i);
-  assert.ok(preview.recoveryLeverRanking.levers.every((lever) => lever.primaryCost.length > 0 && lever.avoidedRisk.length > 0 && lever.mutualBlocker.length > 0));
+  assert.match(preview.recoveryLeverRanking.levers[0].capacityCostDetail, /capacité requise|délai|Ember Line|River Gate/);
+  assert.match(preview.recoveryLeverRanking.levers[0].capacityComparison, /demande|second levier|ratio capacité\/risque/);
+  assert.match(preview.recoveryLeverRanking.levers[0].debtWatch, /Dette|résiduelle/);
+  assert.ok(preview.recoveryLeverRanking.levers.every((lever) => lever.primaryCost.length > 0 && lever.capacityCostDetail.length > 0 && lever.avoidedRisk.length > 0 && lever.mutualBlocker.length > 0));
   assert.ok(preview.selectedActionPreview.badges.length <= 3);
   assert.match(preview.prioritySummary, /recommandée/);
   assert.ok(preview.priorityActions.some((action) => /rapide mais limitée|plus lente mais structurante|équilibrée/.test(action.tradeoff)));
