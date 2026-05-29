@@ -13272,6 +13272,74 @@ function renderAtlasClimateSmallestPreventiveAction(view) {
   `;
 }
 
+function buildAtlasClimatePreventiveSecondaryProtection(preventiveView, protectionView, thresholdProgressView) {
+  if (!preventiveView || preventiveView.state !== 'act-now' || !preventiveView.action || !thresholdProgressView?.progress) {
+    return {
+      state: 'empty',
+      protection: null,
+      summary: 'Aucun bénéfice secondaire climatique notable à afficher.',
+    };
+  }
+
+  const progress = thresholdProgressView.progress;
+  const otherAction = (protectionView?.actions ?? []).find((action) => action.rank > 1 && action.className !== 'insufficient') ?? null;
+  const secondaryTarget = otherAction?.target
+    ?? otherAction?.label
+    ?? (/mythe|mythique/i.test(preventiveView.action.mainConsumer) ? 'piste mythique sensible' : null)
+    ?? (/catastrophe|cascade/i.test(preventiveView.action.mainConsumer) ? 'catastrophe régionale en cascade' : null)
+    ?? (/zone|région|province/i.test(preventiveView.action.mainConsumer) ? progress.provinceLabel : null);
+  const changesInterest = Boolean(otherAction) || /mythe|catastrophe|cascade|région|zone|province/i.test(`${preventiveView.action.mainConsumer} ${preventiveView.action.avoidedLoss}`);
+
+  if (!secondaryTarget || !changesInterest) {
+    return {
+      state: 'empty',
+      protection: null,
+      summary: 'Effet local uniquement: ne pas ajouter de ligne secondaire.',
+    };
+  }
+
+  const benefitKind = /mythe|mythique/i.test(secondaryTarget)
+    ? 'myth-track'
+    : /catastrophe|cascade/i.test(secondaryTarget)
+      ? 'catastrophe'
+      : /seuil/i.test(secondaryTarget)
+        ? 'threshold'
+        : 'zone';
+
+  return {
+    state: benefitKind,
+    protection: {
+      target: secondaryTarget,
+      benefitKind,
+      action: preventiveView.action.minimalAction,
+      oneLine: `Protège aussi ${secondaryTarget}: ${otherAction?.reason ?? preventiveView.action.avoidedLoss}.`,
+      priorityReason: otherAction
+        ? 'ce bénéfice secondaire transforme la prévention en choix prioritaire plutôt qu’en simple gain local'
+        : 'le consommateur de marge menace un risque non local identifié',
+    },
+    summary: `${secondaryTarget}: bénéfice secondaire affiché car il change l’intérêt du choix préventif.`,
+  };
+}
+
+function renderAtlasClimatePreventiveSecondaryProtection(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view || view.state === 'empty' || !view.protection) {
+    return '';
+  }
+
+  return `
+    <aside class="map-world-climate-secondary-protection map-world-climate-secondary-protection--${view.state}" aria-label="Bénéfice secondaire de l’action préventive climatique">
+      <div class="map-world-climate-secondary-protection__header">
+        <strong>Protection secondaire</strong>
+        <span>${view.protection.benefitKind}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Bénéfice</b> · ${view.protection.oneLine}</small>
+      <small><b>Action liée</b> · ${view.protection.action}</small>
+      <small><b>Pourquoi l’afficher</b> · ${view.protection.priorityReason}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -21538,6 +21606,11 @@ function render() {
     atlasClimateFollowUpThresholdProtection,
     atlasClimateThresholdProgressAfterReadinessAction,
   );
+  const atlasClimatePreventiveSecondaryProtection = buildAtlasClimatePreventiveSecondaryProtection(
+    atlasClimateSmallestPreventiveAction,
+    atlasClimateFollowUpThresholdProtection,
+    atlasClimateThresholdProgressAfterReadinessAction,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -21599,6 +21672,7 @@ function render() {
           ${renderAtlasClimateFollowUpSafetyMargin(atlasClimateFollowUpSafetyMargin)}
           ${renderAtlasClimateNextTurnSafetyMarginLoss(atlasClimateNextTurnSafetyMarginLoss)}
           ${renderAtlasClimateSmallestPreventiveAction(atlasClimateSmallestPreventiveAction)}
+          ${renderAtlasClimatePreventiveSecondaryProtection(atlasClimatePreventiveSecondaryProtection)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
