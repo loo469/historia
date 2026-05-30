@@ -2136,6 +2136,7 @@ button { font: inherit; }
 .culture-turn-report__safe-defer-entry small { color: var(--muted); }
 .culture-turn-report__safe-defer-entry--safe-this-turn { border-color: rgba(74, 222, 128, 0.28); }
 .culture-turn-report__safe-defer-entry--near-deadline { border-color: rgba(251, 191, 36, 0.42); }
+.culture-turn-report__safe-defer-entry--next { background: rgba(251, 191, 36, 0.12); }
 .culture-turn-report__cleanup-prompts {
   display: grid;
   gap: 6px;

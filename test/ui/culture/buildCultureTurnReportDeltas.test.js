@@ -476,6 +476,8 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
       safeToDeferBundles: {
         state: 'none',
         summary: 'Aucun bundle culturel sûr à reporter ce tour.',
+        primaryDeferId: null,
+        priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
         entries: [],
       },
       detailMode: 'Ouvrir les détails pour vérifier chaque suivi individuel du groupe.',
@@ -687,6 +689,169 @@ test('buildCultureTurnReportDeltas escalates safe defer deadline when current su
   ]);
 });
 
+test('buildCultureTurnReportDeltas prioritizes safe defer entries by deadline pressure before payoff', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+      },
+    },
+    localTimeline: {
+      items: [
+        {
+          timelineId: 'harbor:event:quiet-followup',
+          kind: 'event',
+          signal: 'watch',
+          title: 'Suivi calme',
+          summary: 'Risque stabilisé.',
+          regionId: 'harbor',
+          cultureName: 'Harbor Compact',
+        },
+      ],
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+      {
+        decisionId: 'turn-8-harbor-calm',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Calmer le port',
+        promptLabel: 'Calmer le port',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+    ],
+  });
+
+  const safeToDefer = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles;
+  assert.equal(safeToDefer.priorityFallback, 'Priorité par pression de délai, puis payoff culturel.');
+  assert.deepEqual(safeToDefer.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.deadlineStatus,
+    entry.revisitRank,
+    entry.revisitPriority,
+  ]), [
+    ['Compact d’Aurora', 'near-deadline', 1, 'next'],
+    ['Harbor Compact', 'safe-this-turn', 2, 'later'],
+  ]);
+  assert.equal(safeToDefer.primaryDeferId, safeToDefer.entries[0].deferId);
+});
+
+test('buildCultureTurnReportDeltas breaks safe defer deadline ties by cultural payoff', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-marker',
+      regionId: 'river-gate',
+      cultureName: 'Map Marker Culture',
+      influenceTier: 'strong',
+      influenceScore: 80,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+      },
+    },
+    activeRecommendations: [
+      {
+        recommendationId: 'river-gate:aurora:amplify',
+        regionId: 'river-gate',
+        cultureName: 'Compact d’Aurora',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'aurora-forum',
+        confidence: 'high',
+        supportKey: 'amplifier',
+        markerIds: ['aurora-marker'],
+        rank: 1,
+      },
+      {
+        recommendationId: 'harbor:compact:support',
+        regionId: 'harbor',
+        cultureName: 'Harbor Compact',
+        action: 'soutenir',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'harbor-forum',
+        confidence: 'high',
+        supportKey: 'soutenir',
+        markerIds: ['harbor-marker'],
+        rank: 2,
+      },
+    ],
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+      {
+        decisionId: 'turn-8-harbor-support',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Ancrer le soutien régional',
+        promptLabel: 'Ancrer le soutien régional',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+    ],
+  });
+
+  assert.deepEqual(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.deadlineStatus,
+    entry.payoffScore,
+    entry.revisitRank,
+    entry.revisitPriority,
+  ]), [
+    ['Harbor Compact', 'near-deadline', 5, 1, 'next'],
+    ['Compact d’Aurora', 'near-deadline', 2, 2, 'later'],
+  ]);
+});
+
+test('buildCultureTurnReportDeltas keeps a no-deadline safe defer fallback stable', () => {
+  const report = buildCultureTurnReportDeltas({ turn: 2, selectedRegionId: 'quiet-field' });
+
+  assert.deepEqual(report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles, {
+    state: 'none',
+    summary: 'Aucun bundle culturel sûr à reporter ce tour.',
+    primaryDeferId: null,
+    priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
+    entries: [],
+  });
+});
+
 test('buildCultureTurnReportDeltas returns compact quiet state without culture signals', () => {
   assert.deepEqual(buildCultureTurnReportDeltas({ turn: 2, selectedRegionId: 'quiet-field' }), {
     state: 'quiet',
@@ -815,6 +980,8 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
         safeToDeferBundles: {
           state: 'none',
           summary: 'Aucun bundle culturel sûr à reporter ce tour.',
+          primaryDeferId: null,
+          priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
           entries: [],
         },
         detailMode: 'Aucun détail individuel à ouvrir.',

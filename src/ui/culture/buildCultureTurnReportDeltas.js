@@ -1320,6 +1320,13 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         ? 'à revoir dès le prochain tour'
         : 'sûr ce tour';
 
+      const deadlinePressure = deadlineStatus === 'near-deadline'
+        ? 2
+        : deadlineStatus === 'safe-this-turn'
+          ? 1
+          : 0;
+      const payoffScore = group?.unlockScore ?? 0;
+
       return {
         deferId: `${prompt.cleanupId}:safe-to-defer`,
         bundleId: prompt.bundleId,
@@ -1332,20 +1339,44 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         turningSignal,
         deadlineHint,
         deadlineStatus,
+        deadlinePressure,
+        payoffScore,
+        priorityReason: deadlinePressure > 0
+          ? `${deadlineHint}; payoff ${payoffScore}`
+          : `fenêtre non calculable; payoff ${payoffScore}`,
         nextReviewWindow,
         falloutSeverity: fallout?.severity ?? 0,
       };
     })
-    .filter(Boolean)
-    .sort((left, right) => left.falloutSeverity - right.falloutSeverity || left.clusterLabel.localeCompare(right.clusterLabel));
-  const top = candidates[0] ?? null;
+    .filter(Boolean);
+  const hasDeadlineData = candidates.some((candidate) => candidate.deadlinePressure > 0);
+  const sortedCandidates = [...candidates].sort((left, right) => {
+    if (!hasDeadlineData) {
+      return left.falloutSeverity - right.falloutSeverity || left.clusterLabel.localeCompare(right.clusterLabel);
+    }
+
+    return right.deadlinePressure - left.deadlinePressure
+      || right.payoffScore - left.payoffScore
+      || left.falloutSeverity - right.falloutSeverity
+      || left.clusterLabel.localeCompare(right.clusterLabel);
+  });
+  const rankedCandidates = sortedCandidates.map((candidate, index) => ({
+    ...candidate,
+    revisitRank: sortedCandidates.length > 1 ? index + 1 : null,
+    revisitPriority: sortedCandidates.length > 1 && index === 0 ? 'next' : 'later',
+  }));
+  const top = rankedCandidates[0] ?? null;
 
   return {
-    state: candidates.length === 0 ? 'none' : 'ready',
+    state: rankedCandidates.length === 0 ? 'none' : 'ready',
     summary: top
       ? `${top.clusterLabel}: Peut attendre — ${top.deadlineHint}; ${top.riskThreshold}`
       : 'Aucun bundle culturel sûr à reporter ce tour.',
-    entries: candidates,
+    primaryDeferId: rankedCandidates.length > 1 ? top?.deferId ?? null : null,
+    priorityFallback: hasDeadlineData
+      ? 'Priorité par pression de délai, puis payoff culturel.'
+      : 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
+    entries: rankedCandidates,
   };
 }
 
@@ -1747,6 +1778,8 @@ export function buildCultureTurnReportDeltas({
           safeToDeferBundles: {
             state: 'none',
             summary: 'Aucun bundle culturel sûr à reporter ce tour.',
+            primaryDeferId: null,
+            priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
             entries: [],
           },
           detailMode: 'Aucun détail individuel à ouvrir.',

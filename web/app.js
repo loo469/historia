@@ -7373,9 +7373,11 @@ function renderCultureTurnReport(report) {
           ${(report.commitmentBundles?.followThroughBundlePlan?.safeToDeferBundles?.entries ?? []).length > 0 ? `
             <div class="culture-turn-report__safe-defer-list">
               ${report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries.map((entry) => `
-                <span class="culture-turn-report__safe-defer-entry culture-turn-report__safe-defer-entry--${entry.deadlineStatus ?? 'no-deadline'}">
-                  <b>${entry.clusterLabel} · ${entry.label}</b>
+                <span class="culture-turn-report__safe-defer-entry culture-turn-report__safe-defer-entry--${entry.deadlineStatus ?? 'no-deadline'} culture-turn-report__safe-defer-entry--${entry.revisitPriority ?? 'unranked'}">
+                  <b>${entry.revisitRank ? `#${entry.revisitRank} ` : ''}${entry.clusterLabel} · ${entry.label}</b>
+                  ${entry.revisitPriority === 'next' ? '<small>Priorité: à revisiter en premier</small>' : ''}
                   <small>Délai: ${entry.deadlineHint ?? 'fenêtre non calculable'}</small>
+                  <small>Payoff: ${entry.payoffScore ?? 0}</small>
                   <small>Condition: ${entry.condition}</small>
                   <small>Bascule: ${entry.turningSignal}</small>
                   <small>${entry.riskThreshold}</small>
