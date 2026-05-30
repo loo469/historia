@@ -1184,6 +1184,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
                 state: 'unlocks-review',
                 label: 'Impact attendu',
                 impactType: 'unlocks-review',
+                timingReason: {
+                  state: 'worth-now-to-cross-threshold',
+                  label: 'Pourquoi maintenant',
+                  priority: 'worth-now',
+                  reason: 'franchit le seuil avant prochaine rotation culturelle',
+                  summary: 'À faire maintenant: franchit le seuil avant prochaine rotation culturelle.',
+                },
                 summary: 'Impact attendu: confirmer archive-routes avec amplifier débloque la revue culturelle actionnable.',
               },
               summary: 'Devient actionnable après confirmation de archive-routes avec amplifier; sinon attendre prochaine rotation culturelle.',

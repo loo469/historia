@@ -1604,6 +1604,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       state: 'no-important-change-yet',
       label: 'Impact attendu',
       impactType: 'no-important-change',
+      timingReason: buildCulturalReviewActionTimingReason('no-important-change', reviewExitSignal),
       summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
     };
   }
@@ -1613,6 +1614,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       state: 'unlocks-review',
       label: 'Impact attendu',
       impactType: 'unlocks-review',
+      timingReason: buildCulturalReviewActionTimingReason('unlocks-review', reviewExitSignal),
       summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
     };
   }
@@ -1621,7 +1623,38 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     state: 'accelerates-review',
     label: 'Impact attendu',
     impactType: 'accelerates-review',
+    timingReason: buildCulturalReviewActionTimingReason('accelerates-review', reviewExitSignal),
     summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
+  };
+}
+
+function buildCulturalReviewActionTimingReason(impactType, reviewExitSignal) {
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'worth-now-to-cross-threshold',
+      label: 'Pourquoi maintenant',
+      priority: 'worth-now',
+      reason: `franchit le seuil avant ${reviewExitSignal.reviewWindow}`,
+      summary: `À faire maintenant: franchit le seuil avant ${reviewExitSignal.reviewWindow}.`,
+    };
+  }
+
+  if (impactType === 'accelerates-review') {
+    return {
+      state: 'worth-now-to-advance-review',
+      label: 'Pourquoi maintenant',
+      priority: 'worth-now',
+      reason: `avance la revue sans attendre ${reviewExitSignal.reviewWindow}`,
+      summary: `À faire maintenant: avance la revue sans attendre ${reviewExitSignal.reviewWindow}.`,
+    };
+  }
+
+  return {
+    state: 'neutral-timing',
+    label: 'Pourquoi maintenant',
+    priority: 'neutral',
+    reason: 'aucune urgence culturelle visible',
+    summary: 'Timing neutre: possible maintenant, mais aucune urgence culturelle visible.',
   };
 }
 
