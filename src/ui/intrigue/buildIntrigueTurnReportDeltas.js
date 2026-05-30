@@ -490,14 +490,83 @@ function buildStabilizationBeforeReturn(durability, backupFollowUp, principalRis
   };
 }
 
+function buildBackupLadderSummary(returnCondition, durability = null, stabilizationBeforeReturn = null) {
+  if (!returnCondition?.recommended || !durability) {
+    return {
+      state: 'no-reliable-ladder',
+      recommended: false,
+      decision: 'fallback-without-signal',
+      label: 'Boucle backup non synthétisable',
+      summary: 'Aucune boucle backup → stabilisation → retour fiable à condenser avec les signaux visibles.',
+      risk: null,
+      fallback: true,
+    };
+  }
+
+  const skippedRisk = stabilizationBeforeReturn?.skippedRisk;
+  const visibleRisk = skippedRisk?.recommended && !skippedRisk.fallback
+    ? skippedRisk.category
+    : durability.cause;
+
+  if (durability.stability === 'stable-return') {
+    return {
+      state: 'return-now',
+      recommended: true,
+      decision: 'return-now',
+      label: 'Revenir maintenant',
+      summary: `Revenir au suivi initial: ${durability.advice}`,
+      risk: visibleRisk,
+      fallback: false,
+    };
+  }
+
+  if (durability.stability === 'stay-on-backup-advised') {
+    return {
+      state: 'stay-on-backup',
+      recommended: true,
+      decision: 'stay-on-backup',
+      label: 'Rester sur backup',
+      summary: `Rester sur ${returnCondition.backup}: ${durability.advice}`,
+      risk: visibleRisk,
+      fallback: false,
+    };
+  }
+
+  if (stabilizationBeforeReturn?.recommended) {
+    return {
+      state: 'stabilize-before-return',
+      recommended: true,
+      decision: 'stabilize-before-return',
+      label: 'Stabiliser avant retour',
+      summary: `${stabilizationBeforeReturn.label}: ${stabilizationBeforeReturn.action}. Retour ensuite vers ${returnCondition.primary}.`,
+      risk: visibleRisk,
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'no-reliable-ladder',
+    recommended: false,
+    decision: 'fallback-without-signal',
+    label: 'Boucle backup non synthétisable',
+    summary: 'Les signaux visibles ne suffisent pas à choisir entre backup, stabilisation et retour.',
+    risk: null,
+    fallback: true,
+  };
+}
+
 function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp, principalRisk) {
   if (!safestImmediateFollowUp?.recommended || !backupFollowUp?.recommended) {
-    return {
+    const fallback = {
       state: 'no-return-signal',
       recommended: false,
       label: 'Retour au suivi initial non lisible',
       condition: 'aucun backup actif ou suivi initial fiable à restaurer',
       fallback: true,
+    };
+    return {
+      ...fallback,
+      backupLadderSummary: buildBackupLadderSummary(fallback),
     };
   }
 
@@ -523,7 +592,7 @@ function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp,
   const durability = buildReturnDurabilityHint(selected, principalRisk);
   const stabilizationBeforeReturn = buildStabilizationBeforeReturn(durability, backupFollowUp, principalRisk);
 
-  return {
+  const returnCondition = {
     ...selected,
     recommended: true,
     durability,
@@ -537,6 +606,11 @@ function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp,
         ? 'condition proche si le prochain contrôle confirme le signal visible'
         : 'condition improbable ce tour-ci sans signal visible plus frais',
     fallback: false,
+  };
+
+  return {
+    ...returnCondition,
+    backupLadderSummary: buildBackupLadderSummary(returnCondition, durability, stabilizationBeforeReturn),
   };
 }
 

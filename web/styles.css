@@ -9736,6 +9736,25 @@ button { font: inherit; }
   background: rgba(148, 163, 184, 0.08);
   color: rgba(203, 213, 225, 0.76);
 }
+.province-intrigue-turn-report__backup-ladder-summary {
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(20, 184, 166, 0.1);
+  color: rgba(153, 246, 228, 0.92);
+  font-weight: 800;
+}
+.province-intrigue-turn-report__backup-ladder-summary--stay-on-backup {
+  background: rgba(59, 130, 246, 0.1);
+  color: rgba(191, 219, 254, 0.9);
+}
+.province-intrigue-turn-report__backup-ladder-summary--stabilize-before-return {
+  background: rgba(245, 158, 11, 0.1);
+  color: rgba(253, 230, 138, 0.92);
+}
+.province-intrigue-turn-report__backup-ladder-summary--no-reliable-ladder {
+  background: rgba(148, 163, 184, 0.08);
+  color: rgba(203, 213, 225, 0.76);
+}
 .province-intrigue-turn-report__followup {
   display: grid;
   grid-template-columns: minmax(72px, max-content) 1fr;

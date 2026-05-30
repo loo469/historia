@@ -209,6 +209,15 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
               fallback: false,
             },
           },
+          backupLadderSummary: {
+            state: 'stabilize-before-return',
+            recommended: true,
+            decision: 'stabilize-before-return',
+            label: 'Stabiliser avant retour',
+            summary: 'Sécuriser la dépendance: sécuriser la dépendance visible avant de restaurer le suivi initial. Retour ensuite vers Défensif.',
+            risk: 'exposition',
+            fallback: false,
+          },
           fallback: false,
         },
         fullReviewRequired: false,
@@ -350,6 +359,15 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
             fallback: false,
           },
         },
+        backupLadderSummary: {
+          state: 'stay-on-backup',
+          recommended: true,
+          decision: 'stay-on-backup',
+          label: 'Rester sur backup',
+          summary: 'Rester sur Défensif: Le retour risque de recréer un backup immédiatement après.',
+          risk: 'option qui se dégrade',
+          fallback: false,
+        },
         fallback: false,
       },
       fullReviewRequired: false,
@@ -436,6 +454,15 @@ test('buildIntrigueTurnReportDeltas requires full review when minimal verificati
       label: 'Retour au suivi initial non lisible',
       condition: 'aucun backup actif ou suivi initial fiable à restaurer',
       fallback: true,
+      backupLadderSummary: {
+        state: 'no-reliable-ladder',
+        recommended: false,
+        decision: 'fallback-without-signal',
+        label: 'Boucle backup non synthétisable',
+        summary: 'Aucune boucle backup → stabilisation → retour fiable à condenser avec les signaux visibles.',
+        risk: null,
+        fallback: true,
+      },
     },
     fullReviewRequired: true,
     fallback: false,
@@ -488,6 +515,15 @@ test('buildIntrigueTurnReportDeltas falls back when expiring follow-ups have no 
     label: 'Retour au suivi initial non lisible',
     condition: 'aucun backup actif ou suivi initial fiable à restaurer',
     fallback: true,
+    backupLadderSummary: {
+      state: 'no-reliable-ladder',
+      recommended: false,
+      decision: 'fallback-without-signal',
+      label: 'Boucle backup non synthétisable',
+      summary: 'Aucune boucle backup → stabilisation → retour fiable à condenser avec les signaux visibles.',
+      risk: null,
+      fallback: true,
+    },
   });
 });
 
@@ -531,6 +567,15 @@ test('buildIntrigueTurnReportDeltas marks stable return when backup can safely h
       fallback: true,
     },
     fallback: true,
+  });
+  assert.deepEqual(report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary, {
+    state: 'return-now',
+    recommended: true,
+    decision: 'return-now',
+    label: 'Revenir maintenant',
+    summary: 'Revenir au suivi initial: Le suivi initial peut tenir sans forcer un nouveau backup immédiat.',
+    risk: 'information manquante',
+    fallback: false,
   });
 });
 
@@ -587,6 +632,15 @@ test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is 
         label: 'Retour au suivi initial non lisible',
         condition: 'aucun backup actif ou suivi initial fiable à restaurer',
         fallback: true,
+        backupLadderSummary: {
+          state: 'no-reliable-ladder',
+          recommended: false,
+          decision: 'fallback-without-signal',
+          label: 'Boucle backup non synthétisable',
+          summary: 'Aucune boucle backup → stabilisation → retour fiable à condenser avec les signaux visibles.',
+          risk: null,
+          fallback: true,
+        },
       },
       fullReviewRequired: false,
       fallback: true,
