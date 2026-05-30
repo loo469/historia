@@ -32,6 +32,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /watchMargin/);
   assert.match(webAppSource, /upkeepReminder/);
   assert.match(webAppSource, /marginRearmReview/);
+  assert.match(webAppSource, /unrearmedReviewConsequence/);
+  assert.match(webAppSource, /Si non réarmé/);
+  assert.match(webAppSource, /premier effet sans review/);
+  assert.match(webAppSource, /risque d’être lu tard, même avec une marge encore confortable/);
   assert.match(webAppSource, /Réarmer review/);
   assert.match(webAppSource, /review différée/);
   assert.match(webAppSource, /réarmer si \$\{watchGap\.nearestRiskLabel\} revient avant \$\{progress\.deadline\} ou si la marge repasse courte/);
@@ -102,6 +106,8 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--skip/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm--deferred/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__consequence/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__consequence--informative/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -204,4 +210,13 @@ test('atlas shows when comfortable climate margin should be rearmed for review',
   assert.match(webAppSource, /Réarmer review/);
   assert.match(webAppSource, /view\.watchItem\.marginRearmReview \?/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm--deferred/);
+});
+
+test('atlas shows first consequence of leaving climate review unrearmed', () => {
+  assert.match(webAppSource, /const unrearmedReviewConsequence = marginRearmReview/);
+  assert.match(webAppSource, /state: 'informative'/);
+  assert.match(webAppSource, /label: 'premier effet sans review'/);
+  assert.match(webAppSource, /le prochain signal \$\{watchGap\.nearestRiskLabel\} risque d’être lu tard/);
+  assert.match(webAppSource, /view\.watchItem\.unrearmedReviewConsequence \?/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__consequence--informative/);
 });
