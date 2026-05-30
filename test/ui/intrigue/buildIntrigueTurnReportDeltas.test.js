@@ -688,6 +688,13 @@ test('buildIntrigueTurnReportDeltas marks stable return when backup can safely h
           label: 'Clos avec trace légère',
           summary: 'relire légèrement la confiance visible au prochain passage, sans rouvrir le backup',
           signal: 'trace de confiance ou information encore utile mais non bloquante',
+          attention: {
+            state: 'later-recheck-needed',
+            needsAttention: true,
+            label: 'Recheck léger plus tard',
+            summary: 'garder la trace pour une relecture courte au prochain passage, sans alerte active',
+            fallback: false,
+          },
           fallback: false,
         },
         fallback: false,

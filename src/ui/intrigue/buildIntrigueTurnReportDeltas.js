@@ -535,6 +535,39 @@ function buildBackupLadderStabilizationReason(durability = null, stabilizationBe
 
 
 
+
+function buildResidualTraceAttention(durability = null) {
+  const cause = durability?.cause ?? 'signal résiduel';
+
+  if (/information/i.test(cause)) {
+    return {
+      state: 'later-recheck-needed',
+      needsAttention: true,
+      label: 'Recheck léger plus tard',
+      summary: 'garder la trace pour une relecture courte au prochain passage, sans alerte active',
+      fallback: false,
+    };
+  }
+
+  if (/chaleur|heat|exposition|fragil/i.test(cause)) {
+    return {
+      state: 'passive-watch',
+      needsAttention: true,
+      label: 'Veille passive',
+      summary: 'surveiller seulement si la heat ou la fragilité visible réapparaît',
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'harmless-record',
+    needsAttention: false,
+    label: 'Archive sans action',
+    summary: 'conserver comme trace informative; aucune attention de suivi requise',
+    fallback: false,
+  };
+}
+
 function buildResidualIntrigueTrace(returnCondition = null, durability = null) {
   if (!returnCondition?.recommended || durability?.stability !== 'stable-return') {
     return {
@@ -542,6 +575,13 @@ function buildResidualIntrigueTrace(returnCondition = null, durability = null) {
       informative: false,
       label: 'Aucune trace résiduelle à lire',
       summary: 'la sortie sûre n’est pas encore atteinte ou aucun retour fiable n’est visible',
+      attention: {
+        state: 'not-applicable',
+        needsAttention: false,
+        label: 'Aucun suivi de trace',
+        summary: 'aucune sortie sûre ne permet de qualifier une trace résiduelle',
+        fallback: true,
+      },
       fallback: true,
     };
   }
@@ -553,6 +593,7 @@ function buildResidualIntrigueTrace(returnCondition = null, durability = null) {
       label: 'Clos avec trace légère',
       summary: 'relire légèrement la confiance visible au prochain passage, sans rouvrir le backup',
       signal: 'trace de confiance ou information encore utile mais non bloquante',
+      attention: buildResidualTraceAttention(durability),
       fallback: false,
     };
   }
@@ -563,6 +604,7 @@ function buildResidualIntrigueTrace(returnCondition = null, durability = null) {
     label: 'Clos sans trace utile',
     summary: 'aucune heat ou fragilité visible ne demande de relecture après la sortie sûre',
     signal: durability.cause,
+    attention: buildResidualTraceAttention(durability),
     fallback: false,
   };
 }
