@@ -1530,12 +1530,27 @@ function buildCulturalReviewReopenSignal(immediateSynergy, reviewExitSignal) {
     ? `${immediateSynergy.sourceAction} ne reste plus aligné avec ${sourceCue}`
     : `${sourceCue} ne reste plus visible`;
 
+  const reviewQuestionPreview = buildCulturalReopenedReviewPreview(immediateSynergy, reviewExitSignal, sourceCue);
+
   return {
     state: 'reopen-on-synergy-change',
     label: 'Réouvrir la revue',
     trigger: actionCue,
     reviewWindow: reviewExitSignal.reviewWindow,
+    reviewQuestionPreview,
     summary: `Réouvrir la revue: ${actionCue}, expire, ou contredit ${reviewExitSignal.localAnchor}.`,
+  };
+}
+
+function buildCulturalReopenedReviewPreview(immediateSynergy, reviewExitSignal, sourceCue) {
+  const actionCue = immediateSynergy.sourceAction ?? 'le suivi culturel';
+
+  return {
+    state: 'preview-reopened-review',
+    label: 'Si réouvert',
+    question: `vérifier si ${sourceCue} justifie encore ${actionCue}`,
+    anchor: reviewExitSignal.localAnchor,
+    summary: `Si réouvert: vérifier si ${sourceCue} justifie encore ${actionCue}, puis comparer avec ${reviewExitSignal.localAnchor}.`,
   };
 }
 

@@ -1159,6 +1159,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
       label: 'Réouvrir la revue',
       trigger: 'amplifier ne reste plus aligné avec archive-routes',
       reviewWindow: 'prochaine rotation culturelle',
+      reviewQuestionPreview: {
+        state: 'preview-reopened-review',
+        label: 'Si réouvert',
+        question: 'vérifier si archive-routes justifie encore amplifier',
+        anchor: 'risque stabilisé par l’historique lisible',
+        summary: 'Si réouvert: vérifier si archive-routes justifie encore amplifier, puis comparer avec risque stabilisé par l’historique lisible.',
+      },
       summary: 'Réouvrir la revue: amplifier ne reste plus aligné avec archive-routes, expire, ou contredit risque stabilisé par l’historique lisible.',
     },
   });
