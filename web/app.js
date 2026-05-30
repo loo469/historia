@@ -13995,6 +13995,21 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
   const promotionCondition = watchGap.nearestThresholdScore >= 80
     ? `devient action primaire si la pression reste ≥80 au prochain check ${progress.deadline}`
     : `devient action primaire si ${progress.deadline} confirme ${watchGap.nearestRiskLabel}`;
+  const promotionTiming = watchGap.nearestThresholdScore >= 80
+    ? 'attendue ce tour-ci après résolution de l’action climatique principale'
+    : watchGap.nearestThresholdScore >= 65
+      ? `au prochain tour si ${progress.deadline} confirme la pression secondaire`
+      : 'seulement si la protection échoue ou si le seuil secondaire se rapproche';
+  const promotionCue = watchGap.nearestThresholdScore >= 80
+    ? 'préparer le transfert d’attention dès que l’action principale est validée'
+    : watchGap.nearestThresholdScore >= 65
+      ? 'garder en veille courte sans remplacer l’action principale ce tour-ci'
+      : 'rester secondaire: ne promouvoir que sur échec de protection';
+  const shortSecondaryLabel = watchGap.nearestThresholdScore >= 80
+    ? 'secondaire prêt'
+    : watchGap.nearestThresholdScore >= 65
+      ? 'veille tour+1'
+      : 'veille conditionnelle';
   const nextSecondaryGap = (coverageView.blindSpots ?? [])
     .filter((gap) => !gap.nearest && gap.label !== gapActionView.recommendation.target && gap.label !== watchGap.label)
     .find((gap) => gap.nearestThresholdScore >= 40) ?? null;
@@ -14023,6 +14038,9 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       thresholdPressure: watchGap.nearestRiskLabel,
       nextCheck: watchGap.nextAction,
       promotionCondition,
+      promotionTiming,
+      promotionCue,
+      shortSecondaryLabel,
     },
     nextSecondaryRisk,
     summary: `${watchGap.label}: seul watch item restant après l’action du gap prioritaire.`,
@@ -14055,7 +14073,10 @@ function renderAtlasClimatePostGapActionWatch(view) {
       </div>
       <p>${view.summary}</p>
       <small><b>Watch item</b> · ${view.watchItem.phrase}</small>
+      <span class="map-world-climate-post-gap-watch__cue">${view.watchItem.shortSecondaryLabel}</span>
       <small><b>Devient primaire</b> · ${view.watchItem.promotionCondition}</small>
+      <small><b>Moment promotion</b> · ${view.watchItem.promotionTiming}</small>
+      <small><b>Transfert attention</b> · ${view.watchItem.promotionCue}</small>
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
       <small><b>Prochain check</b> · ${view.watchItem.nextCheck}</small>
