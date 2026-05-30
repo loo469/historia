@@ -1395,6 +1395,9 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         ? `${candidate.deadlineHint}: la petite action cesse de suffire si ${candidate.turningSignal}.`
         : `payoff ${candidate.payoffScore}: la petite action reste seulement valable jusqu’à la ${candidate.nextReviewWindow}.`)
       : null;
+    const recommendedBeyondMinimumBenefit = minimalSafeAction && missedWindowConsequence
+      ? buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindowConsequence)
+      : null;
 
     return {
       ...candidate,
@@ -1413,6 +1416,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       recommendedAction,
       lateRiskyAction,
       minimalActionThresholdReason,
+      recommendedBeyondMinimumBenefit,
     };
   });
   const top = rankedCandidates[0] ?? null;
@@ -1441,6 +1445,34 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       ? 'Priorité par pression de délai, puis payoff culturel.'
       : 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
     entries: rankedCandidates,
+  };
+}
+
+function buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindowConsequence) {
+  const recommendedAction = candidate.action
+    ? `faire maintenant: ${candidate.action}`
+    : `traiter ${candidate.clusterLabel} maintenant`;
+  const nextTurnAvoidance = missedFallout?.consequenceType === 'consolidation-delay'
+    ? 'évite une urgence de consolidation au prochain tour'
+    : missedFallout?.consequenceType === 'opportunity-lost'
+      ? 'évite une perte de payoff culturel au prochain tour'
+      : missedFallout?.consequenceType === 'replacement-forced'
+        ? 'évite un remplacement forcé au prochain tour'
+        : missedFallout?.consequenceType === 'tension'
+          ? 'évite de maintenir une tension culturelle au prochain tour'
+          : 'évite de transformer le report en seuil risqué au prochain tour';
+  const concreteGain = candidate.payoffScore > 0
+    ? `gain concret: sécurise payoff ${candidate.payoffScore} sans attendre la bascule`
+    : 'gain concret: conserve la fenêtre sûre sans créer d’urgence artificielle';
+
+  return {
+    state: 'recommended-over-minimum',
+    label: 'Au-delà du minimum',
+    recommendedAction,
+    concreteGain,
+    nextTurnAvoidance,
+    avoids: missedWindowConsequence,
+    summary: `${recommendedAction} — ${concreteGain}; ${nextTurnAvoidance}.`,
   };
 }
 
