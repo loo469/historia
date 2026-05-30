@@ -14111,9 +14111,29 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
     ? {
       label: minimalProtection.label,
       condition: `reste secondaire si ${minimalProtection.label} tient: ${minimalProtection.detail ?? minimalProtection.action}`,
-      minimalAction: minimalProtection.action ?? 'maintenir la mitigation minimale déjà affichée',
+      minimalAction: minimalProtection.action ?? null,
     }
     : null;
+  const secondaryUpkeep = secondaryProtectionGuard?.minimalAction
+    ? {
+      state: 'available',
+      label: 'entretien minimal',
+      action: secondaryProtectionGuard.minimalAction,
+      reason: `garde ${watchGap.label} secondaire sans lancer une prévention complète`,
+    }
+    : secondaryProtectionGuard
+      ? {
+        state: 'impossible',
+        label: 'entretien impossible',
+        action: 'aucune action minimale calculable depuis la protection visible',
+        reason: 'ne pas confondre avec une prévention complète ou une action primaire',
+      }
+      : {
+        state: 'fallback',
+        label: 'fallback entretien',
+        action: 'relire la veille secondaire au prochain signal climat avant d’investir',
+        reason: 'aucune mitigation minimale disponible pour maintenir ce statut',
+      };
   const nextSecondaryGap = (coverageView.blindSpots ?? [])
     .filter((gap) => !gap.nearest && gap.label !== gapActionView.recommendation.target && gap.label !== watchGap.label)
     .find((gap) => gap.nearestThresholdScore >= 40) ?? null;
@@ -14146,6 +14166,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       promotionCue,
       shortSecondaryLabel,
       secondaryProtectionGuard,
+      secondaryUpkeep,
     },
     nextSecondaryRisk,
     summary: `${watchGap.label}: seul watch item restant après l’action du gap prioritaire.`,
@@ -14182,7 +14203,8 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small><b>Devient primaire</b> · ${view.watchItem.promotionCondition}</small>
       <small><b>Moment promotion</b> · ${view.watchItem.promotionTiming}</small>
       <small><b>Transfert attention</b> · ${view.watchItem.promotionCue}</small>
-      ${view.watchItem.secondaryProtectionGuard ? `<small class="map-world-climate-post-gap-watch__guard"><b>Reste secondaire si</b> · ${view.watchItem.secondaryProtectionGuard.condition}; action minimale: ${view.watchItem.secondaryProtectionGuard.minimalAction}</small>` : ''}
+      ${view.watchItem.secondaryProtectionGuard ? `<small class="map-world-climate-post-gap-watch__guard"><b>Reste secondaire si</b> · ${view.watchItem.secondaryProtectionGuard.condition}${view.watchItem.secondaryProtectionGuard.minimalAction ? `; action minimale: ${view.watchItem.secondaryProtectionGuard.minimalAction}` : '; action minimale indisponible'}</small>` : ''}
+      <small class="map-world-climate-post-gap-watch__upkeep map-world-climate-post-gap-watch__upkeep--${view.watchItem.secondaryUpkeep.state}"><b>Entretien minimal</b> · ${view.watchItem.secondaryUpkeep.label}: ${view.watchItem.secondaryUpkeep.action}; ${view.watchItem.secondaryUpkeep.reason}</small>
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
       <small><b>Prochain check</b> · ${view.watchItem.nextCheck}</small>
