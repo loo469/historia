@@ -849,7 +849,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardAction: { label: 'Garde indisponible', reason: 'Aucune chaîne de spillover à réduire pour l’instant.', fallback: true },
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: aucune garde concrète à classer.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Capacité de garde indisponible sans récupération locale.' },
-      guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune chaîne de garde à prolonger.', stopChain: false },
+      guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune chaîne de garde à prolonger.', stopChain: false, residualExposure: { state: 'unknown', exposedRoutes: [], benefit: 'Bénéfice du fallback non calculable sans chaîne de garde.', residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.' } },
     };
   }
 
@@ -895,7 +895,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardAction: { label: 'Garde indisponible', reason: 'Aucun relais voisin confirmé; surveiller la route après résolution locale.', fallback: true },
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: coût de garde non comparable sans route exposée.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Aucune route exposée ne permet de comparer la capacité de garde.' },
-      guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune route adjacente exposée à comparer.', stopChain: false },
+      guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune route adjacente exposée à comparer.', stopChain: false, residualExposure: { state: 'unknown', exposedRoutes: [], benefit: 'Bénéfice du fallback non calculable sans route exposée.', residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.' } },
     };
   }
 
@@ -985,6 +985,42 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     };
   };
   const guardStopMarker = buildGuardStopMarker(nextGuardCost);
+  const buildFallbackExposure = (stopMarker, blockedGuard) => {
+    if (!stopMarker?.exceedsBenefit) {
+      return {
+        state: 'unknown',
+        exposedRoutes: [],
+        benefit: 'Bénéfice du fallback non calculable sans point d’arrêt confirmé.',
+        residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.',
+      };
+    }
+    const exposedRoutes = [blockedGuard, ...secondaryRoutes]
+      .filter((route) => route?.route && route.route !== guardAction.route)
+      .filter((route, index, list) => list.findIndex((entry) => entry.route === route.route) === index)
+      .slice(0, 2)
+      .map((route) => ({
+        route: route.route,
+        city: route.city,
+        tone: route.tone ?? 'medium',
+        reason: route.route === blockedGuard?.route
+          ? `${route.route} reste au-delà du point d’arrêt et ne reçoit pas de garde chaînée.`
+          : `${route.route} garde un signal spillover secondaire après le repli.`,
+      }));
+
+    return exposedRoutes.length > 0
+      ? {
+        state: 'traced',
+        exposedRoutes,
+        benefit: `Le fallback protège ${guardAction.route} et garde le bénéfice principal lisible.`,
+        residualRisk: `${exposedRoutes.map((route) => `${route.route}/${route.city}`).join(', ')} reste exposé après ce repli.`,
+      }
+      : {
+        state: 'unknown',
+        exposedRoutes: [],
+        benefit: `Le fallback protège ${guardAction.route}, mais la suite de chaîne n’est pas assez tracée.`,
+        residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.',
+      };
+  };
   const buildStopFallbackAction = (stopMarker, blockedGuard) => {
     if (!stopMarker?.exceedsBenefit || guardAction.fallback) {
       return null;
@@ -992,6 +1028,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     const protectedTarget = guardAction.city ?? criticalRoute.city;
     const blockedRoute = blockedGuard?.route ?? stopMarker.route;
     const routeDelay = blockedGuard?.criticalDelay ? `${blockedRoute} est critique et resterait retardée.` : `${blockedRoute} dépasse le bénéfice attendu.`;
+    const residualExposure = buildFallbackExposure(stopMarker, blockedGuard);
 
     if (guardAction.tone === 'high') {
       return {
@@ -1001,6 +1038,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         target: guardAction.route,
         reason: `Préserve ${protectedTarget} sur le segment le plus rentable sans relancer la chaîne.`,
         opportunityCost: `${routeDelay} Coût limité à ${guardAction.tradeoff}.`,
+        residualExposure,
       };
     }
 
@@ -1012,6 +1050,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         target: guardAction.route,
         reason: `Conserve le bénéfice principal sur ${protectedTarget} avec un relais non-chaîné.`,
         opportunityCost: `${routeDelay} Pas de garde ajoutée au-delà de ${stopMarker.label}.`,
+        residualExposure,
       };
     }
 
@@ -1022,6 +1061,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       target: protectedTarget,
       reason: `Cible la ville ou route la plus rentable déjà identifiée par le spillover.`,
       opportunityCost: `${routeDelay} La chaîne reste arrêtée avant ${blockedRoute}.`,
+      residualExposure,
     };
   };
   const guardOpportunityCost = guardSequencing.state === 'chainable' && nextGuardCost
@@ -1074,6 +1114,12 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             target: priorityAction.route,
             reason: `La garde protège déjà ${guardAction.route}; remplacer la récupération préserverait moins bien le bénéfice principal.`,
             opportunityCost: `Ne pas rouvrir la chaîne: ${priorityAction.route} reste retardée ce tour.`,
+            residualExposure: {
+              state: 'traced',
+              exposedRoutes: [{ route: priorityAction.route, city: option?.affectedCity ?? null, tone: 'high', reason: `${priorityAction.route} reste retardée si la garde remplace la récupération.` }],
+              benefit: `Le repli évite de surpayer la chaîne et protège ${guardAction.route}.`,
+              residualRisk: `${priorityAction.route} reste exposée tant que la récupération locale est différée.`,
+            },
           },
           canContinueWithoutCriticalDelay: false,
         }
@@ -1083,6 +1129,12 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           stopChain: false,
           stopMarker: null,
           fallbackAction: null,
+          residualExposure: {
+            state: 'unknown',
+            exposedRoutes: [],
+            benefit: 'Bénéfice du fallback non calculable sans point d’arrêt confirmé.',
+            residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.',
+          },
           canContinueWithoutCriticalDelay: false,
         };
 

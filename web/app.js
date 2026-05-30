@@ -8628,6 +8628,10 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               ` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost?.fallbackAction ? `
                 <small class="province-logistics-spillover-fallback">Repli: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.label} — ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.reason} Coût: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.opportunityCost}</small>
+                ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure ? `
+                  <small class="province-logistics-spillover-residual-benefit">Bénéfice: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.benefit}</small>
+                  <small class="province-logistics-spillover-residual-risk">Reste exposé: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.residualRisk}</small>
+                ` : ''}
               ` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost?.canContinueWithoutCriticalDelay ? '<small>Continuer la chaîne reste acceptable: aucune route critique n’est retardée.</small>' : ''}
             </div>
