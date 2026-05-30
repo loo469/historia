@@ -1195,11 +1195,35 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       summary,
       route: exposedRoute?.route ?? opportunityCost?.delayedRoute ?? null,
     });
-    const buildRouteSlack = (state, summary, bottleneck) => ({
+    const buildSlackConsumerHint = (consumers) => {
+      const rankedConsumers = consumers
+        .filter((consumer) => consumer?.label && consumer.reason)
+        .sort((left, right) => right.weight - left.weight || left.label.localeCompare(right.label));
+
+      if (rankedConsumers.length === 0) {
+        return {
+          state: 'preserved',
+          label: 'Slack conservé',
+          primaryConsumer: null,
+          summary: 'Slack conservé: aucun coût immédiat ne consomme la marge restante.',
+        };
+      }
+
+      const primaryConsumer = rankedConsumers[0];
+      return {
+        state: primaryConsumer.tone ?? 'watch',
+        label: 'Slack consommé par',
+        primaryConsumer: primaryConsumer.label,
+        summary: `${primaryConsumer.label} consomme d’abord le slack: ${primaryConsumer.reason}`,
+        secondaryConsumers: rankedConsumers.slice(1, 3).map((consumer) => consumer.label),
+      };
+    };
+    const buildRouteSlack = (state, summary, bottleneck, slackConsumerHint) => ({
       state,
       label: 'Marge route reprise',
       summary,
       bottleneck,
+      slackConsumerHint,
     });
 
     if (opportunityCost?.state === 'competing') {
@@ -1222,6 +1246,10 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             ? `Route reprise mais serrée: ${priorityAction.resource} reste le goulot avant confort.`
             : 'Route reprise mais serrée: capacité locale encore partagée.',
           priorityAction.resource ?? 'capacité locale',
+          buildSlackConsumerHint([
+            { label: priorityAction.resource ?? 'capacité locale', reason: `partagée avec ${opportunityCost.delayedRoute}`, weight: 3, tone: 'tight' },
+            exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+          ]),
         ),
       };
     }
@@ -1245,6 +1273,12 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               ? `Route reprise confortable: ${margin} points de marge avant le prochain goulot.`
               : `Route reprise mais serrée: ${margin} point de marge avant nouveau goulot.`,
             stopMarker.route,
+            buildSlackConsumerHint(margin >= 2
+              ? []
+              : [
+                { label: stopMarker.route, reason: `il ne reste que ${margin} point de marge`, weight: 2, tone: 'tight' },
+                exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+              ]),
           ),
         }
         : {
@@ -1260,6 +1294,10 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             'blocked',
             `Route non confortable: ${stopMarker.route} reste le goulot avec ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}.`,
             stopMarker.route,
+            buildSlackConsumerHint([
+              { label: stopMarker.route, reason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, weight: 3, tone: 'blocked' },
+              exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+            ]),
           ),
         };
     }
