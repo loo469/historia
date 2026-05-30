@@ -1195,6 +1195,12 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       summary,
       route: exposedRoute?.route ?? opportunityCost?.delayedRoute ?? null,
     });
+    const buildRouteSlack = (state, summary, bottleneck) => ({
+      state,
+      label: 'Marge route reprise',
+      summary,
+      bottleneck,
+    });
 
     if (opportunityCost?.state === 'competing') {
       return {
@@ -1209,6 +1215,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           priorityAction.resource
             ? `Route primaire reprise, contrainte restante: ${priorityAction.resource} doit rester disponible avant de rouvrir ${opportunityCost.delayedRoute}.`
             : `Route primaire reprise, contrainte restante: capacité locale encore partagée avec ${opportunityCost.delayedRoute}.`,
+        ),
+        routeSlack: buildRouteSlack(
+          'tight',
+          priorityAction.resource
+            ? `Route reprise mais serrée: ${priorityAction.resource} reste le goulot avant confort.`
+            : 'Route reprise mais serrée: capacité locale encore partagée.',
+          priorityAction.resource ?? 'capacité locale',
         ),
       };
     }
@@ -1226,6 +1239,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             'watch',
             `Route primaire reprise, contrainte restante: surveiller ${stopMarker.route} tant que la marge reste à ${margin}.`,
           ),
+          routeSlack: buildRouteSlack(
+            margin >= 2 ? 'comfortable' : 'tight',
+            margin >= 2
+              ? `Route reprise confortable: ${margin} points de marge avant le prochain goulot.`
+              : `Route reprise mais serrée: ${margin} point de marge avant nouveau goulot.`,
+            stopMarker.route,
+          ),
         }
         : {
           state: 'stay-fallback',
@@ -1235,6 +1255,11 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           residualConstraint: buildResidualConstraint(
             'margin',
             `Route primaire reprise plus tard: ${stopMarker.route} manque encore ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge de garde.`,
+          ),
+          routeSlack: buildRouteSlack(
+            'blocked',
+            `Route non confortable: ${stopMarker.route} reste le goulot avec ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}.`,
+            stopMarker.route,
           ),
         };
     }

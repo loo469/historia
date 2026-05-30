@@ -147,6 +147,8 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.summary, /Retour vers .* possible quand Outils/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.residualConstraint.state, 'resource');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.residualConstraint.summary, /Route primaire reprise, contrainte restante: Outils/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.state, 'tight');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.summary, /Route reprise mais serrée: Outils/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -246,6 +248,8 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.summary, /Retour vers Safe Road après .* marge/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.residualConstraint.state, 'margin');
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.residualConstraint.summary, /Route primaire reprise plus tard: Safe Road manque encore/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.state, 'blocked');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.summary, /Route non confortable: Safe Road reste le goulot/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
