@@ -34,6 +34,11 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /marginRearmReview/);
   assert.match(webAppSource, /unrearmedReviewConsequence/);
   assert.match(webAppSource, /nextWatchPriorityImpact/);
+  assert.match(webAppSource, /nextPriorityStability/);
+  assert.match(webAppSource, /Fin changement priorité/);
+  assert.match(webAppSource, /stabilise après review/);
+  assert.match(webAppSource, /déjà stable/);
+  assert.match(webAppSource, /stable après mitigation/);
   assert.match(webAppSource, /Prochaine priorité/);
   assert.match(webAppSource, /priorité monte/);
   assert.match(webAppSource, /priorité stable/);
@@ -117,6 +122,8 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--rises/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--secondary-after-mitigation/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability--already-stable/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -239,4 +246,17 @@ test('atlas links unrearmed climate consequence to next watch priority', () => {
   assert.match(webAppSource, /label: 'priorité indéterminée'/);
   assert.match(webAppSource, /view\.watchItem\.nextWatchPriorityImpact \?/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--fallback/);
+});
+
+test('atlas shows when next climate watch priority will stop changing', () => {
+  assert.match(webAppSource, /const nextPriorityStability = nextWatchPriorityImpact\.state === 'rises'/);
+  assert.match(webAppSource, /state: 'stabilizes-after-rearm'/);
+  assert.match(webAppSource, /label: 'stabilise après review'/);
+  assert.match(webAppSource, /cesse de changer quand la review est réarmée/);
+  assert.match(webAppSource, /state: 'already-stable'/);
+  assert.match(webAppSource, /label: 'déjà stable'/);
+  assert.match(webAppSource, /state: 'stabilizes-after-mitigation'/);
+  assert.match(webAppSource, /Fin changement priorité/);
+  assert.match(webAppSource, /view\.watchItem\.nextPriorityStability \?/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability--stabilizes-after-rearm/);
 });
