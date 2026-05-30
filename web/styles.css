@@ -9683,6 +9683,17 @@ button { font: inherit; }
   background: rgba(148, 163, 184, 0.08);
   color: rgba(203, 213, 225, 0.76);
 }
+.province-intrigue-turn-report__switch-trigger {
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(168, 85, 247, 0.1);
+  color: rgba(221, 214, 254, 0.9);
+  font-weight: 700;
+}
+.province-intrigue-turn-report__switch-trigger--no-trigger {
+  background: rgba(148, 163, 184, 0.08);
+  color: rgba(203, 213, 225, 0.76);
+}
 .province-intrigue-turn-report__followup {
   display: grid;
   grid-template-columns: minmax(72px, max-content) 1fr;

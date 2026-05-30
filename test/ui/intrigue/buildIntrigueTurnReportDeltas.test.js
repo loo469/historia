@@ -167,6 +167,15 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
           urgency: 'reste disponible',
           fallback: false,
         },
+        switchToBackupTrigger: {
+          state: 'visible-trigger',
+          recommended: true,
+          label: 'Déclencheur de relais',
+          signal: 'basculer si l’exposition visible repasse au-dessus du seuil sûr',
+          backup: 'Attente',
+          reason: 'signal fog-safe: exposition, confiance, disponibilité ou timing visible seulement',
+          fallback: false,
+        },
         fullReviewRequired: false,
         fallback: false,
       },
@@ -264,6 +273,15 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
         urgency: 'fiabilité en baisse',
         fallback: false,
       },
+      switchToBackupTrigger: {
+        state: 'visible-trigger',
+        recommended: true,
+        label: 'Déclencheur de relais',
+        signal: 'basculer si la fenêtre principale n’est plus fraîche ou devient indisponible',
+        backup: 'Défensif',
+        reason: 'signal fog-safe: exposition, confiance, disponibilité ou timing visible seulement',
+        fallback: false,
+      },
       fullReviewRequired: false,
       fallback: false,
     },
@@ -335,6 +353,13 @@ test('buildIntrigueTurnReportDeltas requires full review when minimal verificati
       reason: 'aucune option plus prudente n’est visible sans rouvrir l’analyse',
       fallback: true,
     },
+    switchToBackupTrigger: {
+      state: 'no-trigger',
+      recommended: false,
+      label: 'Aucun déclencheur fiable visible',
+      reason: 'pas assez de signaux visibles pour recommander une bascule sans rouvrir l’analyse',
+      fallback: true,
+    },
     fullReviewRequired: true,
     fallback: false,
   });
@@ -371,6 +396,13 @@ test('buildIntrigueTurnReportDeltas falls back when expiring follow-ups have no 
     recommended: false,
     label: 'Aucun relais prudent visible',
     reason: 'pas de suite principale sûre à seconder',
+    fallback: true,
+  });
+  assert.deepEqual(report.minimumVerificationPrompt.safestMinimalVerification.switchToBackupTrigger, {
+    state: 'no-trigger',
+    recommended: false,
+    label: 'Aucun déclencheur fiable visible',
+    reason: 'pas assez de signaux visibles pour recommander une bascule sans rouvrir l’analyse',
     fallback: true,
   });
 });
@@ -413,6 +445,13 @@ test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is 
         recommended: false,
         label: 'Aucun relais prudent visible',
         reason: 'pas de suite principale sûre à seconder',
+        fallback: true,
+      },
+      switchToBackupTrigger: {
+        state: 'no-trigger',
+        recommended: false,
+        label: 'Aucun déclencheur fiable visible',
+        reason: 'pas assez de signaux visibles pour recommander une bascule sans rouvrir l’analyse',
         fallback: true,
       },
       fullReviewRequired: false,
