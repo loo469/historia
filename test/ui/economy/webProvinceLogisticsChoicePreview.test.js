@@ -122,6 +122,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /province-logistics-spillover-next-trigger/);
   assert.match(webAppSource, /nextChoiceTrigger/);
   assert.match(webAppSource, /Prochain déclencheur:/);
+  assert.match(webAppSource, /province-logistics-spillover-primary-return/);
+  assert.match(webAppSource, /primaryReturnSignal/);
   assert.match(webAppSource, /Continuer la chaîne reste acceptable/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);

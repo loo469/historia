@@ -1181,12 +1181,50 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
 
     return null;
   };
+  const buildGuardPrimaryReturnSignal = (opportunityCost, nextChoiceTrigger) => {
+    const fallbackAction = opportunityCost?.fallbackAction ?? null;
+    if (!fallbackAction || !nextChoiceTrigger) {
+      return null;
+    }
+
+    if (opportunityCost?.state === 'competing') {
+      return {
+        state: 'stay-fallback',
+        label: 'Rester en fallback',
+        summary: priorityAction.resource
+          ? `Retour vers ${opportunityCost.delayedRoute} possible quand ${priorityAction.resource} n’est plus la ressource limitante de ${priorityAction.route}.`
+          : `Retour vers ${opportunityCost.delayedRoute} possible quand la route principale ne partage plus la capacité locale.`,
+        reason: nextChoiceTrigger.trigger,
+      };
+    }
+
+    const stopMarker = opportunityCost?.stopMarker ?? null;
+    if (stopMarker?.cumulativeCost && stopMarker?.expectedBenefit) {
+      const margin = stopMarker.expectedBenefit - stopMarker.cumulativeCost;
+      return margin >= 0
+        ? {
+          state: 'return-possible',
+          label: 'Retour possible',
+          summary: `${stopMarker.route} redevient sûre: bénéfice ${stopMarker.expectedBenefit} couvre coût ${stopMarker.cumulativeCost}.`,
+          reason: nextChoiceTrigger.trigger,
+        }
+        : {
+          state: 'stay-fallback',
+          label: 'Rester en fallback',
+          summary: `Retour vers ${stopMarker.route} après ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge de garde récupéré${Math.abs(margin) > 1 ? 's' : ''}.`,
+          reason: nextChoiceTrigger.trigger,
+        };
+    }
+
+    return null;
+  };
   const buildGuardFallbackJustification = (opportunityCost) => {
     const fallbackAction = opportunityCost?.fallbackAction ?? null;
     const exposure = fallbackAction?.residualExposure ?? opportunityCost?.residualExposure ?? null;
     const exposedRoutes = exposure?.exposedRoutes ?? [];
     const firstExposedRoute = exposedRoutes[0] ?? null;
     const nextChoiceTrigger = buildGuardNextChoiceTrigger(opportunityCost);
+    const primaryReturnSignal = buildGuardPrimaryReturnSignal(opportunityCost, nextChoiceTrigger);
 
     if (!fallbackAction) {
       return {
@@ -1213,6 +1251,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         ? `Ignorer ce repli laisse ${exposedLabel} critique et peut retarder le bénéfice principal.`
         : `Ignorer ce repli risque de relancer une garde moins rentable sur ${exposedLabel}.`,
       nextChoiceTrigger,
+      primaryReturnSignal,
     };
   };
   if (guardOpportunityCost.fallbackAction) {

@@ -8734,6 +8734,9 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.nextChoiceTrigger ? `
                     <small class="province-logistics-spillover-next-trigger province-logistics-spillover-next-trigger--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.nextChoiceTrigger.state}">Prochain déclencheur: ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.nextChoiceTrigger.trigger} ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.nextChoiceTrigger.reason}</small>
                   ` : ''}
+                  ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal ? `
+                    <small class="province-logistics-spillover-primary-return province-logistics-spillover-primary-return--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.label}: ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.summary}</small>
+                  ` : ''}
                 ` : ''}
               ` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost?.canContinueWithoutCriticalDelay ? '<small>Continuer la chaîne reste acceptable: aucune route critique n’est retardée.</small>' : ''}
