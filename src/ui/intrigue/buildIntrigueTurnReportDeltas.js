@@ -377,7 +377,71 @@ function buildReturnDurabilityHint(selected, principalRisk) {
   };
 }
 
-function buildStabilizationBeforeReturn(durability, backupFollowUp) {
+function buildSkippedStabilizationRisk(durability, stabilizationBeforeReturn, principalRisk) {
+  if (!stabilizationBeforeReturn?.recommended) {
+    return {
+      state: 'unknown-risk',
+      recommended: false,
+      label: 'Risque si stabilisation sautée non lisible',
+      category: 'risque non confirmé',
+      consequence: 'le risque exact de retour direct n’est pas lisible avec les signaux actuels',
+      whyStabilizationHelps: 'garder la stabilisation proposée évite de supposer une information masquée',
+      fallback: true,
+    };
+  }
+
+  const riskByPrincipalRisk = {
+    'exposition excessive': {
+      state: 'exposure-risk',
+      label: 'Exposition ravivée',
+      category: 'exposition',
+      consequence: 'le retour direct peut raviver l’exposition avant que le suivi initial tienne seul',
+      whyStabilizationHelps: 'la stabilisation réduit d’abord le point visible qui forcerait un nouveau backup',
+    },
+    'timing fragile': {
+      state: 'option-degrades',
+      label: 'Option qui se dégrade',
+      category: 'option qui se dégrade',
+      consequence: 'la fenêtre fraîche peut se fermer et rendre le prochain contrôle moins fiable',
+      whyStabilizationHelps: 'maintenir le backup protège la fenêtre jusqu’à un retour plus durable',
+    },
+    'signal contradictoire': {
+      state: 'chain-failure-risk',
+      label: 'Échec de chaîne possible',
+      category: 'échec de chaîne',
+      consequence: 'la chaîne de suivi peut repartir sur deux signaux visibles incompatibles',
+      whyStabilizationHelps: 'sécuriser la dépendance évite de restaurer un suivi qui casse au premier recoupement',
+    },
+    'confiance basse': {
+      state: 'information-loss-risk',
+      label: 'Perte d’information',
+      category: 'perte d’information',
+      consequence: 'le signal utile peut redevenir trop incomplet pour justifier le suivi initial',
+      whyStabilizationHelps: 'la vérification courte garde assez d’information visible pour un retour durable',
+    },
+  };
+  const selected = riskByPrincipalRisk[principalRisk];
+
+  if (!selected) {
+    return {
+      state: 'unknown-risk',
+      recommended: true,
+      label: 'Risque si stabilisation sautée prudent',
+      category: durability?.cause ?? 'risque non confirmé',
+      consequence: 'le retour direct peut recréer une fragilité non classable sans nouvelle donnée visible',
+      whyStabilizationHelps: 'la stabilisation limite ce risque sans révéler de donnée masquée',
+      fallback: true,
+    };
+  }
+
+  return {
+    ...selected,
+    recommended: true,
+    fallback: false,
+  };
+}
+
+function buildStabilizationBeforeReturn(durability, backupFollowUp, principalRisk) {
   if (!durability || durability.stability === 'stable-return') {
     return {
       state: 'not-needed',
@@ -385,6 +449,7 @@ function buildStabilizationBeforeReturn(durability, backupFollowUp) {
       label: 'Aucune stabilisation préalable requise',
       action: 'revenir au suivi initial avec les signaux visibles actuels',
       reason: 'le retour est déjà stable sans relais supplémentaire lisible',
+      skippedRisk: buildSkippedStabilizationRisk(durability, null, principalRisk),
       fallback: true,
     };
   }
@@ -411,12 +476,17 @@ function buildStabilizationBeforeReturn(durability, backupFollowUp) {
   };
   const selected = adviceByCause[durability.cause] ?? adviceByCause['information manquante'];
 
-  return {
+  const base = {
     ...selected,
     recommended: true,
     backup: backupFollowUp?.label ?? 'Backup',
     stabilizes: 'stabilise le retour sans révéler de cible ou signal masqué',
     fallback: false,
+  };
+
+  return {
+    ...base,
+    skippedRisk: buildSkippedStabilizationRisk(durability, base, principalRisk),
   };
 }
 
@@ -451,7 +521,7 @@ function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp,
   };
   const selected = conditionByRisk[principalRisk] ?? conditionByRisk['confiance basse'];
   const durability = buildReturnDurabilityHint(selected, principalRisk);
-  const stabilizationBeforeReturn = buildStabilizationBeforeReturn(durability, backupFollowUp);
+  const stabilizationBeforeReturn = buildStabilizationBeforeReturn(durability, backupFollowUp, principalRisk);
 
   return {
     ...selected,

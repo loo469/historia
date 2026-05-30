@@ -43,7 +43,10 @@ test('playable map wires intrigue aftermath deltas into selected province turn r
   assert.match(webAppSource, /Cause:/);
   assert.match(webAppSource, /stabilizationBeforeReturn/);
   assert.match(webAppSource, /Stabiliser avant retour:/);
+  assert.match(webAppSource, /skippedRisk/);
+  assert.match(webAppSource, /Si ignorée:/);
   assert.match(webAppSource, /province-intrigue-turn-report__return-trigger--/);
+  assert.match(webAppSource, /province-intrigue-turn-report__skip-stabilization-risk--/);
   assert.match(webAppSource, /province-intrigue-turn-report__return-stabilization--/);
   assert.match(webAppSource, /Aucune information d.expiration visible/);
   assert.match(webAppSource, /Revue complète si le recoupement diverge/);

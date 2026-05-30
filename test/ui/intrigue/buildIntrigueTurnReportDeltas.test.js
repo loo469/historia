@@ -199,6 +199,15 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
             backup: 'Attente',
             stabilizes: 'stabilise le retour sans révéler de cible ou signal masqué',
             fallback: false,
+            skippedRisk: {
+              state: 'exposure-risk',
+              label: 'Exposition ravivée',
+              category: 'exposition',
+              consequence: 'le retour direct peut raviver l’exposition avant que le suivi initial tienne seul',
+              whyStabilizationHelps: 'la stabilisation réduit d’abord le point visible qui forcerait un nouveau backup',
+              recommended: true,
+              fallback: false,
+            },
           },
           fallback: false,
         },
@@ -331,6 +340,15 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
           backup: 'Défensif',
           stabilizes: 'stabilise le retour sans révéler de cible ou signal masqué',
           fallback: false,
+          skippedRisk: {
+            state: 'option-degrades',
+            label: 'Option qui se dégrade',
+            category: 'option qui se dégrade',
+            consequence: 'la fenêtre fraîche peut se fermer et rendre le prochain contrôle moins fiable',
+            whyStabilizationHelps: 'maintenir le backup protège la fenêtre jusqu’à un retour plus durable',
+            recommended: true,
+            fallback: false,
+          },
         },
         fallback: false,
       },
@@ -496,6 +514,23 @@ test('buildIntrigueTurnReportDeltas marks stable return when backup can safely h
     label: 'Retour stable.',
     cause: 'information manquante',
     advice: 'Le suivi initial peut tenir sans forcer un nouveau backup immédiat.',
+  });
+  assert.deepEqual(report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.stabilizationBeforeReturn, {
+    state: 'not-needed',
+    recommended: false,
+    label: 'Aucune stabilisation préalable requise',
+    action: 'revenir au suivi initial avec les signaux visibles actuels',
+    reason: 'le retour est déjà stable sans relais supplémentaire lisible',
+    skippedRisk: {
+      state: 'unknown-risk',
+      recommended: false,
+      label: 'Risque si stabilisation sautée non lisible',
+      category: 'risque non confirmé',
+      consequence: 'le risque exact de retour direct n’est pas lisible avec les signaux actuels',
+      whyStabilizationHelps: 'garder la stabilisation proposée évite de supposer une information masquée',
+      fallback: true,
+    },
+    fallback: true,
   });
 });
 
