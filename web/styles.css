@@ -9819,6 +9819,25 @@ button { font: inherit; }
   background: rgba(168, 85, 247, 0.12);
   color: rgba(233, 213, 255, 0.94);
 }
+.province-intrigue-turn-report__residual-attention {
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  color: rgba(203, 213, 225, 0.86);
+  font-weight: 800;
+}
+.province-intrigue-turn-report__residual-attention--harmless-record {
+  background: rgba(34, 197, 94, 0.08);
+  color: rgba(187, 247, 208, 0.84);
+}
+.province-intrigue-turn-report__residual-attention--passive-watch {
+  background: rgba(14, 165, 233, 0.1);
+  color: rgba(186, 230, 253, 0.9);
+}
+.province-intrigue-turn-report__residual-attention--later-recheck-needed {
+  background: rgba(245, 158, 11, 0.1);
+  color: rgba(253, 230, 138, 0.92);
+}
 .province-intrigue-turn-report__followup {
   display: grid;
   grid-template-columns: minmax(72px, max-content) 1fr;
