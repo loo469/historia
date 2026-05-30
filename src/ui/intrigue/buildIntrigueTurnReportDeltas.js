@@ -377,6 +377,49 @@ function buildReturnDurabilityHint(selected, principalRisk) {
   };
 }
 
+function buildStabilizationBeforeReturn(durability, backupFollowUp) {
+  if (!durability || durability.stability === 'stable-return') {
+    return {
+      state: 'not-needed',
+      recommended: false,
+      label: 'Aucune stabilisation préalable requise',
+      action: 'revenir au suivi initial avec les signaux visibles actuels',
+      reason: 'le retour est déjà stable sans relais supplémentaire lisible',
+      fallback: true,
+    };
+  }
+
+  const adviceByCause = {
+    'information manquante': {
+      state: 'verify-before-return',
+      label: 'Vérifier avant retour',
+      action: 'vérifier le signal visible minimal avant de quitter le backup',
+      reason: 'l’information manquante est la seule pièce à stabiliser sans rouvrir l’enquête masquée',
+    },
+    'timing expirant': {
+      state: 'hold-backup-before-return',
+      label: 'Maintenir la sauvegarde',
+      action: 'maintenir la sauvegarde jusqu’à une fenêtre de retour fraîche',
+      reason: 'le timing expirant peut forcer une nouvelle bascule si le retour est tenté trop tôt',
+    },
+    'dépendance non vérifiée': {
+      state: 'secure-dependency-before-return',
+      label: 'Sécuriser la dépendance',
+      action: 'sécuriser la dépendance visible avant de restaurer le suivi initial',
+      reason: 'la dépendance non vérifiée est le point le plus susceptible de recréer un backup immédiat',
+    },
+  };
+  const selected = adviceByCause[durability.cause] ?? adviceByCause['information manquante'];
+
+  return {
+    ...selected,
+    recommended: true,
+    backup: backupFollowUp?.label ?? 'Backup',
+    stabilizes: 'stabilise le retour sans révéler de cible ou signal masqué',
+    fallback: false,
+  };
+}
+
 function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp, principalRisk) {
   if (!safestImmediateFollowUp?.recommended || !backupFollowUp?.recommended) {
     return {
@@ -408,11 +451,13 @@ function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp,
   };
   const selected = conditionByRisk[principalRisk] ?? conditionByRisk['confiance basse'];
   const durability = buildReturnDurabilityHint(selected, principalRisk);
+  const stabilizationBeforeReturn = buildStabilizationBeforeReturn(durability, backupFollowUp);
 
   return {
     ...selected,
     recommended: true,
     durability,
+    stabilizationBeforeReturn,
     label: 'Retour au suivi initial',
     primary: safestImmediateFollowUp.label,
     backup: backupFollowUp.label,
