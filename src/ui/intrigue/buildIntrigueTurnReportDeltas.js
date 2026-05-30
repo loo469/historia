@@ -547,6 +547,7 @@ function buildResidualTraceClearAction(durability = null) {
       label: 'Nettoyable par relecture sûre',
       action: 'confirmer une lecture de confiance visible stable au prochain passage',
       result: 'sortir la trace de la watchlist sans rouvrir le backup',
+      nextCheck: 'lecture de confiance stable visible',
       fallback: false,
     };
   }
@@ -558,6 +559,7 @@ function buildResidualTraceClearAction(durability = null) {
       label: 'À surveiller avant nettoyage',
       action: 'attendre que la heat ou la fragilité visible reste absente sur le prochain signal sûr',
       result: 'réduire la trace en archive passive si aucun retour de risque visible n’apparaît',
+      nextCheck: 'absence de heat ou fragilité visible sur le prochain signal sûr',
       fallback: false,
     };
   }
@@ -568,6 +570,7 @@ function buildResidualTraceClearAction(durability = null) {
     label: 'Aucun geste sûr requis',
     action: 'conserver la trace en archive informative',
     result: 'aucune attention supplémentaire à nettoyer',
+    nextCheck: 'aucun check supplémentaire requis',
     fallback: false,
   };
 }
