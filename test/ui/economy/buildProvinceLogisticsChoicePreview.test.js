@@ -126,6 +126,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.summary, /moins disruptif|Une seule garde/);
   assert.ok(preview.adjacentRouteSpilloverRisk.guardComparison.candidates.length >= 1);
   assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.candidates[0].tradeoff, /protégée vs .*capacité/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardSequencing.state, 'competing');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /choisir la garde au lieu de la récupération/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.reason, /partage|capacité/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -172,6 +175,28 @@ test('buildProvinceLogisticsChoicePreview exposes readable cost delay risk and i
   assert.ok(preview.priorityActions.some((action) => action.downstreamStatus === 'aggravée' || action.shortagesAvoided >= 0));
 });
 
+
+test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainable when capacity can follow', () => {
+  const economyView = buildEconomyView();
+  economyView.overlay.routes[0] = {
+    ...economyView.overlay.routes[0],
+    riskLevel: 82,
+    totalCapacity: 9,
+    resources: [{ resourceId: 'tools', capacity: 2 }],
+  };
+  economyView.comparison.rows = economyView.comparison.rows.map((row) => (
+    row.cityId === 'iron-city' || row.cityId === 'hill-city' ? { ...row, tensionLevel: 'medium' } : row
+  ));
+  const preview = buildProvinceLogisticsChoicePreview(province, economyView, {
+    resourceLabelById: { grain: 'Grain', tools: 'Outils' },
+  });
+
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardComparison.state, 'compare');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardSequencing.state, 'chainable');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /enchaîner après la récupération/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.reason, /sans remplacer l’action locale/);
+});
+
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
   const preview = buildProvinceLogisticsChoicePreview({ provinceId: 'isolated' }, buildEconomyView());
 
@@ -204,6 +229,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.adjacentRouteSpilloverRisk.guardAction.reason, /Aucune chaîne de spillover/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardComparison.state, 'fallback');
   assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.summary, /Comparaison impossible/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardSequencing.state, 'unknown');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /enchaînement inconnu/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
