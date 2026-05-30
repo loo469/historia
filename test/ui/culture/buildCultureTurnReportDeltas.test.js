@@ -1169,6 +1169,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
           label: 'Seuil stable',
           criterion: 'archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible',
           fallback: 'si ce seuil n’est pas lisible, garder risque stabilisé par l’historique lisible comme repère calme',
+          notActionableYet: {
+            state: 'visible-below-action-threshold',
+            label: 'Pas encore actionnable',
+            missingThreshold: 'archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible',
+            margin: 'marge à confirmer avant prochaine rotation culturelle',
+            summary: 'Pas encore actionnable: attendre que archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible; marge à confirmer avant prochaine rotation culturelle.',
+          },
           summary: 'Stable si archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible; sinon revoir activement.',
         },
         summary: 'Si réouvert: vérifier si archive-routes justifie encore amplifier, puis comparer avec risque stabilisé par l’historique lisible.',
