@@ -13808,6 +13808,7 @@ function buildAtlasClimateRemainingCoverageGaps(preventiveView, secondaryProtect
           ? action.action
           : `relire ${progress.threshold} avant d’étendre la prévention`,
         nearestThresholdScore,
+        className: action.className,
         nearestRiskLabel: action.className === 'stabilizes-short-term'
           ? 'risque de seuil le plus proche'
           : 'risque de seuil secondaire',
@@ -13953,6 +13954,25 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
   const promotionCondition = watchGap.nearestThresholdScore >= 80
     ? `devient action primaire si la pression reste ≥80 au prochain check ${progress.deadline}`
     : `devient action primaire si ${progress.deadline} confirme ${watchGap.nearestRiskLabel}`;
+  const nextSecondaryGap = (coverageView.blindSpots ?? [])
+    .filter((gap) => !gap.nearest && gap.label !== gapActionView.recommendation.target && gap.label !== watchGap.label)
+    .find((gap) => gap.nearestThresholdScore >= 40) ?? null;
+  const protectedSecondary = !nextSecondaryGap ? coverageView.secondaryProtections?.[0] ?? coverageView.activeProtections?.[0] ?? null : null;
+  const nextSecondaryRisk = nextSecondaryGap
+    ? {
+      label: nextSecondaryGap.label,
+      phrase: `${nextSecondaryGap.label}: reste secondaire, seuil plus loin (${nextSecondaryGap.nearestThresholdScore}).`,
+      reason: nextSecondaryGap.className === 'insufficient'
+        ? 'coût trop élevé pour passer avant l’action primaire'
+        : 'seuil plus loin que le watch item promu',
+    }
+    : protectedSecondary
+      ? {
+        label: protectedSecondary.label,
+        phrase: `${protectedSecondary.label}: reste secondaire car protection déjà active.`,
+        reason: 'protection déjà active',
+      }
+      : null;
 
   return {
     state: 'watch',
@@ -13963,6 +13983,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       nextCheck: watchGap.nextAction,
       promotionCondition,
     },
+    nextSecondaryRisk,
     summary: `${watchGap.label}: seul watch item restant après l’action du gap prioritaire.`,
   };
 }
@@ -13994,6 +14015,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <p>${view.summary}</p>
       <small><b>Watch item</b> · ${view.watchItem.phrase}</small>
       <small><b>Devient primaire</b> · ${view.watchItem.promotionCondition}</small>
+      ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
       <small><b>Prochain check</b> · ${view.watchItem.nextCheck}</small>
     </aside>
