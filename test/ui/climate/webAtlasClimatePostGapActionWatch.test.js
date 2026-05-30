@@ -35,6 +35,11 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /unrearmedReviewConsequence/);
   assert.match(webAppSource, /nextWatchPriorityImpact/);
   assert.match(webAppSource, /nextPriorityStability/);
+  assert.match(webAppSource, /priorityInstabilityTrigger/);
+  assert.match(webAppSource, /Stable jusqu’à/);
+  assert.match(webAppSource, /stable sauf si/);
+  assert.match(webAppSource, /instable tant que/);
+  assert.match(webAppSource, /la marge tombe courte ou une consequence unrearmed revient/);
   assert.match(webAppSource, /Fin changement priorité/);
   assert.match(webAppSource, /stabilise après review/);
   assert.match(webAppSource, /déjà stable/);
@@ -124,6 +129,8 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--secondary-after-mitigation/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability--already-stable/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability--stable-until/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -259,4 +266,15 @@ test('atlas shows when next climate watch priority will stop changing', () => {
   assert.match(webAppSource, /Fin changement priorité/);
   assert.match(webAppSource, /view\.watchItem\.nextPriorityStability \?/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability--stabilizes-after-rearm/);
+});
+
+test('atlas explains what can make stable climate priority unstable again', () => {
+  assert.match(webAppSource, /const priorityInstabilityTrigger = nextPriorityStability\?\.state === 'already-stable'/);
+  assert.match(webAppSource, /state: 'stable-until'/);
+  assert.match(webAppSource, /label: 'stable sauf si'/);
+  assert.match(webAppSource, /la marge tombe courte ou une consequence unrearmed revient sur \$\{watchGap\.nearestRiskLabel\}/);
+  assert.match(webAppSource, /state: 'watch-until-rearmed'/);
+  assert.match(webAppSource, /Stable jusqu’à/);
+  assert.match(webAppSource, /view\.watchItem\.priorityInstabilityTrigger \?/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability--watch-until-rearmed/);
 });
