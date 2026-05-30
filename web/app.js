@@ -13597,6 +13597,79 @@ function renderAtlasClimateRemainingCoverageGaps(view) {
   `;
 }
 
+function buildAtlasClimateNearestCoverageGapAction(coverageView, thresholdProgressView) {
+  if (!coverageView || coverageView.state === 'empty' || !thresholdProgressView?.progress) {
+    return {
+      state: 'unavailable',
+      recommendation: null,
+      summary: 'Aucune action de suivi calculable pour le gap climat le plus proche.',
+    };
+  }
+
+  const nearestGap = (coverageView.blindSpots ?? []).find((gap) => gap.nearest) ?? coverageView.blindSpots?.[0] ?? null;
+  const progress = thresholdProgressView.progress;
+
+  if (!nearestGap) {
+    return {
+      state: 'fallback',
+      recommendation: null,
+      summary: 'Fallback: aucun angle mort restant; garder une veille climat plutôt qu’ajouter une action.',
+    };
+  }
+
+  const concreteAction = nearestGap.nextAction && !/relire .* avant d’étendre/i.test(nearestGap.nextAction)
+    ? nearestGap.nextAction
+    : `Confirmer ${progress.threshold} sur ${nearestGap.label} avant d’ajouter une prévention.`;
+  const protectsAgainst = nearestGap.nearestRiskLabel === 'risque de seuil le plus proche'
+    ? `protège contre le basculement du seuil ${progress.threshold}`
+    : `réduit le risque secondaire avant ${progress.deadline}`;
+
+  return {
+    state: 'recommended',
+    recommendation: {
+      target: nearestGap.label,
+      action: concreteAction,
+      protectsAgainst,
+      reason: `${nearestGap.reason}; score seuil ${nearestGap.nearestThresholdScore}.`,
+      otherGapsKept: Math.max(0, (coverageView.blindSpots?.length ?? 0) - 1),
+    },
+    summary: `${nearestGap.label}: plus petite action proposée pour le gap climat le plus proche du seuil.`,
+  };
+}
+
+function renderAtlasClimateNearestCoverageGapAction(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view || view.state === 'empty') {
+    return '';
+  }
+
+  if (!view.recommendation) {
+    return `
+      <aside class="map-world-climate-nearest-gap-action map-world-climate-nearest-gap-action--fallback" aria-label="Action minimale pour le gap climat le plus proche">
+        <div class="map-world-climate-nearest-gap-action__header">
+          <strong>Action gap prioritaire</strong>
+          <span>fallback</span>
+        </div>
+        <p>${view.summary}</p>
+        <small><b>Fallback</b> · Aucun suivi spécifique: conserver les autres gaps visibles et relire la couverture au prochain signal.</small>
+      </aside>
+    `;
+  }
+
+  return `
+    <aside class="map-world-climate-nearest-gap-action map-world-climate-nearest-gap-action--${view.state}" aria-label="Action minimale pour le gap climat le plus proche">
+      <div class="map-world-climate-nearest-gap-action__header">
+        <strong>Action gap prioritaire</strong>
+        <span>${view.recommendation.target}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Plus petit suivi</b> · ${view.recommendation.action}</small>
+      <small><b>Protège</b> · ${view.recommendation.protectsAgainst}</small>
+      <small><b>Pourquoi ce gap</b> · ${view.recommendation.reason}</small>
+      <small><b>Autres gaps</b> · ${view.recommendation.otherGapsKept > 0 ? `${view.recommendation.otherGapsKept} autre${view.recommendation.otherGapsKept > 1 ? 's' : ''} gap${view.recommendation.otherGapsKept > 1 ? 's' : ''} restent affichés` : 'aucun autre gap prioritaire masqué'}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -21874,6 +21947,10 @@ function render() {
     atlasClimateFollowUpThresholdProtection,
     atlasClimateThresholdProgressAfterReadinessAction,
   );
+  const atlasClimateNearestCoverageGapAction = buildAtlasClimateNearestCoverageGapAction(
+    atlasClimateRemainingCoverageGaps,
+    atlasClimateThresholdProgressAfterReadinessAction,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -21937,6 +22014,7 @@ function render() {
           ${renderAtlasClimateSmallestPreventiveAction(atlasClimateSmallestPreventiveAction)}
           ${renderAtlasClimatePreventiveSecondaryProtection(atlasClimatePreventiveSecondaryProtection)}
           ${renderAtlasClimateRemainingCoverageGaps(atlasClimateRemainingCoverageGaps)}
+          ${renderAtlasClimateNearestCoverageGapAction(atlasClimateNearestCoverageGapAction)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
