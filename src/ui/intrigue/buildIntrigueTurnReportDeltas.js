@@ -537,6 +537,51 @@ function buildBackupLadderStabilizationReason(durability = null, stabilizationBe
 
 
 
+
+function buildEarliestResidualClear(clearAction = null) {
+  if (!clearAction || clearAction.fallback) {
+    return {
+      state: 'no-clear-path',
+      available: false,
+      label: 'Clear non lisible',
+      action: 'aucune action sûre de nettoyage n’est visible',
+      reason: 'la trace ne dispose pas encore d’un levier de clear fog-safe',
+      fallback: true,
+    };
+  }
+
+  if (clearAction.state === 'clearable-next-safe-read') {
+    return {
+      state: 'earliest-safe-read',
+      available: true,
+      label: 'Premier clear: relecture sûre',
+      action: clearAction.action,
+      reason: clearAction.result,
+      fallback: false,
+    };
+  }
+
+  if (clearAction.state === 'watch-until-quiet') {
+    return {
+      state: 'wait-for-safe-action',
+      available: false,
+      label: 'Clear après signal calme',
+      action: clearAction.action,
+      reason: 'attendre un signal sûr sans heat ni fragilité visible avant nettoyage',
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'already-clear',
+    available: false,
+    label: 'Déjà archivée',
+    action: clearAction.action,
+    reason: clearAction.result,
+    fallback: false,
+  };
+}
+
 function buildResidualTraceClearAction(durability = null) {
   const cause = durability?.cause ?? 'signal résiduel';
 
@@ -577,6 +622,8 @@ function buildResidualTraceClearAction(durability = null) {
 
 function buildResidualTraceAttention(durability = null) {
   const cause = durability?.cause ?? 'signal résiduel';
+  const clearAction = buildResidualTraceClearAction(durability);
+  const earliestClear = buildEarliestResidualClear(clearAction);
 
   if (/information/i.test(cause)) {
     return {
@@ -584,7 +631,8 @@ function buildResidualTraceAttention(durability = null) {
       needsAttention: true,
       label: 'Recheck léger plus tard',
       summary: 'garder la trace pour une relecture courte au prochain passage, sans alerte active',
-      clearAction: buildResidualTraceClearAction(durability),
+      clearAction,
+      earliestClear,
       fallback: false,
     };
   }
@@ -595,7 +643,8 @@ function buildResidualTraceAttention(durability = null) {
       needsAttention: true,
       label: 'Veille passive',
       summary: 'surveiller seulement si la heat ou la fragilité visible réapparaît',
-      clearAction: buildResidualTraceClearAction(durability),
+      clearAction,
+      earliestClear,
       fallback: false,
     };
   }
@@ -605,7 +654,8 @@ function buildResidualTraceAttention(durability = null) {
     needsAttention: false,
     label: 'Archive sans action',
     summary: 'conserver comme trace informative; aucune attention de suivi requise',
-    clearAction: buildResidualTraceClearAction(durability),
+    clearAction,
+    earliestClear,
     fallback: false,
   };
 }
