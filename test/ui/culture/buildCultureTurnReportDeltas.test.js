@@ -1060,6 +1060,7 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
       summary: 'Fragile avant revue: expire avant la prochaine revue; archive-routes expire avant prochaine rotation culturelle.',
     },
     reviewExitSignal: null,
+    reviewReopenSignal: null,
   });
 });
 
@@ -1152,6 +1153,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
       signal: 'amplifier reste visible sans expiration',
       localAnchor: 'risque stabilisé par l’historique lisible',
       summary: 'Sortie de revue: amplifier reste visible sans expiration jusqu’à prochaine rotation culturelle; risque stabilisé par l’historique lisible.',
+    },
+    reviewReopenSignal: {
+      state: 'reopen-on-synergy-change',
+      label: 'Réouvrir la revue',
+      trigger: 'amplifier ne reste plus aligné avec archive-routes',
+      reviewWindow: 'prochaine rotation culturelle',
+      summary: 'Réouvrir la revue: amplifier ne reste plus aligné avec archive-routes, expire, ou contredit risque stabilisé par l’historique lisible.',
     },
   });
 });
