@@ -119,6 +119,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.adjacentRouteSpilloverRisk.criticalRoute.route, /Ember Line|Hill Spur|Safe Road/);
   assert.match(preview.adjacentRouteSpilloverRisk.dependencyTrace, /→/);
   assert.match(preview.adjacentRouteSpilloverRisk.dependencyTrace, /capacité saturée|stock critique|risque élevé|Ember Line|Hill Spur|Iron Plain|Hill Hub/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardAction.fallback, false);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.label, /Sécuriser|Garder|Surveiller/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.reason, /pression déplacée|chaîne|relais exposé/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -192,6 +195,9 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.equal(preview.adjacentRouteSpilloverRisk.state, 'empty');
   assert.match(preview.adjacentRouteSpilloverRisk.summary, /Aucun spillover/);
   assert.match(preview.adjacentRouteSpilloverRisk.dependencyTrace, /Dépendance inconnue/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardAction.fallback, true);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.label, /Garde indisponible/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.reason, /Aucune chaîne de spillover/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
