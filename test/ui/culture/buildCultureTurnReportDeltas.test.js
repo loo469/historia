@@ -1180,6 +1180,12 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
               stepType: 'synergy-prerequisite',
               firstStep: 'confirmer archive-routes avec amplifier',
               waitWindow: 'prochaine rotation culturelle',
+              impactPreview: {
+                state: 'unlocks-review',
+                label: 'Impact attendu',
+                impactType: 'unlocks-review',
+                summary: 'Impact attendu: confirmer archive-routes avec amplifier débloque la revue culturelle actionnable.',
+              },
               summary: 'Devient actionnable après confirmation de archive-routes avec amplifier; sinon attendre prochaine rotation culturelle.',
             },
             summary: 'Pas encore actionnable: attendre que archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible; marge à confirmer avant prochaine rotation culturelle.',
