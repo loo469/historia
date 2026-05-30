@@ -485,3 +485,17 @@ test('atlas military compares light front defer buffer with upcoming pressure', 
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure--quiet/);
 });
+
+// MAP-A46: show the next threshold where a deferred light front follow-up
+// becomes risky, or explicitly state that it can remain deferred.
+test('atlas military shows when light front defer buffer becomes risky', () => {
+  assert.match(webAppSource, /const lightFollowUpRiskWindow = lightFollowUpPressure/);
+  assert.match(webAppSource, /label: 'Devient risqué: prochain signal'/);
+  assert.match(webAppSource, /label: 'Report maintenu'/);
+  assert.match(webAppSource, /reste différable tant que \$\{residualRisk\?\.provinceLabel \?\? alternative\.provinceLabel \?\? 'front'\} ne change pas/);
+  assert.match(webAppSource, /lightFollowUpRiskWindow,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpRiskWindow \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__risk-window/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpRiskWindow \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 14\.65 : 13\.3/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__risk-window--risky/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__risk-window--quiet/);
+});
