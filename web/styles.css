@@ -14563,7 +14563,8 @@ button { font: inherit; }
 .atlas-military-neighbor-blocked-follow-up-alt--urgent .atlas-military-neighbor-blocked-follow-up-alt__label,
 .atlas-military-neighbor-blocked-follow-up-alt--blocked .atlas-military-neighbor-blocked-follow-up-alt__label { fill: #fecdd3; }
 .atlas-military-neighbor-blocked-follow-up-alt--cost .atlas-military-neighbor-blocked-follow-up-alt__label,
-.atlas-military-neighbor-blocked-follow-up-alt--dependency .atlas-military-neighbor-blocked-follow-up-alt__label { fill: #fde68a; }
+.atlas-military-neighbor-blocked-follow-up-alt--dependency .atlas-military-neighbor-blocked-follow-up-alt__label,
+.atlas-military-neighbor-blocked-follow-up-alt--preparation .atlas-military-neighbor-blocked-follow-up-alt__label { fill: #fde68a; }
 .atlas-military-neighbor-front-shift-row circle {
   fill: rgba(167, 139, 250, 0.84);
   stroke: rgba(245, 243, 255, 0.72);
