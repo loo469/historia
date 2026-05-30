@@ -710,6 +710,13 @@ test('buildIntrigueTurnReportDeltas marks stable return when backup can safely h
               reason: 'sortir la trace de la watchlist sans rouvrir le backup',
               fallback: false,
             },
+            deferralConsequence: {
+              state: 'stable-but-recheck-blocked',
+              severity: 'watch',
+              label: 'Report stable, recheck maintenu',
+              summary: 'différer garde la trace stable mais conserve le recheck léger au prochain passage',
+              fallback: false,
+            },
             fallback: false,
           },
           fallback: false,
