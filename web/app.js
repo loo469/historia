@@ -14367,6 +14367,25 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       detail: `le prochain signal ${watchGap.nearestRiskLabel} risque d’être lu tard, même avec une marge encore confortable`,
     }
     : null;
+  const nextWatchPriorityImpact = unrearmedReviewConsequence
+    ? {
+      state: 'rises',
+      label: 'priorité monte',
+      detail: `prochaine watch: ${watchGap.label} remonte si la review reste non réarmée`,
+    }
+    : watchMargin
+      ? {
+        state: watchMargin.state === 'comfortable' ? 'stable' : 'secondary-after-mitigation',
+        label: watchMargin.state === 'comfortable' ? 'priorité stable' : 'secondaire après mitigation',
+        detail: watchMargin.state === 'comfortable'
+          ? `prochaine watch: ${watchGap.label} reste en observation tant que la marge tient`
+          : `prochaine watch: ${watchGap.label} reste secondaire après mitigation`,
+      }
+      : {
+        state: 'fallback',
+        label: 'priorité indéterminée',
+        detail: 'relire la prochaine watch climat quand le signal secondaire redevient mesurable',
+      };
   const minimalProtection = coverageView.secondaryProtections?.[0]
     ?? coverageView.activeProtections?.[0]
     ?? (gapActionView.recommendation
@@ -14479,6 +14498,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       upkeepReminder,
       marginRearmReview,
       unrearmedReviewConsequence,
+      nextWatchPriorityImpact,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -14523,6 +14543,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       ${view.watchItem.upkeepReminder ? `<small class="map-world-climate-post-gap-watch__reminder map-world-climate-post-gap-watch__reminder--${view.watchItem.upkeepReminder.state}"><b>Rappel upkeep</b> · ${view.watchItem.upkeepReminder.label}: ${view.watchItem.upkeepReminder.detail}</small>` : ''}
       ${view.watchItem.marginRearmReview ? `<small class="map-world-climate-post-gap-watch__rearm map-world-climate-post-gap-watch__rearm--${view.watchItem.marginRearmReview.state}"><b>Réarmer review</b> · ${view.watchItem.marginRearmReview.label}: ${view.watchItem.marginRearmReview.detail}</small>` : ''}
       ${view.watchItem.unrearmedReviewConsequence ? `<small class="map-world-climate-post-gap-watch__consequence map-world-climate-post-gap-watch__consequence--${view.watchItem.unrearmedReviewConsequence.state}"><b>Si non réarmé</b> · ${view.watchItem.unrearmedReviewConsequence.label}: ${view.watchItem.unrearmedReviewConsequence.detail}</small>` : ''}
+      ${view.watchItem.nextWatchPriorityImpact ? `<small class="map-world-climate-post-gap-watch__priority map-world-climate-post-gap-watch__priority--${view.watchItem.nextWatchPriorityImpact.state}"><b>Prochaine priorité</b> · ${view.watchItem.nextWatchPriorityImpact.label}: ${view.watchItem.nextWatchPriorityImpact.detail}</small>` : ''}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
