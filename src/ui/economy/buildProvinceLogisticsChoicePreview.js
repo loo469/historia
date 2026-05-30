@@ -1206,6 +1206,11 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           label: 'Slack conservé',
           primaryConsumer: null,
           summary: 'Slack conservé: aucun coût immédiat ne consomme la marge restante.',
+          nextBlocker: {
+            state: 'none',
+            label: 'Aucun bloqueur immédiat',
+            summary: 'Aucun consommateur proche ne bloque la route pour l’instant.',
+          },
         };
       }
 
@@ -1216,6 +1221,11 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         primaryConsumer: primaryConsumer.label,
         summary: `${primaryConsumer.label} consomme d’abord le slack: ${primaryConsumer.reason}`,
         secondaryConsumers: rankedConsumers.slice(1, 3).map((consumer) => consumer.label),
+        nextBlocker: {
+          state: primaryConsumer.tone ?? 'watch',
+          label: `Premier bloqueur: ${primaryConsumer.label}`,
+          summary: `${primaryConsumer.label} deviendrait bloquant en premier: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}.`,
+        },
       };
     };
     const buildRouteSlack = (state, summary, bottleneck, slackConsumerHint) => ({
@@ -1247,8 +1257,8 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             : 'Route reprise mais serrée: capacité locale encore partagée.',
           priorityAction.resource ?? 'capacité locale',
           buildSlackConsumerHint([
-            { label: priorityAction.resource ?? 'capacité locale', reason: `partagée avec ${opportunityCost.delayedRoute}`, weight: 3, tone: 'tight' },
-            exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+            { label: priorityAction.resource ?? 'capacité locale', reason: `partagée avec ${opportunityCost.delayedRoute}`, blockerReason: `la ressource reste partagée avec ${opportunityCost.delayedRoute}`, weight: 3, tone: 'tight' },
+            exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
           ]),
         ),
       };
@@ -1276,8 +1286,8 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             buildSlackConsumerHint(margin >= 2
               ? []
               : [
-                { label: stopMarker.route, reason: `il ne reste que ${margin} point de marge`, weight: 2, tone: 'tight' },
-                exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+                { label: stopMarker.route, reason: `il ne reste que ${margin} point de marge`, blockerReason: `marge restante ${margin}`, weight: 2, tone: 'tight' },
+                exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
               ]),
           ),
         }
@@ -1295,8 +1305,8 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             `Route non confortable: ${stopMarker.route} reste le goulot avec ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}.`,
             stopMarker.route,
             buildSlackConsumerHint([
-              { label: stopMarker.route, reason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, weight: 3, tone: 'blocked' },
-              exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+              { label: stopMarker.route, reason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, blockerReason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, weight: 3, tone: 'blocked' },
+              exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
             ]),
           ),
         };

@@ -8825,6 +8825,9 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                       <small class="province-logistics-spillover-route-slack province-logistics-spillover-route-slack--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.summary}</small>
                       ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint ? `
                         <small class="province-logistics-spillover-slack-consumer province-logistics-spillover-slack-consumer--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.summary}</small>
+                        ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker ? `
+                          <small class="province-logistics-spillover-slack-blocker province-logistics-spillover-slack-blocker--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.summary}</small>
+                        ` : ''}
                       ` : ''}
                     ` : ''}
                   ` : ''}
