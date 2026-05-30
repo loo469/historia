@@ -1395,12 +1395,13 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         ? `${candidate.deadlineHint}: la petite action cesse de suffire si ${candidate.turningSignal}.`
         : `payoff ${candidate.payoffScore}: la petite action reste seulement valable jusqu’à la ${candidate.nextReviewWindow}.`)
       : null;
-    const recommendedBeyondMinimumBenefit = minimalSafeAction && missedWindowConsequence
+    const recommendedBeyondMinimumBenefit = missedWindowConsequence
       ? buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindowConsequence)
       : null;
     const immediateSynergy = recommendedBeyondMinimumBenefit
       ? buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedCandidates, missedWindowConsequence)
       : null;
+    const deferLadderSummary = buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBenefit, immediateSynergy);
 
     return {
       ...candidate,
@@ -1421,6 +1422,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       minimalActionThresholdReason,
       recommendedBeyondMinimumBenefit,
       immediateSynergy,
+      deferLadderSummary,
     };
   });
   const top = rankedCandidates[0] ?? null;
@@ -1449,6 +1451,37 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       ? 'Priorité par pression de délai, puis payoff culturel.'
       : 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
     entries: rankedCandidates,
+  };
+}
+
+function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBenefit, immediateSynergy) {
+  if (!recommendedBeyondMinimumBenefit || !immediateSynergy) {
+    return null;
+  }
+
+  if (immediateSynergy.expiryWarning) {
+    return {
+      state: 'act-now',
+      label: 'Agir maintenant',
+      decision: 'agir maintenant pour capturer la synergie avant expiration',
+      summary: `Agir maintenant: ${immediateSynergy.expiryWarning.summary}`,
+    };
+  }
+
+  if (candidate.deadlineStatus === 'near-deadline') {
+    return {
+      state: 'minimum-sufficient',
+      label: 'Minimum suffisant',
+      decision: 'faire le minimum garde la fenêtre sans perdre la synergie visible',
+      summary: `Minimum suffisant: ${candidate.minimalRevisitAction}; ${immediateSynergy.summary}`,
+    };
+  }
+
+  return {
+    state: 'safe-defer',
+    label: 'Report sûr',
+    decision: 'reporter sans perdre la synergie visible',
+    summary: `Report sûr: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
   };
 }
 
