@@ -136,6 +136,11 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state, 'fallback');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.action, 'use-fallback');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.summary, /Différer|fallback/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.state, 'available');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.protectedMargin, /Ember Line|Hill Spur|marge utile/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.limitingResource, /Outils|ressource limitante/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.residualExposure, /reste exposée|reste exposé/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.ignoredRisk, /Ignorer/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -223,6 +228,11 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state, 'watch');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.action, 'accept-exposure');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.summary, /Safe Road.*reste à surveiller/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.state, 'available');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.protectedMargin, /Iron Plain|Ember Line|marge utile/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.limitingResource, /Outils|ressource limitante/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.residualExposure, /Safe Road/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.ignoredRisk, /Ignorer/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
@@ -266,6 +276,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.residualRisk, /non traçable précisément/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state, 'unknown');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.action, 'wait-for-signals');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.state, 'unavailable');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.label, /Aucun fallback sûr/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);

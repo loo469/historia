@@ -850,7 +850,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: aucune garde concrète à classer.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Capacité de garde indisponible sans récupération locale.' },
       guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune chaîne de garde à prolonger.', stopChain: false, residualExposure: { state: 'unknown', exposedRoutes: [], benefit: 'Bénéfice du fallback non calculable sans chaîne de garde.', residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.' } },
-      guardDecisionSummary: { state: 'unknown', action: 'wait-for-signals', label: 'Comparer au prochain signal', summary: 'Exposition restante non traçable précisément avec les signaux actuels.', reason: 'Bénéfice du fallback non calculable sans chaîne de garde.' },
+      guardDecisionSummary: { state: 'unknown', action: 'wait-for-signals', label: 'Comparer au prochain signal', summary: 'Exposition restante non traçable précisément avec les signaux actuels.', reason: 'Bénéfice du fallback non calculable sans chaîne de garde.', fallbackJustification: { state: 'unavailable', label: 'Aucun fallback sûr', protectedMargin: 'Marge protégée non calculable sans fallback confirmé.', limitingResource: 'Ressource limitante non identifiée par les signaux actuels.', residualExposure: 'Exposition restante non traçable précisément avec les signaux actuels.', ignoredRisk: 'Attendre un signal comparable avant de rouvrir la chaîne de garde.' } },
     };
   }
 
@@ -897,7 +897,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: coût de garde non comparable sans route exposée.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Aucune route exposée ne permet de comparer la capacité de garde.' },
       guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune route adjacente exposée à comparer.', stopChain: false, residualExposure: { state: 'unknown', exposedRoutes: [], benefit: 'Bénéfice du fallback non calculable sans route exposée.', residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.' } },
-      guardDecisionSummary: { state: 'unknown', action: 'wait-for-signals', label: 'Comparer au prochain signal', summary: 'Exposition restante non traçable précisément avec les signaux actuels.', reason: 'Bénéfice du fallback non calculable sans route exposée.' },
+      guardDecisionSummary: { state: 'unknown', action: 'wait-for-signals', label: 'Comparer au prochain signal', summary: 'Exposition restante non traçable précisément avec les signaux actuels.', reason: 'Bénéfice du fallback non calculable sans route exposée.', fallbackJustification: { state: 'unavailable', label: 'Aucun fallback sûr', protectedMargin: 'Marge protégée non calculable sans fallback confirmé.', limitingResource: priorityAction.resource ? `${priorityAction.resource} reste la ressource limitante, mais aucun relais sûr n’est classé.` : 'Ressource limitante non identifiée par les signaux actuels.', residualExposure: 'Exposition restante non traçable précisément avec les signaux actuels.', ignoredRisk: 'Attendre un signal comparable avant de rouvrir la chaîne de garde.' } },
     };
   }
 
@@ -1139,7 +1139,43 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           },
           canContinueWithoutCriticalDelay: false,
         };
+  const buildGuardFallbackJustification = (opportunityCost) => {
+    const fallbackAction = opportunityCost?.fallbackAction ?? null;
+    const exposure = fallbackAction?.residualExposure ?? opportunityCost?.residualExposure ?? null;
+    const exposedRoutes = exposure?.exposedRoutes ?? [];
+    const firstExposedRoute = exposedRoutes[0] ?? null;
+
+    if (!fallbackAction) {
+      return {
+        state: 'unavailable',
+        label: 'Aucun fallback sûr',
+        protectedMargin: 'Marge protégée non calculable sans fallback confirmé.',
+        limitingResource: priorityAction.resource ? `${priorityAction.resource} reste la ressource limitante, mais aucun relais sûr n’est classé.` : 'Ressource limitante non identifiée par les signaux actuels.',
+        residualExposure: exposure?.residualRisk ?? 'Exposition restante non comparable avec les signaux actuels.',
+        ignoredRisk: 'Attendre un signal comparable avant de rouvrir la chaîne de garde.',
+      };
+    }
+
+    const protectedTarget = fallbackAction.target ?? opportunityCost?.protectedRoute ?? guardAction.route ?? criticalRoute.city;
+    const protectedRoute = opportunityCost?.protectedRoute ?? guardAction.route ?? protectedTarget;
+    const exposedLabel = firstExposedRoute ? `${firstExposedRoute.route}/${firstExposedRoute.city}` : opportunityCost?.delayedRoute ?? 'la route suivante';
+
+    return {
+      state: 'available',
+      label: `Pourquoi ${fallbackAction.label}`,
+      protectedMargin: `${protectedTarget} garde la marge utile via ${protectedRoute} sans rouvrir toute la chaîne.`,
+      limitingResource: priorityAction.resource ? `${priorityAction.resource} reste la ressource limitante; ${fallbackAction.label} évite de la consommer au-delà du premier relais.` : 'Ressource limitante non identifiée par les signaux actuels.',
+      residualExposure: exposure?.residualRisk ?? `${exposedLabel} reste à surveiller après ce repli.`,
+      ignoredRisk: firstExposedRoute?.tone === 'high'
+        ? `Ignorer ce repli laisse ${exposedLabel} critique et peut retarder le bénéfice principal.`
+        : `Ignorer ce repli risque de relancer une garde moins rentable sur ${exposedLabel}.`,
+    };
+  };
+  if (guardOpportunityCost.fallbackAction) {
+    guardOpportunityCost.fallbackAction.fallbackJustification = buildGuardFallbackJustification(guardOpportunityCost);
+  }
   const buildGuardDecisionSummary = (opportunityCost) => {
+    const fallbackJustification = buildGuardFallbackJustification(opportunityCost);
     if (!opportunityCost) {
       return {
         state: 'unknown',
@@ -1147,6 +1183,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         label: 'Décision garde inconnue',
         summary: 'Synthèse indisponible: les signaux de garde ne sont pas comparables.',
         reason: 'Aucun coût d’opportunité exploitable.',
+        fallbackJustification,
       };
     }
 
@@ -1157,6 +1194,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         label: 'Continuer la garde',
         summary: `Continuer vers ${opportunityCost.delayedRoute ?? 'le segment suivant'}: aucune route critique retardée.`,
         reason: opportunityCost.stopReason ?? 'Le coût reste couvert par le bénéfice attendu.',
+        fallbackJustification,
       };
     }
 
@@ -1172,6 +1210,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         label: 'Basculer sur le fallback',
         summary: `${opportunityCost.fallbackAction.label}: réduit le risque principal sans rouvrir la chaîne.`,
         reason: exposure.residualRisk,
+        fallbackJustification,
       };
     }
 
@@ -1182,6 +1221,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         label: 'Accepter l’exposition ce tour',
         summary: `${exposedRoutes.map((route) => route.route).join(', ')} reste à surveiller après le bénéfice principal.`,
         reason: exposure.benefit,
+        fallbackJustification,
       };
     }
 
@@ -1191,6 +1231,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       label: 'Accepter l’exposition à surveiller',
       summary: exposure?.residualRisk ?? 'Exposition restante non comparable avec les signaux actuels.',
       reason: exposure?.benefit ?? 'Fallback neutre: aucune route restante traçable précisément.',
+      fallbackJustification,
     };
   };
   const guardDecisionSummary = buildGuardDecisionSummary(guardOpportunityCost);
