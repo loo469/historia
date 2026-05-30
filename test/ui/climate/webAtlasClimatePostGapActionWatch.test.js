@@ -36,6 +36,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /nextWatchPriorityImpact/);
   assert.match(webAppSource, /nextPriorityStability/);
   assert.match(webAppSource, /priorityInstabilityTrigger/);
+  assert.match(webAppSource, /priorityInstabilityWindow/);
+  assert.match(webAppSource, /Fenêtre instabilité/);
+  assert.match(webAppSource, /première fenêtre: vérifier/);
+  assert.match(webAppSource, /aucune fenêtre proche/);
   assert.match(webAppSource, /Stable jusqu’à/);
   assert.match(webAppSource, /stable sauf si/);
   assert.match(webAppSource, /instable tant que/);
@@ -131,6 +135,8 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__stability--already-stable/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability--stable-until/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__window/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__window--next-check/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -277,4 +283,17 @@ test('atlas explains what can make stable climate priority unstable again', () =
   assert.match(webAppSource, /Stable jusqu’à/);
   assert.match(webAppSource, /view\.watchItem\.priorityInstabilityTrigger \?/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability--watch-until-rearmed/);
+});
+
+test('atlas shows the first window where climate priority can destabilize', () => {
+  assert.match(webAppSource, /const priorityInstabilityWindow = priorityInstabilityTrigger\?\.state === 'stable-until'/);
+  assert.match(webAppSource, /state: 'next-check'/);
+  assert.match(webAppSource, /label: progress\.deadline/);
+  assert.match(webAppSource, /première fenêtre: vérifier si \$\{watchGap\.nearestRiskLabel\} réduit la marge au prochain check/);
+  assert.match(webAppSource, /state: 'before-review'/);
+  assert.match(webAppSource, /fenêtre ouverte tant que la review reste non réarmée/);
+  assert.match(webAppSource, /state: 'none-close'/);
+  assert.match(webAppSource, /attendre un nouveau signal climat mesurable avant de reclasser la priorité/);
+  assert.match(webAppSource, /Fenêtre instabilité/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__window--none-close/);
 });
