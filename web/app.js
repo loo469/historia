@@ -8762,6 +8762,9 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   ` : ''}
                   ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal ? `
                     <small class="province-logistics-spillover-primary-return province-logistics-spillover-primary-return--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.label}: ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.summary}</small>
+                    ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.residualConstraint ? `
+                      <small class="province-logistics-spillover-return-residual province-logistics-spillover-return-residual--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.residualConstraint.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.residualConstraint.summary}</small>
+                    ` : ''}
                   ` : ''}
                 ` : ''}
               ` : ''}
