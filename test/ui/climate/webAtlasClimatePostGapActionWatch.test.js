@@ -30,6 +30,12 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /secondaryUpkeep/);
   assert.match(webAppSource, /primaryPromotionMargin/);
   assert.match(webAppSource, /watchMargin/);
+  assert.match(webAppSource, /upkeepReminder/);
+  assert.match(webAppSource, /Rappel upkeep/);
+  assert.match(webAppSource, /rappel proche/);
+  assert.match(webAppSource, /rappel inutile/);
+  assert.match(webAppSource, /sécurité suffisante: attendre un nouveau signal avant de relancer l’upkeep/);
+  assert.match(webAppSource, /surveiller au prochain check car le secondaire peut encore remonter vite/);
   assert.match(webAppSource, /Marge avant primaire/);
   assert.match(webAppSource, /marge faible/);
   assert.match(webAppSource, /marge confortable/);
@@ -87,6 +93,9 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin--tight/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin--comfortable/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--monitor/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--skip/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -170,4 +179,14 @@ test('atlas shows remaining margin before secondary climate watch becomes primar
   assert.match(webAppSource, /Marge avant primaire/);
   assert.match(webAppSource, /view\.watchItem\.watchMargin \? `<small class="map-world-climate-post-gap-watch__margin/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin--short/);
+});
+
+test('atlas shows when climate watch margin can stop immediate upkeep reminders', () => {
+  assert.match(webAppSource, /const upkeepReminder = watchMargin/);
+  assert.match(webAppSource, /watchMargin\.state === 'comfortable'/);
+  assert.match(webAppSource, /state: 'skip'/);
+  assert.match(webAppSource, /state: 'monitor'/);
+  assert.match(webAppSource, /Rappel upkeep/);
+  assert.match(webAppSource, /view\.watchItem\.upkeepReminder \?/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--skip/);
 });

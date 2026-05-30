@@ -14266,6 +14266,19 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         ? 'déjà au seuil de promotion primaire après cet upkeep'
         : `reste ${primaryPromotionMargin} point${primaryPromotionMargin > 1 ? 's' : ''} avant la promotion primaire`,
     };
+  const upkeepReminder = watchMargin
+    ? watchMargin.state === 'comfortable'
+      ? {
+        state: 'skip',
+        label: 'rappel inutile',
+        detail: 'sécurité suffisante: attendre un nouveau signal avant de relancer l’upkeep',
+      }
+      : {
+        state: 'monitor',
+        label: 'rappel proche',
+        detail: 'surveiller au prochain check car le secondaire peut encore remonter vite',
+      }
+    : null;
   const minimalProtection = coverageView.secondaryProtections?.[0]
     ?? coverageView.activeProtections?.[0]
     ?? (gapActionView.recommendation
@@ -14375,6 +14388,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       secondaryProtectionGuard,
       secondaryUpkeep,
       watchMargin,
+      upkeepReminder,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -14416,6 +14430,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__upkeep map-world-climate-post-gap-watch__upkeep--${view.watchItem.secondaryUpkeep.state}"><b>Entretien minimal</b> · ${view.watchItem.secondaryUpkeep.label}: ${view.watchItem.secondaryUpkeep.action}; ${view.watchItem.secondaryUpkeep.reason}</small>
       ${view.watchItem.secondaryUpkeep.smallestUpkeepReason ? `<small class="map-world-climate-post-gap-watch__why"><b>Pourquoi cet upkeep</b> · ${view.watchItem.secondaryUpkeep.smallestUpkeepReason.summary}</small>` : '<small class="map-world-climate-post-gap-watch__why"><b>Sans upkeep immédiat</b> · la veille peut rester secondaire tant que le signal ne se rapproche pas.</small>'}
       ${view.watchItem.watchMargin ? `<small class="map-world-climate-post-gap-watch__margin map-world-climate-post-gap-watch__margin--${view.watchItem.watchMargin.state}"><b>Marge avant primaire</b> · ${view.watchItem.watchMargin.label}: ${view.watchItem.watchMargin.detail}</small>` : ''}
+      ${view.watchItem.upkeepReminder ? `<small class="map-world-climate-post-gap-watch__reminder map-world-climate-post-gap-watch__reminder--${view.watchItem.upkeepReminder.state}"><b>Rappel upkeep</b> · ${view.watchItem.upkeepReminder.label}: ${view.watchItem.upkeepReminder.detail}</small>` : ''}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
