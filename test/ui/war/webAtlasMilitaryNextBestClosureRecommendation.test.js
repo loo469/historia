@@ -402,6 +402,22 @@ test('atlas military shows what remains to watch after the front follow-up actio
   assert.match(webAppSource, /const remainingWatch = watchParts\.length \? `Reste à surveiller: \$\{watchParts\.slice\(0, 2\)\.join\(' · '\)\}` : null/);
   assert.match(webAppSource, /remainingWatch,/);
   assert.match(webAppSource, /ladder\.remainingWatch \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__watch"/);
-  assert.match(webAppSource, /ladderHeight = preview\.blockedFollowUpLadder\?\.visible \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 5\.2 : 3\.85 : 0/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.remainingWatch \? 5\.2 : 3\.85/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__watch/);
+});
+
+// MAP-A40: show when residual front follow-up surveillance is still useful or
+// can be dropped, using the same visible risk/condition signals.
+test('atlas military shows when the front follow-up watch can be dropped', () => {
+  assert.match(webAppSource, /let watchDrop = null/);
+  assert.match(webAppSource, /residualRisk\?\.visible && residualRisk\.tone === 'covered'/);
+  assert.match(webAppSource, /label: 'Suivi stabilisé'/);
+  assert.match(webAppSource, /peut être lâché après confirmation: \$\{residualRisk\.action\}/);
+  assert.match(webAppSource, /label: 'Surveillance encore utile'/);
+  assert.match(webAppSource, /detail: `lâcher quand \$\{exitCondition\}`/);
+  assert.match(webAppSource, /ladder\.watchDrop \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__drop/);
+  assert.match(webAppSource, /ladder\.watchDrop\.label\}: \$\{ladder\.watchDrop\.detail\}/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.watchDrop \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 6\.55 : 5\.2/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__drop--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__drop--stable/);
 });

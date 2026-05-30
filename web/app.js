@@ -2777,6 +2777,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       detail: 'pas assez de signaux fiables',
       firstActionReason: 'raison masquée: signaux insuffisants',
       remainingWatch: null,
+      watchDrop: null,
     };
   }
   const playableEntry = candidates.find((entry) => entry.viability.status === 'ready') ?? null;
@@ -2818,6 +2819,25 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
     watchParts.push(`${prepUnlock.delayCost.label.toLowerCase()}: ${prepUnlock.delayCost.detail}`);
   }
   const remainingWatch = watchParts.length ? `Reste à surveiller: ${watchParts.slice(0, 2).join(' · ')}` : null;
+  let watchDrop = null;
+  if (residualRisk?.visible && residualRisk.tone === 'covered') {
+    watchDrop = {
+      tone: 'stable',
+      label: 'Suivi stabilisé',
+      detail: `peut être lâché après confirmation: ${residualRisk.action}`,
+    };
+  } else if (remainingWatch) {
+    const exitCondition = alternative.viabilityStatus !== 'ready'
+      ? alternative.minimumCondition
+      : residualRisk?.action ?? prepUnlock?.delayCost?.detail;
+    if (exitCondition) {
+      watchDrop = {
+        tone: 'watch',
+        label: 'Surveillance encore utile',
+        detail: `lâcher quand ${exitCondition}`,
+      };
+    }
+  }
   if (steps.length < 2) {
     return {
       visible: false,
@@ -2826,6 +2846,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       detail: 'un seul signal, ligne dédiée suffisante',
       firstActionReason: 'raison masquée: un seul signal utile',
       remainingWatch: null,
+      watchDrop: null,
     };
   }
   const delayCost = prepUnlock?.delayCost ?? null;
@@ -2836,6 +2857,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
     detail: steps.join(' → '),
     firstActionReason: `Pourquoi d’abord: ${reasonParts.slice(0, 4).join(' · ')}`,
     remainingWatch,
+    watchDrop,
   };
 }
 
@@ -3092,11 +3114,12 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 function renderAtlasMilitaryBlockedFollowUpLadder(ladder, y) {
   if (!ladder?.visible) return '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}${ladder.remainingWatch ? `; ${ladder.remainingWatch}` : ''}">
+    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}${ladder.remainingWatch ? `; ${ladder.remainingWatch}` : ''}${ladder.watchDrop ? `; ${ladder.watchDrop.label}: ${ladder.watchDrop.detail}` : ''}">
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__label" x="44.2" y="${y}">${ladder.label}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__detail" x="44.2" y="${y + 1.35}">${ladder.detail}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__reason" x="44.2" y="${y + 2.7}">${ladder.firstActionReason}</text>
       ${ladder.remainingWatch ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__watch" x="44.2" y="${y + 4.05}">${ladder.remainingWatch}</text>` : ''}
+      ${ladder.watchDrop ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__drop atlas-military-neighbor-blocked-follow-up-ladder__drop--${ladder.watchDrop.tone}" x="44.2" y="${y + (ladder.remainingWatch ? 5.4 : 4.05)}">${ladder.watchDrop.label}: ${ladder.watchDrop.detail}</text>` : ''}
     </g>
   `;
 }
@@ -3134,7 +3157,9 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
     ? preview.blockedFollowUpAlternative?.prepUnlock?.delayCost ? 5.2 : preview.blockedFollowUpAlternative?.prepUnlock ? 3.85 : 2.5
     : 0;
   const ladderY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? alternativeBlockHeight + 0.25 : 0);
-  const ladderHeight = preview.blockedFollowUpLadder?.visible ? preview.blockedFollowUpLadder?.remainingWatch ? 5.2 : 3.85 : 0;
+  const ladderHeight = preview.blockedFollowUpLadder?.visible
+    ? preview.blockedFollowUpLadder?.watchDrop ? preview.blockedFollowUpLadder?.remainingWatch ? 6.55 : 5.2 : preview.blockedFollowUpLadder?.remainingWatch ? 5.2 : 3.85
+    : 0;
   const contestedY = ladderY + (preview.blockedFollowUpLadder?.visible ? ladderHeight + 0.25 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
   const hintHeight = preview.sharedHandlingHint?.visible ? 2.5 : 0;
