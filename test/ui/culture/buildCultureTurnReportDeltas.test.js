@@ -478,6 +478,8 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         summary: 'Aucun bundle culturel sûr à reporter ce tour.',
         primaryDeferId: null,
         primaryMissedWindowConsequence: null,
+        primaryMinimalSafeAction: null,
+        minimalSafeActionFallback: 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
         missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
         priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
         entries: [],
@@ -817,13 +819,17 @@ test('buildCultureTurnReportDeltas shows the consequence of missing the next def
 
   const safeToDefer = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles;
   assert.equal(safeToDefer.primaryMissedWindowConsequence, 'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.');
+  assert.equal(safeToDefer.primaryMinimalSafeAction, 'confirmer Ouvrir le récit d’expansion');
   assert.equal(safeToDefer.missedWindowFallback, 'Conséquence calculée depuis le fallout/payoff existant du bundle reporté.');
+  assert.equal(safeToDefer.minimalSafeActionFallback, 'Action minimale calculée depuis le suivi courant du bundle reporté.');
   assert.deepEqual(safeToDefer.entries.map((entry) => [
     entry.clusterLabel,
     entry.revisitPriority,
     entry.missedWindowConsequence,
     entry.missedWindowConsequenceType,
     entry.missedWindowSeverity,
+    entry.minimalSafeAction,
+    entry.preventedConsequence,
   ]), [
     [
       'Compact d’Aurora',
@@ -831,8 +837,10 @@ test('buildCultureTurnReportDeltas shows the consequence of missing the next def
       'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.',
       'consolidation-delay',
       1,
+      'confirmer Ouvrir le récit d’expansion',
+      'évite une consolidation retardée',
     ],
-    ['Harbor Compact', 'later', null, null, 0],
+    ['Harbor Compact', 'later', null, null, 0, null, null],
   ]);
 });
 
@@ -926,6 +934,8 @@ test('buildCultureTurnReportDeltas keeps a no-deadline safe defer fallback stabl
     summary: 'Aucun bundle culturel sûr à reporter ce tour.',
     primaryDeferId: null,
     primaryMissedWindowConsequence: null,
+    primaryMinimalSafeAction: null,
+    minimalSafeActionFallback: 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
     missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
     priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
     entries: [],
@@ -1062,6 +1072,8 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
           summary: 'Aucun bundle culturel sûr à reporter ce tour.',
           primaryDeferId: null,
           primaryMissedWindowConsequence: null,
+          primaryMinimalSafeAction: null,
+          minimalSafeActionFallback: 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
           missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
           priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
           entries: [],
