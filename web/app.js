@@ -14206,12 +14206,25 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       minimalAction: minimalProtection.action ?? null,
     }
     : null;
+  const upkeepPromotionRisk = watchGap.nearestThresholdScore >= 65
+    ? 'risque de promotion au prochain tour'
+    : 'risque de promotion seulement si la protection échoue';
+  const smallestUpkeepReason = secondaryProtectionGuard?.minimalAction
+    ? {
+      region: secondaryProtectionGuard.label,
+      signal: watchGap.nearestRiskLabel,
+      cost: 'coût minimal: garder la mitigation existante plutôt qu’une prévention complète',
+      promotionRisk: upkeepPromotionRisk,
+      summary: `cible ${secondaryProtectionGuard.label}; signal ${watchGap.nearestRiskLabel}; coût minimal; ${upkeepPromotionRisk}`,
+    }
+    : null;
   const secondaryUpkeep = secondaryProtectionGuard?.minimalAction
     ? {
       state: 'available',
       label: 'entretien minimal',
       action: secondaryProtectionGuard.minimalAction,
       reason: `garde ${watchGap.label} secondaire sans lancer une prévention complète`,
+      smallestUpkeepReason,
     }
     : secondaryProtectionGuard
       ? {
@@ -14219,12 +14232,14 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         label: 'entretien impossible',
         action: 'aucune action minimale calculable depuis la protection visible',
         reason: 'ne pas confondre avec une prévention complète ou une action primaire',
+        smallestUpkeepReason: null,
       }
       : {
-        state: 'fallback',
-        label: 'fallback entretien',
-        action: 'relire la veille secondaire au prochain signal climat avant d’investir',
-        reason: 'aucune mitigation minimale disponible pour maintenir ce statut',
+        state: 'stable-without-upkeep',
+        label: 'veille stable sans upkeep',
+        action: 'surveiller sans entretien immédiat tant que la protection tient',
+        reason: 'la veille peut rester secondaire sans upkeep immédiat',
+        smallestUpkeepReason: null,
       };
   const remainingWatchItems = (coverageView.blindSpots ?? [])
     .filter((gap) => !gap.nearest && gap.label !== gapActionView.recommendation.target && gap.nearestThresholdScore >= 40);
@@ -14244,7 +14259,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
           state: 'upkeep-secondary',
           decision: 'entretenir un secondaire',
           line: `Entretenir un secondaire: ${secondaryUpkeep.action}; ${watchGap.label} reste sous le primaire.`,
-          why: 'plus petit upkeep utile, pas une prévention complète',
+          why: secondaryUpkeep.smallestUpkeepReason?.summary ?? 'plus petit upkeep utile, pas une prévention complète',
         }
         : {
           state: 'watch-only',
@@ -14322,6 +14337,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small><b>Transfert attention</b> · ${view.watchItem.promotionCue}</small>
       ${view.watchItem.secondaryProtectionGuard ? `<small class="map-world-climate-post-gap-watch__guard"><b>Reste secondaire si</b> · ${view.watchItem.secondaryProtectionGuard.condition}${view.watchItem.secondaryProtectionGuard.minimalAction ? `; action minimale: ${view.watchItem.secondaryProtectionGuard.minimalAction}` : '; action minimale indisponible'}</small>` : ''}
       <small class="map-world-climate-post-gap-watch__upkeep map-world-climate-post-gap-watch__upkeep--${view.watchItem.secondaryUpkeep.state}"><b>Entretien minimal</b> · ${view.watchItem.secondaryUpkeep.label}: ${view.watchItem.secondaryUpkeep.action}; ${view.watchItem.secondaryUpkeep.reason}</small>
+      ${view.watchItem.secondaryUpkeep.smallestUpkeepReason ? `<small class="map-world-climate-post-gap-watch__why"><b>Pourquoi cet upkeep</b> · ${view.watchItem.secondaryUpkeep.smallestUpkeepReason.summary}</small>` : '<small class="map-world-climate-post-gap-watch__why"><b>Sans upkeep immédiat</b> · la veille peut rester secondaire tant que le signal ne se rapproche pas.</small>'}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
