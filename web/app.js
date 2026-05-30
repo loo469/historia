@@ -2776,6 +2776,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       label: 'Synthèse suivi front indisponible',
       detail: 'pas assez de signaux fiables',
       firstActionReason: 'raison masquée: signaux insuffisants',
+      remainingWatch: null,
     };
   }
   const playableEntry = candidates.find((entry) => entry.viability.status === 'ready') ?? null;
@@ -2806,6 +2807,17 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
   if (residualRisk?.visible) {
     reasonParts.push(`risque restant: ${residualRisk.label}`);
   }
+  const watchParts = [];
+  if (residualRisk?.visible) {
+    watchParts.push(`${residualRisk.label}: ${residualRisk.detail}`);
+  }
+  if (alternative.viabilityStatus !== 'ready') {
+    watchParts.push(`condition ${alternative.minimumCondition}`);
+  }
+  if (!watchParts.length && prepUnlock?.delayCost?.tone === 'risky') {
+    watchParts.push(`${prepUnlock.delayCost.label.toLowerCase()}: ${prepUnlock.delayCost.detail}`);
+  }
+  const remainingWatch = watchParts.length ? `Reste à surveiller: ${watchParts.slice(0, 2).join(' · ')}` : null;
   if (steps.length < 2) {
     return {
       visible: false,
@@ -2813,6 +2825,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       label: 'Synthèse suivi front masquée',
       detail: 'un seul signal, ligne dédiée suffisante',
       firstActionReason: 'raison masquée: un seul signal utile',
+      remainingWatch: null,
     };
   }
   const delayCost = prepUnlock?.delayCost ?? null;
@@ -2822,6 +2835,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
     label: 'Échelle suivi front',
     detail: steps.join(' → '),
     firstActionReason: `Pourquoi d’abord: ${reasonParts.slice(0, 4).join(' · ')}`,
+    remainingWatch,
   };
 }
 
@@ -3078,10 +3092,11 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 function renderAtlasMilitaryBlockedFollowUpLadder(ladder, y) {
   if (!ladder?.visible) return '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}">
+    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}${ladder.remainingWatch ? `; ${ladder.remainingWatch}` : ''}">
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__label" x="44.2" y="${y}">${ladder.label}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__detail" x="44.2" y="${y + 1.35}">${ladder.detail}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__reason" x="44.2" y="${y + 2.7}">${ladder.firstActionReason}</text>
+      ${ladder.remainingWatch ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__watch" x="44.2" y="${y + 4.05}">${ladder.remainingWatch}</text>` : ''}
     </g>
   `;
 }
@@ -3119,8 +3134,8 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
     ? preview.blockedFollowUpAlternative?.prepUnlock?.delayCost ? 5.2 : preview.blockedFollowUpAlternative?.prepUnlock ? 3.85 : 2.5
     : 0;
   const ladderY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? alternativeBlockHeight + 0.25 : 0);
-  const ladderHeight = preview.blockedFollowUpLadder?.visible ? 3.85 : 0;
-  const contestedY = ladderY + (preview.blockedFollowUpLadder?.visible ? 4.1 : 0);
+  const ladderHeight = preview.blockedFollowUpLadder?.visible ? preview.blockedFollowUpLadder?.remainingWatch ? 5.2 : 3.85 : 0;
+  const contestedY = ladderY + (preview.blockedFollowUpLadder?.visible ? ladderHeight + 0.25 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
   const hintHeight = preview.sharedHandlingHint?.visible ? 2.5 : 0;
   const residualHeight = preview.sharedResidualRisk?.visible ? 2.5 : 0;
