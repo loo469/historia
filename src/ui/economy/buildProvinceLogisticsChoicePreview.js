@@ -1216,11 +1216,16 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             label: 'Slack après bloqueur',
             summary: 'Après action, le slack reste disponible: aucun bloqueur immédiat à traiter.',
           },
+          nextLikelyConsumer: {
+            state: 'none',
+            label: 'Aucun consommateur suivant',
+            summary: 'Aucun choix logistique significatif ne consommerait le slack ensuite.',
+          },
         };
       }
 
       const primaryConsumer = rankedConsumers[0];
-      const nextConsumer = rankedConsumers[1] ?? null;
+      const nextConsumer = rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label) ?? null;
       return {
         state: primaryConsumer.tone ?? 'watch',
         label: 'Slack consommé par',
@@ -1239,6 +1244,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             ? `Après ${primaryConsumer.label}, marge restante à surveiller: ${nextConsumer.label} (${nextConsumer.reason}).`
             : `Après ${primaryConsumer.label}, aucune autre contrainte immédiate ne consomme le slack.`),
           nextConsumer: nextConsumer?.label ?? null,
+        },
+        nextLikelyConsumer: {
+          state: nextConsumer ? nextConsumer.tone ?? 'watch' : 'none',
+          label: nextConsumer ? `Prochain consommateur: ${nextConsumer.label}` : 'Aucun consommateur suivant',
+          summary: nextConsumer
+            ? `${nextConsumer.label} consommerait ensuite le slack: ${nextConsumer.reason}.`
+            : `Après ${primaryConsumer.label}, aucun choix logistique significatif ne consommerait le slack ensuite.`,
         },
       };
     };
