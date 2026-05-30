@@ -14593,11 +14593,13 @@ button { font: inherit; }
 .atlas-military-neighbor-blocked-follow-up-alt__detail,
 .atlas-military-neighbor-blocked-follow-up-alt__prep,
 .atlas-military-neighbor-blocked-follow-up-alt__delay,
-.atlas-military-neighbor-blocked-follow-up-ladder__detail {
+.atlas-military-neighbor-blocked-follow-up-ladder__detail,
+.atlas-military-neighbor-blocked-follow-up-ladder__reason {
   fill: #ddd6fe;
   font-size: 0.42px;
 }
 .atlas-military-neighbor-blocked-follow-up-alt__prep { fill: #bfdbfe; }
+.atlas-military-neighbor-blocked-follow-up-ladder__reason { fill: #bfdbfe; }
 .atlas-military-neighbor-blocked-follow-up-alt__delay--acceptable { fill: #bbf7d0; }
 .atlas-military-neighbor-blocked-follow-up-alt__delay--risky { fill: #fecdd3; }
 .atlas-military-neighbor-review-priority__label,
