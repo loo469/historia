@@ -1139,11 +1139,54 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           },
           canContinueWithoutCriticalDelay: false,
         };
+  const buildGuardNextChoiceTrigger = (opportunityCost) => {
+    const fallbackAction = opportunityCost?.fallbackAction ?? null;
+    if (!fallbackAction) {
+      return null;
+    }
+
+    const exposure = fallbackAction.residualExposure ?? opportunityCost?.residualExposure ?? null;
+    const exposedRoute = exposure?.exposedRoutes?.[0] ?? null;
+    const stopMarker = opportunityCost?.stopMarker ?? null;
+
+    if (stopMarker?.cumulativeCost && stopMarker?.expectedBenefit) {
+      const missingBenefit = Math.max(1, stopMarker.cumulativeCost - stopMarker.expectedBenefit);
+      return {
+        state: exposedRoute?.tone === 'high' ? 'urgent' : 'watch',
+        label: `Surveiller ${stopMarker.route}`,
+        trigger: `Changer de garde si le bénéfice attendu de ${stopMarker.route} gagne ${missingBenefit} ou si son coût descend sous ${stopMarker.expectedBenefit}.`,
+        reason: `${stopMarker.route} reste le premier seuil écarté: coût ${stopMarker.cumulativeCost} contre bénéfice ${stopMarker.expectedBenefit}.`,
+      };
+    }
+
+    if (opportunityCost?.state === 'competing') {
+      return {
+        state: 'resource',
+        label: `Surveiller ${opportunityCost.delayedRoute}`,
+        trigger: priorityAction.resource
+          ? `Changer de garde si ${priorityAction.resource} n’est plus limitant sur ${priorityAction.route} ou si ${opportunityCost.delayedRoute} devient le risque critique visible.`
+          : `Changer de garde si ${opportunityCost.delayedRoute} devient le risque critique visible sans partager la capacité locale.`,
+        reason: `Le choix actuel protège ${opportunityCost.protectedRoute}; ${opportunityCost.delayedRoute} reste le premier candidat à reprendre après le fallback.`,
+      };
+    }
+
+    if (exposedRoute) {
+      return {
+        state: exposedRoute.tone === 'high' ? 'urgent' : 'watch',
+        label: `Surveiller ${exposedRoute.route}`,
+        trigger: `Changer de garde si ${exposedRoute.route} passe en exposition critique ou devient plus rentable que ${opportunityCost.protectedRoute ?? guardAction.route}.`,
+        reason: exposure.residualRisk,
+      };
+    }
+
+    return null;
+  };
   const buildGuardFallbackJustification = (opportunityCost) => {
     const fallbackAction = opportunityCost?.fallbackAction ?? null;
     const exposure = fallbackAction?.residualExposure ?? opportunityCost?.residualExposure ?? null;
     const exposedRoutes = exposure?.exposedRoutes ?? [];
     const firstExposedRoute = exposedRoutes[0] ?? null;
+    const nextChoiceTrigger = buildGuardNextChoiceTrigger(opportunityCost);
 
     if (!fallbackAction) {
       return {
@@ -1169,6 +1212,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       ignoredRisk: firstExposedRoute?.tone === 'high'
         ? `Ignorer ce repli laisse ${exposedLabel} critique et peut retarder le bénéfice principal.`
         : `Ignorer ce repli risque de relancer une garde moins rentable sur ${exposedLabel}.`,
+      nextChoiceTrigger,
     };
   };
   if (guardOpportunityCost.fallbackAction) {
