@@ -1557,12 +1557,26 @@ function buildCulturalReopenedReviewPreview(immediateSynergy, reviewExitSignal, 
 }
 
 function buildCulturalReopenedReviewOutcomeThreshold(actionCue, reviewExitSignal, sourceCue) {
+  const criterion = `${sourceCue} soutient encore ${actionCue} sans contredire ${reviewExitSignal.localAnchor}`;
+  const notActionableYet = buildCulturalReviewNotActionableReason(criterion, reviewExitSignal);
+
   return {
     state: 'stable-if-synergy-still-supports-anchor',
     label: 'Seuil stable',
-    criterion: `${sourceCue} soutient encore ${actionCue} sans contredire ${reviewExitSignal.localAnchor}`,
+    criterion,
     fallback: `si ce seuil n’est pas lisible, garder ${reviewExitSignal.localAnchor} comme repère calme`,
-    summary: `Stable si ${sourceCue} soutient encore ${actionCue} sans contredire ${reviewExitSignal.localAnchor}; sinon revoir activement.`,
+    notActionableYet,
+    summary: `Stable si ${criterion}; sinon revoir activement.`,
+  };
+}
+
+function buildCulturalReviewNotActionableReason(criterion, reviewExitSignal) {
+  return {
+    state: 'visible-below-action-threshold',
+    label: 'Pas encore actionnable',
+    missingThreshold: criterion,
+    margin: `marge à confirmer avant ${reviewExitSignal.reviewWindow}`,
+    summary: `Pas encore actionnable: attendre que ${criterion}; marge à confirmer avant ${reviewExitSignal.reviewWindow}.`,
   };
 }
 
