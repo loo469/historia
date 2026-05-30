@@ -472,3 +472,16 @@ test('atlas military explains why a light front follow-up can wait', () => {
   assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpDeferReason \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 11\.95 : 10\.6/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__defer--quiet/);
 });
+
+// MAP-A45: compare the safe defer buffer with the next pressure that could
+// consume it, without changing urgent-priority behavior.
+test('atlas military compares light front defer buffer with upcoming pressure', () => {
+  assert.match(webAppSource, /const lightFollowUpPressure = lightFollowUpDeferReason/);
+  assert.match(webAppSource, /label: lightFollowUpPriority >= 46 \|\| residualRisk\?\.tone === 'watch' \? 'Sûr si pas de pression' : 'Buffer restant'/);
+  assert.match(webAppSource, /buffer: \$\{residualRisk\.label\} · pression: \$\{residualRisk\.detail\}/);
+  assert.match(webAppSource, /lightFollowUpPressure,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpPressure \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__pressure/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpPressure \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 13\.3 : 11\.95/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure--quiet/);
+});
