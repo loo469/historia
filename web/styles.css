@@ -9658,6 +9658,18 @@ button { font: inherit; }
 .province-intrigue-turn-report__expiry-summary {
   color: rgba(253, 224, 71, 0.86);
 }
+.province-intrigue-turn-report__safest-immediate {
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(20, 184, 166, 0.12);
+  color: rgba(153, 246, 228, 0.92);
+  font-weight: 700;
+}
+.province-intrigue-turn-report__safest-immediate--no-clear-winner,
+.province-intrigue-turn-report__safest-immediate--none-expiring {
+  background: rgba(148, 163, 184, 0.1);
+  color: rgba(203, 213, 225, 0.84);
+}
 .province-intrigue-turn-report__followup {
   display: grid;
   grid-template-columns: minmax(72px, max-content) 1fr;

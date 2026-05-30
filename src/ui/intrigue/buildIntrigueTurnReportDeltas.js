@@ -207,6 +207,57 @@ function summarizeFollowUpExpiry(options) {
   return `${expiring.length} suite${expiring.length > 1 ? 's' : ''} à traiter vite avant dégradation.`;
 }
 
+function scoreExpiringFollowUp(option, principalRisk) {
+  const riskTypeScores = {
+    'exposition excessive': { defensive: 4, offensive: 2, wait: 1 },
+    'timing fragile': { offensive: 4, defensive: 3, wait: 1 },
+    'signal contradictoire': { defensive: 4, offensive: 2, wait: 1 },
+    'confiance basse': { defensive: 3, offensive: 3, wait: 1 },
+  };
+
+  return riskTypeScores[principalRisk]?.[option.type] ?? 1;
+}
+
+function buildSafestImmediateFollowUp(options, principalRisk) {
+  const expiring = options.filter((option) => option.expiry?.state === 'expiring');
+
+  if (expiring.length === 0) {
+    return {
+      state: 'none-expiring',
+      recommended: false,
+      label: 'Aucune suite immédiate prioritaire',
+      reason: 'aucune option débloquée ne montre d’expiration visible',
+      fallback: true,
+    };
+  }
+
+  const ranked = expiring
+    .map((option) => ({ option, score: scoreExpiringFollowUp(option, principalRisk) }))
+    .sort((left, right) => right.score - left.score);
+  const [best, second] = ranked;
+
+  if (second && best.score === second.score) {
+    return {
+      state: 'no-clear-winner',
+      recommended: false,
+      label: 'Priorité immédiate à confirmer',
+      reason: 'plusieurs suites expirent avec le même niveau de sûreté visible',
+      candidates: ranked.map(({ option }) => option.label).slice(0, 2),
+      fallback: true,
+    };
+  }
+
+  return {
+    state: expiring.length > 1 ? 'recommended' : 'single-expiring',
+    recommended: true,
+    type: best.option.type,
+    label: best.option.label,
+    action: best.option.consequence,
+    reason: `${best.option.expiry.label}: ${best.option.expiry.detail}`,
+    fallback: false,
+  };
+}
+
 function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingRecommendationChange) {
   const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
   const optionsByRisk = {
@@ -238,7 +289,10 @@ function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingR
       withExpiry({ type: 'wait', label: 'Attente', consequence: 'différer seulement si l’incertitude baisse sans contradiction' }),
     ],
     'confiance basse': [
-      withExpiry({ type: 'defensive', label: 'Défensif', consequence: 'stabiliser la lecture si la confiance reste basse' }),
+      withExpiry(
+        { type: 'defensive', label: 'Défensif', consequence: 'stabiliser la lecture si la confiance reste basse' },
+        { label: 'lecture fragile', detail: 'la confiance peut dériver si elle n’est pas stabilisée' },
+      ),
       withExpiry({ type: 'wait', label: 'Attente', consequence: 'attendre si la cause visible n’empire pas' }),
       withExpiry(
         { type: 'offensive', label: 'Offensif', consequence: 'agir si le contrôle confirme un signal exploitable' },
@@ -270,6 +324,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
       unlockNextTurn: 'Aucun choix supplémentaire à débloquer au prochain tour.',
       followUpOptions: [],
       followUpExpirySummary: 'Aucune suite débloquée: pas d’échéance à signaler.',
+      safestImmediateFollowUp: buildSafestImmediateFollowUp([], 'confiance basse'),
       fullReviewRequired: false,
       fallback: true,
     };
@@ -322,6 +377,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     unlockNextTurn: buildNextTurnUnlock(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
     followUpOptions: followUp.options,
     followUpExpirySummary: followUp.expirySummary,
+    safestImmediateFollowUp: buildSafestImmediateFollowUp(followUp.options, principalRisk),
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };
