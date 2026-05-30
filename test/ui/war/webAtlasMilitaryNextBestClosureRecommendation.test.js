@@ -348,3 +348,20 @@ test('atlas military shows prep action to unlock the next front alternative', ()
   assert.match(webAppSource, /atlas-military-neighbor-blocked-follow-up-alt__prep/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__prep/);
 });
+
+// MAP-A36: prep guidance should also show whether delaying it is acceptable or risky,
+// without inventing a cost when no fog-safe cost signal exists.
+test('atlas military shows delay cost for blocked front prep actions', () => {
+  assert.match(webAppSource, /function getAtlasMilitaryBlockedFollowUpPrepDelayCost\(option, checklistItem\)/);
+  assert.match(webAppSource, /Report acceptable/);
+  assert.match(webAppSource, /coût limité si relu au prochain tour/);
+  assert.match(webAppSource, /Report risqué/);
+  assert.match(webAppSource, /fenêtre qui se ferme/);
+  assert.match(webAppSource, /province qui reste exposée/);
+  assert.match(webAppSource, /option\.viabilityStatus === 'ready' \|\| option\.blockerType === 'unknown'\) return null/);
+  assert.match(webAppSource, /delayCost: getAtlasMilitaryBlockedFollowUpPrepDelayCost\(option, checklistItem\)/);
+  assert.match(webAppSource, /coût de report \$\{delayCost\.label\}: \$\{delayCost\.detail\}/);
+  assert.match(webAppSource, /atlas-military-neighbor-blocked-follow-up-alt__delay--\$\{delayCost\.tone\}/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__delay--acceptable/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__delay--risky/);
+});

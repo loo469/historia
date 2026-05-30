@@ -2724,6 +2724,31 @@ function getAtlasMilitaryBlockedFollowUpAlternativeViability(option, checklistIt
   };
 }
 
+function getAtlasMilitaryBlockedFollowUpPrepDelayCost(option, checklistItem) {
+  if (!option || option.viabilityStatus === 'ready' || option.blockerType === 'unknown') return null;
+  const priority = Math.max(option.score ?? 0, checklistItem?.priority ?? 0);
+  if (!priority && !option.blockerType) return null;
+  if (option.blockerType === 'climate' || priority >= 72) {
+    return {
+      tone: 'risky',
+      label: 'Report risqué',
+      detail: option.blockerType === 'climate' ? 'fenêtre qui se ferme' : 'risque qui augmente',
+    };
+  }
+  if (option.blockerType === 'intel' || priority >= 46) {
+    return {
+      tone: 'risky',
+      label: 'Report risqué',
+      detail: option.blockerType === 'intel' ? 'information manquante retarde le front' : 'province qui reste exposée',
+    };
+  }
+  return {
+    tone: 'acceptable',
+    label: 'Report acceptable',
+    detail: 'coût limité si relu au prochain tour',
+  };
+}
+
 function getAtlasMilitaryBlockedFollowUpPrepUnlock(option, checklistItem) {
   if (!option || option.viabilityStatus === 'ready') return null;
   const checklistAction = checklistItem?.checklist?.immediateAction ?? option.nextAction ?? 'préparer une action visible';
@@ -2739,6 +2764,7 @@ function getAtlasMilitaryBlockedFollowUpPrepUnlock(option, checklistItem) {
     label: `Préparer ${option.provinceLabel}`,
     action: actionByType[option.blockerType] ?? `préparer: ${checklistAction}`,
     unlocks: `débloque si ${prerequisite}`,
+    delayCost: getAtlasMilitaryBlockedFollowUpPrepDelayCost(option, checklistItem),
   };
 }
 
@@ -2787,6 +2813,7 @@ function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict
         label: 'Préparer une alternative',
         action: 'résoudre conflit puis relire fronts visibles',
         unlocks: 'débloque si un front candidat reste fog-safe',
+        delayCost: null,
       },
     };
   }
@@ -2989,14 +3016,19 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 
 function renderAtlasMilitaryBlockedResidualFollowUpAlternative(alternative, y) {
   if (!alternative?.visible) return '';
+  const delayCost = alternative.prepUnlock?.delayCost ?? null;
   const prep = alternative.prepUnlock
     ? `<text class="atlas-military-neighbor-blocked-follow-up-alt__prep" x="44.2" y="${y + 2.7}">${alternative.prepUnlock.action} · ${alternative.prepUnlock.unlocks}</text>`
     : '';
+  const delay = delayCost
+    ? `<text class="atlas-military-neighbor-blocked-follow-up-alt__delay atlas-military-neighbor-blocked-follow-up-alt__delay--${delayCost.tone}" x="44.2" y="${y + 4.05}">${delayCost.label}: ${delayCost.detail}</text>`
+    : '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-alt atlas-military-neighbor-blocked-follow-up-alt--${alternative.tone}" aria-label="Alternative après suivi résiduel bloqué: ${alternative.label}; viabilité ${alternative.viabilityLabel}; ${alternative.minimumCondition}; raison ${alternative.reason}; ${alternative.detail}; action ${alternative.action}${alternative.prepUnlock ? `; préparation ${alternative.prepUnlock.label}: ${alternative.prepUnlock.action}; ${alternative.prepUnlock.unlocks}` : ''}">
+    <g class="atlas-military-neighbor-blocked-follow-up-alt atlas-military-neighbor-blocked-follow-up-alt--${alternative.tone}" aria-label="Alternative après suivi résiduel bloqué: ${alternative.label}; viabilité ${alternative.viabilityLabel}; ${alternative.minimumCondition}; raison ${alternative.reason}; ${alternative.detail}; action ${alternative.action}${alternative.prepUnlock ? `; préparation ${alternative.prepUnlock.label}: ${alternative.prepUnlock.action}; ${alternative.prepUnlock.unlocks}` : ''}${delayCost ? `; coût de report ${delayCost.label}: ${delayCost.detail}` : ''}">
       <text class="atlas-military-neighbor-blocked-follow-up-alt__label" x="44.2" y="${y}">${alternative.label}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-alt__detail" x="44.2" y="${y + 1.35}">${alternative.minimumCondition} · ${alternative.reason}: ${alternative.action}</text>
       ${prep}
+      ${delay}
     </g>
   `;
 }
@@ -3012,7 +3044,7 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
   const conflictY = followUpY + (preview.residualFollowUpOrder?.visible ? 2.75 : 0);
   const alternativeY = conflictY + (preview.residualFollowUpConflict?.visible ? 2.75 : 0);
   const alternativeBlockHeight = preview.blockedFollowUpAlternative?.visible
-    ? preview.blockedFollowUpAlternative?.prepUnlock ? 3.85 : 2.5
+    ? preview.blockedFollowUpAlternative?.prepUnlock?.delayCost ? 5.2 : preview.blockedFollowUpAlternative?.prepUnlock ? 3.85 : 2.5
     : 0;
   const contestedY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? alternativeBlockHeight + 0.25 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
