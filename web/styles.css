@@ -13554,6 +13554,15 @@ button { font: inherit; }
 .map-world-climate-post-gap-watch--quiet p,
 .map-world-climate-post-gap-watch--quiet span,
 .map-world-climate-post-gap-watch--quiet small { color: #cbd5e1; }
+.map-world-climate-post-gap-watch__cue {
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.14);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
 
 .province-node--action-available::before {
   border-color: rgba(74, 222, 128, 0.48);

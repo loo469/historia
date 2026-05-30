@@ -13,10 +13,22 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /pression seuil/);
   assert.match(webAppSource, /promotionCondition/);
   assert.match(webAppSource, /Devient primaire/);
+  assert.match(webAppSource, /Moment promotion/);
+  assert.match(webAppSource, /Transfert attention/);
   assert.match(webAppSource, /Secondaire suivant/);
   assert.match(webAppSource, /nextSecondaryRisk/);
   assert.match(webAppSource, /devient action primaire si la pression reste ≥80 au prochain check/);
   assert.match(webAppSource, /devient action primaire si \$\{progress\.deadline\} confirme \$\{watchGap\.nearestRiskLabel\}/);
+  assert.match(webAppSource, /promotionTiming/);
+  assert.match(webAppSource, /promotionCue/);
+  assert.match(webAppSource, /shortSecondaryLabel/);
+  assert.match(webAppSource, /attendue ce tour-ci après résolution de l’action climatique principale/);
+  assert.match(webAppSource, /au prochain tour si \$\{progress\.deadline\} confirme la pression secondaire/);
+  assert.match(webAppSource, /seulement si la protection échoue ou si le seuil secondaire se rapproche/);
+  assert.match(webAppSource, /garder en veille courte sans remplacer l’action principale ce tour-ci/);
+  assert.match(webAppSource, /secondaire prêt/);
+  assert.match(webAppSource, /veille tour\+1/);
+  assert.match(webAppSource, /veille conditionnelle/);
   assert.match(webAppSource, /find\(\(gap\) => gap\.nearestThresholdScore >= 55\)/);
   assert.match(webAppSource, /filter\(\(gap\) => !gap\.nearest && gap\.label !== gapActionView\.recommendation\.target\)/);
   assert.match(webAppSource, /gap\.label !== watchGap\.label/);
@@ -28,6 +40,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
 
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch--watch/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__cue/);
 });
 
 test('atlas keeps a quiet fallback when no secondary climate watch is close enough', () => {
