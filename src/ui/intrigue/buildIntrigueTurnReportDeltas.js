@@ -533,6 +533,39 @@ function buildBackupLadderStabilizationReason(durability = null, stabilizationBe
   };
 }
 
+function buildBackupReturnReadiness(returnCondition = null, durability = null, stabilizationBeforeReturn = null, stabilizationReason = null) {
+  if (!returnCondition?.recommended || !durability) {
+    return {
+      state: 'no-return-window',
+      ready: false,
+      label: 'Sortie backup non lisible',
+      summary: 'Aucun état de sortie fiable vers le follow-up original n’est visible pour ce backup.',
+      nextStep: stabilizationReason?.summary ?? 'rester sur les signaux visibles avant de conclure un retour',
+      fallback: true,
+    };
+  }
+
+  if (durability.stability === 'stable-return') {
+    return {
+      state: 'return-ready',
+      ready: true,
+      label: 'Retour au follow-up original possible',
+      summary: `Sortie prête vers ${returnCondition.primary}: la durabilité visible est stable.`,
+      nextStep: returnCondition.condition,
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'stabilization-required',
+    ready: false,
+    label: 'Stabilisation encore requise',
+    summary: `${stabilizationBeforeReturn?.label ?? 'Stabilisation'} reste nécessaire avant de revenir vers ${returnCondition.primary}.`,
+    nextStep: stabilizationReason?.summary ?? stabilizationBeforeReturn?.reason ?? durability.advice,
+    fallback: false,
+  };
+}
+
 function buildBackupLadderSummary(returnCondition, durability = null, stabilizationBeforeReturn = null) {
   if (!returnCondition?.recommended || !durability) {
     const stabilizationReason = buildBackupLadderStabilizationReason(durability, stabilizationBeforeReturn);
@@ -544,6 +577,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       summary: 'Aucune boucle backup → stabilisation → retour fiable à condenser avec les signaux visibles.',
       risk: null,
       stabilizationReason,
+      returnReadiness: buildBackupReturnReadiness(returnCondition, durability, stabilizationBeforeReturn, stabilizationReason),
       fallback: true,
     };
   }
@@ -553,6 +587,12 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
     ? skippedRisk.category
     : durability.cause;
   const stabilizationReason = buildBackupLadderStabilizationReason(durability, stabilizationBeforeReturn, skippedRisk);
+  const returnReadiness = buildBackupReturnReadiness(
+    returnCondition,
+    durability,
+    stabilizationBeforeReturn,
+    stabilizationReason,
+  );
 
   if (durability.stability === 'stable-return') {
     return {
@@ -563,6 +603,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       summary: `Revenir au suivi initial: ${durability.advice}`,
       risk: visibleRisk,
       stabilizationReason,
+      returnReadiness,
       fallback: false,
     };
   }
@@ -576,6 +617,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       summary: `Rester sur ${returnCondition.backup}: ${durability.advice}`,
       risk: visibleRisk,
       stabilizationReason,
+      returnReadiness,
       fallback: false,
     };
   }
@@ -589,6 +631,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       summary: `${stabilizationBeforeReturn.label}: ${stabilizationBeforeReturn.action}. Retour ensuite vers ${returnCondition.primary}.`,
       risk: visibleRisk,
       stabilizationReason,
+      returnReadiness,
       fallback: false,
     };
   }
@@ -601,6 +644,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
     summary: 'Les signaux visibles ne suffisent pas à choisir entre backup, stabilisation et retour.',
     risk: null,
     stabilizationReason,
+    returnReadiness,
     fallback: true,
   };
 }
