@@ -207,6 +207,11 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.label, 'Point d’arrêt: avant Safe Road');
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.reason, /premier segment où le coût cumulé .* dépasse le bénéfice attendu/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.decisionLabel, /Arrêter ici protège Ember Line sans retarder Safe Road/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.state, 'recommended');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.action, 'reroute-flow');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.label, /Rediriger un flux vers Ember Line/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.reason, /bénéfice principal.*relais non-chaîné/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.opportunityCost, /Safe Road.*Pas de garde ajoutée/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {

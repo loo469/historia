@@ -107,6 +107,9 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /guardOpportunityCost/);
   assert.match(webAppSource, /province-logistics-spillover-stop/);
   assert.match(webAppSource, /stopMarker\.decisionLabel/);
+  assert.match(webAppSource, /province-logistics-spillover-fallback/);
+  assert.match(webAppSource, /fallbackAction\.label/);
+  assert.match(webAppSource, /Repli:/);
   assert.match(webAppSource, /Continuer la chaîne reste acceptable/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);
