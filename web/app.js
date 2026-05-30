@@ -14059,6 +14059,22 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
     : watchGap.nearestThresholdScore >= 65
       ? 'veille tour+1'
       : 'veille conditionnelle';
+  const minimalProtection = coverageView.secondaryProtections?.[0]
+    ?? coverageView.activeProtections?.[0]
+    ?? (gapActionView.recommendation
+      ? {
+        label: gapActionView.recommendation.target,
+        detail: gapActionView.recommendation.protectsAgainst,
+        action: gapActionView.recommendation.action,
+      }
+      : null);
+  const secondaryProtectionGuard = watchGap.nearestThresholdScore < 65 && minimalProtection
+    ? {
+      label: minimalProtection.label,
+      condition: `reste secondaire si ${minimalProtection.label} tient: ${minimalProtection.detail ?? minimalProtection.action}`,
+      minimalAction: minimalProtection.action ?? 'maintenir la mitigation minimale déjà affichée',
+    }
+    : null;
   const nextSecondaryGap = (coverageView.blindSpots ?? [])
     .filter((gap) => !gap.nearest && gap.label !== gapActionView.recommendation.target && gap.label !== watchGap.label)
     .find((gap) => gap.nearestThresholdScore >= 40) ?? null;
@@ -14090,6 +14106,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       promotionTiming,
       promotionCue,
       shortSecondaryLabel,
+      secondaryProtectionGuard,
     },
     nextSecondaryRisk,
     summary: `${watchGap.label}: seul watch item restant après l’action du gap prioritaire.`,
@@ -14126,6 +14143,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small><b>Devient primaire</b> · ${view.watchItem.promotionCondition}</small>
       <small><b>Moment promotion</b> · ${view.watchItem.promotionTiming}</small>
       <small><b>Transfert attention</b> · ${view.watchItem.promotionCue}</small>
+      ${view.watchItem.secondaryProtectionGuard ? `<small class="map-world-climate-post-gap-watch__guard"><b>Reste secondaire si</b> · ${view.watchItem.secondaryProtectionGuard.condition}; action minimale: ${view.watchItem.secondaryProtectionGuard.minimalAction}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
       <small><b>Prochain check</b> · ${view.watchItem.nextCheck}</small>
