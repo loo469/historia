@@ -849,6 +849,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardAction: { label: 'Garde indisponible', reason: 'Aucune chaîne de spillover à réduire pour l’instant.', fallback: true },
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: aucune garde concrète à classer.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Capacité de garde indisponible sans récupération locale.' },
+      guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune chaîne de garde à prolonger.', stopChain: false },
     };
   }
 
@@ -894,6 +895,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardAction: { label: 'Garde indisponible', reason: 'Aucun relais voisin confirmé; surveiller la route après résolution locale.', fallback: true },
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: coût de garde non comparable sans route exposée.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Aucune route exposée ne permet de comparer la capacité de garde.' },
+      guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune route adjacente exposée à comparer.', stopChain: false },
     };
   }
 
@@ -952,6 +954,41 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         phrase: 'enchaîner après la récupération',
         reason: `${guardAction.route} reste assez léger pour suivre ${priorityAction.route} sans remplacer l’action locale.`,
       };
+  const nextGuardCost = guardComparison.candidates.find((candidate) => candidate.route !== guardAction.route) ?? null;
+  const guardOpportunityCost = guardSequencing.state === 'chainable' && nextGuardCost
+    ? {
+      state: nextGuardCost.disruption > guardAction.disruption ? 'stop' : 'continue',
+      protectedRoute: guardAction.route,
+      delayedRoute: nextGuardCost.route,
+      summary: `Protège ${guardAction.route}, retarde ${nextGuardCost.route}.`,
+      stopChain: nextGuardCost.disruption > guardAction.disruption,
+      stopReason: nextGuardCost.disruption > guardAction.disruption
+        ? `Arrêter la chaîne après ${guardAction.route}: ${nextGuardCost.route} consommerait plus de capacité que le bénéfice attendu.`
+        : `La chaîne peut continuer vers ${nextGuardCost.route} sans surcoût dominant.`,
+    }
+    : guardSequencing.state === 'chainable'
+      ? {
+        state: 'single',
+        protectedRoute: guardAction.route,
+        delayedRoute: priorityAction.route,
+        summary: `Protège ${guardAction.route}, surveille ${priorityAction.route}.`,
+        stopChain: false,
+        stopReason: 'Aucune deuxième garde adjacente ne justifie d’arrêter la chaîne.',
+      }
+      : guardSequencing.state === 'competing'
+        ? {
+          state: 'competing',
+          protectedRoute: guardAction.route,
+          delayedRoute: priorityAction.route,
+          summary: `Protège ${guardAction.route}, retarde ${priorityAction.route}.`,
+          stopChain: true,
+          stopReason: `Ne pas prolonger: la garde remplace déjà la récupération sur ${priorityAction.route} ce tour.`,
+        }
+        : {
+          state: 'fallback',
+          summary: 'Coût d’opportunité indisponible: enchaînement de garde non comparable.',
+          stopChain: false,
+        };
 
   return {
     state: secondaryRoutes.length > 0 ? 'chain' : 'single',
@@ -962,6 +999,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     guardAction,
     guardComparison,
     guardSequencing,
+    guardOpportunityCost,
   };
 }
 

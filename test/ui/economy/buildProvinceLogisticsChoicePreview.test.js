@@ -129,6 +129,10 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardSequencing.state, 'competing');
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /choisir la garde au lieu de la récupération/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.reason, /partage|capacité/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.state, 'competing');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopChain, true);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Protège .*retarde/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason, /Ne pas prolonger|remplace déjà/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -195,6 +199,10 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.equal(preview.adjacentRouteSpilloverRisk.guardSequencing.state, 'chainable');
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /enchaîner après la récupération/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.reason, /sans remplacer l’action locale/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.state, 'stop');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopChain, true);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Protège .*retarde/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason, /Arrêter la chaîne|consommerait plus de capacité/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
@@ -231,6 +239,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.summary, /Comparaison impossible/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardSequencing.state, 'unknown');
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /enchaînement inconnu/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.state, 'fallback');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Coût d’opportunité indisponible/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
