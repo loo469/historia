@@ -14441,7 +14441,8 @@ button { font: inherit; }
 .atlas-military-neighbor-contested-priority__reason,
 .atlas-military-neighbor-front-cluster__detail,
 .atlas-military-neighbor-shared-handling__detail,
-.atlas-military-neighbor-shared-residual__detail {
+.atlas-military-neighbor-shared-residual__detail,
+.atlas-military-neighbor-residual-follow-up__detail {
   fill: #ddd6fe;
   font-size: 0.42px;
 }
@@ -14451,7 +14452,8 @@ button { font: inherit; }
 .atlas-military-neighbor-contested-priority__label,
 .atlas-military-neighbor-front-cluster__label,
 .atlas-military-neighbor-shared-handling__label,
-.atlas-military-neighbor-shared-residual__label {
+.atlas-military-neighbor-shared-residual__label,
+.atlas-military-neighbor-residual-follow-up__label {
   fill: #f5f3ff;
   font-size: 0.55px;
   font-weight: 900;
@@ -14478,7 +14480,10 @@ button { font: inherit; }
 .atlas-military-neighbor-shared-handling--shared .atlas-military-neighbor-shared-handling__label,
 .atlas-military-neighbor-shared-residual--covered .atlas-military-neighbor-shared-residual__label { fill: #bbf7d0; }
 .atlas-military-neighbor-shared-handling--separate .atlas-military-neighbor-shared-handling__label,
-.atlas-military-neighbor-shared-residual--residual .atlas-military-neighbor-shared-residual__label { fill: #fed7aa; }
+.atlas-military-neighbor-shared-residual--residual .atlas-military-neighbor-shared-residual__label,
+.atlas-military-neighbor-residual-follow-up--exposed .atlas-military-neighbor-residual-follow-up__label { fill: #fed7aa; }
+.atlas-military-neighbor-residual-follow-up--urgent .atlas-military-neighbor-residual-follow-up__label { fill: #fecdd3; }
+.atlas-military-neighbor-residual-follow-up--movement .atlas-military-neighbor-residual-follow-up__label { fill: #fde68a; }
 .atlas-military-neighbor-front-shift-row circle {
   fill: rgba(167, 139, 250, 0.84);
   stroke: rgba(245, 243, 255, 0.72);

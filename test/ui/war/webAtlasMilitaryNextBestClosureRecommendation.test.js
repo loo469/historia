@@ -246,3 +246,28 @@ test('atlas military shows residual risk after shared grouped front handling', (
   assert.match(stylesSource, /\.atlas-military-neighbor-shared-residual--covered/);
   assert.match(stylesSource, /\.atlas-military-neighbor-shared-residual--residual/);
 });
+
+// MAP-A31: when residual grouped-front risk remains, name the next follow-up
+// order and keep fully covered groups quiet.
+test('atlas military recommends follow-up order for residual grouped front risk', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborResidualFollowUpOrder\(sharedResidualRisk, cluster\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborResidualFollowUpOrder\(followUp, y\)/);
+  assert.match(webAppSource, /Ordre de suivi recommandé pour risque résiduel/);
+  assert.match(webAppSource, /Suivi recommandé: \$\{provinceLabel\}/);
+  assert.match(webAppSource, /dominantReason = cluster\?\.tone === 'critical'/);
+  assert.match(webAppSource, /\? 'urgence'/);
+  assert.match(webAppSource, /\? 'exposition'/);
+  assert.match(webAppSource, /: 'mouvement ennemi probable'/);
+  assert.match(webAppSource, /ordre rapide: verrouiller le flanc/);
+  assert.match(webAppSource, /ordre de couverture: protéger la province/);
+  assert.match(webAppSource, /ordre d’interception: bloquer le mouvement/);
+  assert.match(webAppSource, /sharedResidualRisk\.tone !== 'residual'/);
+  assert.match(webAppSource, /Aucun suivi requis/);
+  assert.match(webAppSource, /groupe couvert par l’ordre partagé/);
+  assert.match(webAppSource, /residualFollowUpOrder: buildAtlasMilitaryNeighborResidualFollowUpOrder/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborResidualFollowUpOrder\(preview\.residualFollowUpOrder, followUpY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up--urgent/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up--exposed/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up--movement/);
+});
