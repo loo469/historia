@@ -391,3 +391,17 @@ test('atlas military summarizes the front follow-up ladder', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--risky/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reason/);
 });
+
+// MAP-A39: after the chosen follow-up action, show the most useful remaining
+// watch item without adding noise when nothing relevant remains.
+test('atlas military shows what remains to watch after the front follow-up action', () => {
+  assert.match(webAppSource, /const watchParts = \[\]/);
+  assert.match(webAppSource, /watchParts\.push\(`\$\{residualRisk\.label\}: \$\{residualRisk\.detail\}`\)/);
+  assert.match(webAppSource, /watchParts\.push\(`condition \$\{alternative\.minimumCondition\}`\)/);
+  assert.match(webAppSource, /watchParts\.push\(`\$\{prepUnlock\.delayCost\.label\.toLowerCase\(\)\}: \$\{prepUnlock\.delayCost\.detail\}`\)/);
+  assert.match(webAppSource, /const remainingWatch = watchParts\.length \? `Reste à surveiller: \$\{watchParts\.slice\(0, 2\)\.join\(' · '\)\}` : null/);
+  assert.match(webAppSource, /remainingWatch,/);
+  assert.match(webAppSource, /ladder\.remainingWatch \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__watch"/);
+  assert.match(webAppSource, /ladderHeight = preview\.blockedFollowUpLadder\?\.visible \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 5\.2 : 3\.85 : 0/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__watch/);
+});
