@@ -66,6 +66,9 @@ test('playable map wires intrigue aftermath deltas into selected province turn r
   assert.match(webAppSource, /attention/);
   assert.match(webAppSource, /Suivi trace:/);
   assert.match(webAppSource, /province-intrigue-turn-report__residual-attention--/);
+  assert.match(webAppSource, /clearAction/);
+  assert.match(webAppSource, /Nettoyage trace:/);
+  assert.match(webAppSource, /province-intrigue-turn-report__residual-clear-action--/);
   assert.match(webAppSource, /province-intrigue-turn-report__return-trigger--/);
   assert.match(webAppSource, /province-intrigue-turn-report__skip-stabilization-risk--/);
   assert.match(webAppSource, /province-intrigue-turn-report__return-stabilization--/);
