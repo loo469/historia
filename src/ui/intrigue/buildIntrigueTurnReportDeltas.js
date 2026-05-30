@@ -533,7 +533,48 @@ function buildBackupLadderStabilizationReason(durability = null, stabilizationBe
   };
 }
 
-function buildBackupReturnReadiness(returnCondition = null, durability = null, stabilizationBeforeReturn = null, stabilizationReason = null) {
+
+function buildPostReturnExitCondition(returnCondition = null, durability = null, stabilizationBeforeReturn = null, skippedRisk = null) {
+  if (!returnCondition?.recommended || !durability) {
+    return {
+      state: 'no-post-return-signal',
+      watchRequired: false,
+      label: 'Après-retour non lisible',
+      condition: 'aucune condition de clôture sûre n’est visible après retour au plan original',
+      reason: 'pas de retour backup fiable à prolonger en condition de sortie',
+      fallback: true,
+    };
+  }
+
+  if (durability.stability === 'stable-return') {
+    return {
+      state: 'backup-closed',
+      watchRequired: false,
+      label: 'Backup vraiment clos',
+      condition: 'arrêter la surveillance backup si aucun signal visible ne force une nouvelle bascule après retour au plan',
+      reason: durability.advice,
+      fallback: false,
+    };
+  }
+
+  const risk = skippedRisk?.recommended && !skippedRisk.fallback
+    ? skippedRisk.category
+    : durability.cause;
+  const action = stabilizationBeforeReturn?.recommended
+    ? stabilizationBeforeReturn.action
+    : 'confirmer un signal visible frais';
+
+  return {
+    state: 'watch-after-return',
+    watchRequired: true,
+    label: 'Retour sous surveillance',
+    condition: `garder un œil après retour tant que ${risk} reste visible`,
+    reason: `${action}: ${durability.advice}`,
+    fallback: false,
+  };
+}
+
+function buildBackupReturnReadiness(returnCondition = null, durability = null, stabilizationBeforeReturn = null, stabilizationReason = null, skippedRisk = null) {
   if (!returnCondition?.recommended || !durability) {
     return {
       state: 'no-return-window',
@@ -552,6 +593,7 @@ function buildBackupReturnReadiness(returnCondition = null, durability = null, s
       label: 'Retour au follow-up original possible',
       summary: `Sortie prête vers ${returnCondition.primary}: la durabilité visible est stable.`,
       nextStep: returnCondition.condition,
+      postReturnExitCondition: buildPostReturnExitCondition(returnCondition, durability, stabilizationBeforeReturn, skippedRisk),
       fallback: false,
     };
   }
@@ -562,6 +604,7 @@ function buildBackupReturnReadiness(returnCondition = null, durability = null, s
     label: 'Stabilisation encore requise',
     summary: `${stabilizationBeforeReturn?.label ?? 'Stabilisation'} reste nécessaire avant de revenir vers ${returnCondition.primary}.`,
     nextStep: stabilizationReason?.summary ?? stabilizationBeforeReturn?.reason ?? durability.advice,
+    postReturnExitCondition: buildPostReturnExitCondition(returnCondition, durability, stabilizationBeforeReturn, skippedRisk),
     fallback: false,
   };
 }
@@ -592,6 +635,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
     durability,
     stabilizationBeforeReturn,
     stabilizationReason,
+    skippedRisk,
   );
 
   if (durability.stability === 'stable-return') {
