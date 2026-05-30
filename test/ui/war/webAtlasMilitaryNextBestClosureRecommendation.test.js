@@ -365,3 +365,24 @@ test('atlas military shows delay cost for blocked front prep actions', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__delay--acceptable/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__delay--risky/);
 });
+
+// MAP-A37: when multiple follow-up signals coexist, add one compact ladder that
+// orders play-now, prep, and delay-risk cues without duplicating each row.
+test('atlas military summarizes the front follow-up ladder', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryBlockedFollowUpLadder\(alternative, candidates = \[\]\)/);
+  assert.match(webAppSource, /const playableEntry = candidates\.find\(\(entry\) => entry\.viability\.status === 'ready'\)/);
+  assert.match(webAppSource, /jouer maintenant: \$\{playableEntry\.option\.nextAction\}/);
+  assert.match(webAppSource, /jouer maintenant: \$\{alternative\.action\}/);
+  assert.match(webAppSource, /const prepEntry = candidates\.find\(\(entry\) => entry\.viability\.status === 'prep'\)/);
+  assert.match(webAppSource, /préparer: \$\{prepUnlock\.action\}/);
+  assert.match(webAppSource, /attendre: \$\{prepUnlock\.delayCost\.label\.toLowerCase\(\)\}/);
+  assert.match(webAppSource, /if \(steps\.length < 2\)/);
+  assert.match(webAppSource, /label: 'Échelle suivi front'/);
+  assert.match(webAppSource, /detail: steps\.join\(' → '\)/);
+  assert.match(webAppSource, /const blockedFollowUpLadder = buildAtlasMilitaryBlockedFollowUpLadder\(blockedFollowUpAlternative, candidates\)/);
+  assert.match(webAppSource, /renderAtlasMilitaryBlockedFollowUpLadder\(preview\.blockedFollowUpLadder, ladderY\)/);
+  assert.match(webAppSource, /Synthèse échelle de suivi de front/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--ready/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--prep/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--risky/);
+});
