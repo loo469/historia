@@ -534,6 +534,39 @@ function buildBackupLadderStabilizationReason(durability = null, stabilizationBe
 }
 
 
+
+function buildResidualIntrigueTrace(returnCondition = null, durability = null) {
+  if (!returnCondition?.recommended || durability?.stability !== 'stable-return') {
+    return {
+      state: 'not-applicable',
+      informative: false,
+      label: 'Aucune trace résiduelle à lire',
+      summary: 'la sortie sûre n’est pas encore atteinte ou aucun retour fiable n’est visible',
+      fallback: true,
+    };
+  }
+
+  if (durability.cause === 'information manquante') {
+    return {
+      state: 'light-reread-advised',
+      informative: true,
+      label: 'Clos avec trace légère',
+      summary: 'relire légèrement la confiance visible au prochain passage, sans rouvrir le backup',
+      signal: 'trace de confiance ou information encore utile mais non bloquante',
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'fully-clear',
+    informative: false,
+    label: 'Clos sans trace utile',
+    summary: 'aucune heat ou fragilité visible ne demande de relecture après la sortie sûre',
+    signal: durability.cause,
+    fallback: false,
+  };
+}
+
 function buildPostReturnExitCondition(returnCondition = null, durability = null, stabilizationBeforeReturn = null, skippedRisk = null) {
   if (!returnCondition?.recommended || !durability) {
     return {
@@ -553,6 +586,7 @@ function buildPostReturnExitCondition(returnCondition = null, durability = null,
       label: 'Backup vraiment clos',
       condition: 'arrêter la surveillance backup si aucun signal visible ne force une nouvelle bascule après retour au plan',
       reason: durability.advice,
+      residualTrace: buildResidualIntrigueTrace(returnCondition, durability),
       fallback: false,
     };
   }
