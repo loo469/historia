@@ -154,6 +154,8 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.label, 'Premier bloqueur: Outils');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.summary, /Outils deviendrait bloquant en premier/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.afterFirstBlockerHandled.summary, /Après Outils, slack restant surveillé/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextLikelyConsumer.label, 'Prochain consommateur: Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextLikelyConsumer.summary, /Hill Spur consommerait ensuite le slack/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -260,6 +262,8 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.label, 'Premier bloqueur: Safe Road');
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.summary, /Safe Road deviendrait bloquant en premier/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.afterFirstBlockerHandled.summary, /Après Safe Road, la marge revient à 0/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextLikelyConsumer.label, 'Aucun consommateur suivant');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextLikelyConsumer.summary, /aucun choix logistique significatif/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
