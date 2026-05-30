@@ -1462,6 +1462,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
   const firstFollowUpReason = buildCulturalFirstFollowUpReason(candidate, recommendedBeyondMinimumBenefit, immediateSynergy);
   const followUpRobustness = buildCulturalFollowUpRobustness(candidate, immediateSynergy);
   const reviewExitSignal = buildCulturalReviewExitSignal(candidate, immediateSynergy, followUpRobustness);
+  const reviewReopenSignal = buildCulturalReviewReopenSignal(immediateSynergy, reviewExitSignal);
   const sourceAction = normalizeText(immediateSynergy.sourceAction ?? '');
 
   if (/attendre|observer/.test(sourceAction)) {
@@ -1473,6 +1474,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       firstFollowUpReason,
       followUpRobustness,
       reviewExitSignal,
+      reviewReopenSignal,
     };
   }
 
@@ -1485,6 +1487,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       firstFollowUpReason,
       followUpRobustness,
       reviewExitSignal,
+      reviewReopenSignal,
     };
   }
 
@@ -1497,6 +1500,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       firstFollowUpReason,
       followUpRobustness,
       reviewExitSignal,
+      reviewReopenSignal,
     };
   }
 
@@ -1508,6 +1512,30 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
     firstFollowUpReason,
     followUpRobustness,
     reviewExitSignal,
+    reviewReopenSignal,
+  };
+}
+
+function buildCulturalReviewReopenSignal(immediateSynergy, reviewExitSignal) {
+  if (!reviewExitSignal) {
+    return null;
+  }
+
+  const sourceCue = immediateSynergy.sourceLabel ?? immediateSynergy.sourceAction;
+  if (!sourceCue) {
+    return null;
+  }
+
+  const actionCue = immediateSynergy.sourceAction
+    ? `${immediateSynergy.sourceAction} ne reste plus aligné avec ${sourceCue}`
+    : `${sourceCue} ne reste plus visible`;
+
+  return {
+    state: 'reopen-on-synergy-change',
+    label: 'Réouvrir la revue',
+    trigger: actionCue,
+    reviewWindow: reviewExitSignal.reviewWindow,
+    summary: `Réouvrir la revue: ${actionCue}, expire, ou contredit ${reviewExitSignal.localAnchor}.`,
   };
 }
 
