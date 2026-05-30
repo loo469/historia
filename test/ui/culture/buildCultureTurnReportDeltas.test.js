@@ -917,6 +917,11 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
     entry.recommendedBeyondMinimumBenefit?.concreteGain ?? null,
     entry.recommendedBeyondMinimumBenefit?.nextTurnAvoidance ?? null,
     entry.recommendedBeyondMinimumBenefit?.avoids ?? null,
+    entry.immediateSynergy?.label ?? null,
+    entry.immediateSynergy?.sourceType ?? null,
+    entry.immediateSynergy?.sourceLabel ?? null,
+    entry.immediateSynergy?.benefit ?? null,
+    entry.immediateSynergy?.avoidedRisk ?? null,
   ]), [
     [
       'Compact d’Aurora',
@@ -925,8 +930,13 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
       'gain concret: sécurise payoff 5 sans attendre la bascule',
       'évite une urgence de consolidation au prochain tour',
       'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.',
+      'Synergie ce tour',
+      'discovery',
+      'archive-routes',
+      'archive-routes renforce amplifier avec Compact d’Aurora',
+      'évite de séparer la découverte du suivi reporté: Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.',
     ],
-    ['Harbor Compact', 'later', null, null, null, null],
+    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null],
   ]);
 });
 

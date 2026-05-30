@@ -1283,7 +1283,7 @@ function buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, f
   };
 }
 
-function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview, replacementRecommendations) {
+function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview, replacementRecommendations, visiblePriorities = []) {
   const urgentReplacementIds = new Set(replacementRecommendations.entries.map((entry) => entry.bundleId));
   const candidates = cleanupPrompts
     .map((prompt) => {
@@ -1398,6 +1398,9 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
     const recommendedBeyondMinimumBenefit = minimalSafeAction && missedWindowConsequence
       ? buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindowConsequence)
       : null;
+    const immediateSynergy = recommendedBeyondMinimumBenefit
+      ? buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedCandidates, missedWindowConsequence)
+      : null;
 
     return {
       ...candidate,
@@ -1417,6 +1420,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       lateRiskyAction,
       minimalActionThresholdReason,
       recommendedBeyondMinimumBenefit,
+      immediateSynergy,
     };
   });
   const top = rankedCandidates[0] ?? null;
@@ -1448,6 +1452,51 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
   };
 }
 
+function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedCandidates, missedWindowConsequence) {
+  const safePriorities = visiblePriorities.filter((priority) => priority.confidence !== 'low' && priority.level !== 'fragile');
+  const sameClusterPriority = safePriorities.find((priority) => priority.cultureName === candidate.clusterLabel);
+  const neighboringPriority = safePriorities.find((priority) => priority.cultureName !== candidate.clusterLabel && priority.action !== 'attendre') ?? null;
+  const narrativePrompt = normalizeText(`${candidate.minimalRevisitAction ?? ''} ${candidate.reason ?? ''}`);
+
+  if (sameClusterPriority?.discoveryId && sameClusterPriority.discoveryId !== 'signal culturel') {
+    return {
+      state: 'synergy-this-turn',
+      label: 'Synergie ce tour',
+      sourceType: 'discovery',
+      sourceLabel: sameClusterPriority.discoveryId,
+      benefit: `${sameClusterPriority.discoveryId} renforce ${sameClusterPriority.action} avec ${candidate.clusterLabel}`,
+      avoidedRisk: `évite de séparer la découverte du suivi reporté: ${missedWindowConsequence}`,
+      summary: `synergie ce tour: ${sameClusterPriority.discoveryId} + ${candidate.clusterLabel}; ${sameClusterPriority.action} sécurisé.`,
+    };
+  }
+
+  if (/récit|recit|narrati/i.test(narrativePrompt)) {
+    return {
+      state: 'synergy-this-turn',
+      label: 'Synergie ce tour',
+      sourceType: 'narrative',
+      sourceLabel: candidate.minimalRevisitAction ?? candidate.clusterLabel,
+      benefit: `le récit actif devient un suivi culturel immédiat pour ${candidate.clusterLabel}`,
+      avoidedRisk: `évite de laisser le récit dépasser la fenêtre sûre: ${missedWindowConsequence}`,
+      summary: `synergie ce tour: récit actif + ${candidate.clusterLabel}; suivi narratif sécurisé.`,
+    };
+  }
+
+  if (neighboringPriority && sortedCandidates.length > 1) {
+    return {
+      state: 'synergy-this-turn',
+      label: 'Synergie ce tour',
+      sourceType: 'neighbor-cluster',
+      sourceLabel: neighboringPriority.cultureName,
+      benefit: `${candidate.clusterLabel} reste aligné avec ${neighboringPriority.cultureName}`,
+      avoidedRisk: `évite que le cluster voisin reprenne seul la priorité: ${missedWindowConsequence}`,
+      summary: `synergie ce tour: ${candidate.clusterLabel} + ${neighboringPriority.cultureName}; priorités proches alignées.`,
+    };
+  }
+
+  return null;
+}
+
 function buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindowConsequence) {
   const recommendedAction = candidate.action
     ? `faire maintenant: ${candidate.action}`
@@ -1476,7 +1525,7 @@ function buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindo
   };
 }
 
-function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder) {
+function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder, visiblePriorities = []) {
   const groups = promptHistoryDrawer.groups.map((group) => {
     const currentEntries = group.entries.filter((entry) => entry.source === 'current');
     const historyEntries = group.entries.filter((entry) => entry.source === 'history');
@@ -1540,7 +1589,7 @@ function buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptH
     : `${cleanupPrompts.length} prompt${cleanupPrompts.length > 1 ? 's' : ''} de nettoyage: ${cleanupPrompts.map((prompt) => `${prompt.clusterLabel} → ${prompt.action}`).join(' | ')}.`;
   const falloutPreview = buildCulturalBundleFalloutPreview(cleanupPrompts);
   const replacementRecommendations = buildCulturalBundleReplacementRecommendations(groups, cleanupPrompts, falloutPreview);
-  const safeToDeferBundles = buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview, replacementRecommendations);
+  const safeToDeferBundles = buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview, replacementRecommendations, visiblePriorities);
 
   return {
     state: groups.length === 0
@@ -1672,7 +1721,7 @@ function buildCulturalCommitmentBundles(stabilizationRecommendations, activeReco
   const recommendationRotationPreview = buildCulturalRecommendationRotationPreview(promptFreshnessFilter, promptHistoryDrawer);
   const rotationCommitmentSummary = buildCulturalRotationCommitmentSummary(recommendationRotationPreview, promptChoiceComparison, bundles, incompatibilities);
   const commitmentFollowThroughReminder = buildCulturalCommitmentFollowThroughReminder(rotationCommitmentSummary, promptHistoryDrawer, turn);
-  const followThroughBundlePlan = buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder);
+  const followThroughBundlePlan = buildCulturalFollowThroughBundlePlan(rotationCommitmentSummary, promptHistoryDrawer, commitmentFollowThroughReminder, recommendations);
 
   return {
     state: bundles.length === 0 ? 'quiet' : incompatibilities.length > 0 ? 'needs-choice' : 'compatible',
