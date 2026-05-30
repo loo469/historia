@@ -2698,6 +2698,32 @@ function getAtlasMilitaryBlockedFollowUpAlternativeReason(option, checklistItem)
   return 'sécurité';
 }
 
+function getAtlasMilitaryBlockedFollowUpAlternativeViability(option, checklistItem) {
+  const minimumCondition = checklistItem?.checklist?.missingPrerequisite ?? option?.waitState ?? 'condition tactique lisible';
+  if (!option || option.blockerType === 'unknown' || option.orderState === 'vérification requise') {
+    return {
+      status: 'avoid',
+      tone: 'blocked',
+      label: 'À éviter ce tour',
+      condition: `condition minimale: ${minimumCondition}`,
+    };
+  }
+  if (option.orderState === 'ordre préparé') {
+    return {
+      status: 'ready',
+      tone: 'safe',
+      label: 'Jouable maintenant',
+      condition: `condition minimale: ${minimumCondition}`,
+    };
+  }
+  return {
+    status: 'prep',
+    tone: 'preparation',
+    label: 'Préparation courte requise',
+    condition: `condition minimale: ${minimumCondition}`,
+  };
+}
+
 function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict, recommendation, checklist) {
   if (!followUp?.visible || !conflict?.visible || conflict.tone === 'safe') {
     return {
@@ -2722,18 +2748,26 @@ function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict
       detail: `ordre principal ${recommendation?.primary?.provinceLabel ?? 'indécis'} · suivi bloqué ${followUp.provinceLabel}`,
       reason: 'dépendance',
       action: 'attendre résolution du conflit',
+      viabilityStatus: 'avoid',
+      viabilityLabel: 'À éviter ce tour',
+      minimumCondition: 'condition minimale: conflit résolu sans nouveau risque',
     };
   }
 
   const reason = getAtlasMilitaryBlockedFollowUpAlternativeReason(candidate, checklistItem);
+  const viability = getAtlasMilitaryBlockedFollowUpAlternativeViability(candidate, checklistItem);
+  const reasonTone = reason === 'urgence' ? 'urgent' : reason === 'coût' ? 'cost' : reason === 'dépendance' ? 'dependency' : 'safe';
   return {
     visible: true,
-    tone: reason === 'urgence' ? 'urgent' : reason === 'coût' ? 'cost' : reason === 'dépendance' ? 'dependency' : 'safe',
+    tone: viability.status === 'ready' ? reasonTone : viability.tone,
     provinceLabel: candidate.provinceLabel,
-    label: `Alternative: ${candidate.provinceLabel}`,
+    label: `${viability.label}: ${candidate.provinceLabel}`,
     detail: `ordre principal ${recommendation?.primary?.provinceLabel ?? 'indécis'} · suivi bloqué ${followUp.provinceLabel}`,
     reason,
     action: candidate.nextAction,
+    viabilityStatus: viability.status,
+    viabilityLabel: viability.label,
+    minimumCondition: viability.condition,
   };
 }
 
@@ -2919,9 +2953,9 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 function renderAtlasMilitaryBlockedResidualFollowUpAlternative(alternative, y) {
   if (!alternative?.visible) return '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-alt atlas-military-neighbor-blocked-follow-up-alt--${alternative.tone}" aria-label="Alternative après suivi résiduel bloqué: ${alternative.label}; raison ${alternative.reason}; ${alternative.detail}; action ${alternative.action}">
+    <g class="atlas-military-neighbor-blocked-follow-up-alt atlas-military-neighbor-blocked-follow-up-alt--${alternative.tone}" aria-label="Alternative après suivi résiduel bloqué: ${alternative.label}; viabilité ${alternative.viabilityLabel}; ${alternative.minimumCondition}; raison ${alternative.reason}; ${alternative.detail}; action ${alternative.action}">
       <text class="atlas-military-neighbor-blocked-follow-up-alt__label" x="44.2" y="${y}">${alternative.label}</text>
-      <text class="atlas-military-neighbor-blocked-follow-up-alt__detail" x="44.2" y="${y + 1.35}">${alternative.reason}: ${alternative.action}</text>
+      <text class="atlas-military-neighbor-blocked-follow-up-alt__detail" x="44.2" y="${y + 1.35}">${alternative.minimumCondition} · ${alternative.reason}: ${alternative.action}</text>
     </g>
   `;
 }

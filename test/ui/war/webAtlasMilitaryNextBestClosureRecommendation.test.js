@@ -301,7 +301,7 @@ test('atlas military suggests alternatives when residual front follow-up is bloc
   assert.match(webAppSource, /function getAtlasMilitaryBlockedFollowUpAlternativeReason\(option, checklistItem\)/);
   assert.match(webAppSource, /function renderAtlasMilitaryBlockedResidualFollowUpAlternative\(alternative, y\)/);
   assert.match(webAppSource, /Alternative après suivi résiduel bloqué/);
-  assert.match(webAppSource, /Alternative: \$\{candidate\.provinceLabel\}/);
+  assert.match(webAppSource, /\$\{viability\.label\}: \$\{candidate\.provinceLabel\}/);
   assert.match(webAppSource, /ordre principal \$\{recommendation\?\.primary\?\.provinceLabel \?\? 'indécis'\} · suivi bloqué \$\{followUp\.provinceLabel\}/);
   assert.match(webAppSource, /Aucune alternative sûre ce tour/);
   assert.match(webAppSource, /attendre résolution du conflit/);
@@ -316,4 +316,20 @@ test('atlas military suggests alternatives when residual front follow-up is bloc
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--blocked/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--dependency/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--safe/);
+});
+
+// MAP-A34: alternatives after a blocked residual follow-up must say whether they
+// are immediately playable, need a short preparation, or should be avoided this turn.
+test('atlas military shows viability conditions for blocked front alternatives', () => {
+  assert.match(webAppSource, /function getAtlasMilitaryBlockedFollowUpAlternativeViability\(option, checklistItem\)/);
+  assert.match(webAppSource, /Jouable maintenant/);
+  assert.match(webAppSource, /Préparation courte requise/);
+  assert.match(webAppSource, /À éviter ce tour/);
+  assert.match(webAppSource, /condition minimale: \$\{minimumCondition\}/);
+  assert.match(webAppSource, /viability\.status === 'ready' \? reasonTone : viability\.tone/);
+  assert.match(webAppSource, /viabilityStatus: viability\.status/);
+  assert.match(webAppSource, /minimumCondition: viability\.condition/);
+  assert.match(webAppSource, /viabilité \$\{alternative\.viabilityLabel\}; \$\{alternative\.minimumCondition\}/);
+  assert.match(webAppSource, /\$\{alternative\.minimumCondition\} · \$\{alternative\.reason\}: \$\{alternative\.action\}/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--preparation/);
 });
