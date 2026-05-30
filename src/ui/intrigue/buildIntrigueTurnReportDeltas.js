@@ -620,10 +620,52 @@ function buildResidualTraceClearAction(durability = null) {
   };
 }
 
+
+function buildResidualClearDeferralConsequence(clearAction = null, earliestClear = null) {
+  if (!clearAction || clearAction.fallback || !earliestClear || earliestClear.fallback) {
+    return {
+      state: 'no-residual-consequence',
+      severity: 'none',
+      label: 'Aucune conséquence lisible',
+      summary: 'aucune trace résiduelle visible ne permet de qualifier un report de nettoyage',
+      fallback: true,
+    };
+  }
+
+  if (earliestClear.state === 'earliest-safe-read') {
+    return {
+      state: 'stable-but-recheck-blocked',
+      severity: 'watch',
+      label: 'Report stable, recheck maintenu',
+      summary: 'différer garde la trace stable mais conserve le recheck léger au prochain passage',
+      fallback: false,
+    };
+  }
+
+  if (earliestClear.state === 'wait-for-safe-action') {
+    return {
+      state: 'can-worsen-if-risk-returns',
+      severity: 'risk',
+      label: 'Report sous veille',
+      summary: 'différer ne bloque pas le plan, mais la trace peut redevenir active si heat ou fragilité visible revient',
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'no-extra-consequence',
+    severity: 'safe',
+    label: 'Report sans effet attendu',
+    summary: 'aucun nettoyage actif n’est requis; la trace reste archivée sans contrôle bloqué',
+    fallback: false,
+  };
+}
+
 function buildResidualTraceAttention(durability = null) {
   const cause = durability?.cause ?? 'signal résiduel';
   const clearAction = buildResidualTraceClearAction(durability);
   const earliestClear = buildEarliestResidualClear(clearAction);
+  const deferralConsequence = buildResidualClearDeferralConsequence(clearAction, earliestClear);
 
   if (/information/i.test(cause)) {
     return {
@@ -633,6 +675,7 @@ function buildResidualTraceAttention(durability = null) {
       summary: 'garder la trace pour une relecture courte au prochain passage, sans alerte active',
       clearAction,
       earliestClear,
+      deferralConsequence,
       fallback: false,
     };
   }
@@ -645,6 +688,7 @@ function buildResidualTraceAttention(durability = null) {
       summary: 'surveiller seulement si la heat ou la fragilité visible réapparaît',
       clearAction,
       earliestClear,
+      deferralConsequence,
       fallback: false,
     };
   }
@@ -656,6 +700,7 @@ function buildResidualTraceAttention(durability = null) {
     summary: 'conserver comme trace informative; aucune attention de suivi requise',
     clearAction,
     earliestClear,
+    deferralConsequence,
     fallback: false,
   };
 }
