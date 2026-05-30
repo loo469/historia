@@ -333,3 +333,18 @@ test('atlas military shows viability conditions for blocked front alternatives',
   assert.match(webAppSource, /\$\{alternative\.minimumCondition\} · \$\{alternative\.reason\}: \$\{alternative\.action\}/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--preparation/);
 });
+
+// MAP-A35: when no front alternative is playable now, show the smallest prep
+// action that can unlock the closest alternative next turn.
+test('atlas military shows prep action to unlock the next front alternative', () => {
+  assert.match(webAppSource, /function getAtlasMilitaryBlockedFollowUpPrepUnlock\(option, checklistItem\)/);
+  assert.match(webAppSource, /const allAlternativesNeedPrep = candidates\.length > 0 && candidates\.every\(\(entry\) => entry\.viability\.status !== 'ready'\)/);
+  assert.match(webAppSource, /réserver ressource: \$\{checklistAction\}/);
+  assert.match(webAppSource, /lever info manquante: \$\{checklistAction\}/);
+  assert.match(webAppSource, /sécuriser dépendance: \$\{checklistAction\}/);
+  assert.match(webAppSource, /débloque si \$\{prerequisite\}/);
+  assert.match(webAppSource, /prepUnlock: allAlternativesNeedPrep \? getAtlasMilitaryBlockedFollowUpPrepUnlock/);
+  assert.match(webAppSource, /préparation \$\{alternative\.prepUnlock\.label\}: \$\{alternative\.prepUnlock\.action\}; \$\{alternative\.prepUnlock\.unlocks\}/);
+  assert.match(webAppSource, /atlas-military-neighbor-blocked-follow-up-alt__prep/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__prep/);
+});
