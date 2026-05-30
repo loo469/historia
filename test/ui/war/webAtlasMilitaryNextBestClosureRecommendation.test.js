@@ -293,3 +293,27 @@ test('atlas military shows conflicts for residual front follow-up orders', () =>
   assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up-conflict--reserved/);
   assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up-conflict--safe/);
 });
+
+// MAP-A33: when a residual front follow-up is blocked, suggest a compact
+// alternative or explicitly say none is safe this turn.
+test('atlas military suggests alternatives when residual front follow-up is blocked', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryBlockedResidualFollowUpAlternative\(followUp, conflict, recommendation, checklist\)/);
+  assert.match(webAppSource, /function getAtlasMilitaryBlockedFollowUpAlternativeReason\(option, checklistItem\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryBlockedResidualFollowUpAlternative\(alternative, y\)/);
+  assert.match(webAppSource, /Alternative après suivi résiduel bloqué/);
+  assert.match(webAppSource, /Alternative: \$\{candidate\.provinceLabel\}/);
+  assert.match(webAppSource, /ordre principal \$\{recommendation\?\.primary\?\.provinceLabel \?\? 'indécis'\} · suivi bloqué \$\{followUp\.provinceLabel\}/);
+  assert.match(webAppSource, /Aucune alternative sûre ce tour/);
+  assert.match(webAppSource, /attendre résolution du conflit/);
+  assert.match(webAppSource, /return 'coût'/);
+  assert.match(webAppSource, /return 'dépendance'/);
+  assert.match(webAppSource, /return 'sécurité'/);
+  assert.match(webAppSource, /return 'urgence'/);
+  assert.match(webAppSource, /conflict\.tone === 'safe'/);
+  assert.match(webAppSource, /blockedFollowUpAlternative: buildAtlasMilitaryBlockedResidualFollowUpAlternative/);
+  assert.match(webAppSource, /renderAtlasMilitaryBlockedResidualFollowUpAlternative\(preview\.blockedFollowUpAlternative, alternativeY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--blocked/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--dependency/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-alt--safe/);
+});
