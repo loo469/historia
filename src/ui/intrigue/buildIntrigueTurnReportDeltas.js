@@ -258,6 +258,61 @@ function buildSafestImmediateFollowUp(options, principalRisk) {
   };
 }
 
+function describeBackupTrigger(primary, backup) {
+  if (backup.type === 'wait') {
+    return 'à utiliser si l’exposition remonte ou si la suite principale devient indisponible';
+  }
+
+  if (backup.type === 'defensive' && primary.type === 'offensive') {
+    return 'à utiliser si l’exposition visible monte ou si la fenêtre offensive devient trop exposée';
+  }
+
+  return 'à utiliser seulement si le signal visible rend la suite principale trop risquée';
+}
+
+function buildBackupFollowUp(options, safestImmediateFollowUp) {
+  if (!safestImmediateFollowUp?.recommended) {
+    return {
+      state: 'no-primary',
+      recommended: false,
+      label: 'Aucun relais prudent visible',
+      reason: 'pas de suite principale sûre à seconder',
+      fallback: true,
+    };
+  }
+
+  const fallbackOrderByPrimary = {
+    offensive: ['defensive', 'wait'],
+    defensive: ['wait'],
+    wait: ['defensive'],
+  };
+  const fallbackOrder = fallbackOrderByPrimary[safestImmediateFollowUp.type] ?? ['defensive', 'wait'];
+  const backup = fallbackOrder
+    .map((type) => options.find((option) => option.type === type))
+    .find(Boolean);
+
+  if (!backup) {
+    return {
+      state: 'none-visible',
+      recommended: false,
+      label: 'Aucun relais prudent visible',
+      reason: 'aucune option plus prudente n’est visible sans rouvrir l’analyse',
+      fallback: true,
+    };
+  }
+
+  return {
+    state: backup.expiry?.state === 'expiring' ? 'expiring-backup' : 'available-backup',
+    recommended: true,
+    type: backup.type,
+    label: backup.label,
+    action: backup.consequence,
+    when: describeBackupTrigger(safestImmediateFollowUp, backup),
+    urgency: backup.expiry?.label ?? 'reste disponible',
+    fallback: false,
+  };
+}
+
 function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingRecommendationChange) {
   const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
   const optionsByRisk = {
@@ -325,6 +380,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
       followUpOptions: [],
       followUpExpirySummary: 'Aucune suite débloquée: pas d’échéance à signaler.',
       safestImmediateFollowUp: buildSafestImmediateFollowUp([], 'confiance basse'),
+      backupFollowUp: buildBackupFollowUp([], buildSafestImmediateFollowUp([], 'confiance basse')),
       fullReviewRequired: false,
       fallback: true,
     };
@@ -366,6 +422,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
   };
   const plan = planByRisk[principalRisk] ?? planByRisk['confiance basse'];
   const followUp = buildUnlockedFollowUpOptions(principalRisk, plan.fullReviewRequired, timingRecommendationChange);
+  const safestImmediateFollowUp = buildSafestImmediateFollowUp(followUp.options, principalRisk);
 
   return {
     state: plan.fullReviewRequired ? 'full-review-needed' : 'minimal-sufficient',
@@ -377,7 +434,8 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     unlockNextTurn: buildNextTurnUnlock(principalRisk, plan.fullReviewRequired, timingRecommendationChange),
     followUpOptions: followUp.options,
     followUpExpirySummary: followUp.expirySummary,
-    safestImmediateFollowUp: buildSafestImmediateFollowUp(followUp.options, principalRisk),
+    safestImmediateFollowUp,
+    backupFollowUp: buildBackupFollowUp(followUp.options, safestImmediateFollowUp),
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };
