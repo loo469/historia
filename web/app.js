@@ -7898,6 +7898,7 @@ function renderCultureTurnReport(report) {
                   ${entry.revisitPriority === 'next' && entry.deferLadderSummary?.reviewExitSignal ? `<small>Stabilisation: ${entry.deferLadderSummary.reviewExitSignal.summary}</small>` : ''}
                   ${entry.revisitPriority === 'next' && entry.deferLadderSummary?.reviewReopenSignal ? `<small>Réouverture: ${entry.deferLadderSummary.reviewReopenSignal.summary}</small>` : ''}
                   ${entry.revisitPriority === 'next' && entry.deferLadderSummary?.reviewReopenSignal?.reviewQuestionPreview ? `<small>Si réouvert: ${entry.deferLadderSummary.reviewReopenSignal.reviewQuestionPreview.summary}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && entry.deferLadderSummary?.reviewReopenSignal?.reviewQuestionPreview?.outcomeThreshold ? `<small>Seuil: ${entry.deferLadderSummary.reviewReopenSignal.reviewQuestionPreview.outcomeThreshold.summary}</small>` : ''}
                   ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.missedWindowConsequence ? `<small>Si manqué: ${entry.missedWindowConsequence}</small>` : ''}
                   ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.minimalSafeAction ? `<small>Action minimale: ${entry.minimalSafeAction} — ${entry.preventedConsequence}</small>` : ''}
                   ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.recommendedBeyondMinimumBenefit ? `<small>Au-delà du minimum: ${entry.recommendedBeyondMinimumBenefit.summary}</small>` : ''}
