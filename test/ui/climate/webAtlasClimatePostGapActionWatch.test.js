@@ -17,6 +17,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /Transfert attention/);
   assert.match(webAppSource, /Reste secondaire si/);
   assert.match(webAppSource, /Entretien minimal/);
+  assert.match(webAppSource, /Synthèse watch/);
   assert.match(webAppSource, /Secondaire suivant/);
   assert.match(webAppSource, /nextSecondaryRisk/);
   assert.match(webAppSource, /devient action primaire si la pression reste ≥80 au prochain check/);
@@ -27,6 +28,8 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /minimalProtection/);
   assert.match(webAppSource, /secondaryProtectionGuard/);
   assert.match(webAppSource, /secondaryUpkeep/);
+  assert.match(webAppSource, /watchLadderSummary/);
+  assert.match(webAppSource, /remainingWatchItems\.length > 1/);
   assert.match(webAppSource, /state: 'available'/);
   assert.match(webAppSource, /state: 'impossible'/);
   assert.match(webAppSource, /state: 'fallback'/);
@@ -64,6 +67,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__upkeep--available/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__upkeep--impossible/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__upkeep--fallback/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--watch-only/);
 });
 
 test('atlas keeps a quiet fallback when no secondary climate watch is close enough', () => {
@@ -94,4 +101,26 @@ test('atlas keeps a readable upkeep fallback without adding climate mechanics', 
   assert.match(webAppSource, /label: 'fallback entretien'/);
   assert.match(webAppSource, /relire la veille secondaire au prochain signal climat avant d’investir/);
   assert.match(webAppSource, /aucune mitigation minimale disponible pour maintenir ce statut/);
+});
+
+
+test('atlas summarizes the watch ladder when the primary remains first', () => {
+  assert.match(webAppSource, /state: 'primary-first'/);
+  assert.match(webAppSource, /decision: 'traiter le primaire'/);
+  assert.match(webAppSource, /Traiter le primaire: \$\{watchGap\.label\}/);
+  assert.match(webAppSource, /ne pas rendre le secondaire plus urgent que le primaire/);
+});
+
+test('atlas summarizes the ladder with secondary upkeep when useful', () => {
+  assert.match(webAppSource, /state: 'upkeep-secondary'/);
+  assert.match(webAppSource, /decision: 'entretenir un secondaire'/);
+  assert.match(webAppSource, /Entretenir un secondaire: \$\{secondaryUpkeep\.action\}/);
+  assert.match(webAppSource, /plus petit upkeep utile, pas une prévention complète/);
+});
+
+test('atlas summarizes the ladder as watch-only when thresholds are uncertain', () => {
+  assert.match(webAppSource, /state: 'watch-only'/);
+  assert.match(webAppSource, /decision: 'surveiller sans action immédiate'/);
+  assert.match(webAppSource, /Surveiller sans action immédiate: \$\{watchGap\.label\}/);
+  assert.match(webAppSource, /fallback robuste quand les seuils ou protections ne sont pas connus/);
 });

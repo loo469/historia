@@ -13605,6 +13605,14 @@ button { font: inherit; }
 .map-world-climate-post-gap-watch__upkeep--available { border: 1px solid rgba(74, 222, 128, 0.36); }
 .map-world-climate-post-gap-watch__upkeep--impossible { border: 1px solid rgba(251, 191, 36, 0.34); }
 .map-world-climate-post-gap-watch__upkeep--fallback { border: 1px solid rgba(148, 163, 184, 0.28); }
+.map-world-climate-post-gap-watch__ladder {
+  padding: 4px 8px;
+  border-radius: 11px;
+  background: rgba(15, 23, 42, 0.38);
+}
+.map-world-climate-post-gap-watch__ladder--primary-first { border: 1px solid rgba(248, 113, 113, 0.34); }
+.map-world-climate-post-gap-watch__ladder--upkeep-secondary { border: 1px solid rgba(74, 222, 128, 0.34); }
+.map-world-climate-post-gap-watch__ladder--watch-only { border: 1px solid rgba(125, 211, 252, 0.28); }
 
 .province-node--action-available::before {
   border-color: rgba(74, 222, 128, 0.48);
