@@ -99,6 +99,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /dependencyTrace/);
   assert.match(webAppSource, /Garde:/);
   assert.match(webAppSource, /guardAction/);
+  assert.match(webAppSource, /Comparaison garde:/);
+  assert.match(webAppSource, /guardComparison/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);
   assert.match(webAppSource, /Engager récupération/);
