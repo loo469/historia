@@ -313,6 +313,35 @@ function buildBackupFollowUp(options, safestImmediateFollowUp) {
   };
 }
 
+function buildSwitchToBackupTrigger(safestImmediateFollowUp, backupFollowUp, principalRisk) {
+  if (!safestImmediateFollowUp?.recommended || !backupFollowUp?.recommended) {
+    return {
+      state: 'no-trigger',
+      recommended: false,
+      label: 'Aucun déclencheur fiable visible',
+      reason: 'pas assez de signaux visibles pour recommander une bascule sans rouvrir l’analyse',
+      fallback: true,
+    };
+  }
+
+  const triggerByRisk = {
+    'exposition excessive': 'basculer si l’exposition visible repasse au-dessus du seuil sûr',
+    'timing fragile': 'basculer si la fenêtre principale n’est plus fraîche ou devient indisponible',
+    'signal contradictoire': 'basculer si le second indice visible ne confirme pas la suite principale',
+    'confiance basse': 'basculer si la confiance baisse encore ou si le signal exploitable disparaît',
+  };
+
+  return {
+    state: 'visible-trigger',
+    recommended: true,
+    label: 'Déclencheur de relais',
+    signal: triggerByRisk[principalRisk] ?? triggerByRisk['confiance basse'],
+    backup: backupFollowUp.label,
+    reason: 'signal fog-safe: exposition, confiance, disponibilité ou timing visible seulement',
+    fallback: false,
+  };
+}
+
 function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingRecommendationChange) {
   const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
   const optionsByRisk = {
@@ -381,6 +410,11 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
       followUpExpirySummary: 'Aucune suite débloquée: pas d’échéance à signaler.',
       safestImmediateFollowUp: buildSafestImmediateFollowUp([], 'confiance basse'),
       backupFollowUp: buildBackupFollowUp([], buildSafestImmediateFollowUp([], 'confiance basse')),
+      switchToBackupTrigger: buildSwitchToBackupTrigger(
+        buildSafestImmediateFollowUp([], 'confiance basse'),
+        buildBackupFollowUp([], buildSafestImmediateFollowUp([], 'confiance basse')),
+        'confiance basse',
+      ),
       fullReviewRequired: false,
       fallback: true,
     };
@@ -423,6 +457,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
   const plan = planByRisk[principalRisk] ?? planByRisk['confiance basse'];
   const followUp = buildUnlockedFollowUpOptions(principalRisk, plan.fullReviewRequired, timingRecommendationChange);
   const safestImmediateFollowUp = buildSafestImmediateFollowUp(followUp.options, principalRisk);
+  const backupFollowUp = buildBackupFollowUp(followUp.options, safestImmediateFollowUp);
 
   return {
     state: plan.fullReviewRequired ? 'full-review-needed' : 'minimal-sufficient',
@@ -435,7 +470,8 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     followUpOptions: followUp.options,
     followUpExpirySummary: followUp.expirySummary,
     safestImmediateFollowUp,
-    backupFollowUp: buildBackupFollowUp(followUp.options, safestImmediateFollowUp),
+    backupFollowUp,
+    switchToBackupTrigger: buildSwitchToBackupTrigger(safestImmediateFollowUp, backupFollowUp, principalRisk),
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };
