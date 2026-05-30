@@ -1454,12 +1454,14 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
 
 function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedCandidates, missedWindowConsequence) {
   const safePriorities = visiblePriorities.filter((priority) => priority.confidence !== 'low' && priority.level !== 'fragile');
-  const sameClusterPriority = safePriorities.find((priority) => priority.cultureName === candidate.clusterLabel);
+  const sameClusterPriority = safePriorities
+    .filter((priority) => priority.cultureName === candidate.clusterLabel)
+    .sort((left, right) => Number(right.expiresSoon === true) - Number(left.expiresSoon === true))[0];
   const neighboringPriority = safePriorities.find((priority) => priority.cultureName !== candidate.clusterLabel && priority.action !== 'attendre') ?? null;
   const narrativePrompt = normalizeText(`${candidate.minimalRevisitAction ?? ''} ${candidate.reason ?? ''}`);
 
   if (sameClusterPriority?.discoveryId && sameClusterPriority.discoveryId !== 'signal culturel') {
-    return {
+    const synergy = {
       state: 'synergy-this-turn',
       label: 'Synergie ce tour',
       sourceType: 'discovery',
@@ -1468,10 +1470,14 @@ function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedC
       avoidedRisk: `évite de séparer la découverte du suivi reporté: ${missedWindowConsequence}`,
       summary: `synergie ce tour: ${sameClusterPriority.discoveryId} + ${candidate.clusterLabel}; ${sameClusterPriority.action} sécurisé.`,
     };
+    return {
+      ...synergy,
+      expiryWarning: buildCulturalSynergyExpiryWarning(synergy, candidate, sameClusterPriority),
+    };
   }
 
   if (/récit|recit|narrati/i.test(narrativePrompt)) {
-    return {
+    const synergy = {
       state: 'synergy-this-turn',
       label: 'Synergie ce tour',
       sourceType: 'narrative',
@@ -1480,10 +1486,14 @@ function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedC
       avoidedRisk: `évite de laisser le récit dépasser la fenêtre sûre: ${missedWindowConsequence}`,
       summary: `synergie ce tour: récit actif + ${candidate.clusterLabel}; suivi narratif sécurisé.`,
     };
+    return {
+      ...synergy,
+      expiryWarning: buildCulturalSynergyExpiryWarning(synergy, candidate, null),
+    };
   }
 
   if (neighboringPriority && sortedCandidates.length > 1) {
-    return {
+    const synergy = {
       state: 'synergy-this-turn',
       label: 'Synergie ce tour',
       sourceType: 'neighbor-cluster',
@@ -1492,9 +1502,33 @@ function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedC
       avoidedRisk: `évite que le cluster voisin reprenne seul la priorité: ${missedWindowConsequence}`,
       summary: `synergie ce tour: ${candidate.clusterLabel} + ${neighboringPriority.cultureName}; priorités proches alignées.`,
     };
+    return {
+      ...synergy,
+      expiryWarning: buildCulturalSynergyExpiryWarning(synergy, candidate, neighboringPriority),
+    };
   }
 
   return null;
+}
+
+function buildCulturalSynergyExpiryWarning(synergy, candidate, priority) {
+  const expiresBeforeReview = priority?.expiresSoon === true;
+
+  if (!expiresBeforeReview) {
+    return null;
+  }
+
+  const reviewWindow = candidate.nextReviewWindow ?? priority?.timingLabel ?? 'prochaine revue culturelle';
+  const expiryCause = priority?.timingLabel ?? 'priorité visible temporaire';
+
+  return {
+    state: 'expires-before-review',
+    label: 'expire avant revue',
+    reviewWindow,
+    expiryCause,
+    lostBenefit: `${synergy.sourceLabel} ne renforcera plus ${candidate.clusterLabel} de façon sûre`,
+    summary: `expire avant revue: ${expiryCause}; agir maintenant capture ${synergy.sourceLabel}.`,
+  };
 }
 
 function buildCulturalBeyondMinimumBenefit(candidate, missedFallout, missedWindowConsequence) {
