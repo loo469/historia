@@ -8441,6 +8441,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               <small>Garde: ${preview.adjacentRouteSpilloverRisk.guardAction.label} — ${preview.adjacentRouteSpilloverRisk.guardAction.reason}</small>
               ${preview.adjacentRouteSpilloverRisk.guardComparison ? `<small>Comparaison garde: ${preview.adjacentRouteSpilloverRisk.guardComparison.summary}</small>` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardSequencing ? `<small>Séquence: ${preview.adjacentRouteSpilloverRisk.guardSequencing.phrase} — ${preview.adjacentRouteSpilloverRisk.guardSequencing.reason}</small>` : ''}
+              ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost ? `<small>Coût opportunité: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary} ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopChain ? `Stop: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason}` : preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason ?? ''}</small>` : ''}
             </div>
           ` : ''}
         </div>
