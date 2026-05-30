@@ -2768,13 +2768,14 @@ function getAtlasMilitaryBlockedFollowUpPrepUnlock(option, checklistItem) {
   };
 }
 
-function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = []) {
+function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], residualRisk = null) {
   if (!alternative?.visible || alternative.viabilityStatus === 'avoid') {
     return {
       visible: false,
       tone: 'quiet',
       label: 'Synthèse suivi front indisponible',
       detail: 'pas assez de signaux fiables',
+      firstActionReason: 'raison masquée: signaux insuffisants',
     };
   }
   const playableEntry = candidates.find((entry) => entry.viability.status === 'ready') ?? null;
@@ -2783,16 +2784,27 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = []) {
     ? getAtlasMilitaryBlockedFollowUpPrepUnlock({ ...prepEntry.option, viabilityStatus: prepEntry.viability.status }, prepEntry.checklistItem)
     : alternative.prepUnlock;
   const steps = [];
+  const reasonParts = [];
   if (playableEntry) {
     steps.push(`jouer maintenant: ${playableEntry.option.nextAction}`);
+    reasonParts.push(`action jouable ${playableEntry.option.provinceLabel} avant préparation`);
   } else if (alternative.viabilityStatus === 'ready') {
     steps.push(`jouer maintenant: ${alternative.action}`);
+    reasonParts.push(`alternative ${alternative.provinceLabel ?? 'front'} déjà jouable`);
   }
   if (prepUnlock) {
     steps.push(`préparer: ${prepUnlock.action}`);
+    reasonParts.push(`préparation minimale: ${prepUnlock.unlocks}`);
   }
   if (prepUnlock?.delayCost) {
     steps.push(`attendre: ${prepUnlock.delayCost.label.toLowerCase()}`);
+    reasonParts.push(`${prepUnlock.delayCost.label.toLowerCase()}: ${prepUnlock.delayCost.detail}`);
+  }
+  if (alternative.viabilityStatus !== 'ready') {
+    reasonParts.push(`alternative bloquée: ${alternative.viabilityLabel}`);
+  }
+  if (residualRisk?.visible) {
+    reasonParts.push(`risque restant: ${residualRisk.label}`);
   }
   if (steps.length < 2) {
     return {
@@ -2800,6 +2812,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = []) {
       tone: 'quiet',
       label: 'Synthèse suivi front masquée',
       detail: 'un seul signal, ligne dédiée suffisante',
+      firstActionReason: 'raison masquée: un seul signal utile',
     };
   }
   const delayCost = prepUnlock?.delayCost ?? null;
@@ -2808,6 +2821,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = []) {
     tone: delayCost?.tone === 'risky' ? 'risky' : alternative.viabilityStatus === 'ready' ? 'ready' : 'prep',
     label: 'Échelle suivi front',
     detail: steps.join(' → '),
+    firstActionReason: `Pourquoi d’abord: ${reasonParts.slice(0, 4).join(' · ')}`,
   };
 }
 
@@ -2931,7 +2945,7 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
   const residualFollowUpOrder = buildAtlasMilitaryNeighborResidualFollowUpOrder(sharedResidualRisk, urgencyCluster);
   const residualFollowUpConflict = buildAtlasMilitaryNeighborResidualFollowUpConflict(residualFollowUpOrder, recommendation, checklist);
   const blockedFollowUpAlternative = buildAtlasMilitaryBlockedResidualFollowUpAlternative(residualFollowUpOrder, residualFollowUpConflict, recommendation, checklist);
-  const blockedFollowUpLadder = buildAtlasMilitaryBlockedFollowUpLadder(blockedFollowUpAlternative, candidates);
+  const blockedFollowUpLadder = buildAtlasMilitaryBlockedFollowUpLadder(blockedFollowUpAlternative, candidates, sharedResidualRisk);
 
   if (!shifts.length) {
     return {
@@ -3064,9 +3078,10 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 function renderAtlasMilitaryBlockedFollowUpLadder(ladder, y) {
   if (!ladder?.visible) return '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}">
+    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}">
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__label" x="44.2" y="${y}">${ladder.label}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__detail" x="44.2" y="${y + 1.35}">${ladder.detail}</text>
+      <text class="atlas-military-neighbor-blocked-follow-up-ladder__reason" x="44.2" y="${y + 2.7}">${ladder.firstActionReason}</text>
     </g>
   `;
 }
@@ -3104,8 +3119,8 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
     ? preview.blockedFollowUpAlternative?.prepUnlock?.delayCost ? 5.2 : preview.blockedFollowUpAlternative?.prepUnlock ? 3.85 : 2.5
     : 0;
   const ladderY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? alternativeBlockHeight + 0.25 : 0);
-  const ladderHeight = preview.blockedFollowUpLadder?.visible ? 2.5 : 0;
-  const contestedY = ladderY + (preview.blockedFollowUpLadder?.visible ? 2.75 : 0);
+  const ladderHeight = preview.blockedFollowUpLadder?.visible ? 3.85 : 0;
+  const contestedY = ladderY + (preview.blockedFollowUpLadder?.visible ? 4.1 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
   const hintHeight = preview.sharedHandlingHint?.visible ? 2.5 : 0;
   const residualHeight = preview.sharedResidualRisk?.visible ? 2.5 : 0;

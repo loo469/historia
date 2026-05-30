@@ -369,7 +369,7 @@ test('atlas military shows delay cost for blocked front prep actions', () => {
 // MAP-A37: when multiple follow-up signals coexist, add one compact ladder that
 // orders play-now, prep, and delay-risk cues without duplicating each row.
 test('atlas military summarizes the front follow-up ladder', () => {
-  assert.match(webAppSource, /function buildAtlasMilitaryBlockedFollowUpLadder\(alternative, candidates = \[\]\)/);
+  assert.match(webAppSource, /function buildAtlasMilitaryBlockedFollowUpLadder\(alternative, candidates = \[\], residualRisk = null\)/);
   assert.match(webAppSource, /const playableEntry = candidates\.find\(\(entry\) => entry\.viability\.status === 'ready'\)/);
   assert.match(webAppSource, /jouer maintenant: \$\{playableEntry\.option\.nextAction\}/);
   assert.match(webAppSource, /jouer maintenant: \$\{alternative\.action\}/);
@@ -379,10 +379,15 @@ test('atlas military summarizes the front follow-up ladder', () => {
   assert.match(webAppSource, /if \(steps\.length < 2\)/);
   assert.match(webAppSource, /label: 'Échelle suivi front'/);
   assert.match(webAppSource, /detail: steps\.join\(' → '\)/);
-  assert.match(webAppSource, /const blockedFollowUpLadder = buildAtlasMilitaryBlockedFollowUpLadder\(blockedFollowUpAlternative, candidates\)/);
+  assert.match(webAppSource, /firstActionReason: `Pourquoi d’abord: \$\{reasonParts\.slice\(0, 4\)\.join\(' · '\)\}`/);
+  assert.match(webAppSource, /préparation minimale: \$\{prepUnlock\.unlocks\}/);
+  assert.match(webAppSource, /alternative bloquée: \$\{alternative\.viabilityLabel\}/);
+  assert.match(webAppSource, /risque restant: \$\{residualRisk\.label\}/);
+  assert.match(webAppSource, /const blockedFollowUpLadder = buildAtlasMilitaryBlockedFollowUpLadder\(blockedFollowUpAlternative, candidates, sharedResidualRisk\)/);
   assert.match(webAppSource, /renderAtlasMilitaryBlockedFollowUpLadder\(preview\.blockedFollowUpLadder, ladderY\)/);
   assert.match(webAppSource, /Synthèse échelle de suivi de front/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--ready/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--prep/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder--risky/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reason/);
 });
