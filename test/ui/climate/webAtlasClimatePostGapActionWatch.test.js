@@ -28,6 +28,15 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /minimalProtection/);
   assert.match(webAppSource, /secondaryProtectionGuard/);
   assert.match(webAppSource, /secondaryUpkeep/);
+  assert.match(webAppSource, /primaryPromotionMargin/);
+  assert.match(webAppSource, /watchMargin/);
+  assert.match(webAppSource, /Marge avant primaire/);
+  assert.match(webAppSource, /marge faible/);
+  assert.match(webAppSource, /marge confortable/);
+  assert.match(webAppSource, /reste \$\{primaryPromotionMargin\} point/);
+  assert.match(webAppSource, /Number\.isFinite\(watchGap\.nearestThresholdScore\)/);
+  assert.match(webAppSource, /view\.watchItem\.watchMargin \?/);
+  assert.match(webAppSource, /secondaryUpkeep/);
   assert.match(webAppSource, /smallestUpkeepReason/);
   assert.match(webAppSource, /upkeepPromotionRisk/);
   assert.match(webAppSource, /Pourquoi cet upkeep/);
@@ -75,6 +84,9 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__upkeep--impossible/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__upkeep--stable-without-upkeep/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__why/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin--tight/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin--comfortable/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -147,4 +159,15 @@ test('atlas clearly marks when secondary watch can stay secondary without upkeep
   assert.match(webAppSource, /label: 'veille stable sans upkeep'/);
   assert.match(webAppSource, /Sans upkeep immédiat/);
   assert.match(webAppSource, /la veille peut rester secondaire tant que le signal ne se rapproche pas/);
+});
+
+test('atlas shows remaining margin before secondary climate watch becomes primary', () => {
+  assert.match(webAppSource, /const primaryPromotionMargin = Number\.isFinite\(watchGap\.nearestThresholdScore\)/);
+  assert.match(webAppSource, /Math\.max\(0, 80 - watchGap\.nearestThresholdScore\)/);
+  assert.match(webAppSource, /label: primaryPromotionMargin <= 0/);
+  assert.match(webAppSource, /marge nulle/);
+  assert.match(webAppSource, /marge courte/);
+  assert.match(webAppSource, /Marge avant primaire/);
+  assert.match(webAppSource, /view\.watchItem\.watchMargin \? `<small class="map-world-climate-post-gap-watch__margin/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__margin--short/);
 });
