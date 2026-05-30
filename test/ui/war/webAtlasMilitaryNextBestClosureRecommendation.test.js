@@ -271,3 +271,25 @@ test('atlas military recommends follow-up order for residual grouped front risk'
   assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up--exposed/);
   assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up--movement/);
 });
+
+// MAP-A32: residual grouped-front follow-up should reveal conflicts with
+// existing orders/reservations/queued actions without changing the single follow-up.
+test('atlas military shows conflicts for residual front follow-up orders', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborResidualFollowUpConflict\(followUp, recommendation, checklist, queuedAction = state\.acceptedRecommendedMilitaryAction\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborResidualFollowUpConflict\(conflict, y\)/);
+  assert.match(webAppSource, /Conflit de l’ordre de suivi résiduel/);
+  assert.match(webAppSource, /queuedAction\?\.provinceLabel && queuedAction\.provinceLabel !== followUp\.provinceLabel/);
+  assert.match(webAppSource, /Conflit: action déjà en file/);
+  assert.match(webAppSource, /Conflit: unité réservée/);
+  assert.match(webAppSource, /Conflit: ordre existant/);
+  assert.match(webAppSource, /\$\{followUp\.provinceLabel\} protégé vs \$\{queuedConflict\.provinceLabel\} retardé/);
+  assert.match(webAppSource, /\$\{followUp\.provinceLabel\} protégé vs réserve logistique affaiblie/);
+  assert.match(webAppSource, /Suivi libre à mettre en file/);
+  assert.match(webAppSource, /aucun ordre, réserve ou action déjà en file ne bloque/);
+  assert.match(webAppSource, /residualFollowUpConflict: buildAtlasMilitaryNeighborResidualFollowUpConflict/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborResidualFollowUpConflict\(preview\.residualFollowUpConflict, conflictY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up-conflict__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up-conflict--conflict/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up-conflict--reserved/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-residual-follow-up-conflict--safe/);
+});

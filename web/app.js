@@ -2636,6 +2636,60 @@ function buildAtlasMilitaryNeighborResidualFollowUpOrder(sharedResidualRisk, clu
   };
 }
 
+function buildAtlasMilitaryNeighborResidualFollowUpConflict(followUp, recommendation, checklist, queuedAction = state.acceptedRecommendedMilitaryAction) {
+  if (!followUp?.visible) {
+    return {
+      visible: false,
+      tone: 'quiet',
+      label: 'Conflit suivi non évalué',
+      detail: 'aucun ordre de suivi résiduel actif',
+      tradeoff: 'pas de conflit à afficher',
+    };
+  }
+
+  const existingOrder = (recommendation?.options ?? []).find((option) => option.provinceLabel === followUp.provinceLabel && option.nextAction !== followUp.action);
+  const reservedUnit = (checklist?.items ?? []).find((item) => item.provinceLabel === followUp.provinceLabel && (item.blockerBadge?.type === 'logistics' || item.checklist?.immediateAction?.includes('réserver')));
+  const queuedConflict = queuedAction?.provinceLabel && queuedAction.provinceLabel !== followUp.provinceLabel ? queuedAction : null;
+
+  if (queuedConflict) {
+    return {
+      visible: true,
+      tone: 'conflict',
+      label: 'Conflit: action déjà en file',
+      detail: `${queuedConflict.actionCode} attend sur ${queuedConflict.provinceLabel}`,
+      tradeoff: `${followUp.provinceLabel} protégé vs ${queuedConflict.provinceLabel} retardé`,
+    };
+  }
+
+  if (reservedUnit) {
+    return {
+      visible: true,
+      tone: 'reserved',
+      label: 'Conflit: unité réservée',
+      detail: reservedUnit.checklist.immediateAction,
+      tradeoff: `${followUp.provinceLabel} protégé vs réserve logistique affaiblie`,
+    };
+  }
+
+  if (existingOrder) {
+    return {
+      visible: true,
+      tone: 'conflict',
+      label: 'Conflit: ordre existant',
+      detail: existingOrder.nextAction,
+      tradeoff: `${followUp.provinceLabel} protégé vs ${existingOrder.nextAction} retardé`,
+    };
+  }
+
+  return {
+    visible: true,
+    tone: 'safe',
+    label: 'Suivi libre à mettre en file',
+    detail: 'aucun ordre, réserve ou action déjà en file ne bloque',
+    tradeoff: 'aucun compromis visible',
+  };
+}
+
 function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, features) {
   const focus = recommendation?.primary ?? null;
   const focusProvince = focus?.provinceLabel ?? checklist?.points?.[0]?.detail?.split(':')?.[0] ?? null;
@@ -2652,6 +2706,7 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
       sharedHandlingHint: buildAtlasMilitaryNeighborSharedHandlingHint(buildAtlasMilitaryNeighborFrontUrgencyCluster([], buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewChangeExplanation(buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewPriority([]), []))),
       sharedResidualRisk: buildAtlasMilitaryNeighborSharedResidualRisk(buildAtlasMilitaryNeighborFrontUrgencyCluster([], buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewChangeExplanation(buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewPriority([]), [])), buildAtlasMilitaryNeighborSharedHandlingHint(buildAtlasMilitaryNeighborFrontUrgencyCluster([], buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewChangeExplanation(buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewPriority([]), [])))),
       residualFollowUpOrder: buildAtlasMilitaryNeighborResidualFollowUpOrder(buildAtlasMilitaryNeighborSharedResidualRisk(buildAtlasMilitaryNeighborFrontUrgencyCluster([], buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewChangeExplanation(buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewPriority([]), [])), buildAtlasMilitaryNeighborSharedHandlingHint(buildAtlasMilitaryNeighborFrontUrgencyCluster([], buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewChangeExplanation(buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewPriority([]), [])))), buildAtlasMilitaryNeighborFrontUrgencyCluster([], buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewChangeExplanation(buildAtlasMilitaryNeighborReviewStaleness(recommendation, []), buildAtlasMilitaryNeighborReviewPriority([]), []))),
+      residualFollowUpConflict: buildAtlasMilitaryNeighborResidualFollowUpConflict(null, recommendation, checklist),
       summary: 'Prévision voisins indisponible: aucun ordre de province en focus.',
       empty: true,
     };
@@ -2684,6 +2739,7 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
   const sharedHandlingHint = buildAtlasMilitaryNeighborSharedHandlingHint(urgencyCluster);
   const sharedResidualRisk = buildAtlasMilitaryNeighborSharedResidualRisk(urgencyCluster, sharedHandlingHint);
   const residualFollowUpOrder = buildAtlasMilitaryNeighborResidualFollowUpOrder(sharedResidualRisk, urgencyCluster);
+  const residualFollowUpConflict = buildAtlasMilitaryNeighborResidualFollowUpConflict(residualFollowUpOrder, recommendation, checklist);
 
   if (!shifts.length) {
     return {
@@ -2698,6 +2754,7 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
       sharedHandlingHint,
       sharedResidualRisk,
       residualFollowUpOrder,
+      residualFollowUpConflict,
       summary: `${focusProvince}: aucun front voisin lisible après engagement.`,
       empty: true,
     };
@@ -2715,7 +2772,8 @@ function buildAtlasMilitaryNeighborFrontShiftPreview(recommendation, checklist, 
     sharedHandlingHint,
     sharedResidualRisk,
     residualFollowUpOrder,
-    summary: `${focusProvince}: ${shifts.length} front${shifts.length > 1 ? 's' : ''} voisin${shifts.length > 1 ? 's' : ''} à prévisualiser après ${focus?.nextAction ?? 'ordre'}; ${reviewPriority.label}; ${reviewStaleness.label}; ${reviewChange.label}${urgencyCluster.visible ? `; ${urgencyCluster.label}; ${sharedHandlingHint.label}${sharedResidualRisk.visible ? `; ${sharedResidualRisk.label}${residualFollowUpOrder.visible ? `; ${residualFollowUpOrder.label}` : ''}` : ''}` : contestedPriority.visible ? `; ${contestedPriority.label}` : ''}.`,
+    residualFollowUpConflict,
+    summary: `${focusProvince}: ${shifts.length} front${shifts.length > 1 ? 's' : ''} voisin${shifts.length > 1 ? 's' : ''} à prévisualiser après ${focus?.nextAction ?? 'ordre'}; ${reviewPriority.label}; ${reviewStaleness.label}; ${reviewChange.label}${urgencyCluster.visible ? `; ${urgencyCluster.label}; ${sharedHandlingHint.label}${sharedResidualRisk.visible ? `; ${sharedResidualRisk.label}${residualFollowUpOrder.visible ? `; ${residualFollowUpOrder.label}; ${residualFollowUpConflict.label}` : ''}` : ''}` : contestedPriority.visible ? `; ${contestedPriority.label}` : ''}.`,
     empty: false,
   };
 }
@@ -2797,6 +2855,16 @@ function renderAtlasMilitaryNeighborResidualFollowUpOrder(followUp, y) {
   `;
 }
 
+function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
+  if (!conflict?.visible) return '';
+  return `
+    <g class="atlas-military-neighbor-residual-follow-up-conflict atlas-military-neighbor-residual-follow-up-conflict--${conflict.tone}" aria-label="Conflit de l’ordre de suivi résiduel: ${conflict.label}; ${conflict.detail}; compromis ${conflict.tradeoff}">
+      <text class="atlas-military-neighbor-residual-follow-up-conflict__label" x="44.2" y="${y}">${conflict.label}</text>
+      <text class="atlas-military-neighbor-residual-follow-up-conflict__detail" x="44.2" y="${y + 1.35}">${conflict.tradeoff}</text>
+    </g>
+  `;
+}
+
 function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
   const priorityY = preview.empty ? 163.8 : 163.85 + (preview.shifts.length * 3.45);
   const staleY = priorityY + 2.75;
@@ -2805,13 +2873,15 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
   const hintY = clusterY + (preview.urgencyCluster?.visible ? 2.75 : 0);
   const residualY = hintY + (preview.sharedHandlingHint?.visible ? 2.75 : 0);
   const followUpY = residualY + (preview.sharedResidualRisk?.visible ? 2.75 : 0);
-  const contestedY = followUpY + (preview.residualFollowUpOrder?.visible ? 2.75 : 0);
+  const conflictY = followUpY + (preview.residualFollowUpOrder?.visible ? 2.75 : 0);
+  const contestedY = conflictY + (preview.residualFollowUpConflict?.visible ? 2.75 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
   const hintHeight = preview.sharedHandlingHint?.visible ? 2.5 : 0;
   const residualHeight = preview.sharedResidualRisk?.visible ? 2.5 : 0;
   const followUpHeight = preview.residualFollowUpOrder?.visible ? 2.5 : 0;
+  const conflictHeight = preview.residualFollowUpConflict?.visible ? 2.5 : 0;
   const contestedHeight = preview.contestedPriority?.visible ? 2.5 : 0;
-  const height = (preview.empty ? 13.6 : 13.6 + (preview.shifts.length * 3.45)) + clusterHeight + hintHeight + residualHeight + followUpHeight + contestedHeight;
+  const height = (preview.empty ? 13.6 : 13.6 + (preview.shifts.length * 3.45)) + clusterHeight + hintHeight + residualHeight + followUpHeight + conflictHeight + contestedHeight;
   return `
     <g class="atlas-military-neighbor-front-shift atlas-military-neighbor-front-shift--${preview.empty ? 'empty' : 'active'}" aria-label="Prévisualisation des fronts voisins après engagement: ${preview.summary}">
       <rect class="atlas-military-neighbor-front-shift__panel" x="43" y="157" width="35" height="${height}" rx="2.1"></rect>
@@ -2831,6 +2901,7 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
       ${renderAtlasMilitaryNeighborSharedHandlingHint(preview.sharedHandlingHint, hintY)}
       ${renderAtlasMilitaryNeighborSharedResidualRisk(preview.sharedResidualRisk, residualY)}
       ${renderAtlasMilitaryNeighborResidualFollowUpOrder(preview.residualFollowUpOrder, followUpY)}
+      ${renderAtlasMilitaryNeighborResidualFollowUpConflict(preview.residualFollowUpConflict, conflictY)}
       ${renderAtlasMilitaryNeighborContestedHandlingPriority(preview.contestedPriority, contestedY)}
     </g>
   `;
