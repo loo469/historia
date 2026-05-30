@@ -342,6 +342,41 @@ function buildSwitchToBackupTrigger(safestImmediateFollowUp, backupFollowUp, pri
   };
 }
 
+function buildReturnDurabilityHint(selected, principalRisk) {
+  const causeByRisk = {
+    'exposition excessive': 'dépendance non vérifiée',
+    'timing fragile': 'timing expirant',
+    'signal contradictoire': 'dépendance non vérifiée',
+    'confiance basse': 'information manquante',
+  };
+  const cause = causeByRisk[principalRisk] ?? 'information manquante';
+
+  if (selected.state === 'already-met') {
+    return {
+      stability: 'stable-return',
+      label: 'Retour stable.',
+      cause,
+      advice: 'Le suivi initial peut tenir sans forcer un nouveau backup immédiat.',
+    };
+  }
+
+  if (selected.state === 'near') {
+    return {
+      stability: 'fragile-return',
+      label: 'Retour fragile.',
+      cause,
+      advice: 'Retour possible mais temporaire: confirmer le signal avant de quitter le backup.',
+    };
+  }
+
+  return {
+    stability: 'stay-on-backup-advised',
+    label: 'Rester sur backup conseillé.',
+    cause,
+    advice: 'Le retour risque de recréer un backup immédiatement après.',
+  };
+}
+
 function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp, principalRisk) {
   if (!safestImmediateFollowUp?.recommended || !backupFollowUp?.recommended) {
     return {
@@ -372,10 +407,12 @@ function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp,
     },
   };
   const selected = conditionByRisk[principalRisk] ?? conditionByRisk['confiance basse'];
+  const durability = buildReturnDurabilityHint(selected, principalRisk);
 
   return {
     ...selected,
     recommended: true,
+    durability,
     label: 'Retour au suivi initial',
     primary: safestImmediateFollowUp.label,
     backup: backupFollowUp.label,

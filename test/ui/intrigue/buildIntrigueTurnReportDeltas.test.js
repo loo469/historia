@@ -184,6 +184,12 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
           primary: 'Défensif',
           backup: 'Attente',
           detail: 'condition proche si le prochain contrôle confirme le signal visible',
+          durability: {
+            stability: 'fragile-return',
+            label: 'Retour fragile.',
+            cause: 'dépendance non vérifiée',
+            advice: 'Retour possible mais temporaire: confirmer le signal avant de quitter le backup.',
+          },
           fallback: false,
         },
         fullReviewRequired: false,
@@ -300,6 +306,12 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
         primary: 'Offensif',
         backup: 'Défensif',
         detail: 'condition improbable ce tour-ci sans signal visible plus frais',
+        durability: {
+          stability: 'stay-on-backup-advised',
+          label: 'Rester sur backup conseillé.',
+          cause: 'timing expirant',
+          advice: 'Le retour risque de recréer un backup immédiatement après.',
+        },
         fallback: false,
       },
       fullReviewRequired: false,
@@ -438,6 +450,32 @@ test('buildIntrigueTurnReportDeltas falls back when expiring follow-ups have no 
     label: 'Retour au suivi initial non lisible',
     condition: 'aucun backup actif ou suivi initial fiable à restaurer',
     fallback: true,
+  });
+});
+
+
+test('buildIntrigueTurnReportDeltas marks stable return when backup can safely hand back to the initial follow-up', () => {
+  const view = buildIntrigueView();
+  view.selectedProvince.drillDown.postRecapStabilizationChoices = {
+    timingComparison: {
+      recommendedTiming: 'short-wait',
+      dominantReason: 'information-manquante',
+      actNow: { risk: 'couverture visible encore fragile' },
+      shortWait: { outcome: 'la couverture visible se consolide sans nouveau bruit' },
+      summary: 'Confiance basse: la couverture visible peut se stabiliser.',
+    },
+  };
+
+  const report = buildIntrigueTurnReportDeltas(province, view, {
+    previousActionCode: 'contenir',
+    previousTimingRecommendation: 'act-now',
+  });
+
+  assert.deepEqual(report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.durability, {
+    stability: 'stable-return',
+    label: 'Retour stable.',
+    cause: 'information manquante',
+    advice: 'Le suivi initial peut tenir sans forcer un nouveau backup immédiat.',
   });
 });
 
