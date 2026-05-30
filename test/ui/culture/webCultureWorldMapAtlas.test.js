@@ -185,7 +185,9 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /Au-delà du minimum:/);
   assert.match(webAppSource, /Arbitrage:/);
   assert.match(webAppSource, /Pourquoi ce suivi:/);
+  assert.match(webAppSource, /Robustesse:/);
   assert.match(webAppSource, /firstFollowUpReason/);
+  assert.match(webAppSource, /followUpRobustness/);
   assert.match(webAppSource, /deferLadderSummary/);
   assert.match(webAppSource, /Synergie ce tour:/);
   assert.match(webAppSource, /Synergie temporaire:/);

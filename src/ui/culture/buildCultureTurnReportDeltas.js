@@ -1460,6 +1460,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
   }
 
   const firstFollowUpReason = buildCulturalFirstFollowUpReason(candidate, recommendedBeyondMinimumBenefit, immediateSynergy);
+  const followUpRobustness = buildCulturalFollowUpRobustness(candidate, immediateSynergy);
   const sourceAction = normalizeText(immediateSynergy.sourceAction ?? '');
 
   if (/attendre|observer/.test(sourceAction)) {
@@ -1469,6 +1470,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       decision: 'attendre/observer reste le meilleur premier suivi visible',
       summary: `Observer: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
       firstFollowUpReason,
+      followUpRobustness,
     };
   }
 
@@ -1479,6 +1481,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       decision: 'agir maintenant pour capturer la synergie avant expiration',
       summary: `Agir maintenant: ${immediateSynergy.expiryWarning.summary}`,
       firstFollowUpReason,
+      followUpRobustness,
     };
   }
 
@@ -1489,6 +1492,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       decision: 'faire le minimum garde la fenêtre sans perdre la synergie visible',
       summary: `Minimum suffisant: ${candidate.minimalRevisitAction}; ${immediateSynergy.summary}`,
       firstFollowUpReason,
+      followUpRobustness,
     };
   }
 
@@ -1498,6 +1502,29 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
     decision: 'reporter sans perdre la synergie visible',
     summary: `Report sûr: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
     firstFollowUpReason,
+    followUpRobustness,
+  };
+}
+
+function buildCulturalFollowUpRobustness(candidate, immediateSynergy) {
+  if (immediateSynergy.expiryWarning) {
+    return {
+      state: 'fragile-before-review',
+      label: 'Fragile avant revue',
+      reviewWindow: immediateSynergy.expiryWarning.reviewWindow,
+      reason: immediateSynergy.expiryWarning.expiryCause,
+      summary: `Fragile avant revue: ${immediateSynergy.expiryWarning.expiryCause}; ${immediateSynergy.sourceLabel} expire avant ${immediateSynergy.expiryWarning.reviewWindow}.`,
+    };
+  }
+
+  return {
+    state: 'stable-until-review',
+    label: 'Stable jusqu’à la prochaine revue',
+    reviewWindow: candidate.nextReviewWindow,
+    reason: candidate.deadlineStatus === 'near-deadline'
+      ? 'la synergie visible ne signale pas d’expiration avant la revue'
+      : candidate.deadlineHint,
+    summary: `Stable jusqu’à la prochaine revue: ${candidate.nextReviewWindow}; aucune expiration de synergie visible.`,
   };
 }
 
