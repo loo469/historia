@@ -928,6 +928,7 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
     entry.deferLadderSummary?.state ?? null,
     entry.deferLadderSummary?.label ?? null,
     entry.deferLadderSummary?.summary ?? null,
+    entry.deferLadderSummary?.firstFollowUpReason?.summary ?? null,
   ]), [
     [
       'Compact d’Aurora',
@@ -947,8 +948,9 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
       'minimum-sufficient',
       'Minimum suffisant',
       'Minimum suffisant: confirmer Ouvrir le récit d’expansion; synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.',
+      'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.; expiration: aucune expiration visible; piste différée: confirmer Ouvrir le récit d’expansion; signal local: perte du soutien actif.',
     ],
-    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   ]);
 });
 
@@ -1040,6 +1042,16 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
     label: 'Agir maintenant',
     decision: 'agir maintenant pour capturer la synergie avant expiration',
     summary: 'Agir maintenant: expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.',
+    firstFollowUpReason: {
+      state: 'expiry-driven',
+      label: 'Pourquoi ce suivi',
+      synergy: 'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.',
+      expiryCue: 'expiration: expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.',
+      deferredTrack: 'piste différée: confirmer Ouvrir le récit d’expansion',
+      localSignal: 'signal local: perte du soutien actif',
+      summary: 'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.; expiration: expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.; piste différée: confirmer Ouvrir le récit d’expansion; signal local: perte du soutien actif.',
+      payoffCue: 'gain concret: sécurise payoff 3 sans attendre la bascule',
+    },
   });
 });
 
@@ -1108,7 +1120,94 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
     label: 'Report sûr',
     decision: 'reporter sans perdre la synergie visible',
     summary: 'Report sûr: sûr ce tour; synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.',
+    firstFollowUpReason: {
+      state: 'safe-this-turn',
+      label: 'Pourquoi ce suivi',
+      synergy: 'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.',
+      expiryCue: 'expiration: aucune expiration visible',
+      deferredTrack: 'piste différée: risque stabilisé par l’historique lisible',
+      localSignal: 'signal local: fallout en hausse',
+      summary: 'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.; expiration: aucune expiration visible; piste différée: risque stabilisé par l’historique lisible; signal local: fallout en hausse.',
+      payoffCue: 'gain concret: sécurise payoff 2 sans attendre la bascule',
+    },
   });
+});
+
+test('buildCultureTurnReportDeltas explains when observing is the first cultural follow-up', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'watch',
+        microAction: 'attendre',
+      },
+    },
+    activeRecommendations: [
+      {
+        recommendationId: 'river-gate:aurora:observe',
+        regionId: 'river-gate',
+        cultureName: 'Compact d’Aurora',
+        action: 'attendre',
+        tone: 'watch',
+        level: 'steady',
+        discoveryId: 'archive-routes',
+        confidence: 'high',
+        supportKey: 'attendre',
+        markerIds: ['aurora-marker'],
+        rank: 1,
+      },
+    ],
+    localTimeline: {
+      items: [
+        {
+          timelineId: 'harbor:event:quiet-followup',
+          kind: 'event',
+          signal: 'watch',
+          title: 'Suivi calme',
+          summary: 'Risque stabilisé.',
+          regionId: 'harbor',
+          cultureName: 'Harbor Compact',
+        },
+      ],
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+      {
+        decisionId: 'turn-8-harbor-calm',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Calmer le port',
+        promptLabel: 'Calmer le port',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+    ],
+  });
+
+  const observeEntry = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries[0];
+  assert.equal(observeEntry.deferLadderSummary.state, 'observe-first');
+  assert.equal(observeEntry.deferLadderSummary.label, 'Observer');
+  assert.equal(observeEntry.deferLadderSummary.decision, 'attendre/observer reste le meilleur premier suivi visible');
+  assert.equal(observeEntry.deferLadderSummary.firstFollowUpReason.summary, 'synergie ce tour: archive-routes + Compact d’Aurora; attendre sécurisé.; expiration: aucune expiration visible; piste différée: risque stabilisé par l’historique lisible; signal local: fallout en hausse.');
 });
 
 test('buildCultureTurnReportDeltas breaks safe defer deadline ties by cultural payoff', () => {
