@@ -133,6 +133,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopChain, true);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Protège .*retarde/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason, /Ne pas prolonger|remplace déjà/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state, 'fallback');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.action, 'use-fallback');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.summary, /Différer|fallback/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -217,6 +220,9 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.exposedRoutes[0].reason, /au-delà du point d’arrêt/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.benefit, /protège Ember Line/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.residualRisk, /Safe Road.*reste exposé/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state, 'watch');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.action, 'accept-exposure');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.summary, /Safe Road.*reste à surveiller/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
@@ -258,6 +264,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.state, 'unknown');
   assert.deepEqual(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.exposedRoutes, []);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.residualRisk, /non traçable précisément/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state, 'unknown');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.action, 'wait-for-signals');
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);

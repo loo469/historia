@@ -850,6 +850,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: aucune garde concrète à classer.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Capacité de garde indisponible sans récupération locale.' },
       guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune chaîne de garde à prolonger.', stopChain: false, residualExposure: { state: 'unknown', exposedRoutes: [], benefit: 'Bénéfice du fallback non calculable sans chaîne de garde.', residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.' } },
+      guardDecisionSummary: { state: 'unknown', action: 'wait-for-signals', label: 'Comparer au prochain signal', summary: 'Exposition restante non traçable précisément avec les signaux actuels.', reason: 'Bénéfice du fallback non calculable sans chaîne de garde.' },
     };
   }
 
@@ -896,6 +897,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: coût de garde non comparable sans route exposée.' },
       guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Aucune route exposée ne permet de comparer la capacité de garde.' },
       guardOpportunityCost: { state: 'fallback', summary: 'Coût d’opportunité indisponible: aucune route adjacente exposée à comparer.', stopChain: false, residualExposure: { state: 'unknown', exposedRoutes: [], benefit: 'Bénéfice du fallback non calculable sans route exposée.', residualRisk: 'Exposition restante non traçable précisément avec les signaux actuels.' } },
+      guardDecisionSummary: { state: 'unknown', action: 'wait-for-signals', label: 'Comparer au prochain signal', summary: 'Exposition restante non traçable précisément avec les signaux actuels.', reason: 'Bénéfice du fallback non calculable sans route exposée.' },
     };
   }
 
@@ -1137,6 +1139,61 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           },
           canContinueWithoutCriticalDelay: false,
         };
+  const buildGuardDecisionSummary = (opportunityCost) => {
+    if (!opportunityCost) {
+      return {
+        state: 'unknown',
+        action: 'wait-for-signals',
+        label: 'Décision garde inconnue',
+        summary: 'Synthèse indisponible: les signaux de garde ne sont pas comparables.',
+        reason: 'Aucun coût d’opportunité exploitable.',
+      };
+    }
+
+    if (opportunityCost.canContinueWithoutCriticalDelay || opportunityCost.state === 'continue') {
+      return {
+        state: 'continue',
+        action: 'continue-guard',
+        label: 'Continuer la garde',
+        summary: `Continuer vers ${opportunityCost.delayedRoute ?? 'le segment suivant'}: aucune route critique retardée.`,
+        reason: opportunityCost.stopReason ?? 'Le coût reste couvert par le bénéfice attendu.',
+      };
+    }
+
+    const exposure = opportunityCost.fallbackAction?.residualExposure ?? opportunityCost.residualExposure ?? null;
+    const exposedRoutes = exposure?.exposedRoutes ?? [];
+    const comparableExposure = exposure?.state === 'traced' && exposedRoutes.length > 0;
+    const urgentExposure = comparableExposure && exposedRoutes.some((route) => route.tone === 'high');
+
+    if (opportunityCost.fallbackAction && urgentExposure) {
+      return {
+        state: 'fallback',
+        action: 'use-fallback',
+        label: 'Basculer sur le fallback',
+        summary: `${opportunityCost.fallbackAction.label}: réduit le risque principal sans rouvrir la chaîne.`,
+        reason: exposure.residualRisk,
+      };
+    }
+
+    if (comparableExposure) {
+      return {
+        state: 'watch',
+        action: 'accept-exposure',
+        label: 'Accepter l’exposition ce tour',
+        summary: `${exposedRoutes.map((route) => route.route).join(', ')} reste à surveiller après le bénéfice principal.`,
+        reason: exposure.benefit,
+      };
+    }
+
+    return {
+      state: 'watch',
+      action: 'accept-exposure',
+      label: 'Accepter l’exposition à surveiller',
+      summary: exposure?.residualRisk ?? 'Exposition restante non comparable avec les signaux actuels.',
+      reason: exposure?.benefit ?? 'Fallback neutre: aucune route restante traçable précisément.',
+    };
+  };
+  const guardDecisionSummary = buildGuardDecisionSummary(guardOpportunityCost);
 
   return {
     state: secondaryRoutes.length > 0 ? 'chain' : 'single',
@@ -1148,6 +1205,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     guardComparison,
     guardSequencing,
     guardOpportunityCost,
+    guardDecisionSummary,
   };
 }
 

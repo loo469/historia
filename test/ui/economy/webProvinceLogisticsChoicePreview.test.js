@@ -113,6 +113,9 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /province-logistics-spillover-residual-benefit/);
   assert.match(webAppSource, /province-logistics-spillover-residual-risk/);
   assert.match(webAppSource, /Reste exposé:/);
+  assert.match(webAppSource, /province-logistics-spillover-ladder/);
+  assert.match(webAppSource, /guardDecisionSummary/);
+  assert.match(webAppSource, /Synthèse garde:/);
   assert.match(webAppSource, /Continuer la chaîne reste acceptable/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);

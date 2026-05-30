@@ -8634,6 +8634,9 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                   <small class="province-logistics-spillover-residual-risk">Reste exposé: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.residualRisk}</small>
                 ` : ''}
               ` : ''}
+              ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary ? `
+                <small class="province-logistics-spillover-ladder province-logistics-spillover-ladder--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.state}">Synthèse garde: ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.label} — ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.summary}</small>
+              ` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost?.canContinueWithoutCriticalDelay ? '<small>Continuer la chaîne reste acceptable: aucune route critique n’est retardée.</small>' : ''}
             </div>
           ` : ''}
