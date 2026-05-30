@@ -13781,6 +13781,72 @@ function renderAtlasClimateNearestCoverageGapAction(view) {
   `;
 }
 
+function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresholdProgressView) {
+  if (!coverageView || coverageView.state === 'empty' || !gapActionView?.recommendation || !thresholdProgressView?.progress) {
+    return {
+      state: 'quiet',
+      watchItem: null,
+      summary: 'Veille secondaire climat indisponible après action minimale.',
+    };
+  }
+
+  const progress = thresholdProgressView.progress;
+  const watchGap = (coverageView.blindSpots ?? [])
+    .filter((gap) => !gap.nearest && gap.label !== gapActionView.recommendation.target)
+    .find((gap) => gap.nearestThresholdScore >= 55) ?? null;
+
+  if (!watchGap) {
+    return {
+      state: 'quiet',
+      watchItem: null,
+      summary: 'Veille calme: aucun second gap climat assez proche du seuil après cette action.',
+    };
+  }
+
+  return {
+    state: 'watch',
+    watchItem: {
+      label: watchGap.label,
+      phrase: `${watchGap.label}: pression seuil ${watchGap.nearestThresholdScore}, prochaine vérification ${progress.deadline}.`,
+      thresholdPressure: watchGap.nearestRiskLabel,
+      nextCheck: watchGap.nextAction,
+    },
+    summary: `${watchGap.label}: seul watch item restant après l’action du gap prioritaire.`,
+  };
+}
+
+function renderAtlasClimatePostGapActionWatch(view) {
+  if (state.activeOverlaySlot !== 'climate-overlay' || !view) {
+    return '';
+  }
+
+  if (!view.watchItem) {
+    return `
+      <aside class="map-world-climate-post-gap-watch map-world-climate-post-gap-watch--quiet" aria-label="Veille climat restante après action minimale">
+        <div class="map-world-climate-post-gap-watch__header">
+          <strong>Veille après action</strong>
+          <span>calme</span>
+        </div>
+        <p>${view.summary}</p>
+        <small><b>Fallback</b> · Ne pas créer de liste: relire seulement si un nouveau signal climat apparaît.</small>
+      </aside>
+    `;
+  }
+
+  return `
+    <aside class="map-world-climate-post-gap-watch map-world-climate-post-gap-watch--watch" aria-label="Veille climat restante après action minimale">
+      <div class="map-world-climate-post-gap-watch__header">
+        <strong>Veille après action</strong>
+        <span>${view.watchItem.label}</span>
+      </div>
+      <p>${view.summary}</p>
+      <small><b>Watch item</b> · ${view.watchItem.phrase}</small>
+      <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
+      <small><b>Prochain check</b> · ${view.watchItem.nextCheck}</small>
+    </aside>
+  `;
+}
+
 function renderAtlasSelectedClimateFollowUpReadinessRecap(view) {
   if (state.activeOverlaySlot !== 'climate-overlay' || view.state === 'empty') {
     return '';
@@ -22062,6 +22128,11 @@ function render() {
     atlasClimateRemainingCoverageGaps,
     atlasClimateThresholdProgressAfterReadinessAction,
   );
+  const atlasClimatePostGapActionWatch = buildAtlasClimatePostGapActionWatch(
+    atlasClimateRemainingCoverageGaps,
+    atlasClimateNearestCoverageGapAction,
+    atlasClimateThresholdProgressAfterReadinessAction,
+  );
   const intrigueExposureSummary = buildMapIntrigueExposureSummary(shell, intrigueView);
 
   document.querySelector('#app').innerHTML = `
@@ -22126,6 +22197,7 @@ function render() {
           ${renderAtlasClimatePreventiveSecondaryProtection(atlasClimatePreventiveSecondaryProtection)}
           ${renderAtlasClimateRemainingCoverageGaps(atlasClimateRemainingCoverageGaps)}
           ${renderAtlasClimateNearestCoverageGapAction(atlasClimateNearestCoverageGapAction)}
+          ${renderAtlasClimatePostGapActionWatch(atlasClimatePostGapActionWatch)}
           ${renderMapIntrigueExposureSummary(intrigueExposureSummary)}
           ${economyView.pulse ? `
             <div class="economy-turn-pulse">
