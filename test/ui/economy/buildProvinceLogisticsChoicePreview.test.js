@@ -120,8 +120,12 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.adjacentRouteSpilloverRisk.dependencyTrace, /→/);
   assert.match(preview.adjacentRouteSpilloverRisk.dependencyTrace, /capacité saturée|stock critique|risque élevé|Ember Line|Hill Spur|Iron Plain|Hill Hub/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardAction.fallback, false);
-  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.label, /Sécuriser|Garder|Surveiller/);
-  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.reason, /pression déplacée|chaîne|relais exposé/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.label, /Sécuriser|Garder/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardAction.reason, /pression déplacée|capacité consommée/);
+  assert.ok(['compare', 'single'].includes(preview.adjacentRouteSpilloverRisk.guardComparison.state));
+  assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.summary, /moins disruptif|Une seule garde/);
+  assert.ok(preview.adjacentRouteSpilloverRisk.guardComparison.candidates.length >= 1);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.candidates[0].tradeoff, /protégée vs .*capacité/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -198,6 +202,8 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.equal(preview.adjacentRouteSpilloverRisk.guardAction.fallback, true);
   assert.match(preview.adjacentRouteSpilloverRisk.guardAction.label, /Garde indisponible/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardAction.reason, /Aucune chaîne de spillover/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardComparison.state, 'fallback');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardComparison.summary, /Comparaison impossible/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);

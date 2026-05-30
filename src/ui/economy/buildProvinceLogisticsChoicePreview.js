@@ -847,6 +847,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       summary: 'Aucun spillover logistique: aucune récupération locale sélectionnée.',
       dependencyTrace: 'Dépendance inconnue: aucun levier local ne permet de tracer la source du spillover.',
       guardAction: { label: 'Garde indisponible', reason: 'Aucune chaîne de spillover à réduire pour l’instant.', fallback: true },
+      guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: aucune garde concrète à classer.' },
     };
   }
 
@@ -890,27 +891,47 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       summary: 'Aucun spillover logistique voisin concret après cette récupération locale.',
       dependencyTrace: 'Dépendance inconnue: aucune route voisine exposée ne confirme la chaîne source → route affectée → conséquence.',
       guardAction: { label: 'Garde indisponible', reason: 'Aucun relais voisin confirmé; surveiller la route après résolution locale.', fallback: true },
+      guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: coût de garde non comparable sans route exposée.' },
     };
   }
 
   const source = choice?.bottleneck?.label ?? option?.causeLabel ?? 'source inconnue';
   const consequence = criticalRoute.detail ?? `${criticalRoute.route} peut récupérer la pression déplacée.`;
-  const guardAction = criticalRoute.tone === 'high'
-    ? {
-      label: `Sécuriser ${criticalRoute.route} juste après ${priorityAction.route}`,
-      reason: `${criticalRoute.city} absorbe la pression déplacée si ${priorityAction.cost} reste le seul levier engagé.`,
+  const guardCandidates = [criticalRoute, ...secondaryRoutes]
+    .map((route, index) => ({
+      route: route.route,
+      city: route.city,
+      label: index === 0 ? `Sécuriser ${route.route} juste après ${priorityAction.route}` : `Garder ${route.route} en relais léger`,
+      reason: index === 0
+        ? `${route.city} absorbe la pression déplacée si ${priorityAction.cost} reste le seul levier engagé.`
+        : `Protège ${route.city} avec moins de capacité consommée que la route critique.`,
+      tradeoff: `${route.route} protégée vs ${route.tone === 'high' ? 'capacité forte consommée' : 'capacité légère consommée'}`,
+      disruption: (route.tone === 'high' ? 3 : 2) + index,
       fallback: false,
+    }))
+    .sort((left, right) => left.disruption - right.disruption || left.route.localeCompare(right.route));
+
+  const guardAction = guardCandidates[0] ?? {
+    label: 'Garde indisponible',
+    reason: 'Comparaison des coûts de garde impossible avec les signaux actuels.',
+    fallback: true,
+  };
+  const guardComparison = guardCandidates.length > 1
+    ? {
+      state: 'compare',
+      candidates: guardCandidates,
+      summary: `${guardAction.label} est le moins disruptif: ${guardAction.tradeoff}.`,
     }
-    : secondaryRoutes.length > 0
+    : guardCandidates.length === 1
       ? {
-        label: `Garder ${criticalRoute.route} en premier relais`,
-        reason: `Réduit la chaîne avant qu’elle n’atteigne ${secondaryRoutes[0].route}.`,
-        fallback: false,
+        state: 'single',
+        candidates: guardCandidates,
+        summary: 'Une seule garde concrète identifiée; comportement inchangé.',
       }
       : {
-        label: `Surveiller ${criticalRoute.route} après résolution`,
-        reason: `${criticalRoute.city} est le seul relais exposé identifié.`,
-        fallback: false,
+        state: 'fallback',
+        candidates: [],
+        summary: 'Comparaison impossible: coût de garde non comparable avec les signaux actuels.',
       };
 
   return {
@@ -920,6 +941,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     summary: `${criticalRoute.route} est la route voisine critique; ${secondaryRoutes.length > 0 ? `${secondaryRoutes.length} route${secondaryRoutes.length > 1 ? 's' : ''} secondaire${secondaryRoutes.length > 1 ? 's' : ''} exposée${secondaryRoutes.length > 1 ? 's' : ''}.` : 'aucune autre route secondaire exposée.'}`,
     dependencyTrace: `${source} → ${criticalRoute.route}/${criticalRoute.city} → ${consequence}`,
     guardAction,
+    guardComparison,
   };
 }
 
