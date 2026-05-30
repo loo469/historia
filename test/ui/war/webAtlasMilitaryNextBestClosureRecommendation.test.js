@@ -432,3 +432,15 @@ test('atlas military shows the next light front check after watch drop', () => {
   assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.nextLightCheck \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 7\.9 : 6\.55/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__recheck/);
 });
+
+// MAP-A42: a passed light recheck should unlock a safe next action or
+// confirmation state, while making condition changes the only reason to re-arm.
+test('atlas military shows what a passed light front recheck unlocks next', () => {
+  assert.match(webAppSource, /const lightRecheckUnlock = nextLightCheck/);
+  assert.match(webAppSource, /label: 'Recheck OK: sortie confirmée'/);
+  assert.match(webAppSource, /procéder sans watch active · observer léger · réarmer si \$\{residualRisk\?\.provinceLabel \?\? alternative\.provinceLabel \?\? 'front'\} change/);
+  assert.match(webAppSource, /lightRecheckUnlock,/);
+  assert.match(webAppSource, /ladder\.lightRecheckUnlock \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__unlock"/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightRecheckUnlock \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 9\.25 : 7\.9/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__unlock/);
+});
