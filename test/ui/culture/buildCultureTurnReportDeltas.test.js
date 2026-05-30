@@ -922,6 +922,9 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
     entry.immediateSynergy?.sourceLabel ?? null,
     entry.immediateSynergy?.benefit ?? null,
     entry.immediateSynergy?.avoidedRisk ?? null,
+    entry.immediateSynergy?.expiryWarning?.label ?? null,
+    entry.immediateSynergy?.expiryWarning?.reviewWindow ?? null,
+    entry.immediateSynergy?.expiryWarning?.lostBenefit ?? null,
   ]), [
     [
       'Compact d’Aurora',
@@ -935,9 +938,96 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
       'archive-routes',
       'archive-routes renforce amplifier avec Compact d’Aurora',
       'évite de séparer la découverte du suivi reporté: Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.',
+      null,
+      null,
+      null,
     ],
-    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null],
+    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null, null, null, null],
   ]);
+});
+
+
+test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires before review', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+      },
+    },
+    activeRecommendations: [
+      {
+        recommendationId: 'river-gate:aurora:expiring-discovery',
+        regionId: 'river-gate',
+        cultureName: 'Compact d’Aurora',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'archive-routes',
+        confidence: 'high',
+        supportKey: 'amplifier',
+        markerIds: ['aurora-marker'],
+        rank: 1,
+        expiresSoon: true,
+        timingLabel: 'expire avant la prochaine revue',
+      },
+    ],
+    localTimeline: {
+      items: [
+        {
+          timelineId: 'harbor:event:quiet-followup',
+          kind: 'event',
+          signal: 'watch',
+          title: 'Suivi calme',
+          summary: 'Risque stabilisé.',
+          regionId: 'harbor',
+          cultureName: 'Harbor Compact',
+        },
+      ],
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+      {
+        decisionId: 'turn-8-harbor-calm',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Calmer le port',
+        promptLabel: 'Calmer le port',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+    ],
+  });
+
+  const expiringSynergy = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries[0].immediateSynergy;
+  assert.deepEqual(expiringSynergy.expiryWarning, {
+    state: 'expires-before-review',
+    label: 'expire avant revue',
+    reviewWindow: 'prochaine rotation culturelle',
+    expiryCause: 'expire avant la prochaine revue',
+    lostBenefit: 'archive-routes ne renforcera plus Compact d’Aurora de façon sûre',
+    summary: 'expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.',
+  });
 });
 
 test('buildCultureTurnReportDeltas breaks safe defer deadline ties by cultural payoff', () => {
