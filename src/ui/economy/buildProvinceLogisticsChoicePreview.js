@@ -985,6 +985,45 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     };
   };
   const guardStopMarker = buildGuardStopMarker(nextGuardCost);
+  const buildStopFallbackAction = (stopMarker, blockedGuard) => {
+    if (!stopMarker?.exceedsBenefit || guardAction.fallback) {
+      return null;
+    }
+    const protectedTarget = guardAction.city ?? criticalRoute.city;
+    const blockedRoute = blockedGuard?.route ?? stopMarker.route;
+    const routeDelay = blockedGuard?.criticalDelay ? `${blockedRoute} est critique et resterait retardée.` : `${blockedRoute} dépasse le bénéfice attendu.`;
+
+    if (guardAction.tone === 'high') {
+      return {
+        state: 'recommended',
+        action: 'fortify-key-segment',
+        label: `Fortifier ${guardAction.route}`,
+        target: guardAction.route,
+        reason: `Préserve ${protectedTarget} sur le segment le plus rentable sans relancer la chaîne.`,
+        opportunityCost: `${routeDelay} Coût limité à ${guardAction.tradeoff}.`,
+      };
+    }
+
+    if (choice?.choiceId === 'reroute' || criticalRoute.tone === 'medium') {
+      return {
+        state: 'recommended',
+        action: 'reroute-flow',
+        label: `Rediriger un flux vers ${guardAction.route}`,
+        target: guardAction.route,
+        reason: `Conserve le bénéfice principal sur ${protectedTarget} avec un relais non-chaîné.`,
+        opportunityCost: `${routeDelay} Pas de garde ajoutée au-delà de ${stopMarker.label}.`,
+      };
+    }
+
+    return {
+      state: 'recommended',
+      action: 'protect-profitable-city',
+      label: `Protéger ${protectedTarget}`,
+      target: protectedTarget,
+      reason: `Cible la ville ou route la plus rentable déjà identifiée par le spillover.`,
+      opportunityCost: `${routeDelay} La chaîne reste arrêtée avant ${blockedRoute}.`,
+    };
+  };
   const guardOpportunityCost = guardSequencing.state === 'chainable' && nextGuardCost
     ? {
       state: guardStopMarker?.exceedsBenefit ? 'stop' : 'continue',
@@ -996,6 +1035,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         ? `Arrêter la chaîne après ${guardAction.route}: ${nextGuardCost.route} consommerait plus de capacité que le bénéfice attendu.`
         : `La chaîne peut continuer vers ${nextGuardCost.route} sans surcoût dominant.`,
       stopMarker: guardStopMarker,
+      fallbackAction: buildStopFallbackAction(guardStopMarker, nextGuardCost),
       canContinueWithoutCriticalDelay: guardStopMarker ? !guardStopMarker.exceedsBenefit && !guardStopMarker.criticalDelayed : false,
     }
     : guardSequencing.state === 'chainable'
@@ -1007,6 +1047,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         stopChain: false,
         stopReason: 'Aucune deuxième garde adjacente ne justifie d’arrêter la chaîne.',
         stopMarker: null,
+        fallbackAction: null,
         canContinueWithoutCriticalDelay: true,
       }
       : guardSequencing.state === 'competing'
@@ -1026,6 +1067,14 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             exceedsBenefit: true,
             criticalDelayed: true,
           },
+          fallbackAction: {
+            state: 'recommended',
+            action: 'defer-chain',
+            label: `Différer ${priorityAction.route}`,
+            target: priorityAction.route,
+            reason: `La garde protège déjà ${guardAction.route}; remplacer la récupération préserverait moins bien le bénéfice principal.`,
+            opportunityCost: `Ne pas rouvrir la chaîne: ${priorityAction.route} reste retardée ce tour.`,
+          },
           canContinueWithoutCriticalDelay: false,
         }
         : {
@@ -1033,6 +1082,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           summary: 'Coût d’opportunité indisponible: enchaînement de garde non comparable.',
           stopChain: false,
           stopMarker: null,
+          fallbackAction: null,
           canContinueWithoutCriticalDelay: false,
         };
 
