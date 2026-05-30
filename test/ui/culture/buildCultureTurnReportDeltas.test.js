@@ -1059,6 +1059,7 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
       reason: 'expire avant la prochaine revue',
       summary: 'Fragile avant revue: expire avant la prochaine revue; archive-routes expire avant prochaine rotation culturelle.',
     },
+    reviewExitSignal: null,
   });
 });
 
@@ -1143,6 +1144,14 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
       reviewWindow: 'prochaine rotation culturelle',
       reason: 'sûr ce tour',
       summary: 'Stable jusqu’à la prochaine revue: prochaine rotation culturelle; aucune expiration de synergie visible.',
+    },
+    reviewExitSignal: {
+      state: 'exit-on-stable-signal',
+      label: 'Sortie de revue',
+      reviewWindow: 'prochaine rotation culturelle',
+      signal: 'amplifier reste visible sans expiration',
+      localAnchor: 'risque stabilisé par l’historique lisible',
+      summary: 'Sortie de revue: amplifier reste visible sans expiration jusqu’à prochaine rotation culturelle; risque stabilisé par l’historique lisible.',
     },
   });
 });

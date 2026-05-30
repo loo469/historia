@@ -1461,6 +1461,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
 
   const firstFollowUpReason = buildCulturalFirstFollowUpReason(candidate, recommendedBeyondMinimumBenefit, immediateSynergy);
   const followUpRobustness = buildCulturalFollowUpRobustness(candidate, immediateSynergy);
+  const reviewExitSignal = buildCulturalReviewExitSignal(candidate, immediateSynergy, followUpRobustness);
   const sourceAction = normalizeText(immediateSynergy.sourceAction ?? '');
 
   if (/attendre|observer/.test(sourceAction)) {
@@ -1471,6 +1472,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       summary: `Observer: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
       firstFollowUpReason,
       followUpRobustness,
+      reviewExitSignal,
     };
   }
 
@@ -1482,6 +1484,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       summary: `Agir maintenant: ${immediateSynergy.expiryWarning.summary}`,
       firstFollowUpReason,
       followUpRobustness,
+      reviewExitSignal,
     };
   }
 
@@ -1493,6 +1496,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       summary: `Minimum suffisant: ${candidate.minimalRevisitAction}; ${immediateSynergy.summary}`,
       firstFollowUpReason,
       followUpRobustness,
+      reviewExitSignal,
     };
   }
 
@@ -1503,6 +1507,27 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
     summary: `Report sûr: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
     firstFollowUpReason,
     followUpRobustness,
+    reviewExitSignal,
+  };
+}
+
+function buildCulturalReviewExitSignal(candidate, immediateSynergy, followUpRobustness) {
+  if (followUpRobustness.state !== 'stable-until-review') {
+    return null;
+  }
+
+  const exitCondition = immediateSynergy.sourceAction
+    ? `${immediateSynergy.sourceAction} reste visible sans expiration`
+    : `${immediateSynergy.sourceLabel} reste visible sans expiration`;
+  const localAnchor = candidate.minimalSafeAction ?? candidate.condition;
+
+  return {
+    state: 'exit-on-stable-signal',
+    label: 'Sortie de revue',
+    reviewWindow: followUpRobustness.reviewWindow,
+    signal: exitCondition,
+    localAnchor,
+    summary: `Sortie de revue: ${exitCondition} jusqu’à ${followUpRobustness.reviewWindow}; ${localAnchor}.`,
   };
 }
 
