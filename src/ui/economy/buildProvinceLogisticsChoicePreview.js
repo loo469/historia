@@ -1211,10 +1211,16 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             label: 'Aucun bloqueur immédiat',
             summary: 'Aucun consommateur proche ne bloque la route pour l’instant.',
           },
+          afterFirstBlockerHandled: {
+            state: 'preserved',
+            label: 'Slack après bloqueur',
+            summary: 'Après action, le slack reste disponible: aucun bloqueur immédiat à traiter.',
+          },
         };
       }
 
       const primaryConsumer = rankedConsumers[0];
+      const nextConsumer = rankedConsumers[1] ?? null;
       return {
         state: primaryConsumer.tone ?? 'watch',
         label: 'Slack consommé par',
@@ -1225,6 +1231,14 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           state: primaryConsumer.tone ?? 'watch',
           label: `Premier bloqueur: ${primaryConsumer.label}`,
           summary: `${primaryConsumer.label} deviendrait bloquant en premier: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}.`,
+        },
+        afterFirstBlockerHandled: {
+          state: nextConsumer ? nextConsumer.tone ?? 'watch' : 'spare',
+          label: 'Slack après bloqueur',
+          summary: primaryConsumer.afterHandledSummary ?? (nextConsumer
+            ? `Après ${primaryConsumer.label}, marge restante à surveiller: ${nextConsumer.label} (${nextConsumer.reason}).`
+            : `Après ${primaryConsumer.label}, aucune autre contrainte immédiate ne consomme le slack.`),
+          nextConsumer: nextConsumer?.label ?? null,
         },
       };
     };
@@ -1257,7 +1271,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             : 'Route reprise mais serrée: capacité locale encore partagée.',
           priorityAction.resource ?? 'capacité locale',
           buildSlackConsumerHint([
-            { label: priorityAction.resource ?? 'capacité locale', reason: `partagée avec ${opportunityCost.delayedRoute}`, blockerReason: `la ressource reste partagée avec ${opportunityCost.delayedRoute}`, weight: 3, tone: 'tight' },
+            { label: priorityAction.resource ?? 'capacité locale', reason: `partagée avec ${opportunityCost.delayedRoute}`, blockerReason: `la ressource reste partagée avec ${opportunityCost.delayedRoute}`, afterHandledSummary: exposedRoute ? `Après ${priorityAction.resource ?? 'capacité locale'}, slack restant surveillé par ${exposedRoute.route}.` : `Après ${priorityAction.resource ?? 'capacité locale'}, aucune autre contrainte immédiate ne consomme le slack.`, weight: 3, tone: 'tight' },
             exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
           ]),
         ),
@@ -1286,7 +1300,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             buildSlackConsumerHint(margin >= 2
               ? []
               : [
-                { label: stopMarker.route, reason: `il ne reste que ${margin} point de marge`, blockerReason: `marge restante ${margin}`, weight: 2, tone: 'tight' },
+                { label: stopMarker.route, reason: `il ne reste que ${margin} point de marge`, blockerReason: `marge restante ${margin}`, afterHandledSummary: exposedRoute ? `Après ${stopMarker.route}, il reste ${margin} point de marge et ${exposedRoute.route} à surveiller.` : `Après ${stopMarker.route}, il reste ${margin} point de marge sans autre bloqueur immédiat.`, weight: 2, tone: 'tight' },
                 exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
               ]),
           ),
@@ -1305,7 +1319,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             `Route non confortable: ${stopMarker.route} reste le goulot avec ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}.`,
             stopMarker.route,
             buildSlackConsumerHint([
-              { label: stopMarker.route, reason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, blockerReason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, weight: 3, tone: 'blocked' },
+              { label: stopMarker.route, reason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, blockerReason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, afterHandledSummary: exposedRoute ? `Après ${stopMarker.route}, la marge revient à 0 et ${exposedRoute.route} reste à surveiller.` : `Après ${stopMarker.route}, la marge revient à 0 sans autre bloqueur immédiat.`, weight: 3, tone: 'blocked' },
               exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
             ]),
           ),

@@ -8846,6 +8846,9 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                         ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker ? `
                           <small class="province-logistics-spillover-slack-blocker province-logistics-spillover-slack-blocker--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.nextBlocker.summary}</small>
                         ` : ''}
+                        ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.afterFirstBlockerHandled ? `
+                          <small class="province-logistics-spillover-slack-after-blocker province-logistics-spillover-slack-after-blocker--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.afterFirstBlockerHandled.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.afterFirstBlockerHandled.summary}</small>
+                        ` : ''}
                       ` : ''}
                     ` : ''}
                   ` : ''}
