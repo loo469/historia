@@ -458,3 +458,17 @@ test('atlas military shows the first follow-up after a light front unlock is use
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__post-unlock--ready/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__post-unlock--quiet/);
 });
+
+// MAP-A44: when the unlocked light front follow-up is below the urgent
+// threshold, show the concrete buffer that makes it safe to defer.
+test('atlas military explains why a light front follow-up can wait', () => {
+  assert.match(webAppSource, /const lightFollowUpPriority = Math\.max/);
+  assert.match(webAppSource, /const lightFollowUpIsUrgent = lightFollowUpPriority >= 72 \|\| prepUnlock\?\.delayCost\?\.tone === 'risky'/);
+  assert.match(webAppSource, /const lightFollowUpDeferReason = lightUnlockFollowUp && !lightFollowUpIsUrgent/);
+  assert.match(webAppSource, /label: 'Peut attendre'/);
+  assert.match(webAppSource, /tampon: \$\{residualRisk\.label\} déjà couvert/);
+  assert.match(webAppSource, /lightFollowUpDeferReason,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpDeferReason \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__defer/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpDeferReason \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 11\.95 : 10\.6/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__defer--quiet/);
+});
