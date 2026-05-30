@@ -7801,6 +7801,7 @@ function renderCultureTurnReport(report) {
                   <small>Payoff: ${entry.payoffScore ?? 0}</small>
                   ${entry.revisitPriority === 'next' && entry.deferLadderSummary ? `<small>Arbitrage: ${entry.deferLadderSummary.summary}</small>` : ''}
                   ${entry.revisitPriority === 'next' && entry.deferLadderSummary?.firstFollowUpReason ? `<small>Pourquoi ce suivi: ${entry.deferLadderSummary.firstFollowUpReason.summary}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && entry.deferLadderSummary?.followUpRobustness ? `<small>Robustesse: ${entry.deferLadderSummary.followUpRobustness.summary}</small>` : ''}
                   ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.missedWindowConsequence ? `<small>Si manqué: ${entry.missedWindowConsequence}</small>` : ''}
                   ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.minimalSafeAction ? `<small>Action minimale: ${entry.minimalSafeAction} — ${entry.preventedConsequence}</small>` : ''}
                   ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.recommendedBeyondMinimumBenefit ? `<small>Au-delà du minimum: ${entry.recommendedBeyondMinimumBenefit.summary}</small>` : ''}

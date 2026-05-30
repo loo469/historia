@@ -1052,6 +1052,13 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
       summary: 'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.; expiration: expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.; piste différée: confirmer Ouvrir le récit d’expansion; signal local: perte du soutien actif.',
       payoffCue: 'gain concret: sécurise payoff 3 sans attendre la bascule',
     },
+    followUpRobustness: {
+      state: 'fragile-before-review',
+      label: 'Fragile avant revue',
+      reviewWindow: 'prochaine rotation culturelle',
+      reason: 'expire avant la prochaine revue',
+      summary: 'Fragile avant revue: expire avant la prochaine revue; archive-routes expire avant prochaine rotation culturelle.',
+    },
   });
 });
 
@@ -1129,6 +1136,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
       localSignal: 'signal local: fallout en hausse',
       summary: 'synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.; expiration: aucune expiration visible; piste différée: risque stabilisé par l’historique lisible; signal local: fallout en hausse.',
       payoffCue: 'gain concret: sécurise payoff 2 sans attendre la bascule',
+    },
+    followUpRobustness: {
+      state: 'stable-until-review',
+      label: 'Stable jusqu’à la prochaine revue',
+      reviewWindow: 'prochaine rotation culturelle',
+      reason: 'sûr ce tour',
+      summary: 'Stable jusqu’à la prochaine revue: prochaine rotation culturelle; aucune expiration de synergie visible.',
     },
   });
 });
