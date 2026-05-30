@@ -1383,6 +1383,18 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
             ? 'évite de masquer l’opportunité fraîche'
             : 'évite de franchir le seuil de risque')
       : null;
+    const minimalActionAcceptableUntil = minimalSafeAction ? candidate.nextReviewWindow : null;
+    const recommendedAction = minimalSafeAction
+      ? `revoir ${candidate.clusterLabel} avant ${candidate.nextReviewWindow}`
+      : null;
+    const lateRiskyAction = minimalSafeAction
+      ? `agir après ${candidate.nextReviewWindow} avec ${candidate.turningSignal}`
+      : null;
+    const minimalActionThresholdReason = minimalSafeAction
+      ? (candidate.deadlineStatus === 'near-deadline'
+        ? `${candidate.deadlineHint}: la petite action cesse de suffire si ${candidate.turningSignal}.`
+        : `payoff ${candidate.payoffScore}: la petite action reste seulement valable jusqu’à la ${candidate.nextReviewWindow}.`)
+      : null;
 
     return {
       ...candidate,
@@ -1397,6 +1409,10 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         : 0,
       minimalSafeAction,
       preventedConsequence,
+      minimalActionAcceptableUntil,
+      recommendedAction,
+      lateRiskyAction,
+      minimalActionThresholdReason,
     };
   });
   const top = rankedCandidates[0] ?? null;
@@ -1404,6 +1420,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
     ? top.missedWindowConsequence
     : null;
   const primaryMinimalSafeAction = top?.minimalSafeAction ?? null;
+  const primaryMinimalActionThreshold = top?.minimalActionAcceptableUntil ?? null;
 
   return {
     state: rankedCandidates.length === 0 ? 'none' : 'ready',
@@ -1413,6 +1430,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
     primaryDeferId: rankedCandidates.length > 1 ? top?.deferId ?? null : null,
     primaryMissedWindowConsequence,
     primaryMinimalSafeAction,
+    primaryMinimalActionThreshold,
     minimalSafeActionFallback: primaryMinimalSafeAction
       ? 'Action minimale calculée depuis le suivi courant du bundle reporté.'
       : 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
@@ -1827,6 +1845,7 @@ export function buildCultureTurnReportDeltas({
             primaryDeferId: null,
             primaryMissedWindowConsequence: null,
             primaryMinimalSafeAction: null,
+            primaryMinimalActionThreshold: null,
             minimalSafeActionFallback: 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
             missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
             priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',

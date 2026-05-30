@@ -182,9 +182,16 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /Payoff:/);
   assert.match(webAppSource, /Si manqué:/);
   assert.match(webAppSource, /Action minimale:/);
+  assert.match(webAppSource, /Seuil:/);
+  assert.match(webAppSource, /tardif risqué:/);
+  assert.match(webAppSource, /Pourquoi:/);
   assert.match(webAppSource, /missedWindowConsequence/);
   assert.match(webAppSource, /minimalSafeAction/);
   assert.match(webAppSource, /preventedConsequence/);
+  assert.match(webAppSource, /minimalActionAcceptableUntil/);
+  assert.match(webAppSource, /recommendedAction/);
+  assert.match(webAppSource, /lateRiskyAction/);
+  assert.match(webAppSource, /minimalActionThresholdReason/);
   assert.match(webAppSource, /deadlineHint/);
   assert.match(webAppSource, /deadlineStatus/);
   assert.match(webAppSource, /revisitPriority/);
