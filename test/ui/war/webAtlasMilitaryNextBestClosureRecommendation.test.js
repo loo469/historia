@@ -499,3 +499,17 @@ test('atlas military shows when light front defer buffer becomes risky', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__risk-window--risky/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__risk-window--quiet/);
 });
+
+// MAP-A47: after the current light-front defer buffer is spent, show the
+// next concrete risk or a neutral no-risk state.
+test('atlas military shows the next light front risk after buffer is spent', () => {
+  assert.match(webAppSource, /const lightFollowUpNextRisk = lightFollowUpRiskWindow/);
+  assert.match(webAppSource, /label: 'Après buffer: risque suivant'/);
+  assert.match(webAppSource, /label: 'Après buffer: risque neutre'/);
+  assert.match(webAppSource, /aucun risque imminent calculable/);
+  assert.match(webAppSource, /lightFollowUpNextRisk,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpNextRisk \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__next-risk/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpNextRisk \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 16 : 14\.65/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-risk--risky/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-risk--quiet/);
+});
