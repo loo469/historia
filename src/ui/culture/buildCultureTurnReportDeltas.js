@@ -1584,13 +1584,44 @@ function buildCulturalReviewNotActionableReason(criterion, reviewExitSignal, sou
 }
 
 function buildCulturalReviewActionableStep(sourceCue, actionCue, reviewExitSignal) {
+  const firstStep = `confirmer ${sourceCue} avec ${actionCue}`;
+  const impactPreview = buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal);
+
   return {
     state: 'actionable-after-synergy-confirmation',
     label: 'Devient actionnable après',
     stepType: 'synergy-prerequisite',
-    firstStep: `confirmer ${sourceCue} avec ${actionCue}`,
+    firstStep,
     waitWindow: reviewExitSignal.reviewWindow,
+    impactPreview,
     summary: `Devient actionnable après confirmation de ${sourceCue} avec ${actionCue}; sinon attendre ${reviewExitSignal.reviewWindow}.`,
+  };
+}
+
+function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal) {
+  if (!firstStep || !reviewExitSignal?.reviewWindow) {
+    return {
+      state: 'no-important-change-yet',
+      label: 'Impact attendu',
+      impactType: 'no-important-change',
+      summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
+    };
+  }
+
+  if (/prochain|prochaine|next|tour|rotation/i.test(reviewExitSignal.reviewWindow)) {
+    return {
+      state: 'unlocks-review',
+      label: 'Impact attendu',
+      impactType: 'unlocks-review',
+      summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
+    };
+  }
+
+  return {
+    state: 'accelerates-review',
+    label: 'Impact attendu',
+    impactType: 'accelerates-review',
+    summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
   };
 }
 
