@@ -227,3 +227,22 @@ test('atlas military shows safe shared handling hints for grouped front urgency'
   assert.match(stylesSource, /\.atlas-military-neighbor-shared-handling--shared/);
   assert.match(stylesSource, /\.atlas-military-neighbor-shared-handling--separate/);
 });
+
+// MAP-A30: before committing a shared grouped-front order, show whether the
+// group is covered or which flank still needs follow-up.
+test('atlas military shows residual risk after shared grouped front handling', () => {
+  assert.match(webAppSource, /function buildAtlasMilitaryNeighborSharedResidualRisk\(cluster, sharedHandlingHint\)/);
+  assert.match(webAppSource, /function renderAtlasMilitaryNeighborSharedResidualRisk\(risk, y\)/);
+  assert.match(webAppSource, /Risque résiduel après traitement groupé du front voisin/);
+  assert.match(webAppSource, /Groupe couvert après ordre/);
+  assert.match(webAppSource, /confirmer puis surveiller léger/);
+  assert.match(webAppSource, /Risque résiduel: flanc à suivre/);
+  assert.match(webAppSource, /pression restante après ordre groupé/);
+  assert.match(webAppSource, /prévoir suivi sur \$\{exposedFlank\}/);
+  assert.match(webAppSource, /sharedHandlingHint\?\.tone !== 'shared'/);
+  assert.match(webAppSource, /sharedResidualRisk: buildAtlasMilitaryNeighborSharedResidualRisk/);
+  assert.match(webAppSource, /renderAtlasMilitaryNeighborSharedResidualRisk\(preview\.sharedResidualRisk, residualY\)/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-shared-residual__label/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-shared-residual--covered/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-shared-residual--residual/);
+});
