@@ -1360,12 +1360,32 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       || left.falloutSeverity - right.falloutSeverity
       || left.clusterLabel.localeCompare(right.clusterLabel);
   });
-  const rankedCandidates = sortedCandidates.map((candidate, index) => ({
-    ...candidate,
-    revisitRank: sortedCandidates.length > 1 ? index + 1 : null,
-    revisitPriority: sortedCandidates.length > 1 && index === 0 ? 'next' : 'later',
-  }));
+  const rankedCandidates = sortedCandidates.map((candidate, index) => {
+    const revisitPriority = sortedCandidates.length > 1 && index === 0 ? 'next' : 'later';
+    const missedFallout = falloutPreview.entries.find((entry) => entry.bundleId === candidate.bundleId) ?? null;
+    const missedWindowConsequence = revisitPriority === 'next'
+      ? (missedFallout?.severity > 0
+        ? missedFallout.consequence
+        : `${candidate.clusterLabel}: ${candidate.riskThreshold}`)
+      : null;
+
+    return {
+      ...candidate,
+      revisitRank: sortedCandidates.length > 1 ? index + 1 : null,
+      revisitPriority,
+      missedWindowConsequence,
+      missedWindowConsequenceType: revisitPriority === 'next'
+        ? missedFallout?.consequenceType ?? 'threshold-risk'
+        : null,
+      missedWindowSeverity: revisitPriority === 'next'
+        ? missedFallout?.severity ?? candidate.deadlinePressure
+        : 0,
+    };
+  });
   const top = rankedCandidates[0] ?? null;
+  const primaryMissedWindowConsequence = top?.revisitPriority === 'next'
+    ? top.missedWindowConsequence
+    : null;
 
   return {
     state: rankedCandidates.length === 0 ? 'none' : 'ready',
@@ -1373,6 +1393,10 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       ? `${top.clusterLabel}: Peut attendre — ${top.deadlineHint}; ${top.riskThreshold}`
       : 'Aucun bundle culturel sûr à reporter ce tour.',
     primaryDeferId: rankedCandidates.length > 1 ? top?.deferId ?? null : null,
+    primaryMissedWindowConsequence,
+    missedWindowFallback: primaryMissedWindowConsequence
+      ? 'Conséquence calculée depuis le fallout/payoff existant du bundle reporté.'
+      : 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
     priorityFallback: hasDeadlineData
       ? 'Priorité par pression de délai, puis payoff culturel.'
       : 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
@@ -1779,6 +1803,8 @@ export function buildCultureTurnReportDeltas({
             state: 'none',
             summary: 'Aucun bundle culturel sûr à reporter ce tour.',
             primaryDeferId: null,
+            primaryMissedWindowConsequence: null,
+            missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
             priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
             entries: [],
           },

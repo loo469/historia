@@ -7479,6 +7479,7 @@ function renderCultureTurnReport(report) {
                   ${entry.revisitPriority === 'next' ? '<small>Priorité: à revisiter en premier</small>' : ''}
                   <small>Délai: ${entry.deadlineHint ?? 'fenêtre non calculable'}</small>
                   <small>Payoff: ${entry.payoffScore ?? 0}</small>
+                  ${entry.revisitPriority === 'next' && entry.missedWindowConsequence ? `<small>Si manqué: ${entry.missedWindowConsequence}</small>` : ''}
                   <small>Condition: ${entry.condition}</small>
                   <small>Bascule: ${entry.turningSignal}</small>
                   <small>${entry.riskThreshold}</small>

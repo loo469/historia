@@ -180,6 +180,8 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /Délai:/);
   assert.match(webAppSource, /Priorité: à revisiter en premier/);
   assert.match(webAppSource, /Payoff:/);
+  assert.match(webAppSource, /Si manqué:/);
+  assert.match(webAppSource, /missedWindowConsequence/);
   assert.match(webAppSource, /deadlineHint/);
   assert.match(webAppSource, /deadlineStatus/);
   assert.match(webAppSource, /revisitPriority/);

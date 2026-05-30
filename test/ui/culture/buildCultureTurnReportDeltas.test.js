@@ -477,6 +477,8 @@ test('buildCultureTurnReportDeltas summarizes selected culture event, research, 
         state: 'none',
         summary: 'Aucun bundle culturel sûr à reporter ce tour.',
         primaryDeferId: null,
+        primaryMissedWindowConsequence: null,
+        missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
         priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
         entries: [],
       },
@@ -758,6 +760,82 @@ test('buildCultureTurnReportDeltas prioritizes safe defer entries by deadline pr
   assert.equal(safeToDefer.primaryDeferId, safeToDefer.entries[0].deferId);
 });
 
+test('buildCultureTurnReportDeltas shows the consequence of missing the next deferred revisit', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+      },
+    },
+    localTimeline: {
+      items: [
+        {
+          timelineId: 'harbor:event:quiet-followup',
+          kind: 'event',
+          signal: 'watch',
+          title: 'Suivi calme',
+          summary: 'Risque stabilisé.',
+          regionId: 'harbor',
+          cultureName: 'Harbor Compact',
+        },
+      ],
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+      {
+        decisionId: 'turn-8-harbor-calm',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Calmer le port',
+        promptLabel: 'Calmer le port',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+    ],
+  });
+
+  const safeToDefer = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles;
+  assert.equal(safeToDefer.primaryMissedWindowConsequence, 'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.');
+  assert.equal(safeToDefer.missedWindowFallback, 'Conséquence calculée depuis le fallout/payoff existant du bundle reporté.');
+  assert.deepEqual(safeToDefer.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.revisitPriority,
+    entry.missedWindowConsequence,
+    entry.missedWindowConsequenceType,
+    entry.missedWindowSeverity,
+  ]), [
+    [
+      'Compact d’Aurora',
+      'next',
+      'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.',
+      'consolidation-delay',
+      1,
+    ],
+    ['Harbor Compact', 'later', null, null, 0],
+  ]);
+});
+
 test('buildCultureTurnReportDeltas breaks safe defer deadline ties by cultural payoff', () => {
   const report = buildCultureTurnReportDeltas({
     turn: 9,
@@ -847,6 +925,8 @@ test('buildCultureTurnReportDeltas keeps a no-deadline safe defer fallback stabl
     state: 'none',
     summary: 'Aucun bundle culturel sûr à reporter ce tour.',
     primaryDeferId: null,
+    primaryMissedWindowConsequence: null,
+    missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
     priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
     entries: [],
   });
@@ -981,6 +1061,8 @@ test('buildCultureTurnReportDeltas returns compact quiet state without culture s
           state: 'none',
           summary: 'Aucun bundle culturel sûr à reporter ce tour.',
           primaryDeferId: null,
+          primaryMissedWindowConsequence: null,
+          missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
           priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
           entries: [],
         },
