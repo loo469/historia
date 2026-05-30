@@ -1544,13 +1544,25 @@ function buildCulturalReviewReopenSignal(immediateSynergy, reviewExitSignal) {
 
 function buildCulturalReopenedReviewPreview(immediateSynergy, reviewExitSignal, sourceCue) {
   const actionCue = immediateSynergy.sourceAction ?? 'le suivi culturel';
+  const outcomeThreshold = buildCulturalReopenedReviewOutcomeThreshold(actionCue, reviewExitSignal, sourceCue);
 
   return {
     state: 'preview-reopened-review',
     label: 'Si réouvert',
     question: `vérifier si ${sourceCue} justifie encore ${actionCue}`,
     anchor: reviewExitSignal.localAnchor,
+    outcomeThreshold,
     summary: `Si réouvert: vérifier si ${sourceCue} justifie encore ${actionCue}, puis comparer avec ${reviewExitSignal.localAnchor}.`,
+  };
+}
+
+function buildCulturalReopenedReviewOutcomeThreshold(actionCue, reviewExitSignal, sourceCue) {
+  return {
+    state: 'stable-if-synergy-still-supports-anchor',
+    label: 'Seuil stable',
+    criterion: `${sourceCue} soutient encore ${actionCue} sans contredire ${reviewExitSignal.localAnchor}`,
+    fallback: `si ce seuil n’est pas lisible, garder ${reviewExitSignal.localAnchor} comme repère calme`,
+    summary: `Stable si ${sourceCue} soutient encore ${actionCue} sans contredire ${reviewExitSignal.localAnchor}; sinon revoir activement.`,
   };
 }
 

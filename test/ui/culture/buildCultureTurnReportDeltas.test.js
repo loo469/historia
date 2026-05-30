@@ -1164,6 +1164,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
         label: 'Si réouvert',
         question: 'vérifier si archive-routes justifie encore amplifier',
         anchor: 'risque stabilisé par l’historique lisible',
+        outcomeThreshold: {
+          state: 'stable-if-synergy-still-supports-anchor',
+          label: 'Seuil stable',
+          criterion: 'archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible',
+          fallback: 'si ce seuil n’est pas lisible, garder risque stabilisé par l’historique lisible comme repère calme',
+          summary: 'Stable si archive-routes soutient encore amplifier sans contredire risque stabilisé par l’historique lisible; sinon revoir activement.',
+        },
         summary: 'Si réouvert: vérifier si archive-routes justifie encore amplifier, puis comparer avec risque stabilisé par l’historique lisible.',
       },
       summary: 'Réouvrir la revue: amplifier ne reste plus aligné avec archive-routes, expire, ou contredit risque stabilisé par l’historique lisible.',
