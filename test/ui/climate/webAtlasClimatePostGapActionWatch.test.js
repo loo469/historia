@@ -31,6 +31,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /primaryPromotionMargin/);
   assert.match(webAppSource, /watchMargin/);
   assert.match(webAppSource, /upkeepReminder/);
+  assert.match(webAppSource, /marginRearmReview/);
+  assert.match(webAppSource, /Réarmer review/);
+  assert.match(webAppSource, /review différée/);
+  assert.match(webAppSource, /réarmer si \$\{watchGap\.nearestRiskLabel\} revient avant \$\{progress\.deadline\} ou si la marge repasse courte/);
   assert.match(webAppSource, /Rappel upkeep/);
   assert.match(webAppSource, /rappel proche/);
   assert.match(webAppSource, /rappel inutile/);
@@ -96,6 +100,8 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--monitor/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--skip/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm--deferred/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -189,4 +195,13 @@ test('atlas shows when climate watch margin can stop immediate upkeep reminders'
   assert.match(webAppSource, /Rappel upkeep/);
   assert.match(webAppSource, /view\.watchItem\.upkeepReminder \?/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__reminder--skip/);
+});
+
+test('atlas shows when comfortable climate margin should be rearmed for review', () => {
+  assert.match(webAppSource, /const marginRearmReview = watchMargin\?\.state === 'comfortable'/);
+  assert.match(webAppSource, /watchGap\.nearestRiskLabel && progress\.deadline/);
+  assert.match(webAppSource, /label: 'review différée'/);
+  assert.match(webAppSource, /Réarmer review/);
+  assert.match(webAppSource, /view\.watchItem\.marginRearmReview \?/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm--deferred/);
 });
