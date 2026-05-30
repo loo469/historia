@@ -699,6 +699,7 @@ test('buildIntrigueTurnReportDeltas marks stable return when backup can safely h
               label: 'Nettoyable par relecture sûre',
               action: 'confirmer une lecture de confiance visible stable au prochain passage',
               result: 'sortir la trace de la watchlist sans rouvrir le backup',
+              nextCheck: 'lecture de confiance stable visible',
               fallback: false,
             },
             fallback: false,
