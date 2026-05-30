@@ -8508,6 +8508,11 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
               ${preview.adjacentRouteSpilloverRisk.guardComparison ? `<small>Comparaison garde: ${preview.adjacentRouteSpilloverRisk.guardComparison.summary}</small>` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardSequencing ? `<small>Séquence: ${preview.adjacentRouteSpilloverRisk.guardSequencing.phrase} — ${preview.adjacentRouteSpilloverRisk.guardSequencing.reason}</small>` : ''}
               ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost ? `<small>Coût opportunité: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary} ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopChain ? `Stop: ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason}` : preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason ?? ''}</small>` : ''}
+              ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost?.stopMarker ? `
+                <small class="province-logistics-spillover-stop">${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.label} — ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.reason}</small>
+                <strong>${preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.decisionLabel}</strong>
+              ` : ''}
+              ${preview.adjacentRouteSpilloverRisk.guardOpportunityCost?.canContinueWithoutCriticalDelay ? '<small>Continuer la chaîne reste acceptable: aucune route critique n’est retardée.</small>' : ''}
             </div>
           ` : ''}
         </div>

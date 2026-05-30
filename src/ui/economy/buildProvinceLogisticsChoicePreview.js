@@ -905,12 +905,15 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     .map((route, index) => ({
       route: route.route,
       city: route.city,
+      tone: route.tone,
       label: index === 0 ? `Sécuriser ${route.route} juste après ${priorityAction.route}` : `Garder ${route.route} en relais léger`,
       reason: index === 0
         ? `${route.city} absorbe la pression déplacée si ${priorityAction.cost} reste le seul levier engagé.`
         : `Protège ${route.city} avec moins de capacité consommée que la route critique.`,
       tradeoff: `${route.route} protégée vs ${route.tone === 'high' ? 'capacité forte consommée' : 'capacité légère consommée'}`,
       disruption: (route.tone === 'high' ? 3 : 2) + index,
+      expectedBenefit: Math.max(1, route.tone === 'high' ? 3 - index : 2 - index),
+      criticalDelay: route.tone === 'high',
       fallback: false,
     }))
     .sort((left, right) => left.disruption - right.disruption || left.route.localeCompare(right.route));
@@ -955,16 +958,45 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         reason: `${guardAction.route} reste assez léger pour suivre ${priorityAction.route} sans remplacer l’action locale.`,
       };
   const nextGuardCost = guardComparison.candidates.find((candidate) => candidate.route !== guardAction.route) ?? null;
+  const buildGuardStopMarker = (nextGuard) => {
+    if (!nextGuard || guardAction.fallback) {
+      return null;
+    }
+    const cumulativeCost = guardAction.disruption + nextGuard.disruption;
+    const expectedBenefit = guardAction.expectedBenefit + nextGuard.expectedBenefit;
+    const exceedsBenefit = cumulativeCost > expectedBenefit;
+    const criticalDelayed = nextGuard.criticalDelay === true;
+    return {
+      route: nextGuard.route,
+      city: nextGuard.city,
+      cumulativeCost,
+      expectedBenefit,
+      exceedsBenefit,
+      criticalDelayed,
+      label: exceedsBenefit
+        ? `Point d’arrêt: avant ${nextGuard.route}`
+        : `Continuation possible vers ${nextGuard.route}`,
+      decisionLabel: exceedsBenefit
+        ? `Arrêter ici protège ${guardAction.route} sans retarder ${nextGuard.route}.`
+        : `Continuer vers ${nextGuard.route} reste acceptable: aucune route critique retardée.`,
+      reason: exceedsBenefit
+        ? `${nextGuard.route} est le premier segment où le coût cumulé ${cumulativeCost} dépasse le bénéfice attendu ${expectedBenefit}.`
+        : `Le coût cumulé ${cumulativeCost} reste couvert par le bénéfice attendu ${expectedBenefit}.`,
+    };
+  };
+  const guardStopMarker = buildGuardStopMarker(nextGuardCost);
   const guardOpportunityCost = guardSequencing.state === 'chainable' && nextGuardCost
     ? {
-      state: nextGuardCost.disruption > guardAction.disruption ? 'stop' : 'continue',
+      state: guardStopMarker?.exceedsBenefit ? 'stop' : 'continue',
       protectedRoute: guardAction.route,
       delayedRoute: nextGuardCost.route,
-      summary: `Protège ${guardAction.route}, retarde ${nextGuardCost.route}.`,
-      stopChain: nextGuardCost.disruption > guardAction.disruption,
-      stopReason: nextGuardCost.disruption > guardAction.disruption
+      summary: guardStopMarker?.decisionLabel ?? `Protège ${guardAction.route}, retarde ${nextGuardCost.route}.`,
+      stopChain: guardStopMarker?.exceedsBenefit === true,
+      stopReason: guardStopMarker?.exceedsBenefit
         ? `Arrêter la chaîne après ${guardAction.route}: ${nextGuardCost.route} consommerait plus de capacité que le bénéfice attendu.`
         : `La chaîne peut continuer vers ${nextGuardCost.route} sans surcoût dominant.`,
+      stopMarker: guardStopMarker,
+      canContinueWithoutCriticalDelay: guardStopMarker ? !guardStopMarker.exceedsBenefit && !guardStopMarker.criticalDelayed : false,
     }
     : guardSequencing.state === 'chainable'
       ? {
@@ -974,6 +1006,8 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         summary: `Protège ${guardAction.route}, surveille ${priorityAction.route}.`,
         stopChain: false,
         stopReason: 'Aucune deuxième garde adjacente ne justifie d’arrêter la chaîne.',
+        stopMarker: null,
+        canContinueWithoutCriticalDelay: true,
       }
       : guardSequencing.state === 'competing'
         ? {
@@ -983,11 +1017,23 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           summary: `Protège ${guardAction.route}, retarde ${priorityAction.route}.`,
           stopChain: true,
           stopReason: `Ne pas prolonger: la garde remplace déjà la récupération sur ${priorityAction.route} ce tour.`,
+          stopMarker: {
+            route: priorityAction.route,
+            city: option?.affectedCity ?? null,
+            label: `Point d’arrêt: avant ${priorityAction.route}`,
+            decisionLabel: `Arrêter ici protège ${guardAction.route} sans retarder ${priorityAction.route}.`,
+            reason: `${guardAction.route} consomme déjà la capacité partagée avec ${priorityAction.route}.`,
+            exceedsBenefit: true,
+            criticalDelayed: true,
+          },
+          canContinueWithoutCriticalDelay: false,
         }
         : {
           state: 'fallback',
           summary: 'Coût d’opportunité indisponible: enchaînement de garde non comparable.',
           stopChain: false,
+          stopMarker: null,
+          canContinueWithoutCriticalDelay: false,
         };
 
   return {

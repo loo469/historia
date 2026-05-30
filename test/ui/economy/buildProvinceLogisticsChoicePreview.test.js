@@ -201,8 +201,12 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.reason, /sans remplacer l’action locale/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.state, 'stop');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopChain, true);
-  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Protège .*retarde/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Arrêter ici protège .* sans retarder/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopReason, /Arrêter la chaîne|consommerait plus de capacité/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.canContinueWithoutCriticalDelay, false);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.label, 'Point d’arrêt: avant Safe Road');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.reason, /premier segment où le coût cumulé .* dépasse le bénéfice attendu/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.stopMarker.decisionLabel, /Arrêter ici protège Ember Line sans retarder Safe Road/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
