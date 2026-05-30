@@ -7551,6 +7551,7 @@ function renderCultureTurnReport(report) {
                   <small>Délai: ${entry.deadlineHint ?? 'fenêtre non calculable'}</small>
                   <small>Payoff: ${entry.payoffScore ?? 0}</small>
                   ${entry.revisitPriority === 'next' && entry.missedWindowConsequence ? `<small>Si manqué: ${entry.missedWindowConsequence}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && entry.minimalSafeAction ? `<small>Action minimale: ${entry.minimalSafeAction} — ${entry.preventedConsequence}</small>` : ''}
                   <small>Condition: ${entry.condition}</small>
                   <small>Bascule: ${entry.turningSignal}</small>
                   <small>${entry.riskThreshold}</small>

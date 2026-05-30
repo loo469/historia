@@ -1326,6 +1326,10 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
           ? 1
           : 0;
       const payoffScore = group?.unlockScore ?? 0;
+      const currentSupport = (group?.details ?? []).find((detail) => detail.source === 'current') ?? null;
+      const minimalRevisitAction = currentSupport
+        ? `confirmer ${currentSupport.promptLabel}`
+        : null;
 
       return {
         deferId: `${prompt.cleanupId}:safe-to-defer`,
@@ -1344,6 +1348,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         priorityReason: deadlinePressure > 0
           ? `${deadlineHint}; payoff ${payoffScore}`
           : `fenêtre non calculable; payoff ${payoffScore}`,
+        minimalRevisitAction,
         nextReviewWindow,
         falloutSeverity: fallout?.severity ?? 0,
       };
@@ -1368,6 +1373,16 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
         ? missedFallout.consequence
         : `${candidate.clusterLabel}: ${candidate.riskThreshold}`)
       : null;
+    const minimalSafeAction = revisitPriority === 'next' ? candidate.minimalRevisitAction : null;
+    const preventedConsequence = minimalSafeAction && missedWindowConsequence
+      ? (missedFallout?.consequenceType === 'consolidation-delay'
+        ? 'évite une consolidation retardée'
+        : missedFallout?.consequenceType === 'tension'
+          ? 'évite de maintenir la tension culturelle'
+          : missedFallout?.consequenceType === 'opportunity-lost'
+            ? 'évite de masquer l’opportunité fraîche'
+            : 'évite de franchir le seuil de risque')
+      : null;
 
     return {
       ...candidate,
@@ -1380,12 +1395,15 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       missedWindowSeverity: revisitPriority === 'next'
         ? missedFallout?.severity ?? candidate.deadlinePressure
         : 0,
+      minimalSafeAction,
+      preventedConsequence,
     };
   });
   const top = rankedCandidates[0] ?? null;
   const primaryMissedWindowConsequence = top?.revisitPriority === 'next'
     ? top.missedWindowConsequence
     : null;
+  const primaryMinimalSafeAction = top?.minimalSafeAction ?? null;
 
   return {
     state: rankedCandidates.length === 0 ? 'none' : 'ready',
@@ -1394,6 +1412,10 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
       : 'Aucun bundle culturel sûr à reporter ce tour.',
     primaryDeferId: rankedCandidates.length > 1 ? top?.deferId ?? null : null,
     primaryMissedWindowConsequence,
+    primaryMinimalSafeAction,
+    minimalSafeActionFallback: primaryMinimalSafeAction
+      ? 'Action minimale calculée depuis le suivi courant du bundle reporté.'
+      : 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
     missedWindowFallback: primaryMissedWindowConsequence
       ? 'Conséquence calculée depuis le fallout/payoff existant du bundle reporté.'
       : 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
@@ -1804,6 +1826,8 @@ export function buildCultureTurnReportDeltas({
             summary: 'Aucun bundle culturel sûr à reporter ce tour.',
             primaryDeferId: null,
             primaryMissedWindowConsequence: null,
+            primaryMinimalSafeAction: null,
+            minimalSafeActionFallback: 'Fallback: aucune action minimale sûre connue pour conserver ce report.',
             missedWindowFallback: 'Fallback: aucune conséquence de fenêtre manquée à afficher sans action reportée prioritaire.',
             priorityFallback: 'Fallback: aucune fenêtre de délai calculable, garder l’ordre stable par risque faible puis culture.',
             entries: [],
