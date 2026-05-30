@@ -421,3 +421,14 @@ test('atlas military shows when the front follow-up watch can be dropped', () =>
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__drop--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__drop--stable/);
 });
+
+// MAP-A41: once active residual watch is dropped, keep only a light recheck cue
+// for the next turn/signal instead of creating a new urgent alert.
+test('atlas military shows the next light front check after watch drop', () => {
+  assert.match(webAppSource, /const nextLightCheck = watchDrop\?\.tone === 'stable'/);
+  assert.match(webAppSource, /Contrôle léger: prochain tour, vérifier \$\{residualRisk\?\.provinceLabel \?\? alternative\.provinceLabel \?\? 'front'\} sans relancer d’alerte/);
+  assert.match(webAppSource, /nextLightCheck,/);
+  assert.match(webAppSource, /ladder\.nextLightCheck \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__recheck"/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.nextLightCheck \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 7\.9 : 6\.55/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__recheck/);
+});
