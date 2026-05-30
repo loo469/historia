@@ -15,6 +15,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /Devient primaire/);
   assert.match(webAppSource, /Moment promotion/);
   assert.match(webAppSource, /Transfert attention/);
+  assert.match(webAppSource, /Reste secondaire si/);
   assert.match(webAppSource, /Secondaire suivant/);
   assert.match(webAppSource, /nextSecondaryRisk/);
   assert.match(webAppSource, /devient action primaire si la pression reste ≥80 au prochain check/);
@@ -22,6 +23,12 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /promotionTiming/);
   assert.match(webAppSource, /promotionCue/);
   assert.match(webAppSource, /shortSecondaryLabel/);
+  assert.match(webAppSource, /minimalProtection/);
+  assert.match(webAppSource, /secondaryProtectionGuard/);
+  assert.match(webAppSource, /coverageView\.secondaryProtections\?\.\[0\]/);
+  assert.match(webAppSource, /coverageView\.activeProtections\?\.\[0\]/);
+  assert.match(webAppSource, /reste secondaire si \$\{minimalProtection\.label\} tient/);
+  assert.match(webAppSource, /action minimale: \$\{view\.watchItem\.secondaryProtectionGuard\.minimalAction\}/);
   assert.match(webAppSource, /attendue ce tour-ci après résolution de l’action climatique principale/);
   assert.match(webAppSource, /au prochain tour si \$\{progress\.deadline\} confirme la pression secondaire/);
   assert.match(webAppSource, /seulement si la protection échoue ou si le seuil secondaire se rapproche/);
@@ -41,6 +48,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch--watch/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__cue/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__guard/);
 });
 
 test('atlas keeps a quiet fallback when no secondary climate watch is close enough', () => {
