@@ -536,6 +536,42 @@ function buildBackupLadderStabilizationReason(durability = null, stabilizationBe
 
 
 
+
+function buildResidualTraceClearAction(durability = null) {
+  const cause = durability?.cause ?? 'signal résiduel';
+
+  if (/information/i.test(cause)) {
+    return {
+      state: 'clearable-next-safe-read',
+      clearableNow: true,
+      label: 'Nettoyable par relecture sûre',
+      action: 'confirmer une lecture de confiance visible stable au prochain passage',
+      result: 'sortir la trace de la watchlist sans rouvrir le backup',
+      fallback: false,
+    };
+  }
+
+  if (/chaleur|heat|exposition|fragil/i.test(cause)) {
+    return {
+      state: 'watch-until-quiet',
+      clearableNow: false,
+      label: 'À surveiller avant nettoyage',
+      action: 'attendre que la heat ou la fragilité visible reste absente sur le prochain signal sûr',
+      result: 'réduire la trace en archive passive si aucun retour de risque visible n’apparaît',
+      fallback: false,
+    };
+  }
+
+  return {
+    state: 'no-safe-action-needed',
+    clearableNow: false,
+    label: 'Aucun geste sûr requis',
+    action: 'conserver la trace en archive informative',
+    result: 'aucune attention supplémentaire à nettoyer',
+    fallback: false,
+  };
+}
+
 function buildResidualTraceAttention(durability = null) {
   const cause = durability?.cause ?? 'signal résiduel';
 
@@ -545,6 +581,7 @@ function buildResidualTraceAttention(durability = null) {
       needsAttention: true,
       label: 'Recheck léger plus tard',
       summary: 'garder la trace pour une relecture courte au prochain passage, sans alerte active',
+      clearAction: buildResidualTraceClearAction(durability),
       fallback: false,
     };
   }
@@ -555,6 +592,7 @@ function buildResidualTraceAttention(durability = null) {
       needsAttention: true,
       label: 'Veille passive',
       summary: 'surveiller seulement si la heat ou la fragilité visible réapparaît',
+      clearAction: buildResidualTraceClearAction(durability),
       fallback: false,
     };
   }
@@ -564,6 +602,7 @@ function buildResidualTraceAttention(durability = null) {
     needsAttention: false,
     label: 'Archive sans action',
     summary: 'conserver comme trace informative; aucune attention de suivi requise',
+    clearAction: buildResidualTraceClearAction(durability),
     fallback: false,
   };
 }
