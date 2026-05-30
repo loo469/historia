@@ -444,3 +444,17 @@ test('atlas military shows what a passed light front recheck unlocks next', () =
   assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightRecheckUnlock \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 9\.25 : 7\.9/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__unlock/);
 });
+
+// MAP-A43: after a light front unlock is consumed, show the first concrete
+// follow-up separately from the still-available unlock cue, with a quiet empty state.
+test('atlas military shows the first follow-up after a light front unlock is used', () => {
+  assert.match(webAppSource, /const lightUnlockFollowUp = lightRecheckUnlock/);
+  assert.match(webAppSource, /label: 'Unlock utilisé: premier suivi'/);
+  assert.match(webAppSource, /label: 'Unlock utilisé: préparer suivi'/);
+  assert.match(webAppSource, /label: 'Unlock utilisé: aucun suivi net'/);
+  assert.match(webAppSource, /lightUnlockFollowUp,/);
+  assert.match(webAppSource, /ladder\.lightUnlockFollowUp \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__post-unlock/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightUnlockFollowUp \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 10\.6 : 9\.25/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__post-unlock--ready/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__post-unlock--quiet/);
+});

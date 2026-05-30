@@ -2780,6 +2780,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       watchDrop: null,
       nextLightCheck: null,
       lightRecheckUnlock: null,
+      lightUnlockFollowUp: null,
     };
   }
   const playableEntry = candidates.find((entry) => entry.viability.status === 'ready') ?? null;
@@ -2849,6 +2850,38 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       detail: `procéder sans watch active · observer léger · réarmer si ${residualRisk?.provinceLabel ?? alternative.provinceLabel ?? 'front'} change`,
     }
     : null;
+  const lightUnlockFollowUp = lightRecheckUnlock
+    ? (() => {
+      const readyAction = playableEntry?.option?.nextAction ?? (alternative.viabilityStatus === 'ready' ? alternative.action : null);
+      const readyProvince = playableEntry?.option?.provinceLabel ?? alternative.provinceLabel ?? residualRisk?.provinceLabel;
+      if (readyAction) {
+        return {
+          tone: 'ready',
+          label: 'Unlock utilisé: premier suivi',
+          detail: `${readyAction}${readyProvince ? ` · ${readyProvince}` : ''}`,
+        };
+      }
+      if (prepUnlock?.action) {
+        return {
+          tone: 'prep',
+          label: 'Unlock utilisé: préparer suivi',
+          detail: prepUnlock.action,
+        };
+      }
+      if (residualRisk?.action) {
+        return {
+          tone: 'quiet',
+          label: 'Unlock utilisé: suivi discret',
+          detail: `observer léger · ${residualRisk.action}`,
+        };
+      }
+      return {
+        tone: 'quiet',
+        label: 'Unlock utilisé: aucun suivi net',
+        detail: 'aucun premier suivi calculable pour l’instant',
+      };
+    })()
+    : null;
   if (steps.length < 2) {
     return {
       visible: false,
@@ -2860,6 +2893,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
       watchDrop: null,
       nextLightCheck: null,
       lightRecheckUnlock: null,
+      lightUnlockFollowUp: null,
     };
   }
   const delayCost = prepUnlock?.delayCost ?? null;
@@ -2873,6 +2907,7 @@ function buildAtlasMilitaryBlockedFollowUpLadder(alternative, candidates = [], r
     watchDrop,
     nextLightCheck,
     lightRecheckUnlock,
+    lightUnlockFollowUp,
   };
 }
 
@@ -3129,7 +3164,7 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 function renderAtlasMilitaryBlockedFollowUpLadder(ladder, y) {
   if (!ladder?.visible) return '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}${ladder.remainingWatch ? `; ${ladder.remainingWatch}` : ''}${ladder.watchDrop ? `; ${ladder.watchDrop.label}: ${ladder.watchDrop.detail}` : ''}${ladder.nextLightCheck ? `; ${ladder.nextLightCheck}` : ''}${ladder.lightRecheckUnlock ? `; ${ladder.lightRecheckUnlock.label}: ${ladder.lightRecheckUnlock.detail}` : ''}">
+    <g class="atlas-military-neighbor-blocked-follow-up-ladder atlas-military-neighbor-blocked-follow-up-ladder--${ladder.tone}" aria-label="Synthèse échelle de suivi de front: ${ladder.label}; ${ladder.detail}; ${ladder.firstActionReason}${ladder.remainingWatch ? `; ${ladder.remainingWatch}` : ''}${ladder.watchDrop ? `; ${ladder.watchDrop.label}: ${ladder.watchDrop.detail}` : ''}${ladder.nextLightCheck ? `; ${ladder.nextLightCheck}` : ''}${ladder.lightRecheckUnlock ? `; ${ladder.lightRecheckUnlock.label}: ${ladder.lightRecheckUnlock.detail}` : ''}${ladder.lightUnlockFollowUp ? `; ${ladder.lightUnlockFollowUp.label}: ${ladder.lightUnlockFollowUp.detail}` : ''}">
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__label" x="44.2" y="${y}">${ladder.label}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__detail" x="44.2" y="${y + 1.35}">${ladder.detail}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-ladder__reason" x="44.2" y="${y + 2.7}">${ladder.firstActionReason}</text>
@@ -3137,6 +3172,7 @@ function renderAtlasMilitaryBlockedFollowUpLadder(ladder, y) {
       ${ladder.watchDrop ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__drop atlas-military-neighbor-blocked-follow-up-ladder__drop--${ladder.watchDrop.tone}" x="44.2" y="${y + (ladder.remainingWatch ? 5.4 : 4.05)}">${ladder.watchDrop.label}: ${ladder.watchDrop.detail}</text>` : ''}
       ${ladder.nextLightCheck ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__recheck" x="44.2" y="${y + (ladder.remainingWatch ? 6.75 : 5.4)}">${ladder.nextLightCheck}</text>` : ''}
       ${ladder.lightRecheckUnlock ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__unlock" x="44.2" y="${y + (ladder.remainingWatch ? 8.1 : 6.75)}">${ladder.lightRecheckUnlock.label}: ${ladder.lightRecheckUnlock.detail}</text>` : ''}
+      ${ladder.lightUnlockFollowUp ? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__post-unlock atlas-military-neighbor-blocked-follow-up-ladder__post-unlock--${ladder.lightUnlockFollowUp.tone}" x="44.2" y="${y + (ladder.remainingWatch ? 9.45 : 8.1)}">${ladder.lightUnlockFollowUp.label}: ${ladder.lightUnlockFollowUp.detail}</text>` : ''}
     </g>
   `;
 }
@@ -3175,7 +3211,7 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
     : 0;
   const ladderY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? alternativeBlockHeight + 0.25 : 0);
   const ladderHeight = preview.blockedFollowUpLadder?.visible
-    ? preview.blockedFollowUpLadder?.lightRecheckUnlock ? preview.blockedFollowUpLadder?.remainingWatch ? 9.25 : 7.9 : preview.blockedFollowUpLadder?.nextLightCheck ? preview.blockedFollowUpLadder?.remainingWatch ? 7.9 : 6.55 : preview.blockedFollowUpLadder?.watchDrop ? preview.blockedFollowUpLadder?.remainingWatch ? 6.55 : 5.2 : preview.blockedFollowUpLadder?.remainingWatch ? 5.2 : 3.85
+    ? preview.blockedFollowUpLadder?.lightUnlockFollowUp ? preview.blockedFollowUpLadder?.remainingWatch ? 10.6 : 9.25 : preview.blockedFollowUpLadder?.lightRecheckUnlock ? preview.blockedFollowUpLadder?.remainingWatch ? 9.25 : 7.9 : preview.blockedFollowUpLadder?.nextLightCheck ? preview.blockedFollowUpLadder?.remainingWatch ? 7.9 : 6.55 : preview.blockedFollowUpLadder?.watchDrop ? preview.blockedFollowUpLadder?.remainingWatch ? 6.55 : 5.2 : preview.blockedFollowUpLadder?.remainingWatch ? 5.2 : 3.85
     : 0;
   const contestedY = ladderY + (preview.blockedFollowUpLadder?.visible ? ladderHeight + 0.25 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
