@@ -1187,6 +1187,15 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       return null;
     }
 
+    const exposure = fallbackAction.residualExposure ?? opportunityCost?.residualExposure ?? null;
+    const exposedRoute = exposure?.exposedRoutes?.[0] ?? null;
+    const buildResidualConstraint = (state, summary) => ({
+      state,
+      label: 'Contrainte restante',
+      summary,
+      route: exposedRoute?.route ?? opportunityCost?.delayedRoute ?? null,
+    });
+
     if (opportunityCost?.state === 'competing') {
       return {
         state: 'stay-fallback',
@@ -1195,6 +1204,12 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           ? `Retour vers ${opportunityCost.delayedRoute} possible quand ${priorityAction.resource} n’est plus la ressource limitante de ${priorityAction.route}.`
           : `Retour vers ${opportunityCost.delayedRoute} possible quand la route principale ne partage plus la capacité locale.`,
         reason: nextChoiceTrigger.trigger,
+        residualConstraint: buildResidualConstraint(
+          'resource',
+          priorityAction.resource
+            ? `Route primaire reprise, contrainte restante: ${priorityAction.resource} doit rester disponible avant de rouvrir ${opportunityCost.delayedRoute}.`
+            : `Route primaire reprise, contrainte restante: capacité locale encore partagée avec ${opportunityCost.delayedRoute}.`,
+        ),
       };
     }
 
@@ -1207,12 +1222,20 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           label: 'Retour possible',
           summary: `${stopMarker.route} redevient sûre: bénéfice ${stopMarker.expectedBenefit} couvre coût ${stopMarker.cumulativeCost}.`,
           reason: nextChoiceTrigger.trigger,
+          residualConstraint: buildResidualConstraint(
+            'watch',
+            `Route primaire reprise, contrainte restante: surveiller ${stopMarker.route} tant que la marge reste à ${margin}.`,
+          ),
         }
         : {
           state: 'stay-fallback',
           label: 'Rester en fallback',
           summary: `Retour vers ${stopMarker.route} après ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge de garde récupéré${Math.abs(margin) > 1 ? 's' : ''}.`,
           reason: nextChoiceTrigger.trigger,
+          residualConstraint: buildResidualConstraint(
+            'margin',
+            `Route primaire reprise plus tard: ${stopMarker.route} manque encore ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge de garde.`,
+          ),
         };
     }
 
