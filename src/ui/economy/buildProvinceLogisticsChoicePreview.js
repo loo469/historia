@@ -848,6 +848,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       dependencyTrace: 'Dépendance inconnue: aucun levier local ne permet de tracer la source du spillover.',
       guardAction: { label: 'Garde indisponible', reason: 'Aucune chaîne de spillover à réduire pour l’instant.', fallback: true },
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: aucune garde concrète à classer.' },
+      guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Capacité de garde indisponible sans récupération locale.' },
     };
   }
 
@@ -892,6 +893,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       dependencyTrace: 'Dépendance inconnue: aucune route voisine exposée ne confirme la chaîne source → route affectée → conséquence.',
       guardAction: { label: 'Garde indisponible', reason: 'Aucun relais voisin confirmé; surveiller la route après résolution locale.', fallback: true },
       guardComparison: { state: 'fallback', candidates: [], summary: 'Comparaison impossible: coût de garde non comparable sans route exposée.' },
+      guardSequencing: { state: 'unknown', phrase: 'enchaînement inconnu', reason: 'Aucune route exposée ne permet de comparer la capacité de garde.' },
     };
   }
 
@@ -933,6 +935,23 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         candidates: [],
         summary: 'Comparaison impossible: coût de garde non comparable avec les signaux actuels.',
       };
+  const guardSequencing = guardAction.fallback
+    ? {
+      state: 'unknown',
+      phrase: 'enchaînement inconnu',
+      reason: 'Capacité de garde indisponible avec les signaux actuels.',
+    }
+    : guardComparison.state === 'single' && guardAction.route === criticalRoute.route && criticalRoute.resource === priorityAction.resource
+      ? {
+        state: 'competing',
+        phrase: 'choisir la garde au lieu de la récupération ce tour',
+        reason: `${guardAction.route} partage ${priorityAction.resource} avec ${priorityAction.route}; la capacité ne couvre pas les deux sans délai.`,
+      }
+      : {
+        state: 'chainable',
+        phrase: 'enchaîner après la récupération',
+        reason: `${guardAction.route} reste assez léger pour suivre ${priorityAction.route} sans remplacer l’action locale.`,
+      };
 
   return {
     state: secondaryRoutes.length > 0 ? 'chain' : 'single',
@@ -942,6 +961,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     dependencyTrace: `${source} → ${criticalRoute.route}/${criticalRoute.city} → ${consequence}`,
     guardAction,
     guardComparison,
+    guardSequencing,
   };
 }
 
