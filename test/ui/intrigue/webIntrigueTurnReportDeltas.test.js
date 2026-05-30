@@ -49,6 +49,9 @@ test('playable map wires intrigue aftermath deltas into selected province turn r
   assert.match(webAppSource, /Synthèse backup:/);
   assert.match(webAppSource, /province-intrigue-turn-report__backup-ladder-summary--/);
   assert.match(webAppSource, /Risque visible:/);
+  assert.match(webAppSource, /stabilizationReason/);
+  assert.match(webAppSource, /Pourquoi cette stabilisation:/);
+  assert.match(webAppSource, /province-intrigue-turn-report__backup-stabilization-reason--/);
   assert.match(webAppSource, /province-intrigue-turn-report__return-trigger--/);
   assert.match(webAppSource, /province-intrigue-turn-report__skip-stabilization-risk--/);
   assert.match(webAppSource, /province-intrigue-turn-report__return-stabilization--/);

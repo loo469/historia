@@ -8877,6 +8877,9 @@ function renderIntrigueTurnReportDeltas(province, intrigueView) {
               ` : ''}
               ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary ? `
                 <small class="province-intrigue-turn-report__backup-ladder-summary province-intrigue-turn-report__backup-ladder-summary--${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.state}">Synthèse backup: ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.label} — ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.summary}${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.risk ? ` Risque visible: ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.risk}.` : ''}</small>
+                ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.stabilizationReason ? `
+                  <small class="province-intrigue-turn-report__backup-stabilization-reason province-intrigue-turn-report__backup-stabilization-reason--${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.stabilizationReason.state}">Pourquoi cette stabilisation: ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.stabilizationReason.label} — ${report.minimumVerificationPrompt.safestMinimalVerification.returnFromBackupCondition.backupLadderSummary.stabilizationReason.summary}</small>
+                ` : ''}
               ` : ''}
             ` : ''}
             ${report.minimumVerificationPrompt.safestMinimalVerification.followUpOptions?.length ? `

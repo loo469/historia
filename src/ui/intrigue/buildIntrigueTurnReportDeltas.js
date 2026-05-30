@@ -490,8 +490,52 @@ function buildStabilizationBeforeReturn(durability, backupFollowUp, principalRis
   };
 }
 
+function buildBackupLadderStabilizationReason(durability = null, stabilizationBeforeReturn = null, skippedRisk = null) {
+  if (!stabilizationBeforeReturn?.recommended || !durability) {
+    return {
+      state: 'no-safe-stabilization',
+      recommended: false,
+      label: 'Aucune stabilisation sûre proposée',
+      summary: 'Aucune stabilisation sûre n’est lisible avant retour avec les signaux visibles actuels.',
+      drivers: [],
+      fallback: true,
+    };
+  }
+
+  const drivers = [];
+  if (durability.cause === 'dépendance non vérifiée' || skippedRisk?.state === 'chain-failure-risk') {
+    drivers.push('risque sabotage: dépendance visible à sécuriser avant retour');
+  }
+  if (durability.cause === 'information manquante') {
+    drivers.push('présence: confirmer le signal visible minimal avant de quitter le backup');
+  }
+  if (durability.cause === 'timing expirant') {
+    drivers.push('présence: garder le backup jusqu’à une fenêtre de retour fraîche');
+  }
+  if (skippedRisk?.state === 'exposure-risk') {
+    drivers.push('exposition ajoutée: le retour direct peut raviver l’exposition visible');
+  }
+  if (skippedRisk?.recommended && !skippedRisk.fallback) {
+    drivers.push(`risque de skip: ${skippedRisk.category}`);
+  }
+
+  if (!drivers.length) {
+    drivers.push(`${durability.cause}: ${stabilizationBeforeReturn.reason}`);
+  }
+
+  return {
+    state: stabilizationBeforeReturn.state,
+    recommended: true,
+    label: `Pourquoi ${stabilizationBeforeReturn.label.toLowerCase()}`,
+    summary: drivers.join(' · '),
+    drivers,
+    fallback: false,
+  };
+}
+
 function buildBackupLadderSummary(returnCondition, durability = null, stabilizationBeforeReturn = null) {
   if (!returnCondition?.recommended || !durability) {
+    const stabilizationReason = buildBackupLadderStabilizationReason(durability, stabilizationBeforeReturn);
     return {
       state: 'no-reliable-ladder',
       recommended: false,
@@ -499,6 +543,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       label: 'Boucle backup non synthétisable',
       summary: 'Aucune boucle backup → stabilisation → retour fiable à condenser avec les signaux visibles.',
       risk: null,
+      stabilizationReason,
       fallback: true,
     };
   }
@@ -507,6 +552,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
   const visibleRisk = skippedRisk?.recommended && !skippedRisk.fallback
     ? skippedRisk.category
     : durability.cause;
+  const stabilizationReason = buildBackupLadderStabilizationReason(durability, stabilizationBeforeReturn, skippedRisk);
 
   if (durability.stability === 'stable-return') {
     return {
@@ -516,6 +562,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       label: 'Revenir maintenant',
       summary: `Revenir au suivi initial: ${durability.advice}`,
       risk: visibleRisk,
+      stabilizationReason,
       fallback: false,
     };
   }
@@ -528,6 +575,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       label: 'Rester sur backup',
       summary: `Rester sur ${returnCondition.backup}: ${durability.advice}`,
       risk: visibleRisk,
+      stabilizationReason,
       fallback: false,
     };
   }
@@ -540,6 +588,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
       label: 'Stabiliser avant retour',
       summary: `${stabilizationBeforeReturn.label}: ${stabilizationBeforeReturn.action}. Retour ensuite vers ${returnCondition.primary}.`,
       risk: visibleRisk,
+      stabilizationReason,
       fallback: false,
     };
   }
@@ -551,6 +600,7 @@ function buildBackupLadderSummary(returnCondition, durability = null, stabilizat
     label: 'Boucle backup non synthétisable',
     summary: 'Les signaux visibles ne suffisent pas à choisir entre backup, stabilisation et retour.',
     risk: null,
+    stabilizationReason,
     fallback: true,
   };
 }
