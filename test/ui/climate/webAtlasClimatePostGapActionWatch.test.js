@@ -33,6 +33,12 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /upkeepReminder/);
   assert.match(webAppSource, /marginRearmReview/);
   assert.match(webAppSource, /unrearmedReviewConsequence/);
+  assert.match(webAppSource, /nextWatchPriorityImpact/);
+  assert.match(webAppSource, /Prochaine priorité/);
+  assert.match(webAppSource, /priorité monte/);
+  assert.match(webAppSource, /priorité stable/);
+  assert.match(webAppSource, /secondaire après mitigation/);
+  assert.match(webAppSource, /priorité indéterminée/);
   assert.match(webAppSource, /Si non réarmé/);
   assert.match(webAppSource, /premier effet sans review/);
   assert.match(webAppSource, /risque d’être lu tard, même avec une marge encore confortable/);
@@ -108,6 +114,9 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rearm--deferred/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__consequence/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__consequence--informative/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--rises/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--secondary-after-mitigation/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
@@ -219,4 +228,15 @@ test('atlas shows first consequence of leaving climate review unrearmed', () => 
   assert.match(webAppSource, /le prochain signal \$\{watchGap\.nearestRiskLabel\} risque d’être lu tard/);
   assert.match(webAppSource, /view\.watchItem\.unrearmedReviewConsequence \?/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__consequence--informative/);
+});
+
+test('atlas links unrearmed climate consequence to next watch priority', () => {
+  assert.match(webAppSource, /const nextWatchPriorityImpact = unrearmedReviewConsequence/);
+  assert.match(webAppSource, /state: 'rises'/);
+  assert.match(webAppSource, /label: 'priorité monte'/);
+  assert.match(webAppSource, /prochaine watch: \$\{watchGap\.label\} remonte si la review reste non réarmée/);
+  assert.match(webAppSource, /label: watchMargin\.state === 'comfortable' \? 'priorité stable' : 'secondaire après mitigation'/);
+  assert.match(webAppSource, /label: 'priorité indéterminée'/);
+  assert.match(webAppSource, /view\.watchItem\.nextWatchPriorityImpact \?/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__priority--fallback/);
 });
