@@ -1401,7 +1401,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
     const immediateSynergy = recommendedBeyondMinimumBenefit
       ? buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedCandidates, missedWindowConsequence)
       : null;
-    const deferLadderSummary = buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBenefit, immediateSynergy);
+    const deferLadderSummary = buildCulturalDeferLadderSummary({ ...candidate, minimalSafeAction }, recommendedBeyondMinimumBenefit, immediateSynergy);
 
     return {
       ...candidate,
@@ -1459,12 +1459,26 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
     return null;
   }
 
+  const firstFollowUpReason = buildCulturalFirstFollowUpReason(candidate, recommendedBeyondMinimumBenefit, immediateSynergy);
+  const sourceAction = normalizeText(immediateSynergy.sourceAction ?? '');
+
+  if (/attendre|observer/.test(sourceAction)) {
+    return {
+      state: 'observe-first',
+      label: 'Observer',
+      decision: 'attendre/observer reste le meilleur premier suivi visible',
+      summary: `Observer: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
+      firstFollowUpReason,
+    };
+  }
+
   if (immediateSynergy.expiryWarning) {
     return {
       state: 'act-now',
       label: 'Agir maintenant',
       decision: 'agir maintenant pour capturer la synergie avant expiration',
       summary: `Agir maintenant: ${immediateSynergy.expiryWarning.summary}`,
+      firstFollowUpReason,
     };
   }
 
@@ -1474,6 +1488,7 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
       label: 'Minimum suffisant',
       decision: 'faire le minimum garde la fenêtre sans perdre la synergie visible',
       summary: `Minimum suffisant: ${candidate.minimalRevisitAction}; ${immediateSynergy.summary}`,
+      firstFollowUpReason,
     };
   }
 
@@ -1482,6 +1497,30 @@ function buildCulturalDeferLadderSummary(candidate, recommendedBeyondMinimumBene
     label: 'Report sûr',
     decision: 'reporter sans perdre la synergie visible',
     summary: `Report sûr: ${candidate.deadlineHint}; ${immediateSynergy.summary}`,
+    firstFollowUpReason,
+  };
+}
+
+function buildCulturalFirstFollowUpReason(candidate, recommendedBeyondMinimumBenefit, immediateSynergy) {
+  const expiryCue = immediateSynergy.expiryWarning
+    ? `expiration: ${immediateSynergy.expiryWarning.summary}`
+    : 'expiration: aucune expiration visible';
+  const deferredTrack = candidate.minimalSafeAction
+    ? `piste différée: ${candidate.minimalSafeAction}`
+    : `piste différée: ${candidate.condition}`;
+  const localSignal = candidate.turningSignal
+    ? `signal local: ${candidate.turningSignal}`
+    : `signal local: ${candidate.deadlineHint}`;
+
+  return {
+    state: immediateSynergy.expiryWarning ? 'expiry-driven' : candidate.deadlineStatus,
+    label: 'Pourquoi ce suivi',
+    synergy: immediateSynergy.summary,
+    expiryCue,
+    deferredTrack,
+    localSignal,
+    summary: `${immediateSynergy.summary}; ${expiryCue}; ${deferredTrack}; ${localSignal}.`,
+    payoffCue: recommendedBeyondMinimumBenefit.concreteGain,
   };
 }
 
@@ -1499,6 +1538,7 @@ function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedC
       label: 'Synergie ce tour',
       sourceType: 'discovery',
       sourceLabel: sameClusterPriority.discoveryId,
+      sourceAction: sameClusterPriority.action,
       benefit: `${sameClusterPriority.discoveryId} renforce ${sameClusterPriority.action} avec ${candidate.clusterLabel}`,
       avoidedRisk: `évite de séparer la découverte du suivi reporté: ${missedWindowConsequence}`,
       summary: `synergie ce tour: ${sameClusterPriority.discoveryId} + ${candidate.clusterLabel}; ${sameClusterPriority.action} sécurisé.`,
@@ -1515,6 +1555,7 @@ function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedC
       label: 'Synergie ce tour',
       sourceType: 'narrative',
       sourceLabel: candidate.minimalRevisitAction ?? candidate.clusterLabel,
+      sourceAction: candidate.minimalRevisitAction ?? 'suivre le récit',
       benefit: `le récit actif devient un suivi culturel immédiat pour ${candidate.clusterLabel}`,
       avoidedRisk: `évite de laisser le récit dépasser la fenêtre sûre: ${missedWindowConsequence}`,
       summary: `synergie ce tour: récit actif + ${candidate.clusterLabel}; suivi narratif sécurisé.`,
@@ -1531,6 +1572,7 @@ function buildCulturalBeyondMinimumSynergy(candidate, visiblePriorities, sortedC
       label: 'Synergie ce tour',
       sourceType: 'neighbor-cluster',
       sourceLabel: neighboringPriority.cultureName,
+      sourceAction: neighboringPriority.action,
       benefit: `${candidate.clusterLabel} reste aligné avec ${neighboringPriority.cultureName}`,
       avoidedRisk: `évite que le cluster voisin reprenne seul la priorité: ${missedWindowConsequence}`,
       summary: `synergie ce tour: ${candidate.clusterLabel} + ${neighboringPriority.cultureName}; priorités proches alignées.`,
