@@ -2724,6 +2724,24 @@ function getAtlasMilitaryBlockedFollowUpAlternativeViability(option, checklistIt
   };
 }
 
+function getAtlasMilitaryBlockedFollowUpPrepUnlock(option, checklistItem) {
+  if (!option || option.viabilityStatus === 'ready') return null;
+  const checklistAction = checklistItem?.checklist?.immediateAction ?? option.nextAction ?? 'préparer une action visible';
+  const prerequisite = checklistItem?.checklist?.missingPrerequisite ?? option.waitState ?? 'prérequis visible confirmé';
+  const actionByType = {
+    logistics: `réserver ressource: ${checklistAction}`,
+    intel: `lever info manquante: ${checklistAction}`,
+    climate: `sécuriser dépendance: ${checklistAction}`,
+    culture: `stabiliser appui: ${checklistAction}`,
+    unknown: 'clarifier le bloqueur sans révéler le brouillard',
+  };
+  return {
+    label: `Préparer ${option.provinceLabel}`,
+    action: actionByType[option.blockerType] ?? `préparer: ${checklistAction}`,
+    unlocks: `débloque si ${prerequisite}`,
+  };
+}
+
 function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict, recommendation, checklist) {
   if (!followUp?.visible || !conflict?.visible || conflict.tone === 'safe') {
     return {
@@ -2735,10 +2753,24 @@ function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict
     };
   }
 
-  const candidate = (recommendation?.options ?? [])
+  const candidates = (recommendation?.options ?? [])
     .filter((option) => option.provinceLabel !== followUp.provinceLabel)
-    .sort((left, right) => right.score - left.score || left.provinceLabel.localeCompare(right.provinceLabel))[0] ?? null;
-  const checklistItem = (checklist?.items ?? []).find((item) => item.provinceLabel === candidate?.provinceLabel) ?? null;
+    .map((option) => {
+      const checklistItem = (checklist?.items ?? []).find((item) => item.provinceLabel === option.provinceLabel) ?? null;
+      const viability = getAtlasMilitaryBlockedFollowUpAlternativeViability(option, checklistItem);
+      return { option, checklistItem, viability };
+    })
+    .sort((left, right) => {
+      const viabilityRank = { ready: 2, prep: 1, avoid: 0 };
+      return (viabilityRank[right.viability.status] ?? 0) - (viabilityRank[left.viability.status] ?? 0)
+        || right.option.score - left.option.score
+        || left.option.provinceLabel.localeCompare(right.option.provinceLabel);
+    });
+  const closest = candidates[0] ?? null;
+  const candidate = closest?.option ?? null;
+  const checklistItem = closest?.checklistItem ?? null;
+  const viability = closest?.viability ?? null;
+  const allAlternativesNeedPrep = candidates.length > 0 && candidates.every((entry) => entry.viability.status !== 'ready');
 
   if (!candidate) {
     return {
@@ -2751,11 +2783,15 @@ function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict
       viabilityStatus: 'avoid',
       viabilityLabel: 'À éviter ce tour',
       minimumCondition: 'condition minimale: conflit résolu sans nouveau risque',
+      prepUnlock: {
+        label: 'Préparer une alternative',
+        action: 'résoudre conflit puis relire fronts visibles',
+        unlocks: 'débloque si un front candidat reste fog-safe',
+      },
     };
   }
 
   const reason = getAtlasMilitaryBlockedFollowUpAlternativeReason(candidate, checklistItem);
-  const viability = getAtlasMilitaryBlockedFollowUpAlternativeViability(candidate, checklistItem);
   const reasonTone = reason === 'urgence' ? 'urgent' : reason === 'coût' ? 'cost' : reason === 'dépendance' ? 'dependency' : 'safe';
   return {
     visible: true,
@@ -2768,6 +2804,7 @@ function buildAtlasMilitaryBlockedResidualFollowUpAlternative(followUp, conflict
     viabilityStatus: viability.status,
     viabilityLabel: viability.label,
     minimumCondition: viability.condition,
+    prepUnlock: allAlternativesNeedPrep ? getAtlasMilitaryBlockedFollowUpPrepUnlock({ ...candidate, viabilityStatus: viability.status }, checklistItem) : null,
   };
 }
 
@@ -2952,10 +2989,14 @@ function renderAtlasMilitaryNeighborResidualFollowUpConflict(conflict, y) {
 
 function renderAtlasMilitaryBlockedResidualFollowUpAlternative(alternative, y) {
   if (!alternative?.visible) return '';
+  const prep = alternative.prepUnlock
+    ? `<text class="atlas-military-neighbor-blocked-follow-up-alt__prep" x="44.2" y="${y + 2.7}">${alternative.prepUnlock.action} · ${alternative.prepUnlock.unlocks}</text>`
+    : '';
   return `
-    <g class="atlas-military-neighbor-blocked-follow-up-alt atlas-military-neighbor-blocked-follow-up-alt--${alternative.tone}" aria-label="Alternative après suivi résiduel bloqué: ${alternative.label}; viabilité ${alternative.viabilityLabel}; ${alternative.minimumCondition}; raison ${alternative.reason}; ${alternative.detail}; action ${alternative.action}">
+    <g class="atlas-military-neighbor-blocked-follow-up-alt atlas-military-neighbor-blocked-follow-up-alt--${alternative.tone}" aria-label="Alternative après suivi résiduel bloqué: ${alternative.label}; viabilité ${alternative.viabilityLabel}; ${alternative.minimumCondition}; raison ${alternative.reason}; ${alternative.detail}; action ${alternative.action}${alternative.prepUnlock ? `; préparation ${alternative.prepUnlock.label}: ${alternative.prepUnlock.action}; ${alternative.prepUnlock.unlocks}` : ''}">
       <text class="atlas-military-neighbor-blocked-follow-up-alt__label" x="44.2" y="${y}">${alternative.label}</text>
       <text class="atlas-military-neighbor-blocked-follow-up-alt__detail" x="44.2" y="${y + 1.35}">${alternative.minimumCondition} · ${alternative.reason}: ${alternative.action}</text>
+      ${prep}
     </g>
   `;
 }
@@ -2970,13 +3011,16 @@ function renderAtlasMilitaryNeighborFrontShiftPreview(preview) {
   const followUpY = residualY + (preview.sharedResidualRisk?.visible ? 2.75 : 0);
   const conflictY = followUpY + (preview.residualFollowUpOrder?.visible ? 2.75 : 0);
   const alternativeY = conflictY + (preview.residualFollowUpConflict?.visible ? 2.75 : 0);
-  const contestedY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? 2.75 : 0);
+  const alternativeBlockHeight = preview.blockedFollowUpAlternative?.visible
+    ? preview.blockedFollowUpAlternative?.prepUnlock ? 3.85 : 2.5
+    : 0;
+  const contestedY = alternativeY + (preview.blockedFollowUpAlternative?.visible ? alternativeBlockHeight + 0.25 : 0);
   const clusterHeight = preview.urgencyCluster?.visible ? 2.5 : 0;
   const hintHeight = preview.sharedHandlingHint?.visible ? 2.5 : 0;
   const residualHeight = preview.sharedResidualRisk?.visible ? 2.5 : 0;
   const followUpHeight = preview.residualFollowUpOrder?.visible ? 2.5 : 0;
   const conflictHeight = preview.residualFollowUpConflict?.visible ? 2.5 : 0;
-  const alternativeHeight = preview.blockedFollowUpAlternative?.visible ? 2.5 : 0;
+  const alternativeHeight = alternativeBlockHeight;
   const contestedHeight = preview.contestedPriority?.visible ? 2.5 : 0;
   const height = (preview.empty ? 13.6 : 13.6 + (preview.shifts.length * 3.45)) + clusterHeight + hintHeight + residualHeight + followUpHeight + conflictHeight + alternativeHeight + contestedHeight;
   return `
