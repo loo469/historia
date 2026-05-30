@@ -14410,6 +14410,25 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         label: 'priorité indéterminée',
         detail: 'relire la prochaine watch climat quand le signal secondaire redevient mesurable',
       };
+  const nextPriorityStability = nextWatchPriorityImpact.state === 'rises'
+    ? {
+      state: 'stabilizes-after-rearm',
+      label: 'stabilise après review',
+      detail: `cesse de changer quand la review est réarmée ou quand ${progress.deadline} confirme une marge encore confortable`,
+    }
+    : nextWatchPriorityImpact.state === 'stable'
+      ? {
+        state: 'already-stable',
+        label: 'déjà stable',
+        detail: 'aucun changement attendu tant que la marge confortable reste lisible',
+      }
+      : nextWatchPriorityImpact.state === 'secondary-after-mitigation'
+        ? {
+          state: 'stabilizes-after-mitigation',
+          label: 'stable après mitigation',
+          detail: 'cesse de changer si la mitigation tient au prochain check climat',
+        }
+        : null;
   const minimalProtection = coverageView.secondaryProtections?.[0]
     ?? coverageView.activeProtections?.[0]
     ?? (gapActionView.recommendation
@@ -14523,6 +14542,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       marginRearmReview,
       unrearmedReviewConsequence,
       nextWatchPriorityImpact,
+      nextPriorityStability,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -14568,6 +14588,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       ${view.watchItem.marginRearmReview ? `<small class="map-world-climate-post-gap-watch__rearm map-world-climate-post-gap-watch__rearm--${view.watchItem.marginRearmReview.state}"><b>Réarmer review</b> · ${view.watchItem.marginRearmReview.label}: ${view.watchItem.marginRearmReview.detail}</small>` : ''}
       ${view.watchItem.unrearmedReviewConsequence ? `<small class="map-world-climate-post-gap-watch__consequence map-world-climate-post-gap-watch__consequence--${view.watchItem.unrearmedReviewConsequence.state}"><b>Si non réarmé</b> · ${view.watchItem.unrearmedReviewConsequence.label}: ${view.watchItem.unrearmedReviewConsequence.detail}</small>` : ''}
       ${view.watchItem.nextWatchPriorityImpact ? `<small class="map-world-climate-post-gap-watch__priority map-world-climate-post-gap-watch__priority--${view.watchItem.nextWatchPriorityImpact.state}"><b>Prochaine priorité</b> · ${view.watchItem.nextWatchPriorityImpact.label}: ${view.watchItem.nextWatchPriorityImpact.detail}</small>` : ''}
+      ${view.watchItem.nextPriorityStability ? `<small class="map-world-climate-post-gap-watch__stability map-world-climate-post-gap-watch__stability--${view.watchItem.nextPriorityStability.state}"><b>Fin changement priorité</b> · ${view.watchItem.nextPriorityStability.label}: ${view.watchItem.nextPriorityStability.detail}</small>` : ''}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
