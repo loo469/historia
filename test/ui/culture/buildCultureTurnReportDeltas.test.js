@@ -925,6 +925,9 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
     entry.immediateSynergy?.expiryWarning?.label ?? null,
     entry.immediateSynergy?.expiryWarning?.reviewWindow ?? null,
     entry.immediateSynergy?.expiryWarning?.lostBenefit ?? null,
+    entry.deferLadderSummary?.state ?? null,
+    entry.deferLadderSummary?.label ?? null,
+    entry.deferLadderSummary?.summary ?? null,
   ]), [
     [
       'Compact d’Aurora',
@@ -941,8 +944,11 @@ test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cul
       null,
       null,
       null,
+      'minimum-sufficient',
+      'Minimum suffisant',
+      'Minimum suffisant: confirmer Ouvrir le récit d’expansion; synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.',
     ],
-    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null, null, null, null],
+    ['Harbor Compact', 'later', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   ]);
 });
 
@@ -1019,7 +1025,8 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
     ],
   });
 
-  const expiringSynergy = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries[0].immediateSynergy;
+  const expiringEntry = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries[0];
+  const expiringSynergy = expiringEntry.immediateSynergy;
   assert.deepEqual(expiringSynergy.expiryWarning, {
     state: 'expires-before-review',
     label: 'expire avant revue',
@@ -1027,6 +1034,80 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
     expiryCause: 'expire avant la prochaine revue',
     lostBenefit: 'archive-routes ne renforcera plus Compact d’Aurora de façon sûre',
     summary: 'expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.',
+  });
+  assert.deepEqual(expiringEntry.deferLadderSummary, {
+    state: 'act-now',
+    label: 'Agir maintenant',
+    decision: 'agir maintenant pour capturer la synergie avant expiration',
+    summary: 'Agir maintenant: expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.',
+  });
+});
+
+test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiring synergy', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+      },
+    },
+    activeRecommendations: [
+      {
+        recommendationId: 'river-gate:aurora:stable-discovery',
+        regionId: 'river-gate',
+        cultureName: 'Compact d’Aurora',
+        action: 'amplifier',
+        tone: 'opportunity',
+        level: 'surging',
+        discoveryId: 'archive-routes',
+        confidence: 'high',
+        supportKey: 'amplifier',
+        markerIds: ['aurora-marker'],
+        rank: 1,
+      },
+    ],
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit',
+        promptLabel: 'Ouvrir le récit',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+      {
+        decisionId: 'turn-8-harbor-calm',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Calmer le port',
+        promptLabel: 'Calmer le port',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+    ],
+  });
+
+  const safeEntry = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles.entries[0];
+  assert.equal(safeEntry.deadlineStatus, 'safe-this-turn');
+  assert.equal(safeEntry.immediateSynergy.expiryWarning, null);
+  assert.deepEqual(safeEntry.deferLadderSummary, {
+    state: 'safe-defer',
+    label: 'Report sûr',
+    decision: 'reporter sans perdre la synergie visible',
+    summary: 'Report sûr: sûr ce tour; synergie ce tour: archive-routes + Compact d’Aurora; amplifier sécurisé.',
   });
 });
 

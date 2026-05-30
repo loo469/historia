@@ -7784,13 +7784,14 @@ function renderCultureTurnReport(report) {
                   ${entry.revisitPriority === 'next' ? '<small>Priorité: à revisiter en premier</small>' : ''}
                   <small>Délai: ${entry.deadlineHint ?? 'fenêtre non calculable'}</small>
                   <small>Payoff: ${entry.payoffScore ?? 0}</small>
-                  ${entry.revisitPriority === 'next' && entry.missedWindowConsequence ? `<small>Si manqué: ${entry.missedWindowConsequence}</small>` : ''}
-                  ${entry.revisitPriority === 'next' && entry.minimalSafeAction ? `<small>Action minimale: ${entry.minimalSafeAction} — ${entry.preventedConsequence}</small>` : ''}
-                  ${entry.revisitPriority === 'next' && entry.recommendedBeyondMinimumBenefit ? `<small>Au-delà du minimum: ${entry.recommendedBeyondMinimumBenefit.summary}</small>` : ''}
-                  ${entry.revisitPriority === 'next' && entry.immediateSynergy ? `<small>Synergie ce tour: ${entry.immediateSynergy.summary}</small>` : ''}
-                  ${entry.revisitPriority === 'next' && entry.immediateSynergy?.expiryWarning ? `<small>Synergie temporaire: ${entry.immediateSynergy.expiryWarning.summary}</small>` : ''}
-                  ${entry.revisitPriority === 'next' && entry.immediateSynergy ? `<small>Bénéfice: ${entry.immediateSynergy.benefit}; risque évité: ${entry.immediateSynergy.avoidedRisk}</small>` : ''}
-                  ${entry.revisitPriority === 'next' && entry.recommendedBeyondMinimumBenefit ? `<small>Évite au prochain tour: ${entry.recommendedBeyondMinimumBenefit.nextTurnAvoidance}; ${entry.recommendedBeyondMinimumBenefit.avoids}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && entry.deferLadderSummary ? `<small>Arbitrage: ${entry.deferLadderSummary.summary}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.missedWindowConsequence ? `<small>Si manqué: ${entry.missedWindowConsequence}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.minimalSafeAction ? `<small>Action minimale: ${entry.minimalSafeAction} — ${entry.preventedConsequence}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.recommendedBeyondMinimumBenefit ? `<small>Au-delà du minimum: ${entry.recommendedBeyondMinimumBenefit.summary}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.immediateSynergy ? `<small>Synergie ce tour: ${entry.immediateSynergy.summary}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.immediateSynergy?.expiryWarning ? `<small>Synergie temporaire: ${entry.immediateSynergy.expiryWarning.summary}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.immediateSynergy ? `<small>Bénéfice: ${entry.immediateSynergy.benefit}; risque évité: ${entry.immediateSynergy.avoidedRisk}</small>` : ''}
+                  ${entry.revisitPriority === 'next' && !entry.deferLadderSummary && entry.recommendedBeyondMinimumBenefit ? `<small>Évite au prochain tour: ${entry.recommendedBeyondMinimumBenefit.nextTurnAvoidance}; ${entry.recommendedBeyondMinimumBenefit.avoids}</small>` : ''}
                   ${entry.revisitPriority === 'next' && entry.minimalActionAcceptableUntil ? `<small>Seuil: minimale jusqu’à ${entry.minimalActionAcceptableUntil}; recommandé: ${entry.recommendedAction}; tardif risqué: ${entry.lateRiskyAction}</small>` : ''}
                   ${entry.revisitPriority === 'next' && entry.minimalActionThresholdReason ? `<small>Pourquoi: ${entry.minimalActionThresholdReason}</small>` : ''}
                   <small>Condition: ${entry.condition}</small>
