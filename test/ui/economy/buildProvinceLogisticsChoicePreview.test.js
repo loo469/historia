@@ -212,6 +212,11 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.label, /Rediriger un flux vers Ember Line/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.reason, /bénéfice principal.*relais non-chaîné/);
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.opportunityCost, /Safe Road.*Pas de garde ajoutée/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.state, 'traced');
+  assert.deepEqual(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.exposedRoutes.map((route) => route.route), ['Safe Road']);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.exposedRoutes[0].reason, /au-delà du point d’arrêt/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.benefit, /protège Ember Line/);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.residualExposure.residualRisk, /Safe Road.*reste exposé/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
@@ -250,6 +255,9 @@ test('buildProvinceLogisticsChoicePreview returns an empty state when no route i
   assert.match(preview.adjacentRouteSpilloverRisk.guardSequencing.phrase, /enchaînement inconnu/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.state, 'fallback');
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.summary, /Coût d’opportunité indisponible/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.state, 'unknown');
+  assert.deepEqual(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.exposedRoutes, []);
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.residualExposure.residualRisk, /non traçable précisément/);
   assert.equal(preview.primaryLogisticsAction.status, 'empty');
   assert.equal(preview.primaryLogisticsAction.disabled, true);
   assert.match(preview.timelineSummary, /timeline vide/);
