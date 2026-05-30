@@ -128,6 +128,8 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /residualConstraint/);
   assert.match(webAppSource, /province-logistics-spillover-route-slack/);
   assert.match(webAppSource, /routeSlack/);
+  assert.match(webAppSource, /province-logistics-spillover-slack-consumer/);
+  assert.match(webAppSource, /slackConsumerHint/);
   assert.match(webAppSource, /Continuer la chaîne reste acceptable/);
   assert.match(webAppSource, /province-logistics-queue-action/);
   assert.match(webAppSource, /Action carte/);
