@@ -854,6 +854,82 @@ test('buildCultureTurnReportDeltas shows the consequence of missing the next def
   ]);
 });
 
+test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cultural minimum', () => {
+  const report = buildCultureTurnReportDeltas({
+    turn: 9,
+    selectedRegionId: 'river-gate',
+    selectedMarker: {
+      overlayId: 'river-gate:culture-aurora',
+      regionId: 'river-gate',
+      cultureName: 'Compact d’Aurora',
+      influenceTier: 'strong',
+      influenceScore: 82,
+      discoveries: ['archive-routes'],
+      activeResearchCount: 0,
+      unlockedResearchIds: [],
+      narrativePriority: {
+        state: 'opportunity',
+        microAction: 'amplifier',
+      },
+    },
+    localTimeline: {
+      items: [
+        {
+          timelineId: 'harbor:event:quiet-followup',
+          kind: 'event',
+          signal: 'watch',
+          title: 'Suivi calme',
+          summary: 'Risque stabilisé.',
+          regionId: 'harbor',
+          cultureName: 'Harbor Compact',
+        },
+      ],
+    },
+    promptHistory: [
+      {
+        decisionId: 'turn-8-aurora-expansion',
+        turn: 8,
+        regionId: 'river-gate',
+        clusterLabel: 'Compact d’Aurora',
+        theme: 'Ouvrir le récit d’expansion',
+        promptLabel: 'Ouvrir le récit d’expansion',
+        choiceState: 'deferred',
+        outcome: 'soutien actif confirmé',
+      },
+      {
+        decisionId: 'turn-8-harbor-calm',
+        turn: 8,
+        regionId: 'harbor',
+        clusterLabel: 'Harbor Compact',
+        theme: 'Calmer le port',
+        promptLabel: 'Calmer le port',
+        choiceState: 'deferred',
+        outcome: 'risque stabilisé',
+      },
+    ],
+  });
+
+  const safeToDefer = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles;
+  assert.deepEqual(safeToDefer.entries.map((entry) => [
+    entry.clusterLabel,
+    entry.revisitPriority,
+    entry.recommendedBeyondMinimumBenefit?.recommendedAction ?? null,
+    entry.recommendedBeyondMinimumBenefit?.concreteGain ?? null,
+    entry.recommendedBeyondMinimumBenefit?.nextTurnAvoidance ?? null,
+    entry.recommendedBeyondMinimumBenefit?.avoids ?? null,
+  ]), [
+    [
+      'Compact d’Aurora',
+      'next',
+      'traiter Compact d’Aurora maintenant',
+      'gain concret: sécurise payoff 5 sans attendre la bascule',
+      'évite une urgence de consolidation au prochain tour',
+      'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.',
+    ],
+    ['Harbor Compact', 'later', null, null, null, null],
+  ]);
+});
+
 test('buildCultureTurnReportDeltas breaks safe defer deadline ties by cultural payoff', () => {
   const report = buildCultureTurnReportDeltas({
     turn: 9,
