@@ -148,6 +148,15 @@ test('buildIntrigueTurnReportDeltas flags changed timing recommendations fog-saf
           },
         ],
         followUpExpirySummary: '1 suite à traiter vite avant dégradation.',
+        safestImmediateFollowUp: {
+          state: 'single-expiring',
+          recommended: true,
+          type: 'defensive',
+          label: 'Défensif',
+          action: 'réduire l’exposition avant toute réponse lourde',
+          reason: 'à traiter maintenant: l’exposition peut devenir moins récupérable après le prochain tour',
+          fallback: false,
+        },
         fullReviewRequired: false,
         fallback: false,
       },
@@ -226,6 +235,15 @@ test('buildIntrigueTurnReportDeltas explains confidence loss when timing flips t
         },
       ],
       followUpExpirySummary: '2 suites à traiter vite avant dégradation.',
+      safestImmediateFollowUp: {
+        state: 'recommended',
+        recommended: true,
+        type: 'offensive',
+        label: 'Offensif',
+        action: 'agir vite si la fenêtre visible se ferme',
+        reason: 'expire vite: la fenêtre peut se refermer après ce tour',
+        fallback: false,
+      },
       fullReviewRequired: false,
       fallback: false,
     },
@@ -281,8 +299,45 @@ test('buildIntrigueTurnReportDeltas requires full review when minimal verificati
       },
     ],
     followUpExpirySummary: '1 suite à traiter vite avant dégradation.',
+    safestImmediateFollowUp: {
+      state: 'single-expiring',
+      recommended: true,
+      type: 'defensive',
+      label: 'Défensif',
+      action: 'basculer en revue complète si le recoupement diverge',
+      reason: 'à recouper vite: la contradiction devient moins lisible si elle attend',
+      fallback: false,
+    },
     fullReviewRequired: true,
     fallback: false,
+  });
+});
+
+test('buildIntrigueTurnReportDeltas falls back when expiring follow-ups have no clear safest winner', () => {
+  const view = buildIntrigueView();
+  view.selectedProvince.drillDown.postRecapStabilizationChoices = {
+    timingComparison: {
+      recommendedTiming: 'act-now',
+      dominantReason: 'information-manquante',
+      actNow: { risk: 'couverture visible encore fragile' },
+      shortWait: { outcome: 'temporiser peut réduire le doute si la couverture tient' },
+      summary: 'Confiance fragile: la couverture visible doit être stabilisée pour choisir.',
+    },
+  };
+
+  const report = buildIntrigueTurnReportDeltas(province, view, {
+    previousActionCode: 'contenir',
+    previousTimingRecommendation: 'short-wait',
+  });
+
+  assert.equal(report.minimumVerificationPrompt.safestMinimalVerification.principalRisk, 'confiance basse');
+  assert.deepEqual(report.minimumVerificationPrompt.safestMinimalVerification.safestImmediateFollowUp, {
+    state: 'no-clear-winner',
+    recommended: false,
+    label: 'Priorité immédiate à confirmer',
+    reason: 'plusieurs suites expirent avec le même niveau de sûreté visible',
+    candidates: ['Défensif', 'Offensif'],
+    fallback: true,
   });
 });
 
@@ -312,6 +367,13 @@ test('buildIntrigueTurnReportDeltas returns a neutral prompt when confidence is 
       unlockNextTurn: 'Aucun choix supplémentaire à débloquer au prochain tour.',
       followUpOptions: [],
       followUpExpirySummary: 'Aucune suite débloquée: pas d’échéance à signaler.',
+      safestImmediateFollowUp: {
+        state: 'none-expiring',
+        recommended: false,
+        label: 'Aucune suite immédiate prioritaire',
+        reason: 'aucune option débloquée ne montre d’expiration visible',
+        fallback: true,
+      },
       fullReviewRequired: false,
       fallback: true,
     },
