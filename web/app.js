@@ -13878,6 +13878,10 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
     };
   }
 
+  const promotionCondition = watchGap.nearestThresholdScore >= 80
+    ? `devient action primaire si la pression reste ≥80 au prochain check ${progress.deadline}`
+    : `devient action primaire si ${progress.deadline} confirme ${watchGap.nearestRiskLabel}`;
+
   return {
     state: 'watch',
     watchItem: {
@@ -13885,6 +13889,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       phrase: `${watchGap.label}: pression seuil ${watchGap.nearestThresholdScore}, prochaine vérification ${progress.deadline}.`,
       thresholdPressure: watchGap.nearestRiskLabel,
       nextCheck: watchGap.nextAction,
+      promotionCondition,
     },
     summary: `${watchGap.label}: seul watch item restant après l’action du gap prioritaire.`,
   };
@@ -13916,6 +13921,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       </div>
       <p>${view.summary}</p>
       <small><b>Watch item</b> · ${view.watchItem.phrase}</small>
+      <small><b>Devient primaire</b> · ${view.watchItem.promotionCondition}</small>
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
       <small><b>Prochain check</b> · ${view.watchItem.nextCheck}</small>
     </aside>
