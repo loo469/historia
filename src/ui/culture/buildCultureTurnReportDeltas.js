@@ -1558,7 +1558,7 @@ function buildCulturalReopenedReviewPreview(immediateSynergy, reviewExitSignal, 
 
 function buildCulturalReopenedReviewOutcomeThreshold(actionCue, reviewExitSignal, sourceCue) {
   const criterion = `${sourceCue} soutient encore ${actionCue} sans contredire ${reviewExitSignal.localAnchor}`;
-  const notActionableYet = buildCulturalReviewNotActionableReason(criterion, reviewExitSignal);
+  const notActionableYet = buildCulturalReviewNotActionableReason(criterion, reviewExitSignal, sourceCue, actionCue);
 
   return {
     state: 'stable-if-synergy-still-supports-anchor',
@@ -1570,13 +1570,27 @@ function buildCulturalReopenedReviewOutcomeThreshold(actionCue, reviewExitSignal
   };
 }
 
-function buildCulturalReviewNotActionableReason(criterion, reviewExitSignal) {
+function buildCulturalReviewNotActionableReason(criterion, reviewExitSignal, sourceCue, actionCue) {
+  const actionableAfter = buildCulturalReviewActionableStep(sourceCue, actionCue, reviewExitSignal);
+
   return {
     state: 'visible-below-action-threshold',
     label: 'Pas encore actionnable',
     missingThreshold: criterion,
     margin: `marge à confirmer avant ${reviewExitSignal.reviewWindow}`,
+    actionableAfter,
     summary: `Pas encore actionnable: attendre que ${criterion}; marge à confirmer avant ${reviewExitSignal.reviewWindow}.`,
+  };
+}
+
+function buildCulturalReviewActionableStep(sourceCue, actionCue, reviewExitSignal) {
+  return {
+    state: 'actionable-after-synergy-confirmation',
+    label: 'Devient actionnable après',
+    stepType: 'synergy-prerequisite',
+    firstStep: `confirmer ${sourceCue} avec ${actionCue}`,
+    waitWindow: reviewExitSignal.reviewWindow,
+    summary: `Devient actionnable après confirmation de ${sourceCue} avec ${actionCue}; sinon attendre ${reviewExitSignal.reviewWindow}.`,
   };
 }
 
