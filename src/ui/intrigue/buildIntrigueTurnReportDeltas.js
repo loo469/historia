@@ -342,6 +342,52 @@ function buildSwitchToBackupTrigger(safestImmediateFollowUp, backupFollowUp, pri
   };
 }
 
+function buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp, principalRisk) {
+  if (!safestImmediateFollowUp?.recommended || !backupFollowUp?.recommended) {
+    return {
+      state: 'no-return-signal',
+      recommended: false,
+      label: 'Retour au suivi initial non lisible',
+      condition: 'aucun backup actif ou suivi initial fiable à restaurer',
+      fallback: true,
+    };
+  }
+
+  const conditionByRisk = {
+    'exposition excessive': {
+      state: backupFollowUp.type === 'wait' ? 'near' : 'unlikely-this-turn',
+      condition: 'revenir au suivi initial si l’exposition reste sous le seuil sûr après le contrôle',
+    },
+    'timing fragile': {
+      state: 'unlikely-this-turn',
+      condition: 'revenir au suivi initial seulement si la fenêtre redevient fraîche et disponible ce tour-ci',
+    },
+    'signal contradictoire': {
+      state: 'near',
+      condition: 'revenir au suivi initial si le second indice visible confirme la même direction',
+    },
+    'confiance basse': {
+      state: backupFollowUp.state === 'available-backup' ? 'already-met' : 'near',
+      condition: 'revenir au suivi initial si la confiance visible se stabilise sans nouveau signal contraire',
+    },
+  };
+  const selected = conditionByRisk[principalRisk] ?? conditionByRisk['confiance basse'];
+
+  return {
+    ...selected,
+    recommended: true,
+    label: 'Retour au suivi initial',
+    primary: safestImmediateFollowUp.label,
+    backup: backupFollowUp.label,
+    detail: selected.state === 'already-met'
+      ? 'condition déjà remplie avec les signaux visibles'
+      : selected.state === 'near'
+        ? 'condition proche si le prochain contrôle confirme le signal visible'
+        : 'condition improbable ce tour-ci sans signal visible plus frais',
+    fallback: false,
+  };
+}
+
 function buildUnlockedFollowUpOptions(principalRisk, fullReviewRequired, timingRecommendationChange) {
   const canWaitNextTurn = timingRecommendationChange?.currentTiming === 'short-wait';
   const optionsByRisk = {
@@ -415,6 +461,11 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
         buildBackupFollowUp([], buildSafestImmediateFollowUp([], 'confiance basse')),
         'confiance basse',
       ),
+      returnFromBackupCondition: buildReturnFromBackupCondition(
+        buildSafestImmediateFollowUp([], 'confiance basse'),
+        buildBackupFollowUp([], buildSafestImmediateFollowUp([], 'confiance basse')),
+        'confiance basse',
+      ),
       fullReviewRequired: false,
       fallback: true,
     };
@@ -472,6 +523,7 @@ function buildSafestMinimalVerification(prompt, timingRecommendationChange = nul
     safestImmediateFollowUp,
     backupFollowUp,
     switchToBackupTrigger: buildSwitchToBackupTrigger(safestImmediateFollowUp, backupFollowUp, principalRisk),
+    returnFromBackupCondition: buildReturnFromBackupCondition(safestImmediateFollowUp, backupFollowUp, principalRisk),
     fullReviewRequired: plan.fullReviewRequired,
     fallback: false,
   };
