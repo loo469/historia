@@ -565,3 +565,22 @@ test('atlas military compares light front countermeasures by urgency and cost', 
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison--quiet/);
 });
+
+// MAP-A51: after comparing light-front countermeasures, show what changes if
+// the recommended countermeasure is delayed without recalculating war rules.
+test('atlas military shows delay effect for chosen light front countermeasure', () => {
+  assert.match(webAppSource, /const lightFollowUpCountermeasureDelayEffect = lightFollowUpCountermeasureComparison/);
+  assert.match(webAppSource, /label: 'Si retardée: pression revient'/);
+  assert.match(webAppSource, /label: 'Si retardée: coût augmente'/);
+  assert.match(webAppSource, /label: 'Si retardée: préparation manquée'/);
+  assert.match(webAppSource, /label: 'Si retardée: veille exposée'/);
+  assert.match(webAppSource, /label: 'Si retardée: neutre'/);
+  assert.match(webAppSource, /conséquence du report non fiable/);
+  assert.match(webAppSource, /lightFollowUpCountermeasureDelayEffect,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpCountermeasureDelayEffect \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpCountermeasureDelayEffect \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 21\.4 : 20\.05/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay--risky/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay--prep/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay--quiet/);
+});
