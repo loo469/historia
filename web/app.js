@@ -14661,6 +14661,24 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         label: 'priorité indéterminée',
         detail: 'après stabilisation: attendre un signal mesurable avant de promettre la prochaine priorité',
       };
+  const orderingRunnerUp = nextSecondaryGap
+    ? `${nextSecondaryGap.label} (${nextSecondaryGap.nearestThresholdScore})`
+    : protectedSecondary
+      ? `${protectedSecondary.label} protégé`
+      : 'aucun watch proche';
+  const priorityOrderingRationale = {
+    state: watchGap.nearestThresholdScore >= 80
+      ? 'threshold-first'
+      : watchMargin?.state === 'tight' || watchMargin?.state === 'short'
+        ? 'margin-first'
+        : 'runner-up-clear',
+    label: watchGap.nearestThresholdScore >= 80
+      ? 'seuil primaire atteint'
+      : `marge ${primaryPromotionMargin ?? 'inconnue'}`,
+    detail: Number.isFinite(primaryPromotionMargin)
+      ? `${watchGap.label} passe devant: pression ${watchGap.nearestThresholdScore}, marge ${primaryPromotionMargin} avant primaire; dauphin ${orderingRunnerUp}`
+      : `${watchGap.label} passe devant: pression lisible, dauphin ${orderingRunnerUp}`,
+  };
 
   return {
     state: 'watch',
@@ -14684,6 +14702,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       priorityInstabilityTrigger,
       priorityInstabilityWindow,
       afterStabilizationPriority,
+      priorityOrderingRationale,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -14733,6 +14752,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       ${view.watchItem.priorityInstabilityTrigger ? `<small class="map-world-climate-post-gap-watch__instability map-world-climate-post-gap-watch__instability--${view.watchItem.priorityInstabilityTrigger.state}"><b>Stable jusqu’à</b> · ${view.watchItem.priorityInstabilityTrigger.label}: ${view.watchItem.priorityInstabilityTrigger.detail}</small>` : ''}
       <small class="map-world-climate-post-gap-watch__window map-world-climate-post-gap-watch__window--${view.watchItem.priorityInstabilityWindow.state}"><b>Fenêtre instabilité</b> · ${view.watchItem.priorityInstabilityWindow.label}: ${view.watchItem.priorityInstabilityWindow.detail}</small>
       <small class="map-world-climate-post-gap-watch__after-stabilization map-world-climate-post-gap-watch__after-stabilization--${view.watchItem.afterStabilizationPriority.state}"><b>Après stabilisation</b> · ${view.watchItem.afterStabilizationPriority.label}: ${view.watchItem.afterStabilizationPriority.detail}</small>
+      <small class="map-world-climate-post-gap-watch__ordering map-world-climate-post-gap-watch__ordering--${view.watchItem.priorityOrderingRationale.state}"><b>Pourquoi premier</b> · ${view.watchItem.priorityOrderingRationale.label}: ${view.watchItem.priorityOrderingRationale.detail}</small>
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
