@@ -1353,6 +1353,7 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
     residualRisks: [
       { key: 'supply-pressure:front-a', label: 'pression ravitaillement', reason: 'approvisionnement tendu' },
       { key: 'watch:front-a', label: 'attention résiduelle', reason: 'alerte diffuse' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse', reason: 'liaison locale fragile' },
     ],
     cleanupOrders: [
       {
@@ -1369,6 +1370,14 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
         expectedBenefit: 'retire le signal sans escalade',
         safetyScore: 50,
       },
+      {
+        id: 'cleanup:liaison',
+        label: 'Liaison locale de secours',
+        residualRiskKey: 'low-loyalty:front-a',
+        riskReduced: 'loyauté basse',
+        expectedBenefit: 'contient le résiduel si le timing idéal passe',
+        safetyScore: 44,
+      },
     ],
   });
 
@@ -1381,7 +1390,7 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
     nextSafeWindow: 'maintenant, avant de consommer une autre action majeure',
     timingHint: 'Dissiper attention résiduelle: retire le signal sans escalade.',
     recommendation: 'nettoyer maintenant',
-    sourceConsequence: '1 risque résiduel après Nettoyer convoi initial.',
+    sourceConsequence: '2 risques résiduels après Nettoyer convoi initial.',
     mapSignal: {
       visible: true,
       badge: 'cleanup sûr',
@@ -1389,6 +1398,15 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
       targetId: 'front-a',
     },
     fallbackMessage: null,
+    missedTimingFallback: {
+      available: true,
+      secondary: true,
+      label: 'Fallback si fenêtre manquée',
+      timing: 'après la fenêtre sûre, avant nouvelle action majeure',
+      action: 'Liaison locale de secours',
+      reason: 'contient le résiduel si le timing idéal passe',
+      targetId: 'front-a',
+    },
   });
 });
 
@@ -1432,6 +1450,15 @@ test('StrategicMapShell marks residual intrigue cleanup as premature until the b
       targetId: 'front-b',
     },
     fallbackMessage: null,
+    missedTimingFallback: {
+      available: false,
+      secondary: true,
+      label: 'Fallback non prioritaire',
+      timing: 'si la fenêtre sûre est manquée, relire au prochain tour/action',
+      action: 'recontrôler le risque résiduel avant nouvelle escalade',
+      reason: 'aucun second cleanup sûr classé',
+      targetId: 'front-b',
+    },
   });
 });
 
@@ -1453,6 +1480,7 @@ test('StrategicMapShell provides a clear fallback when no cleanup timing is dete
       targetId: null,
     },
     fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
+    missedTimingFallback: null,
   });
 });
 
