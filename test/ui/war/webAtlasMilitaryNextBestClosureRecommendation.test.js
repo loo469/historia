@@ -528,3 +528,21 @@ test('atlas military shows the next pressure source after light front buffer is 
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure-source--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure-source--quiet/);
 });
+
+// MAP-A49: once a next light-front pressure source is visible, show the first
+// direct countermeasure or a quiet fallback if none is reliable.
+test('atlas military shows first countermeasure for next light front pressure source', () => {
+  assert.match(webAppSource, /const lightFollowUpCountermeasure = lightFollowUpPressureSource/);
+  assert.match(webAppSource, /label: 'Contre-mesure: agir'/);
+  assert.match(webAppSource, /label: 'Contre-mesure: préparer'/);
+  assert.match(webAppSource, /label: 'Contre-mesure: veille'/);
+  assert.match(webAppSource, /label: 'Contre-mesure: non fiable'/);
+  assert.match(webAppSource, /label: 'Contre-mesure: en attente'/);
+  assert.match(webAppSource, /lightFollowUpCountermeasure,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpCountermeasure \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__countermeasure/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpCountermeasure \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 18\.7 : 17\.35/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure--ready/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure--prep/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure--quiet/);
+});
