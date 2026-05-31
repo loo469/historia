@@ -1326,6 +1326,68 @@ function buildMissedTimingFallback(topChoice, followUpChoices, firstCleanupPayof
   };
 }
 
+function buildResidualFallbackWaitCost(topChoice, missedTimingFallback, topFollowUpReadiness, miniPlanPrematureReengagementRisk) {
+  if (!topChoice || !missedTimingFallback) return null;
+
+  if (!missedTimingFallback.available) {
+    return {
+      level: 'recheck-risk',
+      label: 'Risque de recheck',
+      summary: 'attendre force une relecture avant nouvelle escalade',
+      secondary: true,
+    };
+  }
+
+  const readinessState = String(topFollowUpReadiness?.state ?? '').trim();
+  const prematureState = String(miniPlanPrematureReengagementRisk?.state ?? '').trim();
+  const blocker = String(topFollowUpReadiness?.blocker ?? '').trim();
+  const action = String(topFollowUpReadiness?.action ?? topChoice.cleanupOrderLabel ?? 'l’action suivante').trim()
+    || 'l’action suivante';
+
+  if (readinessState && readinessState !== 'ready-now') {
+    return {
+      level: 'blocks-next-action',
+      label: 'Action suivante bloquée',
+      summary: `attendre le fallback laisse ${blocker || 'le prérequis'} bloquer ${action}`,
+      secondary: true,
+    };
+  }
+
+  if (prematureState === 'partial-window') {
+    return {
+      level: 'minor-loss',
+      label: 'Perte mineure',
+      summary: 'attendre le fallback réduit la fenêtre principale mais garde un suivi limité',
+      secondary: true,
+    };
+  }
+
+  if (prematureState === 'too-early') {
+    return {
+      level: 'blocks-next-action',
+      label: 'Action suivante bloquée',
+      summary: `attendre le fallback retarde ${miniPlanPrematureReengagementRisk?.nextSafe ?? action}`,
+      secondary: true,
+    };
+  }
+
+  if (Number.isFinite(topChoice.safetyScore) && topChoice.safetyScore > 0) {
+    return {
+      level: 'minor-loss',
+      label: 'Perte mineure',
+      summary: `attendre le fallback perd le meilleur score sûr (${topChoice.safetyScore})`,
+      secondary: true,
+    };
+  }
+
+  return {
+    level: 'unknown-cost',
+    label: 'Coût inconnu',
+    summary: 'coût relatif non déterminable avec les signaux actuels',
+    secondary: true,
+  };
+}
+
 function cleanupTimingFallback() {
   return {
     empty: true,
@@ -1345,6 +1407,7 @@ function cleanupTimingFallback() {
     },
     fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
     missedTimingFallback: null,
+    fallbackWaitCost: null,
   };
 }
 
@@ -1362,6 +1425,12 @@ export function buildResidualIntrigueCleanupTiming(
   );
   const topChoice = normalizedChoices[0] ?? null;
   const missedTimingFallback = buildMissedTimingFallback(topChoice, normalizedChoices, firstCleanupPayoff);
+  const fallbackWaitCost = buildResidualFallbackWaitCost(
+    topChoice,
+    missedTimingFallback,
+    topFollowUpReadiness,
+    miniPlanPrematureReengagementRisk,
+  );
   const readinessState = String(topFollowUpReadiness?.state ?? '').trim();
   const prematureState = String(miniPlanPrematureReengagementRisk?.state ?? '').trim();
   const consequence = firstCleanupPayoff.remainingRiskState === 'no-visible-risk'
@@ -1387,6 +1456,7 @@ export function buildResidualIntrigueCleanupTiming(
       },
       fallbackMessage: null,
       missedTimingFallback: null,
+      fallbackWaitCost: null,
     };
   }
 
@@ -1409,6 +1479,7 @@ export function buildResidualIntrigueCleanupTiming(
       },
       fallbackMessage: 'Fallback: aucune fenêtre sûre précise n’est déterminable; relire au prochain signal.',
       missedTimingFallback: null,
+      fallbackWaitCost: null,
     };
   }
 
@@ -1436,6 +1507,7 @@ export function buildResidualIntrigueCleanupTiming(
       },
       fallbackMessage: null,
       missedTimingFallback,
+      fallbackWaitCost,
     };
   }
 
@@ -1458,6 +1530,7 @@ export function buildResidualIntrigueCleanupTiming(
       },
       fallbackMessage: null,
       missedTimingFallback,
+      fallbackWaitCost,
     };
   }
 
@@ -1479,6 +1552,7 @@ export function buildResidualIntrigueCleanupTiming(
     },
     fallbackMessage: null,
     missedTimingFallback,
+    fallbackWaitCost,
   };
 }
 

@@ -1407,6 +1407,12 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
       reason: 'contient le résiduel si le timing idéal passe',
       targetId: 'front-a',
     },
+    fallbackWaitCost: {
+      level: 'minor-loss',
+      label: 'Perte mineure',
+      summary: 'attendre le fallback perd le meilleur score sûr (50)',
+      secondary: true,
+    },
   });
 });
 
@@ -1459,6 +1465,59 @@ test('StrategicMapShell marks residual intrigue cleanup as premature until the b
       reason: 'aucun second cleanup sûr classé',
       targetId: 'front-b',
     },
+    fallbackWaitCost: {
+      level: 'recheck-risk',
+      label: 'Risque de recheck',
+      summary: 'attendre force une relecture avant nouvelle escalade',
+      secondary: true,
+    },
+  });
+});
+
+test('StrategicMapShell distinguishes blocked and unknown residual fallback wait costs', () => {
+  const basePayoff = {
+    cleanupOrderLabel: 'Nettoyer convoi initial',
+    riskReduced: 'pression ravitaillement',
+    remainingRiskState: 'residual-risk-remains',
+    remainingRiskCount: 2,
+    targetId: 'front-a',
+  };
+  const choices = [
+    {
+      cleanupOrderId: 'cleanup:route',
+      cleanupOrderLabel: 'Scanner axe détour',
+      residualRiskKey: 'route-exposure:front-b',
+      targetId: 'front-b',
+      prerequisite: 'éclaireurs disponibles',
+    },
+    {
+      cleanupOrderId: 'cleanup:liaison',
+      cleanupOrderLabel: 'Liaison locale de secours',
+      residualRiskKey: 'low-loyalty:front-a',
+      targetId: 'front-a',
+    },
+  ];
+
+  assert.equal(buildResidualIntrigueCleanupTiming(
+    basePayoff,
+    choices,
+    {
+      state: 'needs-logistics',
+      blocker: 'éclaireurs disponibles',
+      action: 'sécuriser le corridor court avant exécution',
+    },
+  ).fallbackWaitCost.summary, 'attendre le fallback laisse éclaireurs disponibles bloquer sécuriser le corridor court avant exécution');
+
+  assert.deepEqual(buildResidualIntrigueCleanupTiming(
+    basePayoff,
+    choices,
+    { state: 'ready-now' },
+    { state: 'ready' },
+  ).fallbackWaitCost, {
+    level: 'unknown-cost',
+    label: 'Coût inconnu',
+    summary: 'coût relatif non déterminable avec les signaux actuels',
+    secondary: true,
   });
 });
 
@@ -1481,6 +1540,7 @@ test('StrategicMapShell provides a clear fallback when no cleanup timing is dete
     },
     fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
     missedTimingFallback: null,
+    fallbackWaitCost: null,
   });
 });
 
