@@ -513,3 +513,18 @@ test('atlas military shows the next light front risk after buffer is spent', () 
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-risk--risky/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-risk--quiet/);
 });
+
+// MAP-A48: after the light-front buffer is spent, name the next pressure
+// source directly on the map instead of repeating the buffer-risk wording.
+test('atlas military shows the next pressure source after light front buffer is spent', () => {
+  assert.match(webAppSource, /const lightFollowUpPressureSource = lightFollowUpNextRisk/);
+  assert.match(webAppSource, /label: `Source suivante: \$\{sourceLabel\}`/);
+  assert.match(webAppSource, /surveiller \$\{sourceTrigger\} · préparer \$\{sourceAction\}/);
+  assert.match(webAppSource, /label: 'Source suivante: aucune pression'/);
+  assert.match(webAppSource, /état sûr tant que \$\{residualRisk\?\.provinceLabel \?\? alternative\.provinceLabel \?\? 'front voisin'\} reste stable/);
+  assert.match(webAppSource, /lightFollowUpPressureSource,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpPressureSource \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__pressure-source/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpPressureSource \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 17\.35 : 16/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure-source--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__pressure-source--quiet/);
+});
