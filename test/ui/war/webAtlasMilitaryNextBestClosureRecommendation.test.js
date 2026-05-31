@@ -546,3 +546,22 @@ test('atlas military shows first countermeasure for next light front pressure so
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure--quiet/);
 });
+
+// MAP-A50: compare visible light-front countermeasures by urgency and cost so
+// the recommended action explains why it beats alternatives.
+test('atlas military compares light front countermeasures by urgency and cost', () => {
+  assert.match(webAppSource, /const lightFollowUpCountermeasureComparison = lightFollowUpCountermeasure/);
+  assert.match(webAppSource, /candidatesForComparison = \[/);
+  assert.match(webAppSource, /label: 'Comparaison: meilleur ratio'/);
+  assert.match(webAppSource, /label: 'Comparaison: neutre'/);
+  assert.match(webAppSource, /pas assez d’alternatives fiables à comparer/);
+  assert.match(webAppSource, /urgence haute, \$\{runnerUp\?\.label \?\? 'alternative'\} coûte plus de temps/);
+  assert.match(webAppSource, /meilleur coût\/urgence avant \$\{runnerUp\?\.label \?\? 'veille'\}/);
+  assert.match(webAppSource, /lightFollowUpCountermeasureComparison,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpCountermeasureComparison \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpCountermeasureComparison \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 20\.05 : 18\.7/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison--ready/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison--prep/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-comparison--quiet/);
+});
