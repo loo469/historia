@@ -1243,6 +1243,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               target: null,
               summary: 'Sécuriser ensuite: aucun stabilisateur prioritaire fiable après cette livraison.',
               reason: 'Aucun consommateur de slack proche n’est classé par les signaux actuels.',
+              afterStabilization: {
+                state: 'stable',
+                label: 'Après stabilisation',
+                target: null,
+                summary: 'Après stabilisation: stabilité retrouvée, aucun second stabilisateur proche.',
+                reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
+              },
             },
           },
         };
@@ -1250,6 +1257,9 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
 
       const primaryConsumer = rankedConsumers[0];
       const nextConsumer = rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label) ?? null;
+      const followUpConsumer = nextConsumer
+        ? rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label && consumer.label !== nextConsumer.label) ?? null
+        : null;
       return {
         state: primaryConsumer.tone ?? 'watch',
         label: 'Slack consommé par',
@@ -1318,6 +1328,21 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               target: nextConsumer.label,
               summary: `Sécuriser ensuite: ${nextConsumer.label}.`,
               reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+              afterStabilization: followUpConsumer
+                ? {
+                  state: followUpConsumer.tone === 'blocked' ? 'second-stabilizer' : 'watch',
+                  label: 'Après stabilisation',
+                  target: followUpConsumer.label,
+                  summary: `Après stabilisation: second stabilisateur proche sur ${followUpConsumer.label}.`,
+                  reason: followUpConsumer.blockerReason ?? followUpConsumer.reason,
+                }
+                : {
+                  state: 'stable',
+                  label: 'Après stabilisation',
+                  target: null,
+                  summary: `Après stabilisation: ${nextConsumer.label} suffit, stabilité retrouvée.`,
+                  reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
+                },
             }
             : primaryConsumer.tone === 'blocked'
               ? {
@@ -1327,6 +1352,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                 target: primaryConsumer.label,
                 summary: `Sécuriser ensuite: lever ${primaryConsumer.label}.`,
                 reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+                afterStabilization: {
+                  state: 'unknown',
+                  label: 'Après stabilisation',
+                  target: null,
+                  summary: 'Après stabilisation: information insuffisante tant que le premier blocage reste ouvert.',
+                  reason: 'Aucune contrainte suivante fiable avant de lever le seuil de slack principal.',
+                },
               }
               : {
                 state: 'stable',
@@ -1335,6 +1367,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                 target: null,
                 summary: 'Sécuriser ensuite: aucun stabilisateur prioritaire fiable après cette livraison.',
                 reason: 'Aucun consommateur de slack suivant n’est classé par les signaux actuels.',
+                afterStabilization: {
+                  state: 'stable',
+                  label: 'Après stabilisation',
+                  target: null,
+                  summary: 'Après stabilisation: stabilité retrouvée, aucun second stabilisateur proche.',
+                  reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
+                },
               },
         },
       };
