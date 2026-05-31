@@ -1207,6 +1207,13 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
                   nextStep: 'lancer la revue débloquée puis comparer avec risque stabilisé par l’historique lisible',
                   summary: 'Après action: revue débloquée; vérifier risque stabilisé par l’historique lisible.',
                 },
+                followUpWindow: {
+                  state: 'follow-up-now',
+                  label: 'Fenêtre de suivi',
+                  urgency: 'now',
+                  reason: 'le seuil est franchi avant prochaine rotation culturelle',
+                  summary: 'Suivi maintenant: lancer la revue débloquée tant que le seuil vient d’être franchi.',
+                },
                 summary: 'Impact attendu: confirmer archive-routes avec amplifier débloque la revue culturelle actionnable.',
               },
               summary: 'Devient actionnable après confirmation de archive-routes avec amplifier; sinon attendre prochaine rotation culturelle.',
