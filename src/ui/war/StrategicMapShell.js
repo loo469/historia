@@ -1297,6 +1297,35 @@ export function buildMiniPlanPrematureReengagementRisk(miniPlanFirstSafeReengage
   };
 }
 
+function buildMissedTimingFallback(topChoice, followUpChoices, firstCleanupPayoff) {
+  if (!topChoice) return null;
+
+  const fallbackChoice = followUpChoices.find((choice) => choice.cleanupOrderId !== topChoice.cleanupOrderId
+    && choice.residualRiskKey !== topChoice.residualRiskKey) ?? null;
+
+  if (!fallbackChoice) {
+    return {
+      available: false,
+      secondary: true,
+      label: 'Fallback non prioritaire',
+      timing: 'si la fenêtre sûre est manquée, relire au prochain tour/action',
+      action: 'recontrôler le risque résiduel avant nouvelle escalade',
+      reason: 'aucun second cleanup sûr classé',
+      targetId: topChoice.targetId ?? firstCleanupPayoff?.targetId ?? null,
+    };
+  }
+
+  return {
+    available: true,
+    secondary: true,
+    label: 'Fallback si fenêtre manquée',
+    timing: 'après la fenêtre sûre, avant nouvelle action majeure',
+    action: fallbackChoice.cleanupOrderLabel ?? 'cleanup de secours',
+    reason: fallbackChoice.expectedBenefit ?? fallbackChoice.rankReason ?? 'réduit un risque résiduel secondaire',
+    targetId: fallbackChoice.targetId ?? topChoice.targetId ?? firstCleanupPayoff?.targetId ?? null,
+  };
+}
+
 function cleanupTimingFallback() {
   return {
     empty: true,
@@ -1315,6 +1344,7 @@ function cleanupTimingFallback() {
       targetId: null,
     },
     fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
+    missedTimingFallback: null,
   };
 }
 
@@ -1331,6 +1361,7 @@ export function buildResidualIntrigueCleanupTiming(
     'StrategicMapShell followUpCleanupChoices',
   );
   const topChoice = normalizedChoices[0] ?? null;
+  const missedTimingFallback = buildMissedTimingFallback(topChoice, normalizedChoices, firstCleanupPayoff);
   const readinessState = String(topFollowUpReadiness?.state ?? '').trim();
   const prematureState = String(miniPlanPrematureReengagementRisk?.state ?? '').trim();
   const consequence = firstCleanupPayoff.remainingRiskState === 'no-visible-risk'
@@ -1355,6 +1386,7 @@ export function buildResidualIntrigueCleanupTiming(
         targetId: firstCleanupPayoff.targetId ?? null,
       },
       fallbackMessage: null,
+      missedTimingFallback: null,
     };
   }
 
@@ -1376,6 +1408,7 @@ export function buildResidualIntrigueCleanupTiming(
         targetId: firstCleanupPayoff.targetId ?? null,
       },
       fallbackMessage: 'Fallback: aucune fenêtre sûre précise n’est déterminable; relire au prochain signal.',
+      missedTimingFallback: null,
     };
   }
 
@@ -1402,6 +1435,7 @@ export function buildResidualIntrigueCleanupTiming(
         targetId: topChoice.targetId ?? firstCleanupPayoff.targetId ?? null,
       },
       fallbackMessage: null,
+      missedTimingFallback,
     };
   }
 
@@ -1423,6 +1457,7 @@ export function buildResidualIntrigueCleanupTiming(
         targetId: topChoice.targetId ?? firstCleanupPayoff.targetId ?? null,
       },
       fallbackMessage: null,
+      missedTimingFallback,
     };
   }
 
@@ -1443,6 +1478,7 @@ export function buildResidualIntrigueCleanupTiming(
       targetId: topChoice.targetId ?? firstCleanupPayoff.targetId ?? null,
     },
     fallbackMessage: null,
+    missedTimingFallback,
   };
 }
 
