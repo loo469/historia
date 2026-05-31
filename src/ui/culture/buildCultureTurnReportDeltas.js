@@ -1606,6 +1606,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       impactType: 'no-important-change',
       timingReason: buildCulturalReviewActionTimingReason('no-important-change', reviewExitSignal),
       deferConsequence: buildCulturalReviewActionDeferConsequence('no-important-change', reviewExitSignal),
+      followUpAfterAction: buildCulturalReviewActionFollowUp('no-important-change', reviewExitSignal),
       summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
     };
   }
@@ -1617,6 +1618,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       impactType: 'unlocks-review',
       timingReason: buildCulturalReviewActionTimingReason('unlocks-review', reviewExitSignal),
       deferConsequence: buildCulturalReviewActionDeferConsequence('unlocks-review', reviewExitSignal),
+      followUpAfterAction: buildCulturalReviewActionFollowUp('unlocks-review', reviewExitSignal),
       summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
     };
   }
@@ -1627,6 +1629,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     impactType: 'accelerates-review',
     timingReason: buildCulturalReviewActionTimingReason('accelerates-review', reviewExitSignal),
     deferConsequence: buildCulturalReviewActionDeferConsequence('accelerates-review', reviewExitSignal),
+    followUpAfterAction: buildCulturalReviewActionFollowUp('accelerates-review', reviewExitSignal),
     summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
   };
 }
@@ -1658,6 +1661,50 @@ function buildCulturalReviewActionTimingReason(impactType, reviewExitSignal) {
     priority: 'neutral',
     reason: 'aucune urgence culturelle visible',
     summary: 'Timing neutre: possible maintenant, mais aucune urgence culturelle visible.',
+  };
+}
+
+function buildCulturalReviewActionFollowUp(impactType, reviewExitSignal) {
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'review-unlocked-next',
+      label: 'Après action',
+      followUpType: 'review-unlocked',
+      watchCue: reviewExitSignal.localAnchor,
+      nextStep: `lancer la revue débloquée puis comparer avec ${reviewExitSignal.localAnchor}`,
+      summary: `Après action: revue débloquée; vérifier ${reviewExitSignal.localAnchor}.`,
+    };
+  }
+
+  if (impactType === 'accelerates-review') {
+    return {
+      state: 'confirm-threshold-next',
+      label: 'Après action',
+      followUpType: 'threshold-confirmation',
+      watchCue: reviewExitSignal.signal,
+      nextStep: `confirmer que ${reviewExitSignal.signal}`,
+      summary: `Après action: confirmer le seuil; surveiller ${reviewExitSignal.signal}.`,
+    };
+  }
+
+  if (reviewExitSignal?.reviewWindow) {
+    return {
+      state: 'wait-for-review-window',
+      label: 'Après action',
+      followUpType: 'wait-window',
+      watchCue: reviewExitSignal.reviewWindow,
+      nextStep: `attendre ${reviewExitSignal.reviewWindow}`,
+      summary: `Après action: attendre ${reviewExitSignal.reviewWindow}; aucun suivi important avant cela.`,
+    };
+  }
+
+  return {
+    state: 'no-important-follow-up',
+    label: 'Après action',
+    followUpType: 'neutral',
+    watchCue: null,
+    nextStep: 'aucun suivi culturel important prédit',
+    summary: 'Après action: aucun suivi culturel important prédit.',
   };
 }
 
