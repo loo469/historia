@@ -1605,6 +1605,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       label: 'Impact attendu',
       impactType: 'no-important-change',
       timingReason: buildCulturalReviewActionTimingReason('no-important-change', reviewExitSignal),
+      deferConsequence: buildCulturalReviewActionDeferConsequence('no-important-change', reviewExitSignal),
       summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
     };
   }
@@ -1615,6 +1616,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       label: 'Impact attendu',
       impactType: 'unlocks-review',
       timingReason: buildCulturalReviewActionTimingReason('unlocks-review', reviewExitSignal),
+      deferConsequence: buildCulturalReviewActionDeferConsequence('unlocks-review', reviewExitSignal),
       summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
     };
   }
@@ -1624,6 +1626,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     label: 'Impact attendu',
     impactType: 'accelerates-review',
     timingReason: buildCulturalReviewActionTimingReason('accelerates-review', reviewExitSignal),
+    deferConsequence: buildCulturalReviewActionDeferConsequence('accelerates-review', reviewExitSignal),
     summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
   };
 }
@@ -1655,6 +1658,39 @@ function buildCulturalReviewActionTimingReason(impactType, reviewExitSignal) {
     priority: 'neutral',
     reason: 'aucune urgence culturelle visible',
     summary: 'Timing neutre: possible maintenant, mais aucune urgence culturelle visible.',
+  };
+}
+
+function buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal) {
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'threshold-stays-closed-if-deferred',
+      label: 'Si reporté',
+      consequenceType: 'lost-threshold-window',
+      deadlineCue: reviewExitSignal.reviewWindow,
+      lostBenefit: `la revue reste non actionnable jusqu’à ${reviewExitSignal.reviewWindow}`,
+      summary: `Si reporté: seuil encore fermé jusqu’à ${reviewExitSignal.reviewWindow}; le bénéfice de revue actionnable est perdu ce tour.`,
+    };
+  }
+
+  if (impactType === 'accelerates-review') {
+    return {
+      state: 'review-waits-if-deferred',
+      label: 'Si reporté',
+      consequenceType: 'delayed-review-payoff',
+      deadlineCue: reviewExitSignal.reviewWindow,
+      lostBenefit: `la revue attend ${reviewExitSignal.reviewWindow}`,
+      summary: `Si reporté: la revue attend ${reviewExitSignal.reviewWindow}; le payoff culturel immédiat reste en attente.`,
+    };
+  }
+
+  return {
+    state: 'no-visible-defer-cost',
+    label: 'Si reporté',
+    consequenceType: 'neutral',
+    deadlineCue: reviewExitSignal?.reviewWindow ?? null,
+    lostBenefit: 'aucune perte culturelle visible',
+    summary: 'Si reporté: aucune perte culturelle visible tant que le seuil reste illisible.',
   };
 }
 

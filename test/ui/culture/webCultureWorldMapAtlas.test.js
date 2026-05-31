@@ -194,6 +194,8 @@ test('world map atlas exposes discovery sites without adding a new culture sourc
   assert.match(webAppSource, /Devient actionnable:/);
   assert.match(webAppSource, /Impact attendu:/);
   assert.match(webAppSource, /Pourquoi maintenant:/);
+  assert.match(webAppSource, /Si reporté:/);
+  assert.match(webAppSource, /deferConsequence/);
   assert.match(webAppSource, /firstFollowUpReason/);
   assert.match(webAppSource, /followUpRobustness/);
   assert.match(webAppSource, /reviewExitSignal/);
