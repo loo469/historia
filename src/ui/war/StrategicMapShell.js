@@ -1297,6 +1297,155 @@ export function buildMiniPlanPrematureReengagementRisk(miniPlanFirstSafeReengage
   };
 }
 
+function cleanupTimingFallback() {
+  return {
+    empty: true,
+    status: 'unknown',
+    tone: 'neutral',
+    label: 'Fenêtre cleanup inconnue',
+    cleanupNow: 'unknown',
+    nextSafeWindow: 'Fallback: aucune fenêtre sûre déterminable avec les signaux actuels.',
+    timingHint: 'Attendre un signal de report/cleanup lisible avant de consommer une action.',
+    recommendation: 'surveiller sans alerte permanente',
+    sourceConsequence: 'aucune conséquence de report affichée',
+    mapSignal: {
+      visible: false,
+      badge: 'cleanup inconnu',
+      detail: 'aucune fenêtre sûre à afficher',
+      targetId: null,
+    },
+    fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
+  };
+}
+
+export function buildResidualIntrigueCleanupTiming(
+  firstCleanupPayoff = null,
+  followUpCleanupChoices = [],
+  topFollowUpReadiness = null,
+  miniPlanPrematureReengagementRisk = null,
+) {
+  if (!firstCleanupPayoff) return cleanupTimingFallback();
+
+  const normalizedChoices = normalizeCleanupInput(
+    followUpCleanupChoices,
+    'StrategicMapShell followUpCleanupChoices',
+  );
+  const topChoice = normalizedChoices[0] ?? null;
+  const readinessState = String(topFollowUpReadiness?.state ?? '').trim();
+  const prematureState = String(miniPlanPrematureReengagementRisk?.state ?? '').trim();
+  const consequence = firstCleanupPayoff.remainingRiskState === 'no-visible-risk'
+    ? `${firstCleanupPayoff.riskReduced} nettoyé: aucune attention résiduelle visible.`
+    : `${firstCleanupPayoff.remainingRiskCount} risque${firstCleanupPayoff.remainingRiskCount > 1 ? 's' : ''} résiduel${firstCleanupPayoff.remainingRiskCount > 1 ? 's' : ''} après ${firstCleanupPayoff.cleanupOrderLabel}.`;
+
+  if (firstCleanupPayoff.remainingRiskState === 'no-visible-risk') {
+    return {
+      empty: false,
+      status: 'can-wait',
+      tone: 'ready',
+      label: 'Cleanup terminé',
+      cleanupNow: 'can-wait',
+      nextSafeWindow: 'aucune fenêtre requise: le premier cleanup suffit',
+      timingHint: 'Ne pas créer d’alerte persistante sans nouveau risque résiduel.',
+      recommendation: 'peut attendre un nouveau signal',
+      sourceConsequence: consequence,
+      mapSignal: {
+        visible: false,
+        badge: 'résiduel bas',
+        detail: 'aucun suivi immédiat nécessaire',
+        targetId: firstCleanupPayoff.targetId ?? null,
+      },
+      fallbackMessage: null,
+    };
+  }
+
+  if (!topChoice || readinessState === 'no-safe-followup') {
+    return {
+      empty: false,
+      status: 'can-wait',
+      tone: 'neutral',
+      label: 'Cleanup à recontrôler',
+      cleanupNow: 'can-wait',
+      nextSafeWindow: 'prochain tour/action, quand un suivi résiduel sûr apparaît',
+      timingHint: 'Garder un rappel discret: le risque existe, mais aucun cleanup sûr n’est classé.',
+      recommendation: 'peut attendre un tour/action',
+      sourceConsequence: consequence,
+      mapSignal: {
+        visible: true,
+        badge: 'à recontrôler',
+        detail: 'fenêtre sûre non classée',
+        targetId: firstCleanupPayoff.targetId ?? null,
+      },
+      fallbackMessage: 'Fallback: aucune fenêtre sûre précise n’est déterminable; relire au prochain signal.',
+    };
+  }
+
+  if (readinessState !== 'ready-now' || prematureState === 'too-early') {
+    const blocker = String(topFollowUpReadiness?.blocker ?? topChoice.prerequisite ?? 'bloqueur visible').trim()
+      || 'bloqueur visible';
+    const action = String(topFollowUpReadiness?.action ?? topChoice.cleanupOrderLabel ?? 'lever le bloqueur').trim()
+      || 'lever le bloqueur';
+
+    return {
+      empty: false,
+      status: 'premature',
+      tone: 'warning',
+      label: 'Cleanup prématuré',
+      cleanupNow: 'premature',
+      nextSafeWindow: `après ${action}`,
+      timingHint: `Ne pas nettoyer maintenant: ${blocker}.`,
+      recommendation: 'attendre le prérequis puis nettoyer',
+      sourceConsequence: consequence,
+      mapSignal: {
+        visible: true,
+        badge: 'prématuré',
+        detail: `fenêtre sûre après: ${action}`,
+        targetId: topChoice.targetId ?? firstCleanupPayoff.targetId ?? null,
+      },
+      fallbackMessage: null,
+    };
+  }
+
+  if (prematureState === 'partial-window') {
+    return {
+      empty: false,
+      status: 'can-wait',
+      tone: 'watch',
+      label: 'Fenêtre partielle',
+      cleanupNow: 'can-wait',
+      nextSafeWindow: 'maintenant en version limitée, ou au prochain tour pour la fenêtre principale',
+      timingHint: miniPlanPrematureReengagementRisk?.nextSafe ?? 'attendre fenêtre principale',
+      recommendation: 'nettoyer léger ou attendre une action',
+      sourceConsequence: consequence,
+      mapSignal: {
+        visible: true,
+        badge: 'fenêtre partielle',
+        detail: topChoice.cleanupOrderLabel ?? 'cleanup limité disponible',
+        targetId: topChoice.targetId ?? firstCleanupPayoff.targetId ?? null,
+      },
+      fallbackMessage: null,
+    };
+  }
+
+  return {
+    empty: false,
+    status: 'recommended',
+    tone: 'ready',
+    label: 'Cleanup recommandé maintenant',
+    cleanupNow: 'recommended',
+    nextSafeWindow: 'maintenant, avant de consommer une autre action majeure',
+    timingHint: `${topChoice.cleanupOrderLabel}: ${topChoice.expectedBenefit ?? 'réduit le risque résiduel'}.`,
+    recommendation: 'nettoyer maintenant',
+    sourceConsequence: consequence,
+    mapSignal: {
+      visible: true,
+      badge: 'cleanup sûr',
+      detail: topChoice.cleanupOrderLabel ?? 'cleanup disponible',
+      targetId: topChoice.targetId ?? firstCleanupPayoff.targetId ?? null,
+    },
+    fallbackMessage: null,
+  };
+}
+
 function buildLegend(renderedProvinces, options) {
   const factionMetaById = normalizeTextMap(options.factionMetaById, 'StrategicMapShell factionMetaById');
   const paletteByFaction = normalizeTextMap(options.paletteByFaction, 'StrategicMapShell paletteByFaction');
@@ -2495,6 +2644,12 @@ export function buildStrategicMapShell(provinces, options = {}) {
   const miniPlanPrematureReengagementRisk = buildMiniPlanPrematureReengagementRisk(
     miniPlanFirstSafeReengagement,
   );
+  const residualIntrigueCleanupTiming = buildResidualIntrigueCleanupTiming(
+    firstCleanupPayoff,
+    followUpCleanupChoices,
+    topFollowUpReadiness,
+    miniPlanPrematureReengagementRisk,
+  );
 
   const renderedProvinces = normalizedProvinces
     .slice()
@@ -2574,6 +2729,7 @@ export function buildStrategicMapShell(provinces, options = {}) {
     miniPlanHoldReleaseCue,
     miniPlanFirstSafeReengagement,
     miniPlanPrematureReengagementRisk,
+    residualIntrigueCleanupTiming,
     activeProvince: renderedProvinces.find(
       (province) => province.selectionState.selected || province.selectionState.focused || province.selectionState.hovered,
     ) ?? null,
