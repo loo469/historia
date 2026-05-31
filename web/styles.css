@@ -13799,6 +13799,15 @@ button { font: inherit; }
 .map-world-climate-post-gap-watch__window--next-check { border: 1px solid rgba(125, 211, 252, 0.32); }
 .map-world-climate-post-gap-watch__window--before-review { border: 1px solid rgba(251, 191, 36, 0.34); }
 .map-world-climate-post-gap-watch__window--none-close { border: 1px solid rgba(148, 163, 184, 0.28); }
+.map-world-climate-post-gap-watch__after-stabilization {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.28);
+}
+.map-world-climate-post-gap-watch__after-stabilization--watch-next { border: 1px solid rgba(125, 211, 252, 0.34); }
+.map-world-climate-post-gap-watch__after-stabilization--neutral-stable { border: 1px solid rgba(74, 222, 128, 0.32); }
+.map-world-climate-post-gap-watch__after-stabilization--unknown { border: 1px solid rgba(148, 163, 184, 0.28); }
 .map-world-climate-post-gap-watch__ladder {
   padding: 4px 8px;
   border-radius: 11px;

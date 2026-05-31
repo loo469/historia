@@ -45,6 +45,11 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /instable tant que/);
   assert.match(webAppSource, /la marge tombe courte ou une consequence unrearmed revient/);
   assert.match(webAppSource, /Fin changement priorité/);
+  assert.match(webAppSource, /afterStabilizationPriority/);
+  assert.match(webAppSource, /Après stabilisation/);
+  assert.match(webAppSource, /après stabilisation: surveiller/);
+  assert.match(webAppSource, /aucune priorité suivante fiable sans nouveau signal climat/);
+  assert.match(webAppSource, /attendre un signal mesurable avant de promettre la prochaine priorité/);
   assert.match(webAppSource, /stabilise après review/);
   assert.match(webAppSource, /déjà stable/);
   assert.match(webAppSource, /stable après mitigation/);
@@ -137,6 +142,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__instability--stable-until/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__window/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__window--next-check/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-stabilization/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-stabilization--watch-next/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-stabilization--neutral-stable/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-stabilization--unknown/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
