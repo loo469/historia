@@ -5,6 +5,7 @@ import { Province } from '../../../src/domain/war/Province.js';
 import {
   buildFirstCleanupPayoff,
   buildIntriguePresenceSabotageOverlay,
+  buildResidualIntrigueCleanupTiming,
   buildFollowUpCleanupChoices,
   buildFollowUpCleanupMiniPlan,
   buildMiniPlanConflictTradeoffs,
@@ -1344,6 +1345,114 @@ test('StrategicMapShell ranks follow-up cleanup choices after the first payoff',
     label: 'fenêtre prête',
     risk: null,
     nextSafe: null,
+  });
+});
+
+test('StrategicMapShell shows the safest residual intrigue cleanup timing', () => {
+  const shell = buildStrategicMapShell([createProvince({ id: 'front-a', name: 'Front A' })], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement', reason: 'approvisionnement tendu' },
+      { key: 'watch:front-a', label: 'attention résiduelle', reason: 'alerte diffuse' },
+    ],
+    cleanupOrders: [
+      {
+        id: 'cleanup:first',
+        label: 'Nettoyer convoi initial',
+        residualRiskKey: 'supply-pressure:front-a',
+        riskReduced: 'pression ravitaillement',
+      },
+      {
+        id: 'cleanup:watch',
+        label: 'Dissiper attention résiduelle',
+        residualRiskKey: 'watch:front-a',
+        riskReduced: 'attention résiduelle',
+        expectedBenefit: 'retire le signal sans escalade',
+        safetyScore: 50,
+      },
+    ],
+  });
+
+  assert.deepEqual(shell.residualIntrigueCleanupTiming, {
+    empty: false,
+    status: 'recommended',
+    tone: 'ready',
+    label: 'Cleanup recommandé maintenant',
+    cleanupNow: 'recommended',
+    nextSafeWindow: 'maintenant, avant de consommer une autre action majeure',
+    timingHint: 'Dissiper attention résiduelle: retire le signal sans escalade.',
+    recommendation: 'nettoyer maintenant',
+    sourceConsequence: '1 risque résiduel après Nettoyer convoi initial.',
+    mapSignal: {
+      visible: true,
+      badge: 'cleanup sûr',
+      detail: 'Dissiper attention résiduelle',
+      targetId: 'front-a',
+    },
+    fallbackMessage: null,
+  });
+});
+
+test('StrategicMapShell marks residual intrigue cleanup as premature until the blocker clears', () => {
+  assert.deepEqual(buildResidualIntrigueCleanupTiming(
+    {
+      cleanupOrderLabel: 'Nettoyer convoi initial',
+      riskReduced: 'pression ravitaillement',
+      remainingRiskState: 'residual-risk-remains',
+      remainingRiskCount: 1,
+      targetId: 'front-a',
+    },
+    [
+      {
+        cleanupOrderLabel: 'Scanner axe détour',
+        residualRiskKey: 'route-exposure:front-b',
+        targetId: 'front-b',
+        prerequisite: 'éclaireurs disponibles',
+      },
+    ],
+    {
+      state: 'needs-logistics',
+      blocker: 'éclaireurs disponibles',
+      action: 'sécuriser le corridor court avant exécution',
+    },
+    { state: 'ready' },
+  ), {
+    empty: false,
+    status: 'premature',
+    tone: 'warning',
+    label: 'Cleanup prématuré',
+    cleanupNow: 'premature',
+    nextSafeWindow: 'après sécuriser le corridor court avant exécution',
+    timingHint: 'Ne pas nettoyer maintenant: éclaireurs disponibles.',
+    recommendation: 'attendre le prérequis puis nettoyer',
+    sourceConsequence: '1 risque résiduel après Nettoyer convoi initial.',
+    mapSignal: {
+      visible: true,
+      badge: 'prématuré',
+      detail: 'fenêtre sûre après: sécuriser le corridor court avant exécution',
+      targetId: 'front-b',
+    },
+    fallbackMessage: null,
+  });
+});
+
+test('StrategicMapShell provides a clear fallback when no cleanup timing is determinable', () => {
+  assert.deepEqual(buildResidualIntrigueCleanupTiming(), {
+    empty: true,
+    status: 'unknown',
+    tone: 'neutral',
+    label: 'Fenêtre cleanup inconnue',
+    cleanupNow: 'unknown',
+    nextSafeWindow: 'Fallback: aucune fenêtre sûre déterminable avec les signaux actuels.',
+    timingHint: 'Attendre un signal de report/cleanup lisible avant de consommer une action.',
+    recommendation: 'surveiller sans alerte permanente',
+    sourceConsequence: 'aucune conséquence de report affichée',
+    mapSignal: {
+      visible: false,
+      badge: 'cleanup inconnu',
+      detail: 'aucune fenêtre sûre à afficher',
+      targetId: null,
+    },
+    fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
   });
 });
 
