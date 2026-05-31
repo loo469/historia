@@ -14744,6 +14744,29 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         label: 'classement stable',
         detail: `aucun basculement proche: ${orderingRunnerUp} ne menace pas ${watchGap.label} sans nouveau signal`,
       };
+  const minimalStabilizationAction = priorityRankingChangeCue.state === 'stable-ranking'
+    ? {
+      state: 'stable-neutral',
+      label: 'stabilisation neutre',
+      detail: 'aucune action minimale fiable à ajouter tant que le classement reste stable',
+    }
+    : secondaryUpkeep.state === 'available'
+      ? {
+        state: 'action-readable',
+        label: 'stabiliser par',
+        detail: `${secondaryUpkeep.action}; garde ${watchGap.label} premier sans transformer la veille en prévention complète`,
+      }
+      : marginRearmReview
+        ? {
+          state: 'review-readable',
+          label: 'stabiliser par',
+          detail: `réarmer review; ${marginRearmReview.detail}`,
+        }
+        : {
+          state: 'watch-neutral',
+          label: 'stabilisation à surveiller',
+          detail: 'aucune action minimale lisible: attendre le prochain check avant de promettre une stabilisation',
+        };
 
   return {
     state: 'watch',
@@ -14769,6 +14792,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       afterStabilizationPriority,
       priorityOrderingRationale,
       priorityRankingChangeCue,
+      minimalStabilizationAction,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -14820,6 +14844,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__after-stabilization map-world-climate-post-gap-watch__after-stabilization--${view.watchItem.afterStabilizationPriority.state}"><b>Après stabilisation</b> · ${view.watchItem.afterStabilizationPriority.label}: ${view.watchItem.afterStabilizationPriority.detail}</small>
       <small class="map-world-climate-post-gap-watch__ordering map-world-climate-post-gap-watch__ordering--${view.watchItem.priorityOrderingRationale.state}"><b>Pourquoi premier</b> · ${view.watchItem.priorityOrderingRationale.label}: ${view.watchItem.priorityOrderingRationale.detail}</small>
       <small class="map-world-climate-post-gap-watch__rank-change map-world-climate-post-gap-watch__rank-change--${view.watchItem.priorityRankingChangeCue.state}"><b>Ce qui changerait</b> · ${view.watchItem.priorityRankingChangeCue.label}: ${view.watchItem.priorityRankingChangeCue.detail}</small>
+      <small class="map-world-climate-post-gap-watch__minimal-stabilization map-world-climate-post-gap-watch__minimal-stabilization--${view.watchItem.minimalStabilizationAction.state}"><b>Stabilisation minimale</b> · ${view.watchItem.minimalStabilizationAction.label}: ${view.watchItem.minimalStabilizationAction.detail}</small>
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>

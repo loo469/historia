@@ -51,6 +51,11 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /Pourquoi premier/);
   assert.match(webAppSource, /priorityRankingChangeCue/);
   assert.match(webAppSource, /Ce qui changerait/);
+  assert.match(webAppSource, /minimalStabilizationAction/);
+  assert.match(webAppSource, /Stabilisation minimale/);
+  assert.match(webAppSource, /stabiliser par/);
+  assert.match(webAppSource, /stabilisation neutre/);
+  assert.match(webAppSource, /aucune action minimale fiable à ajouter/);
   assert.match(webAppSource, /bascule proche/);
   assert.match(webAppSource, /classement stable/);
   assert.match(webAppSource, /aucun basculement proche/);
@@ -164,6 +169,11 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rank-change--rival-close/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rank-change--margin-fragile/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__rank-change--stable-ranking/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__minimal-stabilization/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__minimal-stabilization--action-readable/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__minimal-stabilization--review-readable/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__minimal-stabilization--stable-neutral/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__minimal-stabilization--watch-neutral/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
