@@ -1236,6 +1236,14 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               summary: 'Après cette livraison: aucune fragilité proche fiable détectée.',
               condition: 'continuer la surveillance normale des routes.',
             },
+            nextStabilizerRecommendation: {
+              state: 'stable',
+              label: 'Sécuriser ensuite',
+              action: 'Conserver la surveillance normale',
+              target: null,
+              summary: 'Sécuriser ensuite: aucun stabilisateur prioritaire fiable après cette livraison.',
+              reason: 'Aucun consommateur de slack proche n’est classé par les signaux actuels.',
+            },
           },
         };
       }
@@ -1302,6 +1310,32 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                 ? primaryConsumer.blockerReason ?? primaryConsumer.reason
                 : 'continuer la surveillance normale des routes.',
             },
+          nextStabilizerRecommendation: nextConsumer
+            ? {
+              state: nextConsumer.tone === 'blocked' ? 'urgent' : 'watch',
+              label: 'Sécuriser ensuite',
+              action: `Sécuriser ${nextConsumer.label}`,
+              target: nextConsumer.label,
+              summary: `Sécuriser ensuite: ${nextConsumer.label}.`,
+              reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+            }
+            : primaryConsumer.tone === 'blocked'
+              ? {
+                state: 'urgent',
+                label: 'Sécuriser ensuite',
+                action: `Lever ${primaryConsumer.label}`,
+                target: primaryConsumer.label,
+                summary: `Sécuriser ensuite: lever ${primaryConsumer.label}.`,
+                reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+              }
+              : {
+                state: 'stable',
+                label: 'Sécuriser ensuite',
+                action: 'Conserver la surveillance normale',
+                target: null,
+                summary: 'Sécuriser ensuite: aucun stabilisateur prioritaire fiable après cette livraison.',
+                reason: 'Aucun consommateur de slack suivant n’est classé par les signaux actuels.',
+              },
         },
       };
     };
