@@ -1388,6 +1388,45 @@ function buildResidualFallbackWaitCost(topChoice, missedTimingFallback, topFollo
   };
 }
 
+function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallback, topChoice) {
+  if (!fallbackWaitCost || fallbackWaitCost.level === 'unknown-cost') return null;
+
+  if (fallbackWaitCost.level === 'minor-loss') {
+    return {
+      state: 'acceptable-wait',
+      label: 'Attente encore acceptable',
+      summary: `fallback encore sûr, mais ${fallbackWaitCost.summary}`,
+      cutoff: 'avant la prochaine action majeure',
+      primaryAction: topChoice?.cleanupOrderLabel ?? null,
+      secondary: true,
+    };
+  }
+
+  if (fallbackWaitCost.level === 'recheck-risk') {
+    return {
+      state: 'recheck-before-wait',
+      label: 'Recheck requis avant attente',
+      summary: 'le fallback cesse d’être assez sûr sans nouvelle lecture du risque',
+      cutoff: 'au prochain tour/action',
+      primaryAction: topChoice?.cleanupOrderLabel ?? null,
+      secondary: true,
+    };
+  }
+
+  if (fallbackWaitCost.level === 'blocks-next-action') {
+    return {
+      state: 'clean-now',
+      label: 'Nettoyer maintenant',
+      summary: fallbackWaitCost.summary,
+      cutoff: 'avant de confirmer l’action suivante',
+      primaryAction: topChoice?.cleanupOrderLabel ?? missedTimingFallback?.action ?? null,
+      secondary: true,
+    };
+  }
+
+  return null;
+}
+
 function cleanupTimingFallback() {
   return {
     empty: true,
@@ -1408,6 +1447,7 @@ function cleanupTimingFallback() {
     fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
     missedTimingFallback: null,
     fallbackWaitCost: null,
+    fallbackSafetyCutoff: null,
   };
 }
 
@@ -1430,6 +1470,11 @@ export function buildResidualIntrigueCleanupTiming(
     missedTimingFallback,
     topFollowUpReadiness,
     miniPlanPrematureReengagementRisk,
+  );
+  const fallbackSafetyCutoff = buildResidualFallbackSafetyCutoff(
+    fallbackWaitCost,
+    missedTimingFallback,
+    topChoice,
   );
   const readinessState = String(topFollowUpReadiness?.state ?? '').trim();
   const prematureState = String(miniPlanPrematureReengagementRisk?.state ?? '').trim();
@@ -1457,6 +1502,7 @@ export function buildResidualIntrigueCleanupTiming(
       fallbackMessage: null,
       missedTimingFallback: null,
       fallbackWaitCost: null,
+      fallbackSafetyCutoff: null,
     };
   }
 
@@ -1480,6 +1526,7 @@ export function buildResidualIntrigueCleanupTiming(
       fallbackMessage: 'Fallback: aucune fenêtre sûre précise n’est déterminable; relire au prochain signal.',
       missedTimingFallback: null,
       fallbackWaitCost: null,
+      fallbackSafetyCutoff: null,
     };
   }
 
@@ -1508,6 +1555,7 @@ export function buildResidualIntrigueCleanupTiming(
       fallbackMessage: null,
       missedTimingFallback,
       fallbackWaitCost,
+      fallbackSafetyCutoff,
     };
   }
 
@@ -1531,6 +1579,7 @@ export function buildResidualIntrigueCleanupTiming(
       fallbackMessage: null,
       missedTimingFallback,
       fallbackWaitCost,
+      fallbackSafetyCutoff,
     };
   }
 
@@ -1553,6 +1602,7 @@ export function buildResidualIntrigueCleanupTiming(
     fallbackMessage: null,
     missedTimingFallback,
     fallbackWaitCost,
+    fallbackSafetyCutoff,
   };
 }
 

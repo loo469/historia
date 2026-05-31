@@ -1413,6 +1413,14 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
       summary: 'attendre le fallback perd le meilleur score sûr (50)',
       secondary: true,
     },
+    fallbackSafetyCutoff: {
+      state: 'acceptable-wait',
+      label: 'Attente encore acceptable',
+      summary: 'fallback encore sûr, mais attendre le fallback perd le meilleur score sûr (50)',
+      cutoff: 'avant la prochaine action majeure',
+      primaryAction: 'Dissiper attention résiduelle',
+      secondary: true,
+    },
   });
 });
 
@@ -1471,6 +1479,14 @@ test('StrategicMapShell marks residual intrigue cleanup as premature until the b
       summary: 'attendre force une relecture avant nouvelle escalade',
       secondary: true,
     },
+    fallbackSafetyCutoff: {
+      state: 'recheck-before-wait',
+      label: 'Recheck requis avant attente',
+      summary: 'le fallback cesse d’être assez sûr sans nouvelle lecture du risque',
+      cutoff: 'au prochain tour/action',
+      primaryAction: 'Scanner axe détour',
+      secondary: true,
+    },
   });
 });
 
@@ -1498,7 +1514,7 @@ test('StrategicMapShell distinguishes blocked and unknown residual fallback wait
     },
   ];
 
-  assert.equal(buildResidualIntrigueCleanupTiming(
+  const blockedTiming = buildResidualIntrigueCleanupTiming(
     basePayoff,
     choices,
     {
@@ -1506,19 +1522,32 @@ test('StrategicMapShell distinguishes blocked and unknown residual fallback wait
       blocker: 'éclaireurs disponibles',
       action: 'sécuriser le corridor court avant exécution',
     },
-  ).fallbackWaitCost.summary, 'attendre le fallback laisse éclaireurs disponibles bloquer sécuriser le corridor court avant exécution');
+  );
 
-  assert.deepEqual(buildResidualIntrigueCleanupTiming(
+  assert.equal(blockedTiming.fallbackWaitCost.summary, 'attendre le fallback laisse éclaireurs disponibles bloquer sécuriser le corridor court avant exécution');
+  assert.deepEqual(blockedTiming.fallbackSafetyCutoff, {
+    state: 'clean-now',
+    label: 'Nettoyer maintenant',
+    summary: 'attendre le fallback laisse éclaireurs disponibles bloquer sécuriser le corridor court avant exécution',
+    cutoff: 'avant de confirmer l’action suivante',
+    primaryAction: 'Scanner axe détour',
+    secondary: true,
+  });
+
+  const unknownTiming = buildResidualIntrigueCleanupTiming(
     basePayoff,
     choices,
     { state: 'ready-now' },
     { state: 'ready' },
-  ).fallbackWaitCost, {
+  );
+
+  assert.deepEqual(unknownTiming.fallbackWaitCost, {
     level: 'unknown-cost',
     label: 'Coût inconnu',
     summary: 'coût relatif non déterminable avec les signaux actuels',
     secondary: true,
   });
+  assert.equal(unknownTiming.fallbackSafetyCutoff, null);
 });
 
 test('StrategicMapShell provides a clear fallback when no cleanup timing is determinable', () => {
@@ -1541,6 +1570,7 @@ test('StrategicMapShell provides a clear fallback when no cleanup timing is dete
     fallbackMessage: 'Fallback: aucune fenêtre sûre de cleanup résiduel n’est déterminable.',
     missedTimingFallback: null,
     fallbackWaitCost: null,
+    fallbackSafetyCutoff: null,
   });
 });
 
