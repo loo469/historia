@@ -14936,3 +14936,10 @@ button { font: inherit; }
 }
 .province-logistics-spillover-next-stabilizer--urgent { color: #fecdd3; }
 .province-logistics-spillover-next-stabilizer--stable { color: #cbd5e1; }
+.province-logistics-spillover-after-stabilization {
+  display: block;
+  margin-top: 0.2rem;
+  color: #bbf7d0;
+}
+.province-logistics-spillover-after-stabilization--second-stabilizer { color: #fed7aa; }
+.province-logistics-spillover-after-stabilization--unknown { color: #c4b5fd; }
