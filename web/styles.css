@@ -14907,3 +14907,10 @@ button { font: inherit; }
   margin-top: 0.25rem;
   color: #bae6fd;
 }
+.province-logistics-spillover-after-delivery-fragility {
+  display: block;
+  margin-top: 0.2rem;
+  color: #fed7aa;
+}
+.province-logistics-spillover-after-delivery-fragility--neutral { color: #cbd5e1; }
+.province-logistics-spillover-after-delivery-fragility--blocked { color: #fecdd3; }

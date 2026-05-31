@@ -1229,6 +1229,13 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             decisiveSlackSource: 'slack conservé',
             routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
             invalidationCondition: 'un nouveau goulot devient prioritaire ou consomme la marge conservée',
+            afterDeliveryFragility: {
+              state: 'neutral',
+              label: 'Après cette livraison',
+              target: null,
+              summary: 'Après cette livraison: aucune fragilité proche fiable détectée.',
+              condition: 'continuer la surveillance normale des routes.',
+            },
           },
         };
       }
@@ -1276,6 +1283,25 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           invalidationCondition: nextConsumer
             ? `${nextConsumer.label} consomme la marge suivante ou passe critique avant ${primaryConsumer.label}`
             : `${primaryConsumer.label} redevient bloquant ou un nouveau consommateur apparaît avant la livraison`,
+          afterDeliveryFragility: nextConsumer
+            ? {
+              state: nextConsumer.tone ?? 'watch',
+              label: 'Après cette livraison',
+              target: nextConsumer.label,
+              summary: `Après cette livraison: surveiller ${nextConsumer.label}.`,
+              condition: nextConsumer.blockerReason ?? nextConsumer.reason,
+            }
+            : {
+              state: primaryConsumer.tone === 'blocked' ? 'blocked' : 'neutral',
+              label: 'Après cette livraison',
+              target: primaryConsumer.tone === 'blocked' ? primaryConsumer.label : null,
+              summary: primaryConsumer.tone === 'blocked'
+                ? `Après cette tentative: ${primaryConsumer.label} reste fragile.`
+                : 'Après cette livraison: aucune fragilité proche fiable détectée.',
+              condition: primaryConsumer.tone === 'blocked'
+                ? primaryConsumer.blockerReason ?? primaryConsumer.reason
+                : 'continuer la surveillance normale des routes.',
+            },
         },
       };
     };
