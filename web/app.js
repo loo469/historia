@@ -8912,6 +8912,7 @@ function renderProvinceLogisticsChoicePreview(province, economyView) {
                         ` : ''}
                         ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock ? `
                           <small class="province-logistics-spillover-safe-delivery-unlock province-logistics-spillover-safe-delivery-unlock--${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.state}">${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.summary}</small>
+                          <small class="province-logistics-spillover-safe-delivery-rationale">Slack décisif: ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.decisiveSlackSource} · Contrainte: ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.routeConstraint} · Invalide si ${preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.invalidationCondition}</small>
                         ` : ''}
                       ` : ''}
                     ` : ''}

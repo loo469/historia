@@ -14875,3 +14875,9 @@ button { font: inherit; }
 .atlas-military-neighbor-front-shift-row--rechute circle { fill: rgba(251, 113, 133, 0.88); }
 .atlas-military-neighbor-front-shift-row--fragilise .atlas-military-neighbor-front-shift-row__reason,
 .atlas-military-neighbor-front-shift-row--rechute .atlas-military-neighbor-front-shift-row__reason { fill: #fecdd3; }
+
+.province-logistics-spillover-safe-delivery-rationale {
+  display: block;
+  margin-top: 0.25rem;
+  color: #bae6fd;
+}

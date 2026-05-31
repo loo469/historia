@@ -1225,6 +1225,10 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             state: 'safe',
             label: 'Livraison déjà sûre',
             summary: 'Route déjà sûre: aucune récupération de slack requise pour la prochaine livraison.',
+            nextSafeDelivery: 'prochaine livraison sûre',
+            decisiveSlackSource: 'slack conservé',
+            routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+            invalidationCondition: 'un nouveau goulot devient prioritaire ou consomme la marge conservée',
           },
         };
       }
@@ -1264,6 +1268,14 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             ? `Lever ${primaryConsumer.label} d’abord: ${primaryConsumer.blockerReason ?? primaryConsumer.reason} empêche encore la prochaine livraison sûre.`
             : `Récupérer ${primaryConsumer.label} rend la prochaine livraison sûre avant ${nextConsumer?.label ?? 'une autre contrainte'}.`),
           recovery: primaryConsumer.label,
+          nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+          decisiveSlackSource: primaryConsumer.label,
+          routeConstraint: primaryConsumer.tone === 'blocked'
+            ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+            : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+          invalidationCondition: nextConsumer
+            ? `${nextConsumer.label} consomme la marge suivante ou passe critique avant ${primaryConsumer.label}`
+            : `${primaryConsumer.label} redevient bloquant ou un nouveau consommateur apparaît avant la livraison`,
         },
       };
     };
