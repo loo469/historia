@@ -1607,6 +1607,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       timingReason: buildCulturalReviewActionTimingReason('no-important-change', reviewExitSignal),
       deferConsequence: buildCulturalReviewActionDeferConsequence('no-important-change', reviewExitSignal),
       followUpAfterAction: buildCulturalReviewActionFollowUp('no-important-change', reviewExitSignal),
+      followUpWindow: buildCulturalReviewActionFollowUpWindow('no-important-change', reviewExitSignal),
       summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
     };
   }
@@ -1619,6 +1620,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
       timingReason: buildCulturalReviewActionTimingReason('unlocks-review', reviewExitSignal),
       deferConsequence: buildCulturalReviewActionDeferConsequence('unlocks-review', reviewExitSignal),
       followUpAfterAction: buildCulturalReviewActionFollowUp('unlocks-review', reviewExitSignal),
+      followUpWindow: buildCulturalReviewActionFollowUpWindow('unlocks-review', reviewExitSignal),
       summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
     };
   }
@@ -1630,6 +1632,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     timingReason: buildCulturalReviewActionTimingReason('accelerates-review', reviewExitSignal),
     deferConsequence: buildCulturalReviewActionDeferConsequence('accelerates-review', reviewExitSignal),
     followUpAfterAction: buildCulturalReviewActionFollowUp('accelerates-review', reviewExitSignal),
+    followUpWindow: buildCulturalReviewActionFollowUpWindow('accelerates-review', reviewExitSignal),
     summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
   };
 }
@@ -1705,6 +1708,46 @@ function buildCulturalReviewActionFollowUp(impactType, reviewExitSignal) {
     watchCue: null,
     nextStep: 'aucun suivi culturel important prédit',
     summary: 'Après action: aucun suivi culturel important prédit.',
+  };
+}
+
+function buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal) {
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'follow-up-now',
+      label: 'Fenêtre de suivi',
+      urgency: 'now',
+      reason: `le seuil est franchi avant ${reviewExitSignal.reviewWindow}`,
+      summary: `Suivi maintenant: lancer la revue débloquée tant que le seuil vient d’être franchi.`,
+    };
+  }
+
+  if (impactType === 'accelerates-review') {
+    return {
+      state: 'follow-up-soon',
+      label: 'Fenêtre de suivi',
+      urgency: 'soon',
+      reason: `la revue est avancée avant ${reviewExitSignal.reviewWindow}`,
+      summary: `Suivi bientôt: confirmer le seuil avant ${reviewExitSignal.reviewWindow}.`,
+    };
+  }
+
+  if (reviewExitSignal?.reviewWindow) {
+    return {
+      state: 'follow-up-can-wait',
+      label: 'Fenêtre de suivi',
+      urgency: 'can-wait',
+      reason: `aucune perte visible avant ${reviewExitSignal.reviewWindow}`,
+      summary: `Peut attendre: revoir à ${reviewExitSignal.reviewWindow} sans perdre le gain principal.`,
+    };
+  }
+
+  return {
+    state: 'follow-up-window-unknown',
+    label: 'Fenêtre de suivi',
+    urgency: 'unknown',
+    reason: 'fenêtre de suivi non fiable',
+    summary: 'Fenêtre de suivi neutre: aucun timing fiable à afficher.',
   };
 }
 
