@@ -1600,40 +1600,91 @@ function buildCulturalReviewActionableStep(sourceCue, actionCue, reviewExitSigna
 
 function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal) {
   if (!firstStep || !reviewExitSignal?.reviewWindow) {
+    const impactType = 'no-important-change';
+    const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
+    const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
+
     return {
       state: 'no-important-change-yet',
       label: 'Impact attendu',
-      impactType: 'no-important-change',
-      timingReason: buildCulturalReviewActionTimingReason('no-important-change', reviewExitSignal),
-      deferConsequence: buildCulturalReviewActionDeferConsequence('no-important-change', reviewExitSignal),
-      followUpAfterAction: buildCulturalReviewActionFollowUp('no-important-change', reviewExitSignal),
-      followUpWindow: buildCulturalReviewActionFollowUpWindow('no-important-change', reviewExitSignal),
+      impactType,
+      timingReason: buildCulturalReviewActionTimingReason(impactType, reviewExitSignal),
+      deferConsequence: buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal),
+      followUpAfterAction,
+      followUpWindow,
+      unlocksAfterFollowUp: buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow),
       summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
     };
   }
 
   if (/prochain|prochaine|next|tour|rotation/i.test(reviewExitSignal.reviewWindow)) {
+    const impactType = 'unlocks-review';
+    const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
+    const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
+
     return {
       state: 'unlocks-review',
       label: 'Impact attendu',
-      impactType: 'unlocks-review',
-      timingReason: buildCulturalReviewActionTimingReason('unlocks-review', reviewExitSignal),
-      deferConsequence: buildCulturalReviewActionDeferConsequence('unlocks-review', reviewExitSignal),
-      followUpAfterAction: buildCulturalReviewActionFollowUp('unlocks-review', reviewExitSignal),
-      followUpWindow: buildCulturalReviewActionFollowUpWindow('unlocks-review', reviewExitSignal),
+      impactType,
+      timingReason: buildCulturalReviewActionTimingReason(impactType, reviewExitSignal),
+      deferConsequence: buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal),
+      followUpAfterAction,
+      followUpWindow,
+      unlocksAfterFollowUp: buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow),
       summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
     };
   }
 
+  const impactType = 'accelerates-review';
+  const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
+  const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
+
   return {
     state: 'accelerates-review',
     label: 'Impact attendu',
-    impactType: 'accelerates-review',
-    timingReason: buildCulturalReviewActionTimingReason('accelerates-review', reviewExitSignal),
-    deferConsequence: buildCulturalReviewActionDeferConsequence('accelerates-review', reviewExitSignal),
-    followUpAfterAction: buildCulturalReviewActionFollowUp('accelerates-review', reviewExitSignal),
-    followUpWindow: buildCulturalReviewActionFollowUpWindow('accelerates-review', reviewExitSignal),
+    impactType,
+    timingReason: buildCulturalReviewActionTimingReason(impactType, reviewExitSignal),
+    deferConsequence: buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal),
+    followUpAfterAction,
+    followUpWindow,
+    unlocksAfterFollowUp: buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow),
     summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
+  };
+}
+
+function buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow) {
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'unlocks-actionable-review',
+      label: 'Débloque ensuite',
+      unlockType: 'review',
+      benefit: 'revue culturelle actionnable',
+      afterWindow: followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null,
+      nextCue: followUpAfterAction?.nextStep ?? null,
+      summary: `Débloque ensuite: revue culturelle actionnable après la fenêtre ${reviewExitSignal.reviewWindow}.`,
+    };
+  }
+
+  if (impactType === 'accelerates-review') {
+    return {
+      state: 'unlocks-threshold-confirmation',
+      label: 'Débloque ensuite',
+      unlockType: 'threshold-confirmation',
+      benefit: 'seuil confirmé plus tôt',
+      afterWindow: followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null,
+      nextCue: followUpAfterAction?.nextStep ?? null,
+      summary: `Débloque ensuite: confirmation du seuil avant ${reviewExitSignal.reviewWindow}.`,
+    };
+  }
+
+  return {
+    state: 'no-reliable-unlock',
+    label: 'Débloque ensuite',
+    unlockType: 'none-reliable',
+    benefit: 'aucun déblocage fiable',
+    afterWindow: followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null,
+    nextCue: followUpAfterAction?.nextStep ?? null,
+    summary: 'Débloque ensuite: aucun déblocage culturel fiable tant que le seuil reste illisible.',
   };
 }
 
