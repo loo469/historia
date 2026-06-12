@@ -1427,6 +1427,82 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
   return null;
 }
 
+function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback) {
+  if (!status || status === 'unknown') {
+    return {
+      state: 'unknown',
+      label: 'Dernier safe window inconnu',
+      cue: 'dernier safe window: inconnu',
+      detail: 'aucune limite sûre lisible avec les signaux actuels',
+      urgency: 'unknown',
+      cutoff: null,
+      secondary: true,
+    };
+  }
+
+  if (status === 'complete' || status === 'can-wait-without-safe-followup') {
+    return {
+      state: 'can-wait',
+      label: 'Peut encore attendre',
+      cue: 'dernier safe window: pas encore contraint',
+      detail: status === 'complete'
+        ? 'aucun cleanup résiduel requis tant qu’aucun nouveau risque n’apparaît'
+        : 'le risque reste à surveiller, mais aucune limite urgente n’est lisible',
+      urgency: 'low',
+      cutoff: null,
+      secondary: true,
+    };
+  }
+
+  if (!fallbackSafetyCutoff) {
+    return {
+      state: 'unknown',
+      label: 'Dernier safe window inconnu',
+      cue: 'dernier safe window: inconnu',
+      detail: fallbackWaitCost?.summary ?? 'coût de report non déterminable',
+      urgency: 'unknown',
+      cutoff: null,
+      secondary: true,
+    };
+  }
+
+  if (fallbackSafetyCutoff.state === 'clean-now') {
+    return {
+      state: 'already-urgent',
+      label: 'Déjà urgent',
+      cue: 'dernier safe window: maintenant',
+      detail: fallbackSafetyCutoff.summary,
+      urgency: 'high',
+      cutoff: fallbackSafetyCutoff.cutoff,
+      primaryAction: fallbackSafetyCutoff.primaryAction ?? missedTimingFallback?.action ?? null,
+      secondary: true,
+    };
+  }
+
+  if (fallbackSafetyCutoff.state === 'acceptable-wait' || fallbackSafetyCutoff.state === 'recheck-before-wait') {
+    return {
+      state: 'last-safe-turn-action',
+      label: 'Dernier safe window',
+      cue: `dernier safe window: ${fallbackSafetyCutoff.cutoff}`,
+      detail: fallbackSafetyCutoff.summary,
+      urgency: fallbackSafetyCutoff.state === 'recheck-before-wait' ? 'watch' : 'medium',
+      cutoff: fallbackSafetyCutoff.cutoff,
+      primaryAction: fallbackSafetyCutoff.primaryAction ?? missedTimingFallback?.action ?? null,
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'unknown',
+    label: 'Dernier safe window inconnu',
+    cue: 'dernier safe window: inconnu',
+    detail: fallbackSafetyCutoff.summary ?? 'limite de fallback non classée',
+    urgency: 'unknown',
+    cutoff: fallbackSafetyCutoff.cutoff ?? null,
+    secondary: true,
+  };
+}
+
 function cleanupTimingFallback() {
   return {
     empty: true,
@@ -1448,6 +1524,7 @@ function cleanupTimingFallback() {
     missedTimingFallback: null,
     fallbackWaitCost: null,
     fallbackSafetyCutoff: null,
+    lastSafeWindowCue: buildResidualLastSafeWindowCue('unknown', null, null, null),
   };
 }
 
@@ -1503,6 +1580,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback: null,
       fallbackWaitCost: null,
       fallbackSafetyCutoff: null,
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('complete', null, null, null),
     };
   }
 
@@ -1527,6 +1605,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback: null,
       fallbackWaitCost: null,
       fallbackSafetyCutoff: null,
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('can-wait-without-safe-followup', null, null, null),
     };
   }
 
@@ -1556,6 +1635,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback,
       fallbackWaitCost,
       fallbackSafetyCutoff,
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('premature', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback),
     };
   }
 
@@ -1580,6 +1660,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback,
       fallbackWaitCost,
       fallbackSafetyCutoff,
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('partial-window', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback),
     };
   }
 
@@ -1603,6 +1684,7 @@ export function buildResidualIntrigueCleanupTiming(
     missedTimingFallback,
     fallbackWaitCost,
     fallbackSafetyCutoff,
+    lastSafeWindowCue: buildResidualLastSafeWindowCue('recommended', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback),
   };
 }
 
