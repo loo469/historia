@@ -584,3 +584,22 @@ test('atlas military shows delay effect for chosen light front countermeasure', 
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-delay--quiet/);
 });
+
+
+// MAP-A52: once delaying the chosen light-front countermeasure starts to cost,
+// show the smallest recovery move without changing the main recommendation.
+test('atlas military shows minimal recovery after delayed light front countermeasure', () => {
+  assert.match(webAppSource, /const lightFollowUpCountermeasureRecovery = lightFollowUpCountermeasureDelayEffect/);
+  assert.match(webAppSource, /label: 'Rattrapage minimal: agir maintenant'/);
+  assert.match(webAppSource, /label: 'Rattrapage minimal: préparer vite'/);
+  assert.match(webAppSource, /label: 'Rattrapage minimal: alternative viable'/);
+  assert.match(webAppSource, /label: 'Rattrapage minimal: trop tardif'/);
+  assert.match(webAppSource, /label: 'Rattrapage minimal: information insuffisante'/);
+  assert.match(webAppSource, /aucun geste de récupération fiable à afficher/);
+  assert.match(webAppSource, /lightFollowUpCountermeasureRecovery,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpCountermeasureRecovery \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpCountermeasureRecovery \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 22\.75 : 21\.4/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery--possible/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery--late/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery--quiet/);
+});
