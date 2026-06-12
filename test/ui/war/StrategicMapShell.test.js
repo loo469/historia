@@ -1421,6 +1421,16 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
       primaryAction: 'Dissiper attention résiduelle',
       secondary: true,
     },
+    lastSafeWindowCue: {
+      state: 'last-safe-turn-action',
+      label: 'Dernier safe window',
+      cue: 'dernier safe window: avant la prochaine action majeure',
+      detail: 'fallback encore sûr, mais attendre le fallback perd le meilleur score sûr (50)',
+      urgency: 'medium',
+      cutoff: 'avant la prochaine action majeure',
+      primaryAction: 'Dissiper attention résiduelle',
+      secondary: true,
+    },
   });
 });
 
@@ -1483,6 +1493,16 @@ test('StrategicMapShell marks residual intrigue cleanup as premature until the b
       state: 'recheck-before-wait',
       label: 'Recheck requis avant attente',
       summary: 'le fallback cesse d’être assez sûr sans nouvelle lecture du risque',
+      cutoff: 'au prochain tour/action',
+      primaryAction: 'Scanner axe détour',
+      secondary: true,
+    },
+    lastSafeWindowCue: {
+      state: 'last-safe-turn-action',
+      label: 'Dernier safe window',
+      cue: 'dernier safe window: au prochain tour/action',
+      detail: 'le fallback cesse d’être assez sûr sans nouvelle lecture du risque',
+      urgency: 'watch',
       cutoff: 'au prochain tour/action',
       primaryAction: 'Scanner axe détour',
       secondary: true,
@@ -1571,6 +1591,15 @@ test('StrategicMapShell provides a clear fallback when no cleanup timing is dete
     missedTimingFallback: null,
     fallbackWaitCost: null,
     fallbackSafetyCutoff: null,
+    lastSafeWindowCue: {
+      state: 'unknown',
+      label: 'Dernier safe window inconnu',
+      cue: 'dernier safe window: inconnu',
+      detail: 'aucune limite sûre lisible avec les signaux actuels',
+      urgency: 'unknown',
+      cutoff: null,
+      secondary: true,
+    },
   });
 });
 
