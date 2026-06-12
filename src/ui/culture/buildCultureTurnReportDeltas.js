@@ -1604,15 +1604,20 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
     const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
 
+    const timingReason = buildCulturalReviewActionTimingReason(impactType, reviewExitSignal);
+    const deferConsequence = buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal);
+    const unlocksAfterFollowUp = buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow);
+
     return {
       state: 'no-important-change-yet',
       label: 'Impact attendu',
       impactType,
-      timingReason: buildCulturalReviewActionTimingReason(impactType, reviewExitSignal),
-      deferConsequence: buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal),
+      timingReason,
+      deferConsequence,
       followUpAfterAction,
       followUpWindow,
-      unlocksAfterFollowUp: buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow),
+      unlocksAfterFollowUp,
+      nextReviewAfterUnlock: buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow, unlocksAfterFollowUp),
       summary: 'Impact attendu: ne change encore rien d’important tant que le seuil reste illisible.',
     };
   }
@@ -1622,15 +1627,20 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
     const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
 
+    const timingReason = buildCulturalReviewActionTimingReason(impactType, reviewExitSignal);
+    const deferConsequence = buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal);
+    const unlocksAfterFollowUp = buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow);
+
     return {
       state: 'unlocks-review',
       label: 'Impact attendu',
       impactType,
-      timingReason: buildCulturalReviewActionTimingReason(impactType, reviewExitSignal),
-      deferConsequence: buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal),
+      timingReason,
+      deferConsequence,
       followUpAfterAction,
       followUpWindow,
-      unlocksAfterFollowUp: buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow),
+      unlocksAfterFollowUp,
+      nextReviewAfterUnlock: buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow, unlocksAfterFollowUp),
       summary: `Impact attendu: ${firstStep} débloque la revue culturelle actionnable.`,
     };
   }
@@ -1639,15 +1649,20 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
   const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
   const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
 
+  const timingReason = buildCulturalReviewActionTimingReason(impactType, reviewExitSignal);
+  const deferConsequence = buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal);
+  const unlocksAfterFollowUp = buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow);
+
   return {
     state: 'accelerates-review',
     label: 'Impact attendu',
     impactType,
-    timingReason: buildCulturalReviewActionTimingReason(impactType, reviewExitSignal),
-    deferConsequence: buildCulturalReviewActionDeferConsequence(impactType, reviewExitSignal),
+    timingReason,
+    deferConsequence,
     followUpAfterAction,
     followUpWindow,
-    unlocksAfterFollowUp: buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal, followUpAfterAction, followUpWindow),
+    unlocksAfterFollowUp,
+    nextReviewAfterUnlock: buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow, unlocksAfterFollowUp),
     summary: `Impact attendu: ${firstStep} accélère la revue culturelle sans forcer de décision.`,
   };
 }
@@ -1685,6 +1700,55 @@ function buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal,
     afterWindow: followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null,
     nextCue: followUpAfterAction?.nextStep ?? null,
     summary: 'Débloque ensuite: aucun déblocage culturel fiable tant que le seuil reste illisible.',
+  };
+}
+
+
+function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow, unlocksAfterFollowUp) {
+  const watchedCue = followUpAfterAction?.watchCue ?? reviewExitSignal?.localAnchor ?? reviewExitSignal?.signal ?? null;
+  const afterWindow = followUpWindow?.summary ?? unlocksAfterFollowUp?.afterWindow ?? reviewExitSignal?.reviewWindow ?? null;
+
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'next-review-simplified',
+      label: 'Prochaine revue',
+      reviewEffect: 'simplified',
+      effectLabel: 'simplifiée',
+      reason: timingReason?.reason ?? `seuil franchi avant ${reviewExitSignal?.reviewWindow}`,
+      watchDebt: watchedCue ? `surveiller ${watchedCue}` : null,
+      afterWindow,
+      unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
+      ifDeferred: deferConsequence?.lostBenefit ?? null,
+      summary: `Prochaine revue simplifiée: ${unlocksAfterFollowUp?.benefit ?? 'revue culturelle actionnable'}; surveiller ${watchedCue ?? 'le signal culturel confirmé'}.`,
+    };
+  }
+
+  if (impactType === 'accelerates-review') {
+    return {
+      state: 'next-review-new-dependency',
+      label: 'Prochaine revue',
+      reviewEffect: 'new-dependency',
+      effectLabel: 'nouvelle dépendance',
+      reason: timingReason?.reason ?? `revue avancée avant ${reviewExitSignal?.reviewWindow}`,
+      dependency: followUpAfterAction?.nextStep ?? `confirmer le seuil avant ${reviewExitSignal?.reviewWindow}`,
+      afterWindow,
+      unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
+      ifDeferred: deferConsequence?.lostBenefit ?? null,
+      summary: `Prochaine revue avec nouvelle dépendance: ${followUpAfterAction?.nextStep ?? 'confirmer le seuil culturel'} avant de stabiliser le bénéfice.`,
+    };
+  }
+
+  return {
+    state: 'next-review-unconfirmed-effect',
+    label: 'Prochaine revue',
+    reviewEffect: 'unconfirmed',
+    effectLabel: 'effet non confirmé',
+    reason: timingReason?.reason ?? 'effet culturel encore neutre',
+    watchDebt: deferConsequence?.safeFallback ?? afterWindow,
+    afterWindow,
+    unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
+    ifDeferred: deferConsequence?.lostBenefit ?? null,
+    summary: 'Prochaine revue: effet non confirmé; garder le suivi séparé du bénéfice débloqué.',
   };
 }
 
