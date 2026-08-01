@@ -14960,6 +14960,24 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
           label: 'portée incertaine',
           detail: 'aucun secours de repli lisible: ne pas promettre la prochaine fenêtre climat',
         };
+  const nextWatchAfterBackupCandidate = nextSecondaryGap ?? watchGap;
+  const nextWatchAfterLimitedBackupCue = backupClimateScopeCue.state === 'protects-next-window'
+    ? {
+      state: 'window-covered',
+      label: 'fenêtre suivante couverte',
+      detail: `ensuite surveiller: ${nextSecondaryRisk?.label ?? nextWatchAfterBackupCandidate.label} reste couvert par le secours jusqu’à ${nextClimateWindow}`,
+    }
+    : backupClimateScopeCue.state === 'current-emergency-only'
+      ? {
+        state: 'fragile-watch',
+        label: `prochaine watch fragile: ${nextWatchAfterBackupCandidate.label}`,
+        detail: `ensuite surveiller ${nextWatchAfterBackupCandidate.label} après le secours; ${nextClimateWindow} n’est pas couvert par cette action limitée`,
+      }
+      : {
+        state: 'insufficient-info',
+        label: 'information insuffisante',
+        detail: `ensuite surveiller: attendre ${progress.deadline} ou un signal mesurable avant de dire quelle watch suit le secours`,
+      };
 
   return {
     state: 'watch',
@@ -14988,6 +15006,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       minimalStabilizationAction,
       backupClimateActionIfInsufficient,
       backupClimateScopeCue,
+      nextWatchAfterLimitedBackupCue,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15042,6 +15061,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__minimal-stabilization map-world-climate-post-gap-watch__minimal-stabilization--${view.watchItem.minimalStabilizationAction.state}"><b>Stabilisation minimale</b> · ${view.watchItem.minimalStabilizationAction.label}: ${view.watchItem.minimalStabilizationAction.detail}</small>
       <small class="map-world-climate-post-gap-watch__backup-action map-world-climate-post-gap-watch__backup-action--${view.watchItem.backupClimateActionIfInsufficient.state}"><b>Si insuffisant</b> · ${view.watchItem.backupClimateActionIfInsufficient.label}: ${view.watchItem.backupClimateActionIfInsufficient.detail}</small>
       <small class="map-world-climate-post-gap-watch__backup-scope map-world-climate-post-gap-watch__backup-scope--${view.watchItem.backupClimateScopeCue.state}"><b>Portée du secours</b> · ${view.watchItem.backupClimateScopeCue.label}: ${view.watchItem.backupClimateScopeCue.detail}</small>
+      <small class="map-world-climate-post-gap-watch__after-backup map-world-climate-post-gap-watch__after-backup--${view.watchItem.nextWatchAfterLimitedBackupCue.state}"><b>Ensuite surveiller</b> · ${view.watchItem.nextWatchAfterLimitedBackupCue.label}: ${view.watchItem.nextWatchAfterLimitedBackupCue.detail}</small>
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>

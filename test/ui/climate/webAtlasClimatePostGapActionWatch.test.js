@@ -55,11 +55,16 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /Stabilisation minimale/);
   assert.match(webAppSource, /backupClimateActionIfInsufficient/);
   assert.match(webAppSource, /backupClimateScopeCue/);
+  assert.match(webAppSource, /nextWatchAfterLimitedBackupCue/);
   assert.match(webAppSource, /Si insuffisant/);
   assert.match(webAppSource, /Portée du secours/);
+  assert.match(webAppSource, /Ensuite surveiller/);
   assert.match(webAppSource, /protège la prochaine fenêtre/);
   assert.match(webAppSource, /protège seulement l’urgence actuelle/);
   assert.match(webAppSource, /portée incertaine/);
+  assert.match(webAppSource, /fenêtre suivante couverte/);
+  assert.match(webAppSource, /prochaine watch fragile/);
+  assert.match(webAppSource, /information insuffisante/);
   assert.match(webAppSource, /nextClimateWindow/);
   assert.match(webAppSource, /basculer la veille courte sur/);
   assert.match(webAppSource, /secours neutre/);
@@ -195,6 +200,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__backup-scope--protects-next-window/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__backup-scope--current-emergency-only/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__backup-scope--scope-uncertain/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-backup/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-backup--fragile-watch/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-backup--window-covered/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__after-backup--insufficient-info/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
