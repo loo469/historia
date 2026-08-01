@@ -1303,7 +1303,7 @@ function buildCulturalSafeToDeferBundles(groups, cleanupPrompts, falloutPreview,
           ? 'soutien actif déjà visible dans la rotation culturelle'
           : 'risque stabilisé par l’historique lisible')
         : 'fallout faible au prochain tour';
-      const nextReviewWindow = lowFallout ? 'prochaine rotation culturelle' : 'prochain tour culturel';
+      const nextReviewWindow = hasActiveSupport ? 'prochain tour culturel' : lowFallout ? 'prochaine rotation culturelle' : 'prochain tour culturel';
       const riskTrigger = hasActiveSupport
         ? 'le soutien actif disparaît'
         : lowFallout
@@ -1622,7 +1622,7 @@ function buildCulturalReviewActionableImpactPreview(firstStep, reviewExitSignal)
     };
   }
 
-  if (/prochain|prochaine|next|tour|rotation/i.test(reviewExitSignal.reviewWindow)) {
+  if (/rotation/i.test(reviewExitSignal.reviewWindow)) {
     const impactType = 'unlocks-review';
     const followUpAfterAction = buildCulturalReviewActionFollowUp(impactType, reviewExitSignal);
     const followUpWindow = buildCulturalReviewActionFollowUpWindow(impactType, reviewExitSignal);
@@ -1704,9 +1704,50 @@ function buildCulturalReviewUnlockAfterFollowUpCue(impactType, reviewExitSignal,
 }
 
 
+function buildCulturalReviewDependencyReductionCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow) {
+  if (impactType === 'accelerates-review') {
+    const action = followUpAfterAction?.nextStep ?? `confirmer le seuil avant ${reviewExitSignal?.reviewWindow}`;
+    const window = followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null;
+    const windowSummary = (window ?? 'à confirmer').replace(/[.。]+$/u, '');
+
+    return {
+      state: 'dependency-reduction-available',
+      label: 'Lever dépendance',
+      action,
+      window,
+      timing: timingReason?.reason ?? null,
+      ifDeferred: deferConsequence?.lostBenefit ?? null,
+      summary: `Lever dépendance: ${action}; fenêtre: ${windowSummary}.`,
+    };
+  }
+
+  if (impactType === 'unlocks-review') {
+    return {
+      state: 'no-new-dependency',
+      label: 'Lever dépendance',
+      action: null,
+      window: followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null,
+      timing: timingReason?.reason ?? null,
+      ifDeferred: deferConsequence?.lostBenefit ?? null,
+      summary: 'Lever dépendance: aucune nouvelle dépendance; garder le bénéfice et la dette de suivi séparés.',
+    };
+  }
+
+  return {
+    state: 'no-reliable-dependency-step',
+    label: 'Lever dépendance',
+    action: null,
+    window: followUpWindow?.summary ?? reviewExitSignal?.reviewWindow ?? null,
+    timing: timingReason?.reason ?? null,
+    ifDeferred: deferConsequence?.lostBenefit ?? null,
+    summary: 'Lever dépendance: aucun geste fiable tant que l’effet culturel reste non confirmé.',
+  };
+}
+
 function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow, unlocksAfterFollowUp) {
   const watchedCue = followUpAfterAction?.watchCue ?? reviewExitSignal?.localAnchor ?? reviewExitSignal?.signal ?? null;
   const afterWindow = followUpWindow?.summary ?? unlocksAfterFollowUp?.afterWindow ?? reviewExitSignal?.reviewWindow ?? null;
+  const reduceDependencyCue = buildCulturalReviewDependencyReductionCue(impactType, reviewExitSignal, timingReason, deferConsequence, followUpAfterAction, followUpWindow);
 
   if (impactType === 'unlocks-review') {
     return {
@@ -1720,6 +1761,7 @@ function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingRe
       unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
       benefitLine: `Bénéfice débloqué: ${unlocksAfterFollowUp?.benefit ?? 'revue culturelle actionnable'}`,
       followUpDebt: watchedCue ? `Dette de suivi: surveiller ${watchedCue}` : 'Dette de suivi: vérifier le signal culturel confirmé',
+      reduceDependencyCue,
       ifDeferred: deferConsequence?.lostBenefit ?? null,
       summary: `Prochaine revue simplifiée: ${unlocksAfterFollowUp?.benefit ?? 'revue culturelle actionnable'}; dette de suivi séparée: surveiller ${watchedCue ?? 'le signal culturel confirmé'}.`,
 
@@ -1738,8 +1780,9 @@ function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingRe
       unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
       benefitLine: `Bénéfice débloqué: ${unlocksAfterFollowUp?.benefit ?? 'seuil confirmé plus tôt'}`,
       followUpDebt: `Dette de suivi: ${followUpAfterAction?.nextStep ?? `confirmer le seuil avant ${reviewExitSignal?.reviewWindow}`}`,
+      reduceDependencyCue,
       ifDeferred: deferConsequence?.lostBenefit ?? null,
-      summary: `Prochaine revue avec nouvelle dépendance: ${followUpAfterAction?.nextStep ?? 'confirmer le seuil culturel'}; bénéfice débloqué séparé de la dette de suivi.`,
+      summary: `Prochaine revue avec nouvelle dépendance: ${followUpAfterAction?.nextStep ?? 'confirmer le seuil culturel'}; bénéfice débloqué séparé de la dette de suivi; ${reduceDependencyCue.summary}`,
 
     };
   }
@@ -1755,8 +1798,9 @@ function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingRe
     unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
     benefitLine: `Bénéfice débloqué: ${unlocksAfterFollowUp?.benefit ?? 'aucun déblocage fiable'}`,
     followUpDebt: `Dette de suivi: ${deferConsequence?.safeFallback ?? afterWindow ?? 'garder le signal culturel en observation'}`,
+    reduceDependencyCue,
     ifDeferred: deferConsequence?.lostBenefit ?? null,
-    summary: 'Prochaine revue: effet non confirmé; garder le suivi séparé du bénéfice débloqué.',
+    summary: 'Prochaine revue: effet non confirmé; garder le suivi séparé du bénéfice débloqué; aucun geste fiable pour lever une dépendance.',
   };
 }
 

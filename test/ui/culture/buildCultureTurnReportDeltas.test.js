@@ -821,7 +821,7 @@ test('buildCultureTurnReportDeltas shows the consequence of missing the next def
   const safeToDefer = report.commitmentBundles.followThroughBundlePlan.safeToDeferBundles;
   assert.equal(safeToDefer.primaryMissedWindowConsequence, 'Compact d’Aurora: consolidation retardée d’un tour si le bundle n’est pas réévalué.');
   assert.equal(safeToDefer.primaryMinimalSafeAction, 'confirmer Ouvrir le récit d’expansion');
-  assert.equal(safeToDefer.primaryMinimalActionThreshold, 'prochaine rotation culturelle');
+  assert.equal(safeToDefer.primaryMinimalActionThreshold, 'prochain tour culturel');
   assert.equal(safeToDefer.missedWindowFallback, 'Conséquence calculée depuis le fallout/payoff existant du bundle reporté.');
   assert.equal(safeToDefer.minimalSafeActionFallback, 'Action minimale calculée depuis le suivi courant du bundle reporté.');
   assert.deepEqual(safeToDefer.entries.map((entry) => [
@@ -845,13 +845,25 @@ test('buildCultureTurnReportDeltas shows the consequence of missing the next def
       1,
       'confirmer Ouvrir le récit d’expansion',
       'évite une consolidation retardée',
-      'prochaine rotation culturelle',
-      'revoir Compact d’Aurora avant prochaine rotation culturelle',
-      'agir après prochaine rotation culturelle avec perte du soutien actif',
+      'prochain tour culturel',
+      'revoir Compact d’Aurora avant prochain tour culturel',
+      'agir après prochain tour culturel avec perte du soutien actif',
       'à revoir dès le prochain tour: la petite action cesse de suffire si perte du soutien actif.',
     ],
     ['Harbor Compact', 'later', null, null, 0, null, null, null, null, null, null],
   ]);
+
+  const reduceDependencyCue = safeToDefer.entries[0]
+    .deferLadderSummary.reviewReopenSignal.reviewQuestionPreview.outcomeThreshold.notActionableYet.actionableAfter.impactPreview.nextReviewAfterUnlock.reduceDependencyCue;
+  assert.deepEqual(reduceDependencyCue, {
+    state: 'dependency-reduction-available',
+    label: 'Lever dépendance',
+    action: 'confirmer que amplifier reste visible sans expiration',
+    window: 'Suivi bientôt: confirmer le seuil avant prochain tour culturel.',
+    timing: 'avance la revue sans attendre prochain tour culturel',
+    ifDeferred: 'la revue attend prochain tour culturel',
+    summary: 'Lever dépendance: confirmer que amplifier reste visible sans expiration; fenêtre: Suivi bientôt: confirmer le seuil avant prochain tour culturel.',
+  });
 });
 
 test('buildCultureTurnReportDeltas explains the benefit of acting beyond the cultural minimum', () => {
@@ -1032,7 +1044,7 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
   assert.deepEqual(expiringSynergy.expiryWarning, {
     state: 'expires-before-review',
     label: 'expire avant revue',
-    reviewWindow: 'prochaine rotation culturelle',
+    reviewWindow: 'prochain tour culturel',
     expiryCause: 'expire avant la prochaine revue',
     lostBenefit: 'archive-routes ne renforcera plus Compact d’Aurora de façon sûre',
     summary: 'expire avant revue: expire avant la prochaine revue; agir maintenant capture archive-routes.',
@@ -1055,9 +1067,9 @@ test('buildCultureTurnReportDeltas warns when immediate cultural synergy expires
     followUpRobustness: {
       state: 'fragile-before-review',
       label: 'Fragile avant revue',
-      reviewWindow: 'prochaine rotation culturelle',
+      reviewWindow: 'prochain tour culturel',
       reason: 'expire avant la prochaine revue',
-      summary: 'Fragile avant revue: expire avant la prochaine revue; archive-routes expire avant prochaine rotation culturelle.',
+      summary: 'Fragile avant revue: expire avant la prochaine revue; archive-routes expire avant prochain tour culturel.',
     },
     reviewExitSignal: null,
     reviewReopenSignal: null,
@@ -1234,6 +1246,15 @@ test('buildCultureTurnReportDeltas summarizes a safe defer ladder without expiri
                   unlockedBenefit: 'revue culturelle actionnable',
                   benefitLine: 'Bénéfice débloqué: revue culturelle actionnable',
                   followUpDebt: 'Dette de suivi: surveiller risque stabilisé par l’historique lisible',
+                  reduceDependencyCue: {
+                    state: 'no-new-dependency',
+                    label: 'Lever dépendance',
+                    action: null,
+                    window: 'Suivi maintenant: lancer la revue débloquée tant que le seuil vient d’être franchi.',
+                    timing: 'franchit le seuil avant prochaine rotation culturelle',
+                    ifDeferred: 'la revue reste non actionnable jusqu’à prochaine rotation culturelle',
+                    summary: 'Lever dépendance: aucune nouvelle dépendance; garder le bénéfice et la dette de suivi séparés.',
+                  },
                   ifDeferred: 'la revue reste non actionnable jusqu’à prochaine rotation culturelle',
                   summary: 'Prochaine revue simplifiée: revue culturelle actionnable; dette de suivi séparée: surveiller risque stabilisé par l’historique lisible.',
                 },
