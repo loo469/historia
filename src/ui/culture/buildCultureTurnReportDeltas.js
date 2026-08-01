@@ -1718,8 +1718,11 @@ function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingRe
       watchDebt: watchedCue ? `surveiller ${watchedCue}` : null,
       afterWindow,
       unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
+      benefitLine: `Bénéfice débloqué: ${unlocksAfterFollowUp?.benefit ?? 'revue culturelle actionnable'}`,
+      followUpDebt: watchedCue ? `Dette de suivi: surveiller ${watchedCue}` : 'Dette de suivi: vérifier le signal culturel confirmé',
       ifDeferred: deferConsequence?.lostBenefit ?? null,
-      summary: `Prochaine revue simplifiée: ${unlocksAfterFollowUp?.benefit ?? 'revue culturelle actionnable'}; surveiller ${watchedCue ?? 'le signal culturel confirmé'}.`,
+      summary: `Prochaine revue simplifiée: ${unlocksAfterFollowUp?.benefit ?? 'revue culturelle actionnable'}; dette de suivi séparée: surveiller ${watchedCue ?? 'le signal culturel confirmé'}.`,
+
     };
   }
 
@@ -1733,8 +1736,11 @@ function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingRe
       dependency: followUpAfterAction?.nextStep ?? `confirmer le seuil avant ${reviewExitSignal?.reviewWindow}`,
       afterWindow,
       unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
+      benefitLine: `Bénéfice débloqué: ${unlocksAfterFollowUp?.benefit ?? 'seuil confirmé plus tôt'}`,
+      followUpDebt: `Dette de suivi: ${followUpAfterAction?.nextStep ?? `confirmer le seuil avant ${reviewExitSignal?.reviewWindow}`}`,
       ifDeferred: deferConsequence?.lostBenefit ?? null,
-      summary: `Prochaine revue avec nouvelle dépendance: ${followUpAfterAction?.nextStep ?? 'confirmer le seuil culturel'} avant de stabiliser le bénéfice.`,
+      summary: `Prochaine revue avec nouvelle dépendance: ${followUpAfterAction?.nextStep ?? 'confirmer le seuil culturel'}; bénéfice débloqué séparé de la dette de suivi.`,
+
     };
   }
 
@@ -1747,6 +1753,8 @@ function buildCulturalReviewNextReviewCue(impactType, reviewExitSignal, timingRe
     watchDebt: deferConsequence?.safeFallback ?? afterWindow,
     afterWindow,
     unlockedBenefit: unlocksAfterFollowUp?.benefit ?? null,
+    benefitLine: `Bénéfice débloqué: ${unlocksAfterFollowUp?.benefit ?? 'aucun déblocage fiable'}`,
+    followUpDebt: `Dette de suivi: ${deferConsequence?.safeFallback ?? afterWindow ?? 'garder le signal culturel en observation'}`,
     ifDeferred: deferConsequence?.lostBenefit ?? null,
     summary: 'Prochaine revue: effet non confirmé; garder le suivi séparé du bénéfice débloqué.',
   };
