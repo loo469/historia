@@ -603,3 +603,22 @@ test('atlas military shows minimal recovery after delayed light front countermea
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery--late/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery--quiet/);
 });
+
+// MAP-A53: after the minimal light-front recovery cue, show whether it restores
+// the buffer, only stops the immediate relapse, or lacks enough information.
+test('atlas military shows whether minimal light front recovery restores buffer', () => {
+  assert.match(webAppSource, /const lightFollowUpCountermeasureRecoveryOutcome = lightFollowUpCountermeasureRecovery/);
+  assert.match(webAppSource, /label: 'Après rattrapage: buffer restauré'/);
+  assert.match(webAppSource, /label: 'Après rattrapage: rechute stoppée'/);
+  assert.match(webAppSource, /label: 'Après rattrapage: information insuffisante'/);
+  assert.match(webAppSource, /label: 'Après rattrapage: neutre'/);
+  assert.match(webAppSource, /aucun retard coûteux lisible/);
+  assert.match(webAppSource, /recommandation principale inchangée/);
+  assert.match(webAppSource, /lightFollowUpCountermeasureRecoveryOutcome,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpCountermeasureRecoveryOutcome \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpCountermeasureRecoveryOutcome \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 24\.1 : 22\.75/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome--restored/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome--stopped/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome--late/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome--quiet/);
+});
