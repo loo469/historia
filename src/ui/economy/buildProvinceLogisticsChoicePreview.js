@@ -53,6 +53,46 @@ export function buildAfterSecondStabilizerDebtForConsumers(rankedConsumers) {
   return buildAfterSecondStabilizerDebt(followUpConsumer ?? nextConsumer, remainingAfterSecondConsumer);
 }
 
+export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
+  if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
+    return {
+      state: 'unknown',
+      label: 'Impact prochaine livraison',
+      target: nextDelivery ?? null,
+      summary: 'Impact prochaine livraison: inconnu tant que la dette après second stabilisateur n’est pas fiable.',
+      reason: 'Les signaux de slack ne suffisent pas à relier la dette restante à la prochaine livraison critique.',
+    };
+  }
+
+  if (afterSecondStabilizerDebt.state === 'protected') {
+    return {
+      state: 'covered',
+      label: 'Impact prochaine livraison',
+      target: nextDelivery ?? afterSecondStabilizerDebt.target ?? null,
+      summary: `Impact prochaine livraison: déjà couverte${nextDelivery ? ` pour ${nextDelivery}` : ''}.`,
+      reason: afterSecondStabilizerDebt.reason,
+    };
+  }
+
+  if (afterSecondStabilizerDebt.state === 'debt') {
+    return {
+      state: 'blocking',
+      label: 'Impact prochaine livraison',
+      target: afterSecondStabilizerDebt.target,
+      summary: `Impact prochaine livraison: bloquante si ${afterSecondStabilizerDebt.target} reste ouverte.`,
+      reason: afterSecondStabilizerDebt.reason,
+    };
+  }
+
+  return {
+    state: 'watch',
+    label: 'Impact prochaine livraison',
+    target: afterSecondStabilizerDebt.target,
+    summary: `Impact prochaine livraison: surveillable sur ${afterSecondStabilizerDebt.target}.`,
+    reason: afterSecondStabilizerDebt.reason,
+  };
+}
+
 function getRouteTone(route, localTension) {
   if (!route.active || route.riskLevel >= 70 || localTension === 'high') {
     return 'high';
@@ -1327,6 +1367,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       const followUpConsumer = nextConsumer
         ? rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label && consumer.label !== nextConsumer.label) ?? null
         : null;
+      const afterSecondStabilizerDebt = buildAfterSecondStabilizerDebtForConsumers(rankedConsumers);
       return {
         state: primaryConsumer.tone ?? 'watch',
         label: 'Slack consommé par',
@@ -1410,7 +1451,8 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                   summary: `Après stabilisation: ${nextConsumer.label} suffit, stabilité retrouvée.`,
                   reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
                 },
-              afterSecondStabilizerDebt: buildAfterSecondStabilizerDebtForConsumers(rankedConsumers),
+              afterSecondStabilizerDebt,
+              nextDeliveryDebtImpact: buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label),
             }
             : primaryConsumer.tone === 'blocked'
               ? {
@@ -1428,6 +1470,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                   reason: 'Aucune contrainte suivante fiable avant de lever le seuil de slack principal.',
                 },
                 afterSecondStabilizerDebt: buildAfterSecondStabilizerDebt(null, null),
+                nextDeliveryDebtImpact: buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label),
               }
               : {
                 state: 'stable',
