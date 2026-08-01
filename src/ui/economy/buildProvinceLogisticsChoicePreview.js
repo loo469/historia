@@ -8,6 +8,51 @@ function requireObject(value, label) {
 
 const TONE_RANK = Object.freeze({ high: 3, medium: 2, low: 1 });
 
+function buildAfterSecondStabilizerDebt(secondStabilizer, remainingConsumer) {
+  if (!secondStabilizer) {
+    return {
+      state: 'unknown',
+      label: 'Après second stabilisateur',
+      target: null,
+      summary: 'Après second stabilisateur: donnée insuffisante tant que le premier stabilisateur n’est pas confirmé.',
+      reason: 'Aucune prochaine contrainte de route fiable ne peut être comparée.',
+    };
+  }
+
+  if (remainingConsumer) {
+    return {
+      state: remainingConsumer.tone === 'blocked' ? 'debt' : 'watch',
+      label: 'Après second stabilisateur',
+      target: remainingConsumer.label,
+      summary: `Après second stabilisateur: dette restante sur ${remainingConsumer.label}.`,
+      reason: remainingConsumer.blockerReason ?? remainingConsumer.reason,
+    };
+  }
+
+  return {
+    state: 'protected',
+    label: 'Après second stabilisateur',
+    target: secondStabilizer.label,
+    summary: `Après second stabilisateur: prochaine route critique protégée par ${secondStabilizer.label}.`,
+    reason: 'Aucune dette logistique prioritaire suivante dans les signaux classés.',
+  };
+}
+
+export function buildAfterSecondStabilizerDebtForConsumers(rankedConsumers) {
+  const primaryConsumer = rankedConsumers?.[0] ?? null;
+  const nextConsumer = primaryConsumer
+    ? rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label) ?? null
+    : null;
+  const followUpConsumer = nextConsumer
+    ? rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label && consumer.label !== nextConsumer.label) ?? null
+    : null;
+  const remainingAfterSecondConsumer = followUpConsumer
+    ? rankedConsumers.find((consumer) => consumer.label !== primaryConsumer.label && consumer.label !== nextConsumer.label && consumer.label !== followUpConsumer.label) ?? null
+    : null;
+
+  return buildAfterSecondStabilizerDebt(followUpConsumer ?? nextConsumer, remainingAfterSecondConsumer);
+}
+
 function getRouteTone(route, localTension) {
   if (!route.active || route.riskLevel >= 70 || localTension === 'high') {
     return 'high';
@@ -884,7 +929,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
   }
 
   const criticalRoute = deduped[0] ?? null;
-  const secondaryRoutes = deduped.slice(1, 3);
+  const secondaryRoutes = deduped.slice(1, 4);
 
   if (!criticalRoute) {
     return {
@@ -999,7 +1044,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
     const exposedRoutes = [blockedGuard, ...secondaryRoutes]
       .filter((route) => route?.route && route.route !== guardAction.route)
       .filter((route, index, list) => list.findIndex((entry) => entry.route === route.route) === index)
-      .slice(0, 2)
+      .slice(0, 3)
       .map((route) => ({
         route: route.route,
         city: route.city,
@@ -1118,7 +1163,19 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             opportunityCost: `Ne pas rouvrir la chaîne: ${priorityAction.route} reste retardée ce tour.`,
             residualExposure: {
               state: 'traced',
-              exposedRoutes: [{ route: priorityAction.route, city: option?.affectedCity ?? null, tone: 'high', reason: `${priorityAction.route} reste retardée si la garde remplace la récupération.` }],
+              exposedRoutes: [
+                { route: priorityAction.route, city: option?.affectedCity ?? null, tone: 'high', reason: `${priorityAction.route} reste retardée si la garde remplace la récupération.` },
+                ...secondaryRoutes
+                  .filter((route) => route?.route && route.route !== priorityAction.route)
+                  .map((route) => ({
+                    route: route.route,
+                    city: route.city,
+                    tone: route.tone ?? 'medium',
+                    reason: `${route.route} garde un signal spillover secondaire après le repli.`,
+                  })),
+              ]
+                .filter((route, index, list) => list.findIndex((entry) => entry.route === route.route) === index)
+                .slice(0, 3),
               benefit: `Le repli évite de surpayer la chaîne et protège ${guardAction.route}.`,
               residualRisk: `${priorityAction.route} reste exposée tant que la récupération locale est différée.`,
             },
@@ -1189,6 +1246,16 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
 
     const exposure = fallbackAction.residualExposure ?? opportunityCost?.residualExposure ?? null;
     const exposedRoute = exposure?.exposedRoutes?.[0] ?? null;
+    const exposedRouteConsumers = (exposure?.exposedRoutes ?? [])
+      .map((route, index) => route?.route
+        ? {
+          label: route.route,
+          reason: route.reason ?? exposure?.residualRisk ?? `${route.route} reste exposée après le repli.`,
+          blockerReason: route.reason ?? exposure?.residualRisk ?? `${route.route} reste exposée après le repli.`,
+          weight: (route.tone === 'high' ? 2 : 1) - index * 0.1,
+          tone: route.tone ?? 'medium',
+        }
+        : null);
     const buildResidualConstraint = (state, summary) => ({
       state,
       label: 'Contrainte restante',
@@ -1343,6 +1410,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                   summary: `Après stabilisation: ${nextConsumer.label} suffit, stabilité retrouvée.`,
                   reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
                 },
+              afterSecondStabilizerDebt: buildAfterSecondStabilizerDebtForConsumers(rankedConsumers),
             }
             : primaryConsumer.tone === 'blocked'
               ? {
@@ -1359,6 +1427,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                   summary: 'Après stabilisation: information insuffisante tant que le premier blocage reste ouvert.',
                   reason: 'Aucune contrainte suivante fiable avant de lever le seuil de slack principal.',
                 },
+                afterSecondStabilizerDebt: buildAfterSecondStabilizerDebt(null, null),
               }
               : {
                 state: 'stable',
@@ -1408,7 +1477,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           priorityAction.resource ?? 'capacité locale',
           buildSlackConsumerHint([
             { label: priorityAction.resource ?? 'capacité locale', reason: `partagée avec ${opportunityCost.delayedRoute}`, blockerReason: `la ressource reste partagée avec ${opportunityCost.delayedRoute}`, afterHandledSummary: exposedRoute ? `Après ${priorityAction.resource ?? 'capacité locale'}, slack restant surveillé par ${exposedRoute.route}.` : `Après ${priorityAction.resource ?? 'capacité locale'}, aucune autre contrainte immédiate ne consomme le slack.`, recoverySummary: `Récupérer ${priorityAction.resource ?? 'capacité locale'} libère ${opportunityCost.delayedRoute} pour la prochaine livraison sûre.`, weight: 3, tone: 'tight' },
-            exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+            ...exposedRouteConsumers,
           ]),
         ),
       };
@@ -1437,7 +1506,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               ? []
               : [
                 { label: stopMarker.route, reason: `il ne reste que ${margin} point de marge`, blockerReason: `marge restante ${margin}`, afterHandledSummary: exposedRoute ? `Après ${stopMarker.route}, il reste ${margin} point de marge et ${exposedRoute.route} à surveiller.` : `Après ${stopMarker.route}, il reste ${margin} point de marge sans autre bloqueur immédiat.`, recoverySummary: `Récupérer ${stopMarker.route} sécurise la prochaine livraison avec ${margin} point de marge.`, weight: 2, tone: 'tight' },
-                exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+                ...exposedRouteConsumers,
               ]),
           ),
         }
@@ -1456,7 +1525,7 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             stopMarker.route,
             buildSlackConsumerHint([
               { label: stopMarker.route, reason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, blockerReason: `${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} de marge manquant${Math.abs(margin) > 1 ? 's' : ''}`, afterHandledSummary: exposedRoute ? `Après ${stopMarker.route}, la marge revient à 0 et ${exposedRoute.route} reste à surveiller.` : `Après ${stopMarker.route}, la marge revient à 0 sans autre bloqueur immédiat.`, recoverySummary: `Lever ${stopMarker.route} d’abord: ${Math.abs(margin)} point${Math.abs(margin) > 1 ? 's' : ''} manque${Math.abs(margin) > 1 ? 'nt' : ''} encore avant livraison sûre.`, weight: 3, tone: 'blocked' },
-              exposedRoute ? { label: exposedRoute.route, reason: exposure.residualRisk, blockerReason: exposure.residualRisk, weight: exposedRoute.tone === 'high' ? 2 : 1, tone: exposedRoute.tone } : null,
+              ...exposedRouteConsumers,
             ]),
           ),
         };
