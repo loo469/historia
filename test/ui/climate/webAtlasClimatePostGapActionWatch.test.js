@@ -63,6 +63,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /delayedReinforcementFallbackCue/);
   assert.match(webAppSource, /fallbackReinforcementResumeCue/);
   assert.match(webAppSource, /fallbackAccumulatingRiskCue/);
+  assert.match(webAppSource, /fallbackInterventionNeedCue/);
   assert.match(webAppSource, /Si insuffisant/);
   assert.match(webAppSource, /Portée du secours/);
   assert.match(webAppSource, /Ensuite surveiller/);
@@ -73,6 +74,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /Fallback si retard/);
   assert.match(webAppSource, /Reprendre renfort/);
   assert.match(webAppSource, /Risque qui s’accumule/);
+  assert.match(webAppSource, /Agir maintenant \?/);
   assert.match(webAppSource, /protège la prochaine fenêtre/);
   assert.match(webAppSource, /protège seulement l’urgence actuelle/);
   assert.match(webAppSource, /portée incertaine/);
@@ -125,6 +127,15 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /tant que le fallback continue/);
   assert.match(webAppSource, /protection suivante non garantie/);
   assert.match(webAppSource, /à surveiller:/);
+  assert.match(webAppSource, /observer seulement/);
+  assert.match(webAppSource, /observer, prêt à agir/);
+  assert.match(webAppSource, /intervenir si fenêtre franchie/);
+  assert.match(webAppSource, /intervenir si secours insuffisant/);
+  assert.match(webAppSource, /intervenir si priorité repasse devant/);
+  assert.match(webAppSource, /réponse:/);
+  assert.match(webAppSource, /rester en veille/);
+  assert.match(webAppSource, /reprendre le renfort climat/);
+  assert.match(webAppSource, /agir seulement si le warning se confirme/);
   assert.match(webAppSource, /nextClimateWindow/);
   assert.match(webAppSource, /basculer la veille courte sur/);
   assert.match(webAppSource, /secours neutre/);
@@ -298,6 +309,12 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__accumulating-risk--backup-eroding/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__accumulating-risk--threshold-pressure/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__accumulating-risk--monitoring-drift/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__intervention/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__intervention--watch-only/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__intervention--watch-warning/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__intervention--intervene-window/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__intervention--intervene-priority/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__intervention--intervene-backup/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);

@@ -15563,6 +15563,42 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
               watch: nextWatchAfterLimitedBackupCue.detail,
             }
     : null;
+  const fallbackInterventionNeedCue = fallbackAccumulatingRiskCue
+    ? fallbackAccumulatingRiskCue.state === 'safely-covered'
+      ? {
+        state: 'watch-only',
+        label: 'observer seulement',
+        trigger: `agir si ${climateMandatoryReinforcementTrigger.signal}`,
+        response: `rester en veille: ${delayedReinforcementFallbackCue.nextWatch} reste protégé`,
+      }
+      : fallbackAccumulatingRiskCue.state === 'window-pressure'
+        ? {
+          state: 'intervene-window',
+          label: 'intervenir si fenêtre franchie',
+          trigger: `${watchGap.nearestRiskLabel} réduit la marge avant ${progress.deadline}`,
+          response: `reprendre le renfort climat avant ${nextClimateWindow}`,
+        }
+        : fallbackAccumulatingRiskCue.state === 'backup-eroding'
+          ? {
+            state: 'intervene-backup',
+            label: 'intervenir si secours insuffisant',
+            trigger: `${delayedReinforcementFallbackCue.nextWatch} n’est plus couvert par la mitigation`,
+            response: `basculer du fallback vers ${backupClimateActionIfInsufficient.label}`,
+          }
+          : fallbackAccumulatingRiskCue.state === 'threshold-pressure'
+            ? {
+              state: 'intervene-priority',
+              label: 'intervenir si priorité repasse devant',
+              trigger: priorityRankingChangeCue.detail,
+              response: `payer le coût du renfort: ${timelyReinforcementCostCue.label}`,
+            }
+            : {
+              state: 'watch-warning',
+              label: 'observer, prêt à agir',
+              trigger: `warning de veille sur ${delayedReinforcementFallbackCue.nextWatch}`,
+              response: `préparer le renfort; agir seulement si le warning se confirme`,
+            }
+    : null;
 
   return {
     state: 'watch',
@@ -15599,6 +15635,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       delayedReinforcementFallbackCue,
       fallbackReinforcementResumeCue,
       fallbackAccumulatingRiskCue,
+      fallbackInterventionNeedCue,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15661,6 +15698,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       ${view.watchItem.delayedReinforcementFallbackCue ? `<small class="map-world-climate-post-gap-watch__delay-fallback map-world-climate-post-gap-watch__delay-fallback--${view.watchItem.delayedReinforcementFallbackCue.state}"><b>Fallback si retard</b> · ${view.watchItem.delayedReinforcementFallbackCue.label}: ${view.watchItem.delayedReinforcementFallbackCue.detail}; prochaine watch: ${view.watchItem.delayedReinforcementFallbackCue.nextWatch}</small>` : ''}
       ${view.watchItem.fallbackReinforcementResumeCue ? `<small class="map-world-climate-post-gap-watch__resume map-world-climate-post-gap-watch__resume--${view.watchItem.fallbackReinforcementResumeCue.state}"><b>Reprendre renfort</b> · ${view.watchItem.fallbackReinforcementResumeCue.label}: ${view.watchItem.fallbackReinforcementResumeCue.detail}; déclencheur: ${view.watchItem.fallbackReinforcementResumeCue.trigger}</small>` : ''}
       ${view.watchItem.fallbackAccumulatingRiskCue ? `<small class="map-world-climate-post-gap-watch__accumulating-risk map-world-climate-post-gap-watch__accumulating-risk--${view.watchItem.fallbackAccumulatingRiskCue.state}"><b>Risque qui s’accumule</b> · ${view.watchItem.fallbackAccumulatingRiskCue.label}: ${view.watchItem.fallbackAccumulatingRiskCue.detail}; à surveiller: ${view.watchItem.fallbackAccumulatingRiskCue.watch}</small>` : ''}
+      ${view.watchItem.fallbackInterventionNeedCue ? `<small class="map-world-climate-post-gap-watch__intervention map-world-climate-post-gap-watch__intervention--${view.watchItem.fallbackInterventionNeedCue.state}"><b>Agir maintenant ?</b> · ${view.watchItem.fallbackInterventionNeedCue.label}: ${view.watchItem.fallbackInterventionNeedCue.trigger}; réponse: ${view.watchItem.fallbackInterventionNeedCue.response}</small>` : ''}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
