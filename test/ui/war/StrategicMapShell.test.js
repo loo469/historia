@@ -1473,6 +1473,15 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
                 reason: 'Liaison locale de secours réduit le risque mais demande confirmation',
                 cutoff: 'avant la prochaine action majeure',
                 exposureBudget: 50,
+                redeploymentCue: {
+                  state: 'hold-position',
+                  label: 'Redéploiement surveillance: attendre',
+                  cue: 'redéploiement surveillance: attendre',
+                  targetId: null,
+                  residualRiskKey: null,
+                  reason: 'attendre avant la prochaine action majeure',
+                  secondary: true,
+                },
                 secondary: true,
               },
               secondary: true,
@@ -1486,6 +1495,36 @@ test('StrategicMapShell shows the safest residual intrigue cleanup timing', () =
       secondary: true,
     },
   });
+});
+
+test('StrategicMapShell shows surveillance redeployment after cleanup safely shifts attention', () => {
+  const shell = buildStrategicMapShell([createProvince({ id: 'front-a', name: 'Front A' })], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-a', label: 'rumeur active' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 50 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue,
+    {
+      state: 'redeploy-next-target',
+      label: 'Redéploiement surveillance: rumeur active',
+      cue: 'redéploiement surveillance: rumeur active',
+      targetId: 'front-a',
+      residualRiskKey: 'rumor:front-a',
+      reason: 'surveiller la prochaine trace visible après cleanup sûr',
+      secondary: true,
+    },
+  );
 });
 
 test('StrategicMapShell marks residual intrigue cleanup as premature until the blocker clears', () => {
@@ -1603,6 +1642,15 @@ test('StrategicMapShell marks residual intrigue cleanup as premature until the b
                 reason: 'l’arrêt dépend d’une nouvelle lecture sûre',
                 cutoff: 'au prochain tour/action',
                 exposureBudget: null,
+                redeploymentCue: {
+                  state: 'hold-position',
+                  label: 'Redéploiement surveillance: attendre',
+                  cue: 'redéploiement surveillance: attendre',
+                  targetId: null,
+                  residualRiskKey: null,
+                  reason: 'attendre au prochain tour/action',
+                  secondary: true,
+                },
                 secondary: true,
               },
               secondary: true,
