@@ -1012,6 +1012,64 @@ function buildCulturalReviewPressureRetirementEvidenceCue(state, context = {}) {
   };
 }
 
+function buildNextCultureStepWhyNowCue(state, context = {}) {
+  if (context.hasNoActivePressure) {
+    return null;
+  }
+
+  if (state === 'remaining-dependency') {
+    return {
+      state: 'urgent-pressure-reduction',
+      value: 'réduit la pression avant la prochaine revue',
+      observableEffect: context.expectedEffect ?? 'pression culturelle réduite',
+      reason: `${context.pressure ?? 'la dépendance'} reste prioritaire tant que le retrait n’est pas confirmé`,
+    };
+  }
+
+  if (state === 'review-timing') {
+    if (context.windowStatus === 'too-short') {
+      return {
+        state: 'useful-not-urgent',
+        value: 'garde une trace sans rouvrir de dette immédiate',
+        observableEffect: context.reviewWindow ?? 'fenêtre de revue déjà consommée',
+        reason: 'la pression est déjà acceptée; le suivi sert surtout à éviter une surprise ultérieure',
+      };
+    }
+
+    return {
+      state: 'review-stability-value',
+      value: 'protège la stabilité de revue tant que la fenêtre reste ouverte',
+      observableEffect: context.reviewWindow ?? 'fenêtre de revue fragile',
+      reason: `${context.pressure ?? 'la contrainte'} peut encore refermer le suivi si l’action attend`,
+    };
+  }
+
+  if (state === 'fragile-unlock') {
+    return {
+      state: 'unlock-readiness-value',
+      value: 'transforme une preuve d’unlock fragile en appui réutilisable',
+      observableEffect: context.expectedEffect ?? 'unlock culturel stabilisé',
+      reason: `${context.pressure ?? 'l’unlock'} reste le signal le plus utile à confirmer maintenant`,
+    };
+  }
+
+  if (state === 'low-cultural-debt') {
+    return {
+      state: 'useful-not-urgent',
+      value: 'évite que la dette légère redevienne prioritaire',
+      observableEffect: context.expectedEffect ?? 'pression culturelle contenue',
+      reason: 'la suite reste utile, mais la revue actuelle n’impose pas une action immédiate',
+    };
+  }
+
+  return {
+    state: 'useful-not-urgent',
+    value: 'attend une preuve avant d’engager une action culturelle',
+    observableEffect: context.reviewStability ?? 'preuve culturelle insuffisante',
+    reason: 'le suivi est utile seulement si un signal fiable apparaît',
+  };
+}
+
 function buildNextUsefulCultureStepCue(state, context = {}) {
   if (state === 'remaining-dependency') {
     return {
@@ -1100,6 +1158,10 @@ function buildNextReviewPressureCue(
         pressure: remainingFragility.cause,
         nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
       }),
+      nextCultureStepWhyNowCue: buildNextCultureStepWhyNowCue('remaining-dependency', {
+        pressure: remainingFragility.cause,
+        expectedEffect: nextCulturalDependencyRetirementCue.expectedEffect,
+      }),
     };
   }
 
@@ -1118,6 +1180,9 @@ function buildNextReviewPressureCue(
       pressureRetirementEvidenceCue: buildCulturalReviewPressureRetirementEvidenceCue('no-reliable-pressure'),
       nextUsefulCultureStepCue: buildNextUsefulCultureStepCue('no-reliable-pressure', {
         nextStep: culturalReviewStabilizationCue.nextReviewDecision,
+      }),
+      nextCultureStepWhyNowCue: buildNextCultureStepWhyNowCue('no-reliable-pressure', {
+        reviewStability: culturalReviewStabilizationCue.reviewStability,
       }),
     };
   }
@@ -1147,6 +1212,11 @@ function buildNextReviewPressureCue(
         pressure: residualCultureFollowUpWindow.limitingConstraint,
         windowStatus: residualCultureFollowUpWindow.status,
         nextStep: residualCultureFollowUpWindow.nextDecision,
+      }),
+      nextCultureStepWhyNowCue: buildNextCultureStepWhyNowCue('review-timing', {
+        pressure: residualCultureFollowUpWindow.limitingConstraint,
+        windowStatus: residualCultureFollowUpWindow.status,
+        reviewWindow,
       }),
     };
   }
@@ -1185,6 +1255,13 @@ function buildNextReviewPressureCue(
           nextStep: laterDebt.nextAction,
         },
       ),
+      nextCultureStepWhyNowCue: buildNextCultureStepWhyNowCue(
+        laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+        {
+          pressure: laterDebt.cause,
+          expectedEffect: laterDebt.expectedGain,
+        },
+      ),
     };
   }
 
@@ -1201,6 +1278,7 @@ function buildNextReviewPressureCue(
     tradeoffDeadlineCue: buildCulturalReviewTradeoffDeadlineCue('no-reliable-pressure', reviewWindow, 'surveillance passive suffisante'),
     pressureRetirementEvidenceCue: buildCulturalReviewPressureRetirementEvidenceCue('no-reliable-pressure'),
     nextUsefulCultureStepCue: buildNextUsefulCultureStepCue('no-reliable-pressure', { hasNoActivePressure: true }),
+    nextCultureStepWhyNowCue: buildNextCultureStepWhyNowCue('no-reliable-pressure', { hasNoActivePressure: true }),
   };
 }
 

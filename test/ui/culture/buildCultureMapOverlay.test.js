@@ -1046,6 +1046,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           reason: 'fenêtre clarifiée: vérifier que médiation reste bornée',
           urgency: 'next',
         },
+        nextCultureStepWhyNowCue: {
+          state: 'review-stability-value',
+          value: 'protège la stabilité de revue tant que la fenêtre reste ouverte',
+          observableEffect: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
+          reason: 'médiation peut encore refermer le suivi si l’action attend',
+        },
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
@@ -1249,6 +1255,7 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           reason: 'aucune pression culturelle fiable ne demande une action dédiée',
           urgency: 'none',
         },
+        nextCultureStepWhyNowCue: null,
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'safe',
