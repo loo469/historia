@@ -656,3 +656,21 @@ test('atlas military shows safe consolidation after the next contested edge', ()
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation--clear/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation--quiet/);
 });
+
+// MAP-A56: after safe consolidation, show whether it opens an active advance
+// window or only locks the position defensively.
+test('atlas military shows whether safe consolidation opens an advance window', () => {
+  assert.match(webAppSource, /const lightFollowUpAdvanceWindow = lightFollowUpSafeConsolidation/);
+  assert.match(webAppSource, /label: 'Fenêtre d’avance: exploitable'/);
+  assert.match(webAppSource, /label: 'Fenêtre d’avance: verrouillage seul'/);
+  assert.match(webAppSource, /label: 'Fenêtre d’avance: attendre stabilisation'/);
+  assert.match(webAppSource, /label: 'Fenêtre d’avance: information insuffisante'/);
+  assert.match(webAppSource, /opportunité non active/);
+  assert.match(webAppSource, /lightFollowUpAdvanceWindow,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpAdvanceWindow \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__advance-window/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpAdvanceWindow \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 28\.15 : 26\.8/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-window--advance/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-window--lock/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-window--wait/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-window--quiet/);
+});
