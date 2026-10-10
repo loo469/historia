@@ -1191,6 +1191,30 @@ function buildNextCulturePayoffTargetCue(state, context = {}) {
   return null;
 }
 
+function buildCulturePayoffDecisionTransitionCue(state, context = {}) {
+  const payoffProof = context.nextCultureStepPayoffProofCue;
+  const payoffTarget = context.nextCulturePayoffTargetCue
+    ?? buildNextCulturePayoffTargetCue(state, context);
+
+  if (!payoffProof || !payoffTarget || state === 'no-reliable-pressure') {
+    return null;
+  }
+
+  const posture = payoffTarget.priority === 'next'
+    ? state === 'remaining-dependency'
+      ? 'urgent'
+      : 'opportuniste'
+    : 'rentable';
+
+  return {
+    state: `${payoffTarget.state}-decision`,
+    result: payoffProof.observedPayoff,
+    nextDecision: payoffTarget.target,
+    posture,
+    transition: `${payoffProof.observedPayoff} → ${payoffTarget.target}`,
+  };
+}
+
 function buildNextUsefulCultureStepCue(state, context = {}) {
   if (state === 'remaining-dependency') {
     return {
@@ -1308,6 +1332,22 @@ function buildNextReviewPressureCue(
           }),
         }),
       }),
+      culturePayoffDecisionTransitionCue: buildCulturePayoffDecisionTransitionCue('remaining-dependency', {
+        pressure: remainingFragility.cause,
+        nextUsefulCultureStepCue: buildNextUsefulCultureStepCue('remaining-dependency', {
+          pressure: remainingFragility.cause,
+          nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
+        }),
+        nextCultureStepPayoffProofCue: buildNextCultureStepPayoffProofCue('remaining-dependency', {
+          pressure: remainingFragility.cause,
+          expectedEffect: nextCulturalDependencyRetirementCue.expectedEffect,
+          nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
+          pressureRetirementEvidenceCue: buildCulturalReviewPressureRetirementEvidenceCue('remaining-dependency', {
+            pressure: remainingFragility.cause,
+            nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
+          }),
+        }),
+      }),
     };
   }
 
@@ -1332,6 +1372,7 @@ function buildNextReviewPressureCue(
       }),
       nextCultureStepPayoffProofCue: null,
       nextCulturePayoffTargetCue: null,
+      culturePayoffDecisionTransitionCue: null,
     };
   }
 
@@ -1378,6 +1419,26 @@ function buildNextReviewPressureCue(
         }),
       }),
       nextCulturePayoffTargetCue: buildNextCulturePayoffTargetCue('review-timing', {
+        pressure: residualCultureFollowUpWindow.limitingConstraint,
+        windowStatus: residualCultureFollowUpWindow.status,
+        nextUsefulCultureStepCue: buildNextUsefulCultureStepCue('review-timing', {
+          pressure: residualCultureFollowUpWindow.limitingConstraint,
+          windowStatus: residualCultureFollowUpWindow.status,
+          nextStep: residualCultureFollowUpWindow.nextDecision,
+        }),
+        nextCultureStepPayoffProofCue: buildNextCultureStepPayoffProofCue('review-timing', {
+          pressure: residualCultureFollowUpWindow.limitingConstraint,
+          windowStatus: residualCultureFollowUpWindow.status,
+          reviewWindow,
+          nextStep: residualCultureFollowUpWindow.nextDecision,
+          pressureRetirementEvidenceCue: buildCulturalReviewPressureRetirementEvidenceCue('review-timing', {
+            pressure: residualCultureFollowUpWindow.limitingConstraint,
+            windowStatus: residualCultureFollowUpWindow.status,
+            nextStep: residualCultureFollowUpWindow.nextDecision,
+          }),
+        }),
+      }),
+      culturePayoffDecisionTransitionCue: buildCulturePayoffDecisionTransitionCue('review-timing', {
         pressure: residualCultureFollowUpWindow.limitingConstraint,
         windowStatus: residualCultureFollowUpWindow.status,
         nextUsefulCultureStepCue: buildNextUsefulCultureStepCue('review-timing', {
@@ -1484,6 +1545,34 @@ function buildNextReviewPressureCue(
           ),
         },
       ),
+      culturePayoffDecisionTransitionCue: buildCulturePayoffDecisionTransitionCue(
+        laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+        {
+          pressure: laterDebt.cause,
+          nextUsefulCultureStepCue: buildNextUsefulCultureStepCue(
+            laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+            {
+              pressure: laterDebt.cause,
+              nextStep: laterDebt.nextAction,
+            },
+          ),
+          nextCultureStepPayoffProofCue: buildNextCultureStepPayoffProofCue(
+            laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+            {
+              pressure: laterDebt.cause,
+              expectedEffect: laterDebt.expectedGain,
+              nextStep: laterDebt.nextAction,
+              pressureRetirementEvidenceCue: buildCulturalReviewPressureRetirementEvidenceCue(
+                laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+                {
+                  pressure: laterDebt.cause,
+                  nextStep: laterDebt.nextAction,
+                },
+              ),
+            },
+          ),
+        },
+      ),
     };
   }
 
@@ -1503,6 +1592,7 @@ function buildNextReviewPressureCue(
     nextCultureStepWhyNowCue: buildNextCultureStepWhyNowCue('no-reliable-pressure', { hasNoActivePressure: true }),
     nextCultureStepPayoffProofCue: null,
     nextCulturePayoffTargetCue: null,
+    culturePayoffDecisionTransitionCue: null,
   };
 }
 

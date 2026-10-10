@@ -64,6 +64,7 @@ test('culture side panel renders the next cultural dependency, stabilization, an
   assert.match(webAppSource, /Pourquoi maintenant:/);
   assert.match(webAppSource, /Preuve du payoff:/);
   assert.match(webAppSource, /Cible payoff:/);
+  assert.match(webAppSource, /Décision après payoff:/);
   assert.match(webAppSource, /cue\.tradeoff/);
   assert.match(webAppSource, /cue\.tradeoffDeadlineCue/);
   assert.match(webAppSource, /cue\.pressureRetirementEvidenceCue/);
@@ -71,10 +72,12 @@ test('culture side panel renders the next cultural dependency, stabilization, an
   assert.match(webAppSource, /cue\.nextCultureStepWhyNowCue/);
   assert.match(webAppSource, /cue\.nextCultureStepPayoffProofCue/);
   assert.match(webAppSource, /cue\.nextCulturePayoffTargetCue/);
+  assert.match(webAppSource, /cue\.culturePayoffDecisionTransitionCue/);
   assert.match(webAppSource, /nextReviewPressureCue/);
   assert.match(webAppSource, /focus\?\.cultureStabilizationSummary\?\.stabilizationDebtSummary\?\.nextReviewPressureCue/);
   assert.match(stylesSource, /\.culture-next-review-pressure-cue__payoff-proof/);
   assert.match(stylesSource, /\.culture-next-review-pressure-cue__payoff-target/);
+  assert.match(stylesSource, /\.culture-next-review-pressure-cue__payoff-decision/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue--ready-after-recovery/);
   assert.match(stylesSource, /\.culture-review-stabilization-cue/);

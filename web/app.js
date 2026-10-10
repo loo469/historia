@@ -22465,6 +22465,7 @@ function renderCultureNextReviewPressureCue(cue) {
       ${cue.nextCultureStepWhyNowCue ? `<small class="culture-next-review-pressure-cue__why-now culture-next-review-pressure-cue__why-now--${cue.nextCultureStepWhyNowCue.state}">Pourquoi maintenant: ${cue.nextCultureStepWhyNowCue.value} · ${cue.nextCultureStepWhyNowCue.observableEffect}</small>` : ''}
       ${cue.nextCultureStepPayoffProofCue ? `<small class="culture-next-review-pressure-cue__payoff-proof culture-next-review-pressure-cue__payoff-proof--${cue.nextCultureStepPayoffProofCue.state}">Preuve du payoff: ${cue.nextCultureStepPayoffProofCue.proofSignal} · ${cue.nextCultureStepPayoffProofCue.observedPayoff}</small>` : ''}
       ${cue.nextCulturePayoffTargetCue ? `<small class="culture-next-review-pressure-cue__payoff-target culture-next-review-pressure-cue__payoff-target--${cue.nextCulturePayoffTargetCue.state}">Cible payoff: ${cue.nextCulturePayoffTargetCue.target} · ${cue.nextCulturePayoffTargetCue.whyMatters}</small>` : ''}
+      ${cue.culturePayoffDecisionTransitionCue ? `<small class="culture-next-review-pressure-cue__payoff-decision culture-next-review-pressure-cue__payoff-decision--${cue.culturePayoffDecisionTransitionCue.posture}">Décision après payoff: ${cue.culturePayoffDecisionTransitionCue.transition} · ${cue.culturePayoffDecisionTransitionCue.posture}</small>` : ''}
       <small>Étape suivante: ${cue.nextStep} · restantes ${cue.remainingDependencyCount}</small>
     </article>
   `;
