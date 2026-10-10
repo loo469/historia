@@ -5,6 +5,7 @@ import {
   buildAfterSecondStabilizerDebtForConsumers,
   buildFreedDeliveryMarginCue,
   buildFreedMarginBufferWarningCue,
+  buildFreedMarginPreSpendCheckCue,
   buildFreedMarginReinvestmentCue,
   buildFreedMarginSpendableWhenCue,
   buildNextDeliveryBottleneckCue,
@@ -201,6 +202,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue.target, 'Hill Spur');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue.summary, /Dépensable quand: Hill Spur est couvert/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue.target, 'Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue.summary, /Check avant dépense: stabilisateur couvert sur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -539,6 +543,41 @@ test('buildFreedMarginSpendableWhenCue explains when preserved buffer becomes sp
     null,
     { state: 'keep-buffer', mode: 'buffer', target: 'Hill Spur' },
     { type: 'none', target: null },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur' },
+  ), null);
+});
+
+test('buildFreedMarginPreSpendCheckCue identifies the blocker to verify before spending buffer', () => {
+  const blockedCheck = buildFreedMarginPreSpendCheckCue(
+    { type: 'stabilizer', target: 'Hill Spur', reason: 'stabilisateur fragile' },
+    { type: 'stabilizer', target: 'Hill Spur', summary: 'Dépensable quand: Hill Spur est couvert sans consommer ce buffer.' },
+    { state: 'reinvest-now', mode: 'stabilizer', target: 'Hill Spur' },
+    { type: 'stabilizer', target: 'Hill Spur' },
+    { state: 'comfortable', bottleneck: 'Hill Spur' },
+    { nextSafeDelivery: 'Hill Spur' },
+  );
+  assert.equal(blockedCheck.state, 'blocked-check');
+  assert.equal(blockedCheck.type, 'stabilizer');
+  assert.match(blockedCheck.summary, /Check avant dépense: stabilisateur couvert sur Hill Spur/);
+
+  const safeCheck = buildFreedMarginPreSpendCheckCue(
+    null,
+    null,
+    { state: 'reinvest-now', mode: 'route', target: 'Hill Spur', reason: 'aucun goulot fiable' },
+    { type: 'none', state: 'clear', target: null },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur', routeConstraint: 'slack confortable' },
+  );
+  assert.equal(safeCheck.state, 'safe-spend');
+  assert.equal(safeCheck.type, 'clear');
+  assert.match(safeCheck.summary, /aucun bloqueur restant/);
+
+  assert.equal(buildFreedMarginPreSpendCheckCue(
+    null,
+    null,
+    { state: 'keep-buffer', mode: 'buffer', target: 'Hill Spur' },
+    { type: 'none', state: 'clear', target: null },
     { state: 'comfortable', bottleneck: null },
     { nextSafeDelivery: 'Hill Spur' },
   ), null);
