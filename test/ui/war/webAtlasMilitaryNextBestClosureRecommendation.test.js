@@ -674,3 +674,17 @@ test('atlas military shows whether safe consolidation opens an advance window', 
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-window--wait/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-window--quiet/);
 });
+
+// MAP-A57: when an advance window is exploitable, show the immediate
+// commitment cost before the player chooses advance over holding consolidation.
+test('atlas military shows commitment cost before exploiting an advance window', () => {
+  assert.match(webAppSource, /const lightFollowUpAdvanceCommitmentCost = lightFollowUpAdvanceWindow\?\.tone === 'advance'/);
+  assert.match(webAppSource, /label: 'Coût engagement: avance maintenant'/);
+  assert.match(webAppSource, /bord exposé: \$\{residualRisk\.detail/);
+  assert.match(webAppSource, /tenir: \$\{holdReason\}/);
+  assert.match(webAppSource, /lightFollowUpAdvanceCommitmentCost,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpAdvanceCommitmentCost \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__advance-commitment-cost/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpAdvanceCommitmentCost \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 29\.5 : 28\.15/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-commitment-cost--cost/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-commitment-cost--risky/);
+});
