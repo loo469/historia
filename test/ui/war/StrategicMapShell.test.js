@@ -1546,6 +1546,7 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
           reason: 'la zone nettoyée reste stable et aucune propagation visible n’est signalée',
           secondary: true,
         },
+        containmentCue: null,
         secondary: true,
       },
       secondary: true,
@@ -1581,6 +1582,40 @@ test('StrategicMapShell classifies redeployed residual trajectory as spreading a
       cue: 'trajectoire résiduelle: propagation',
       action: 'rediriger la veille légère vers rumeur front B',
       reason: 'une trace résiduelle visible apparaît hors de la zone nettoyée',
+      secondary: true,
+    },
+  );
+});
+
+test('StrategicMapShell shows cheapest containment action for spreading residual risk', () => {
+  const shell = buildStrategicMapShell([
+    createProvince({ id: 'front-a', name: 'Front A' }),
+    createProvince({ id: 'front-b', name: 'Front B' }),
+  ], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-b', label: 'rumeur front B' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 50 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue
+      .leftoverRiskCue.containmentCue,
+    {
+      state: 'keep-surveillance',
+      label: 'Confinement minimal: garder la veille',
+      cue: 'confinement minimal: garder la veille',
+      action: 'tenir la surveillance sur rumeur front B',
+      cost: 'veille légère',
+      reason: 'Dissiper attention résiduelle reste disponible sans engager une réponse plus large',
       secondary: true,
     },
   );
