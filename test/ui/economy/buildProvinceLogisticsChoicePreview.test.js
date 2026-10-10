@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildAfterSecondStabilizerDebtForConsumers,
   buildFreedDeliveryMarginCue,
+  buildNextDeliveryBottleneckCue,
   buildNextDeliveryDebtImpact,
   buildNextRouteDebtPayoffCue,
   buildProvinceLogisticsChoicePreview,
@@ -185,6 +186,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue.state, 'delivery-secured');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue.target, 'Hill Spur');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue.summary, /Marge libérée: Hill Spur sécurise la prochaine livraison fragile/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.target, 'Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.summary, /Prochain goulot: stabilisateur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -314,6 +318,9 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue.state, 'blocked');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue.target, 'Safe Road');
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue.summary, /dette encore bloquante sur Safe Road/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.type, 'debt');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.target, 'Safe Road');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.summary, /Prochain goulot: dette restante sur Safe Road/);
 });
 
 test('buildAfterSecondStabilizerDebtForConsumers separates the second stabilizer from remaining route debt', () => {
@@ -406,6 +413,38 @@ test('buildFreedDeliveryMarginCue labels secured, local-only, blocked, and unkno
   assert.match(blockedCue.summary, /dette encore bloquante/);
 
   assert.equal(buildFreedDeliveryMarginCue(null, null, null).state, 'unknown');
+});
+
+test('buildNextDeliveryBottleneckCue keeps one priority bottleneck after margin is freed', () => {
+  const stabilizerCue = buildNextDeliveryBottleneckCue(
+    { state: 'delivery-secured', target: 'Hill Spur', reason: 'livraison fragile couverte' },
+    { state: 'comfortable', bottleneck: 'Outils', summary: 'marge confortable' },
+    { state: 'watch', target: 'Hill Spur', reason: 'stabilisateur prioritaire' },
+    { state: 'recommended', target: 'Hill Spur', benefit: 'reste exposée' },
+    { state: 'protected', target: 'Ford Link', reason: 'aucune dette restante' },
+  );
+  assert.equal(stabilizerCue.type, 'stabilizer');
+  assert.equal(stabilizerCue.target, 'Hill Spur');
+
+  const debtCue = buildNextDeliveryBottleneckCue(
+    { state: 'blocked', target: 'Safe Road', reason: 'marge manquante' },
+    { state: 'tight', bottleneck: 'Outils', summary: 'ressource serrée' },
+    { state: 'urgent', target: 'Safe Road', reason: 'marge manquante' },
+    { state: 'blocked', target: 'Safe Road', benefit: 'marge manquante' },
+    { state: 'unknown', target: null, reason: 'signal incomplet' },
+  );
+  assert.equal(debtCue.type, 'debt');
+  assert.match(debtCue.summary, /dette restante/);
+
+  const clearCue = buildNextDeliveryBottleneckCue(
+    { state: 'delivery-secured', target: null, reason: 'aucune dette prioritaire' },
+    { state: 'comfortable', bottleneck: null, summary: 'marge confortable' },
+    { state: 'stable', target: null },
+    { state: 'clear', target: null, benefit: 'aucun coût immédiat' },
+    { state: 'protected', target: 'Ford Link', reason: 'aucune dette restante' },
+  );
+  assert.equal(clearCue.type, 'none');
+  assert.match(clearCue.summary, /aucun goulot fiable détecté/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
