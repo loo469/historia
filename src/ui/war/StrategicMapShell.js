@@ -1427,7 +1427,77 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
   return null;
 }
 
-function buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice) {
+function buildResidualAfterSafeActionCue(
+  fallbackSafetyCutoff,
+  fallbackWaitCost,
+  topChoice,
+  firstCleanupPayoff,
+  reliableAction,
+  exposureBudget,
+) {
+  if (!reliableAction || !topChoice || !firstCleanupPayoff) return null;
+
+  const residualRiskKey = String(topChoice.residualRiskKey ?? '').trim();
+  const remainingTraces = normalizeCleanupInput(
+    firstCleanupPayoff.remainingRisks ?? [],
+    'StrategicMapShell firstCleanupPayoff.remainingRisks',
+  )
+    .filter((risk) => String(risk.key ?? '').trim() !== residualRiskKey)
+    .map((risk) => String(risk.label ?? 'trace résiduelle').trim() || 'trace résiduelle');
+  const remainingTraceCount = remainingTraces.length;
+
+  if (fallbackSafetyCutoff?.state === 'recheck-before-wait') {
+    return {
+      state: 'recheck-required',
+      label: 'Après action sûre: recheck requis',
+      cue: 'après action sûre: recheck requis',
+      reason: fallbackWaitCost?.summary ?? 'fallback sans certitude fog-safe',
+      remainingTraceCount,
+      remainingTraces,
+      exposureBudget,
+      cutoff: fallbackSafetyCutoff.cutoff ?? null,
+      secondary: true,
+    };
+  }
+
+  if (remainingTraceCount === 0) {
+    return {
+      state: 'trace-cleared',
+      label: 'Après action sûre: trace nettoyée',
+      cue: 'après action sûre: trace nettoyée',
+      reason: `${reliableAction} couvre la dernière trace résiduelle visible`,
+      remainingTraceCount,
+      remainingTraces,
+      exposureBudget,
+      cutoff: fallbackSafetyCutoff?.cutoff ?? null,
+      secondary: true,
+    };
+  }
+
+  if (Number.isFinite(exposureBudget)) {
+    return {
+      state: 'exposure-debt-remaining',
+      label: 'Après action sûre: dette exposition restante',
+      cue: `après action sûre: dette exposition restante (${remainingTraceCount})`,
+      reason: remainingTraces.join(' · '),
+      remainingTraceCount,
+      remainingTraces,
+      exposureBudget,
+      cutoff: fallbackSafetyCutoff?.cutoff ?? null,
+      secondary: true,
+    };
+  }
+
+  return null;
+}
+
+function buildResidualLastSafeTurnActionCue(
+  fallbackSafetyCutoff,
+  fallbackWaitCost,
+  missedTimingFallback,
+  topChoice,
+  firstCleanupPayoff = null,
+) {
   const exposureBudget = Number.isFinite(topChoice?.safetyScore) && topChoice.safetyScore > 0
     ? topChoice.safetyScore
     : null;
@@ -1443,6 +1513,18 @@ function buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCo
       reason: fallbackWaitCost?.summary ?? 'budget d’exposition sûr non lisible',
       exposureBudget,
       cutoff: fallbackSafetyCutoff?.cutoff ?? null,
+      ...(fallbackSafetyCutoff?.state === 'recheck-before-wait'
+        ? {
+          afterSafeActionCue: buildResidualAfterSafeActionCue(
+            fallbackSafetyCutoff,
+            fallbackWaitCost,
+            topChoice,
+            firstCleanupPayoff,
+            reliableAction,
+            exposureBudget,
+          ),
+        }
+        : {}),
       secondary: true,
     };
   }
@@ -1457,6 +1539,23 @@ function buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCo
       reason: fallbackSafetyCutoff.summary,
       exposureBudget,
       cutoff: fallbackSafetyCutoff.cutoff,
+      ...(buildResidualAfterSafeActionCue(
+        fallbackSafetyCutoff,
+        fallbackWaitCost,
+        topChoice,
+        firstCleanupPayoff,
+        reliableAction,
+        exposureBudget,
+      ) ? {
+        afterSafeActionCue: buildResidualAfterSafeActionCue(
+          fallbackSafetyCutoff,
+          fallbackWaitCost,
+          topChoice,
+          firstCleanupPayoff,
+          reliableAction,
+          exposureBudget,
+        ),
+      } : {}),
       secondary: true,
     };
   }
@@ -1471,6 +1570,23 @@ function buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCo
       reason: fallbackSafetyCutoff.summary,
       exposureBudget,
       cutoff: fallbackSafetyCutoff.cutoff,
+      ...(buildResidualAfterSafeActionCue(
+        fallbackSafetyCutoff,
+        fallbackWaitCost,
+        topChoice,
+        firstCleanupPayoff,
+        reliableAction,
+        exposureBudget,
+      ) ? {
+        afterSafeActionCue: buildResidualAfterSafeActionCue(
+          fallbackSafetyCutoff,
+          fallbackWaitCost,
+          topChoice,
+          firstCleanupPayoff,
+          reliableAction,
+          exposureBudget,
+        ),
+      } : {}),
       secondary: true,
     };
   }
@@ -1488,7 +1604,7 @@ function buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCo
   };
 }
 
-function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice = null) {
+function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice = null, firstCleanupPayoff = null) {
   if (!status || status === 'unknown') {
     return {
       state: 'unknown',
@@ -1497,7 +1613,7 @@ function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWa
       detail: 'aucune limite sûre lisible avec les signaux actuels',
       urgency: 'unknown',
       cutoff: null,
-      atLastSafeTurn: buildResidualLastSafeTurnActionCue(null, null, null, topChoice),
+      atLastSafeTurn: buildResidualLastSafeTurnActionCue(null, null, null, topChoice, firstCleanupPayoff),
       secondary: true,
     };
   }
@@ -1512,7 +1628,7 @@ function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWa
         : 'le risque reste à surveiller, mais aucune limite urgente n’est lisible',
       urgency: 'low',
       cutoff: null,
-      atLastSafeTurn: buildResidualLastSafeTurnActionCue(null, null, null, topChoice),
+      atLastSafeTurn: buildResidualLastSafeTurnActionCue(null, null, null, topChoice, firstCleanupPayoff),
       secondary: true,
     };
   }
@@ -1525,7 +1641,7 @@ function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWa
       detail: fallbackWaitCost?.summary ?? 'coût de report non déterminable',
       urgency: 'unknown',
       cutoff: null,
-      atLastSafeTurn: buildResidualLastSafeTurnActionCue(null, fallbackWaitCost, missedTimingFallback, topChoice),
+      atLastSafeTurn: buildResidualLastSafeTurnActionCue(null, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
       secondary: true,
     };
   }
@@ -1539,7 +1655,7 @@ function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWa
       urgency: 'high',
       cutoff: fallbackSafetyCutoff.cutoff,
       primaryAction: fallbackSafetyCutoff.primaryAction ?? missedTimingFallback?.action ?? null,
-      atLastSafeTurn: buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice),
+      atLastSafeTurn: buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
       secondary: true,
     };
   }
@@ -1553,7 +1669,7 @@ function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWa
       urgency: fallbackSafetyCutoff.state === 'recheck-before-wait' ? 'watch' : 'medium',
       cutoff: fallbackSafetyCutoff.cutoff,
       primaryAction: fallbackSafetyCutoff.primaryAction ?? missedTimingFallback?.action ?? null,
-      atLastSafeTurn: buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice),
+      atLastSafeTurn: buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
       secondary: true,
     };
   }
@@ -1565,7 +1681,7 @@ function buildResidualLastSafeWindowCue(status, fallbackSafetyCutoff, fallbackWa
     detail: fallbackSafetyCutoff.summary ?? 'limite de fallback non classée',
     urgency: 'unknown',
     cutoff: fallbackSafetyCutoff.cutoff ?? null,
-    atLastSafeTurn: buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice),
+    atLastSafeTurn: buildResidualLastSafeTurnActionCue(fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
     secondary: true,
   };
 }
@@ -1647,7 +1763,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback: null,
       fallbackWaitCost: null,
       fallbackSafetyCutoff: null,
-      lastSafeWindowCue: buildResidualLastSafeWindowCue('complete', null, null, null),
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('complete', null, null, null, null, firstCleanupPayoff),
     };
   }
 
@@ -1672,7 +1788,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback: null,
       fallbackWaitCost: null,
       fallbackSafetyCutoff: null,
-      lastSafeWindowCue: buildResidualLastSafeWindowCue('can-wait-without-safe-followup', null, null, null),
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('can-wait-without-safe-followup', null, null, null, null, firstCleanupPayoff),
     };
   }
 
@@ -1702,7 +1818,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback,
       fallbackWaitCost,
       fallbackSafetyCutoff,
-      lastSafeWindowCue: buildResidualLastSafeWindowCue('premature', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice),
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('premature', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
     };
   }
 
@@ -1727,7 +1843,7 @@ export function buildResidualIntrigueCleanupTiming(
       missedTimingFallback,
       fallbackWaitCost,
       fallbackSafetyCutoff,
-      lastSafeWindowCue: buildResidualLastSafeWindowCue('partial-window', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice),
+      lastSafeWindowCue: buildResidualLastSafeWindowCue('partial-window', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
     };
   }
 
@@ -1751,7 +1867,7 @@ export function buildResidualIntrigueCleanupTiming(
     missedTimingFallback,
     fallbackWaitCost,
     fallbackSafetyCutoff,
-    lastSafeWindowCue: buildResidualLastSafeWindowCue('recommended', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice),
+    lastSafeWindowCue: buildResidualLastSafeWindowCue('recommended', fallbackSafetyCutoff, fallbackWaitCost, missedTimingFallback, topChoice, firstCleanupPayoff),
   };
 }
 

@@ -26,6 +26,7 @@ import {
   buildMiniPlanReturnProtectionStatus,
   buildMiniPlanRivalResponseRisk,
   buildMiniPlanTradeoffActionPreview,
+  buildResidualIntrigueCleanupTiming,
   buildStrategicMapShell,
   buildTopFollowUpReadiness,
 } from '../src/ui/war/StrategicMapShell.js';
@@ -4304,6 +4305,12 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
   const miniPlanPrematureReengagementRisk = buildMiniPlanPrematureReengagementRisk(
     miniPlanFirstSafeReengagement,
   );
+  const residualIntrigueCleanupTiming = buildResidualIntrigueCleanupTiming(
+    firstCleanupPayoff,
+    followUpCleanupChoices,
+    topFollowUpReadiness,
+    miniPlanPrematureReengagementRisk,
+  );
 
   return {
     fallback: {
@@ -4338,6 +4345,7 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
       miniPlanHoldReleaseCue,
       miniPlanFirstSafeReengagement,
       miniPlanPrematureReengagementRisk,
+      residualIntrigueCleanupTiming,
     },
     safetyReason,
     crossDomainBlocker,
@@ -4367,7 +4375,8 @@ function buildAtlasMilitaryFallbackOrderHint(priorityStack, orderHint, reliefPre
     miniPlanHoldReleaseCue,
     miniPlanFirstSafeReengagement,
     miniPlanPrematureReengagementRisk,
-    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}; dernier sûr: ${miniPlanLastSafeCorrectionCue.empty ? 'aucun' : miniPlanLastSafeCorrectionCue.state}; coût sortie: ${miniPlanLateCorrectionExitCost.empty ? 'aucun' : miniPlanLateCorrectionExitCost.severity}; suivi minimal: ${miniPlanMinimalFollowThrough.empty ? 'aucun' : miniPlanMinimalFollowThrough.level}; arbitrage opportunité: ${miniPlanFollowThroughOpportunityTradeoff.empty ? 'aucun' : miniPlanFollowThroughOpportunityTradeoff.state}; repli tactique: ${miniPlanSafestTacticalFallback.empty ? 'aucun' : miniPlanSafestTacticalFallback.state}; plan prochain tour: ${miniPlanNextTurnHoldPlan.empty ? 'aucun' : miniPlanNextTurnHoldPlan.action}; relâche: ${miniPlanHoldReleaseCue.empty ? 'aucune' : miniPlanHoldReleaseCue.state}; réengagement: ${miniPlanFirstSafeReengagement.empty ? 'aucun' : miniPlanFirstSafeReengagement.state}; risque précoce: ${miniPlanPrematureReengagementRisk.empty ? 'aucun' : miniPlanPrematureReengagementRisk.state}).`,
+    residualIntrigueCleanupTiming,
+    summary: `${fallback.order}: ${fallback.detail} (${fallback.why}; ${safetyReason.label}${crossDomainBlocker ? `; ${crossDomainBlocker.label}` : ''}${selectionPreview ? `; ${selectionPreview.label}` : ''}${residualRisks.length ? `; risques restants: ${residualRisks.map((risk) => risk.label).join(', ')}` : '; risques restants: aucun visible'}${cleanupOrders.length ? `; nettoyage: ${cleanupOrders[0].label}` : '; nettoyage: aucun requis'}${firstCleanupPayoff ? `; payoff: ${firstCleanupPayoff.riskReduced} réduit, ${firstCleanupPayoff.remainingRiskCount} reste` : '; payoff: aucun'}${followUpCleanupChoices.length ? `; suivi: ${followUpCleanupChoices.map((choice) => `${choice.rank}. ${choice.cleanupOrderLabel}`).join(', ')}` : '; suivi: aucun'}; readiness suivi: ${topFollowUpReadiness.label}; mini-plan: ${followUpCleanupMiniPlan.steps.length} étapes; conflits plan: ${miniPlanDependencyConflicts.length}; arbitrages: ${miniPlanConflictTradeoffs.length}; action: ${miniPlanTradeoffActionPreview.empty ? 'aucune' : miniPlanTradeoffActionPreview.action}; risque rival: ${miniPlanRivalResponseRisk.label}; branches: ${miniPlanRivalResponseComparison.branches.length}; fallback: ${miniPlanRivalResponseFallback.empty ? 'aucun' : miniPlanRivalResponseFallback.action}; retour: ${miniPlanFallbackReturnCue.empty ? 'aucun' : miniPlanFallbackReturnCue.decision}; protection retour: ${miniPlanReturnProtectionStatus.empty ? 'aucune' : miniPlanReturnProtectionStatus.state}; confiance: ${miniPlanConfidenceSignalCue.empty ? 'aucune' : miniPlanConfidenceSignalCue.decision}; réversibilité: ${miniPlanDecisionReversibilityCue.empty ? 'aucune' : miniPlanDecisionReversibilityCue.state}; dernier sûr: ${miniPlanLastSafeCorrectionCue.empty ? 'aucun' : miniPlanLastSafeCorrectionCue.state}; coût sortie: ${miniPlanLateCorrectionExitCost.empty ? 'aucun' : miniPlanLateCorrectionExitCost.severity}; suivi minimal: ${miniPlanMinimalFollowThrough.empty ? 'aucun' : miniPlanMinimalFollowThrough.level}; arbitrage opportunité: ${miniPlanFollowThroughOpportunityTradeoff.empty ? 'aucun' : miniPlanFollowThroughOpportunityTradeoff.state}; repli tactique: ${miniPlanSafestTacticalFallback.empty ? 'aucun' : miniPlanSafestTacticalFallback.state}; plan prochain tour: ${miniPlanNextTurnHoldPlan.empty ? 'aucun' : miniPlanNextTurnHoldPlan.action}; relâche: ${miniPlanHoldReleaseCue.empty ? 'aucune' : miniPlanHoldReleaseCue.state}; réengagement: ${miniPlanFirstSafeReengagement.empty ? 'aucun' : miniPlanFirstSafeReengagement.state}; risque précoce: ${miniPlanPrematureReengagementRisk.empty ? 'aucun' : miniPlanPrematureReengagementRisk.state}; après action sûre: ${residualIntrigueCleanupTiming.lastSafeWindowCue?.atLastSafeTurn?.afterSafeActionCue?.state ?? 'inconnu'}).`,
     empty: false,
   };
 }
@@ -4470,6 +4479,10 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
   const prematureReengagementRiskLabel = prematureReengagementRisk && !prematureReengagementRisk.empty
     ? `trop tôt: ${prematureReengagementRisk.label} · ${prematureReengagementRisk.risk} › ${prematureReengagementRisk.nextSafe}`
     : 'trop tôt: fenêtre prête';
+  const afterSafeAction = fallback.residualIntrigueCleanupTiming?.lastSafeWindowCue?.atLastSafeTurn?.afterSafeActionCue;
+  const afterSafeActionLabel = afterSafeAction
+    ? `${afterSafeAction.label}: ${afterSafeAction.reason}`
+    : 'après action sûre: non évalué';
   return `
     <g class="atlas-military-fallback-order atlas-military-fallback-order--${fallback.type}" data-atlas-fallback-order="${fallback.fallbackId}" aria-label="Ordre de repli: ${fallbackHint.summary}">
       <rect class="atlas-military-fallback-order__panel" x="22" y="58" width="16" height="36" rx="1.2"></rect>
@@ -4503,6 +4516,7 @@ function renderAtlasMilitaryFallbackOrderHint(fallbackHint) {
       <text class="atlas-military-fallback-order__hold-release-cue atlas-military-fallback-order__hold-release-cue--${holdReleaseCue?.state ?? 'safe-release'}" x="23.2" y="88.8">${holdReleaseCueLabel}</text>
       <text class="atlas-military-fallback-order__first-safe-reengagement atlas-military-fallback-order__first-safe-reengagement--${firstSafeReengagement?.state ?? 'main-safe'}" x="23.2" y="89.9">${firstSafeReengagementLabel}</text>
       <text class="atlas-military-fallback-order__premature-reengagement-risk atlas-military-fallback-order__premature-reengagement-risk--${prematureReengagementRisk?.state ?? 'ready'}" x="23.2" y="91">${prematureReengagementRiskLabel}</text>
+      <text class="atlas-military-fallback-order__after-safe-action atlas-military-fallback-order__after-safe-action--${afterSafeAction?.state ?? 'unknown'}" x="23.2" y="92.1">${afterSafeActionLabel}</text>
     </g>
   `;
 }
