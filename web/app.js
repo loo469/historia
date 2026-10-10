@@ -15355,6 +15355,30 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
           }
           : null
     : null;
+  const delayedReinforcementFallbackCue = timelyReinforcementCostCue && mandatoryReinforcementTimingCue.state === 'still-timely'
+    ? backupClimateScopeCue.state === 'protects-next-window'
+      ? {
+        state: 'protected-watch',
+        label: 'fallback: veille protégée',
+        detail: `si le renfort est différé, garder ${nextWatchAfterBackupCandidate.label} sous ${backupClimateScopeCue.label}; ${nextWatchAfterLimitedBackupCue.detail}`,
+        nextWatch: nextWatchAfterBackupCandidate.label,
+      }
+      : backupClimateScopeCue.state === 'current-emergency-only'
+        ? {
+          state: 'mitigation-only',
+          label: 'fallback: mitigation seulement',
+          detail: `si le renfort est différé, traiter ${nextWatchAfterBackupCandidate.label} en mitigation; ${backupClimateScopeCue.detail}`,
+          nextWatch: nextWatchAfterBackupCandidate.label,
+        }
+        : nextSecondaryRisk
+          ? {
+            state: 'watch-next',
+            label: `fallback: surveiller ${nextSecondaryRisk.label}`,
+            detail: `si le renfort est différé, basculer sur ${nextSecondaryRisk.label} au prochain check; ${priorityRankingChangeCue.detail}`,
+            nextWatch: nextSecondaryRisk.label,
+          }
+          : null
+    : null;
 
   return {
     state: 'watch',
@@ -15388,6 +15412,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       climateMandatoryReinforcementTrigger,
       mandatoryReinforcementTimingCue,
       timelyReinforcementCostCue,
+      delayedReinforcementFallbackCue,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15447,6 +15472,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__trigger map-world-climate-post-gap-watch__trigger--${view.watchItem.climateMandatoryReinforcementTrigger.state}"><b>Déclencheur de renfort</b> · ${view.watchItem.climateMandatoryReinforcementTrigger.label}: ${view.watchItem.climateMandatoryReinforcementTrigger.detail}; ${view.watchItem.climateMandatoryReinforcementTrigger.signal}</small>
       <small class="map-world-climate-post-gap-watch__timing map-world-climate-post-gap-watch__timing--${view.watchItem.mandatoryReinforcementTimingCue.state}"><b>Encore à temps ?</b> · ${view.watchItem.mandatoryReinforcementTimingCue.label}: ${view.watchItem.mandatoryReinforcementTimingCue.detail}; signal prioritaire: ${view.watchItem.mandatoryReinforcementTimingCue.signal}</small>
       ${view.watchItem.timelyReinforcementCostCue ? `<small class="map-world-climate-post-gap-watch__cost map-world-climate-post-gap-watch__cost--${view.watchItem.timelyReinforcementCostCue.state}"><b>Coût du renfort</b> · ${view.watchItem.timelyReinforcementCostCue.label}: ${view.watchItem.timelyReinforcementCostCue.detail}; pourquoi maintenant: ${view.watchItem.timelyReinforcementCostCue.whyNow}</small>` : ''}
+      ${view.watchItem.delayedReinforcementFallbackCue ? `<small class="map-world-climate-post-gap-watch__delay-fallback map-world-climate-post-gap-watch__delay-fallback--${view.watchItem.delayedReinforcementFallbackCue.state}"><b>Fallback si retard</b> · ${view.watchItem.delayedReinforcementFallbackCue.label}: ${view.watchItem.delayedReinforcementFallbackCue.detail}; prochaine watch: ${view.watchItem.delayedReinforcementFallbackCue.nextWatch}</small>` : ''}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
