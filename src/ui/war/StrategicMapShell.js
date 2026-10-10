@@ -1431,19 +1431,101 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 
 
 
-function buildSurveillanceRedeploymentCue(state, postCleanupRisks, safeAction = null, cutoff = null) {
+function buildRedeploymentLeftoverRiskCue(
+  redeploymentState,
+  recurrenceState,
+  nextChoice = null,
+  fallbackSafetyCutoff = null,
+  exposureBudget = null,
+) {
+  if (redeploymentState !== 'redeploy-next-target') return null;
+
+  const cleanedRiskKey = String(nextChoice?.residualRiskKey ?? '').trim();
+  const targetId = nextChoice?.targetId ?? getRiskLocationId(cleanedRiskKey);
+
+  if (!nextChoice || recurrenceState === 'unknown-fog-safe') {
+    return {
+      state: 'unknown-fog-safe',
+      label: 'Risque laissé: inconnu fog-safe',
+      cue: 'risque laissé: inconnu fog-safe',
+      targetId,
+      residualRiskKey: cleanedRiskKey || null,
+      reason: 'la cause cachée reste masquée après redéploiement',
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (fallbackSafetyCutoff?.state === 'recheck-before-wait') {
+    return {
+      state: 'recheck-soon',
+      label: 'Risque laissé: recheck bientôt',
+      cue: 'risque laissé: recheck bientôt',
+      targetId,
+      residualRiskKey: cleanedRiskKey || null,
+      reason: fallbackSafetyCutoff.cutoff
+        ? `recontrôler ${fallbackSafetyCutoff.cutoff}`
+        : 'recontrôler avant nouvelle action',
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (recurrenceState === 'surveillance-required' || (Number.isFinite(exposureBudget) && Number.isFinite(nextChoice.safetyScore) && nextChoice.safetyScore < exposureBudget)) {
+    return {
+      state: 'watch-lightly',
+      label: 'Risque laissé: veille légère',
+      cue: 'risque laissé: veille légère',
+      targetId,
+      residualRiskKey: cleanedRiskKey || null,
+      reason: `${nextChoice.cleanupOrderLabel} réduit le risque, mais garde une vérification légère`,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'stable',
+    label: 'Risque laissé: stable',
+    cue: 'risque laissé: stable',
+    targetId,
+    residualRiskKey: cleanedRiskKey || null,
+    reason: `${nextChoice.cleanupOrderLabel} stabilise la zone nettoyée`,
+    exposureBudget,
+    secondary: true,
+  };
+}
+
+function buildSurveillanceRedeploymentCue(
+  state,
+  postCleanupRisks,
+  safeAction = null,
+  cutoff = null,
+  nextChoice = null,
+  recurrenceState = state,
+  fallbackSafetyCutoff = null,
+  exposureBudget = null,
+) {
   const nextRisk = postCleanupRisks.find((risk) => String(risk.key ?? '').trim()) ?? null;
   const riskLabel = String(nextRisk?.label ?? '').trim();
   const targetId = getRiskLocationId(nextRisk?.key ?? '');
 
   if (state === 'surveillance-extended' && nextRisk) {
+    const redeploymentState = 'redeploy-next-target';
     return {
-      state: 'redeploy-next-target',
+      state: redeploymentState,
       label: `Redéploiement surveillance: ${riskLabel || 'trace résiduelle'}`,
       cue: `redéploiement surveillance: ${riskLabel || 'trace résiduelle'}`,
       targetId,
       residualRiskKey: String(nextRisk.key ?? '').trim(),
       reason: 'surveiller la prochaine trace visible après cleanup sûr',
+      leftoverRiskCue: buildRedeploymentLeftoverRiskCue(
+        redeploymentState,
+        recurrenceState,
+        nextChoice,
+        fallbackSafetyCutoff,
+        exposureBudget,
+      ),
       secondary: true,
     };
   }
@@ -1492,7 +1574,7 @@ function buildSurveillanceEndCue(
       reason: 'la cause cachée reste masquée',
       cutoff,
       exposureBudget,
-      redeploymentCue: buildSurveillanceRedeploymentCue('unknown-fog-safe', postCleanupRisks, safeAction, cutoff),
+      redeploymentCue: buildSurveillanceRedeploymentCue('unknown-fog-safe', postCleanupRisks, safeAction, cutoff, nextChoice, recurrenceState, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1506,7 +1588,7 @@ function buildSurveillanceEndCue(
       reason: 'l’arrêt dépend d’une nouvelle lecture sûre',
       cutoff,
       exposureBudget,
-      redeploymentCue: buildSurveillanceRedeploymentCue('wait-for-window', postCleanupRisks, safeAction, cutoff),
+      redeploymentCue: buildSurveillanceRedeploymentCue('wait-for-window', postCleanupRisks, safeAction, cutoff, nextChoice, recurrenceState, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1521,7 +1603,7 @@ function buildSurveillanceEndCue(
       reason: 'un risque visible reste déplacé après le cleanup',
       cutoff,
       exposureBudget,
-      redeploymentCue: buildSurveillanceRedeploymentCue('surveillance-extended', postCleanupRisks, safeAction, cutoff),
+      redeploymentCue: buildSurveillanceRedeploymentCue('surveillance-extended', postCleanupRisks, safeAction, cutoff, nextChoice, recurrenceState, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1537,7 +1619,7 @@ function buildSurveillanceEndCue(
         : 'baisse de réapparition à confirmer',
       cutoff,
       exposureBudget,
-      redeploymentCue: buildSurveillanceRedeploymentCue('surveillance-extended', postCleanupRisks, safeAction, cutoff),
+      redeploymentCue: buildSurveillanceRedeploymentCue('surveillance-extended', postCleanupRisks, safeAction, cutoff, nextChoice, recurrenceState, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1552,7 +1634,7 @@ function buildSurveillanceEndCue(
     reason: 'la réapparition visible est réduite sans révéler de cause cachée',
     cutoff,
     exposureBudget,
-    redeploymentCue: buildSurveillanceRedeploymentCue('condition-met', postCleanupRisks, safeAction, cutoff),
+    redeploymentCue: buildSurveillanceRedeploymentCue('condition-met', postCleanupRisks, safeAction, cutoff, nextChoice, recurrenceState, fallbackSafetyCutoff, exposureBudget),
     secondary: true,
   };
 }

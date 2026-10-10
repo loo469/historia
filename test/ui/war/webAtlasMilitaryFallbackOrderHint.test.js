@@ -153,11 +153,13 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /après nettoyage: inconnu/);
   assert.match(webAppSource, /fin de surveillance: inconnue/);
   assert.match(webAppSource, /redéploiement surveillance: inconnu/);
+  assert.match(webAppSource, /risque laissé: non évalué/);
   assert.match(webAppSource, /afterSafeActionLabel/);
   assert.match(webAppSource, /nextCleanupTargetLabel/);
   assert.match(webAppSource, /afterCleanupRecurrenceLabel/);
   assert.match(webAppSource, /surveillanceEndLabel/);
   assert.match(webAppSource, /surveillanceRedeploymentLabel/);
+  assert.match(webAppSource, /redeploymentLeftoverRiskLabel/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
@@ -186,6 +188,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__after-cleanup-recurrence/);
   assert.match(webAppSource, /atlas-military-fallback-order__surveillance-end/);
   assert.match(webAppSource, /atlas-military-fallback-order__surveillance-redeployment/);
+  assert.match(webAppSource, /atlas-military-fallback-order__redeployment-leftover-risk/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
@@ -247,4 +250,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__after-cleanup-recurrence/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__surveillance-end/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__surveillance-redeployment/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__redeployment-leftover-risk/);
 });

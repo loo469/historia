@@ -1522,6 +1522,16 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
       targetId: 'front-a',
       residualRiskKey: 'rumor:front-a',
       reason: 'surveiller la prochaine trace visible après cleanup sûr',
+      leftoverRiskCue: {
+        state: 'stable',
+        label: 'Risque laissé: stable',
+        cue: 'risque laissé: stable',
+        targetId: 'front-a',
+        residualRiskKey: 'watch:front-a',
+        reason: 'Dissiper attention résiduelle stabilise la zone nettoyée',
+        exposureBudget: 50,
+        secondary: true,
+      },
       secondary: true,
     },
   );
