@@ -1034,6 +1034,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           reason: 'médiation limite encore le suivi dans fenêtre fragile mais exploitable: médiation limite encore le suivi',
           fallback: 'réévaluer la médiation ou le support local au prochain tour',
         },
+        pressureRetirementEvidenceCue: {
+          state: 'review-window-passed',
+          evidence: 'fenêtre de revue confirmée',
+          condition: 'réévaluer la médiation ou le support local au prochain tour',
+          retiresPressure: 'montre que médiation ne referme plus la fenêtre',
+        },
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
@@ -1224,6 +1230,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           actionPosture: 'ne pas promettre de timing',
           reason: 'les signaux culturels disponibles ne suffisent pas à dater le tradeoff',
           fallback: 'surveillance passive suffisante',
+        },
+        pressureRetirementEvidenceCue: {
+          state: 'no-clear-evidence',
+          evidence: 'aucune preuve fiable',
+          condition: 'attendre un signal culturel plus net',
+          retiresPressure: 'ne retire pas la pression sans dépendance, unlock ou revue confirmée',
         },
       },
       residualCulturePrematureRedeploymentRisk: {

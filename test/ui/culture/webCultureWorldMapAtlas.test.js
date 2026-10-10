@@ -59,8 +59,10 @@ test('culture side panel renders the next cultural dependency, stabilization, an
   assert.match(webAppSource, /Pression suivante/);
   assert.match(webAppSource, /Tradeoff:/);
   assert.match(webAppSource, /Deadline:/);
+  assert.match(webAppSource, /Preuve de retrait:/);
   assert.match(webAppSource, /cue\.tradeoff/);
   assert.match(webAppSource, /cue\.tradeoffDeadlineCue/);
+  assert.match(webAppSource, /cue\.pressureRetirementEvidenceCue/);
   assert.match(webAppSource, /nextReviewPressureCue/);
   assert.match(webAppSource, /focus\?\.cultureStabilizationSummary\?\.stabilizationDebtSummary\?\.nextReviewPressureCue/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue/);
@@ -70,6 +72,7 @@ test('culture side panel renders the next cultural dependency, stabilization, an
   assert.match(stylesSource, /\.culture-next-review-pressure-cue/);
   assert.match(stylesSource, /\.culture-next-review-pressure-cue__tradeoff/);
   assert.match(stylesSource, /\.culture-next-review-pressure-cue__deadline/);
+  assert.match(stylesSource, /\.culture-next-review-pressure-cue__evidence/);
   assert.match(stylesSource, /\.culture-next-review-pressure-cue--review-timing/);
 });
 
