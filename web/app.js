@@ -15248,6 +15248,36 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
           detail: `aucun déclencheur prioritaire connu: attendre ${progress.deadline} avant d’imposer un renfort climat`,
           signal: 'données seuil/protection insuffisantes',
         };
+  const mandatoryReinforcementTimingCue = climateMandatoryReinforcementTrigger.state === 'unknown'
+    ? {
+      state: 'timing-unknown',
+      label: 'timing inconnu',
+      detail: `impossible de dire si le renfort arrivera à temps avant ${nextClimateWindow}; attendre ${progress.deadline}`,
+      signal: climateMandatoryReinforcementTrigger.signal,
+    }
+    : climateMandatoryReinforcementTrigger.state === 'already-mandatory'
+      && backupClimateScopeCue.state === 'current-emergency-only'
+      ? {
+        state: 'too-late-mitigation-only',
+        label: 'trop tard pour couvrir la fenêtre',
+        detail: `retard critique: traiter en mitigation seulement pour ${nextWatchAfterBackupCandidate.label}; ${backupClimateScopeCue.detail}`,
+        signal: climateMandatoryReinforcementTrigger.signal,
+      }
+      : climateMandatoryReinforcementTrigger.state === 'already-mandatory'
+        || priorityInstabilityWindow.state === 'next-check'
+        || (Number.isFinite(primaryPromotionMargin) && primaryPromotionMargin <= 5)
+        ? {
+          state: 'tight-window',
+          label: 'fenêtre serrée',
+          detail: `renfort encore possible mais à décider avant ${nextClimateWindow}; ${climateMandatoryReinforcementTrigger.detail}`,
+          signal: climateMandatoryReinforcementTrigger.signal,
+        }
+        : {
+          state: 'still-timely',
+          label: 'encore à temps',
+          detail: `renfort encore à temps: garder ${nextWatchAfterBackupCandidate.label} sous surveillance jusqu’à ${nextClimateWindow}`,
+          signal: climateMandatoryReinforcementTrigger.signal,
+        };
 
   return {
     state: 'watch',
@@ -15279,6 +15309,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       nextWatchAfterLimitedBackupCue,
       nextClimateWatchReinforcementCue,
       climateMandatoryReinforcementTrigger,
+      mandatoryReinforcementTimingCue,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15336,6 +15367,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__after-backup map-world-climate-post-gap-watch__after-backup--${view.watchItem.nextWatchAfterLimitedBackupCue.state}"><b>Ensuite surveiller</b> · ${view.watchItem.nextWatchAfterLimitedBackupCue.label}: ${view.watchItem.nextWatchAfterLimitedBackupCue.detail}</small>
       <small class="map-world-climate-post-gap-watch__reinforcement map-world-climate-post-gap-watch__reinforcement--${view.watchItem.nextClimateWatchReinforcementCue.state}"><b>Renfort ou surveillance</b> · ${view.watchItem.nextClimateWatchReinforcementCue.label}: ${view.watchItem.nextClimateWatchReinforcementCue.detail}; ${view.watchItem.nextClimateWatchReinforcementCue.reason}</small>
       <small class="map-world-climate-post-gap-watch__trigger map-world-climate-post-gap-watch__trigger--${view.watchItem.climateMandatoryReinforcementTrigger.state}"><b>Déclencheur de renfort</b> · ${view.watchItem.climateMandatoryReinforcementTrigger.label}: ${view.watchItem.climateMandatoryReinforcementTrigger.detail}; ${view.watchItem.climateMandatoryReinforcementTrigger.signal}</small>
+      <small class="map-world-climate-post-gap-watch__timing map-world-climate-post-gap-watch__timing--${view.watchItem.mandatoryReinforcementTimingCue.state}"><b>Encore à temps ?</b> · ${view.watchItem.mandatoryReinforcementTimingCue.label}: ${view.watchItem.mandatoryReinforcementTimingCue.detail}; signal prioritaire: ${view.watchItem.mandatoryReinforcementTimingCue.signal}</small>
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
