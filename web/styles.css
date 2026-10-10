@@ -12601,6 +12601,28 @@ button { font: inherit; }
 .culture-review-stabilization-cue--partial-effect { border-color: rgba(251, 191, 36, 0.32); }
 .culture-review-stabilization-cue--critical-dependency-remaining { border-color: rgba(248, 113, 113, 0.38); }
 .culture-review-stabilization-cue--no-reliable-proof { border-color: rgba(148, 163, 184, 0.28); background: rgba(15, 23, 42, 0.44); }
+.culture-next-review-pressure-cue {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(196, 181, 253, 0.26);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.14), rgba(15, 23, 42, 0.52));
+}
+.culture-next-review-pressure-cue__header { display: grid; gap: 3px; }
+.culture-next-review-pressure-cue__header span {
+  color: #ddd6fe;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.culture-next-review-pressure-cue__header strong { color: #f8fafc; font-size: 13px; }
+.culture-next-review-pressure-cue small { color: #cbd5e1; font-size: 11px; line-height: 1.35; }
+.culture-next-review-pressure-cue--remaining-dependency { border-color: rgba(248, 113, 113, 0.4); }
+.culture-next-review-pressure-cue--review-timing { border-color: rgba(251, 191, 36, 0.34); }
+.culture-next-review-pressure-cue--fragile-unlock { border-color: rgba(45, 212, 191, 0.34); }
+.culture-next-review-pressure-cue--low-cultural-debt { border-color: rgba(125, 211, 252, 0.3); }
+.culture-next-review-pressure-cue--no-reliable-pressure { border-color: rgba(148, 163, 184, 0.28); background: rgba(15, 23, 42, 0.44); }
 .atlas-committed-funding-gap rect {
   fill: rgba(30, 41, 59, 0.6);
   stroke: rgba(125, 211, 252, 0.34);
