@@ -11,6 +11,7 @@ import {
   buildNextDeliveryBottleneckCue,
   buildNextDeliveryDebtImpact,
   buildNextRouteDebtPayoffCue,
+  buildPreservedBufferGrowthBlockerCue,
   buildProvinceLogisticsChoicePreview,
 } from '../../../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
 
@@ -205,6 +206,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue.target, 'Hill Spur');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue.summary, /Check avant dépense: stabilisateur couvert sur Hill Spur/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue.blocker, 'stabilisateur fragile');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue.summary, /Croissance bloquée: buffer gardé par stabilisateur fragile sur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -580,6 +584,39 @@ test('buildFreedMarginPreSpendCheckCue identifies the blocker to verify before s
     { type: 'none', state: 'clear', target: null },
     { state: 'comfortable', bottleneck: null },
     { nextSafeDelivery: 'Hill Spur' },
+  ), null);
+});
+
+test('buildPreservedBufferGrowthBlockerCue names the blocker behind preserved buffer wait', () => {
+  const debtBlocker = buildPreservedBufferGrowthBlockerCue(
+    { type: 'debt', target: 'Safe Road', reason: 'dette restante' },
+    { type: 'debt', target: 'Safe Road', summary: 'Dépensable quand: dette soldée sur Safe Road.' },
+    { state: 'blocked-check', type: 'debt', target: 'Safe Road' },
+    { type: 'debt', target: 'Safe Road' },
+    { state: 'tight', bottleneck: 'Safe Road' },
+  );
+  assert.equal(debtBlocker.type, 'debt');
+  assert.equal(debtBlocker.blocker, 'dette de route');
+  assert.match(debtBlocker.summary, /Croissance bloquée: buffer gardé par dette de route sur Safe Road/);
+  assert.match(debtBlocker.reason, /Dépensable après dette soldée/);
+
+  const capacityBlocker = buildPreservedBufferGrowthBlockerCue(
+    { type: 'capacity', target: 'Outils', reason: 'capacité serrée' },
+    { type: 'capacity', target: 'Outils', summary: 'Dépensable quand: capacité locale desserrée sur Outils.' },
+    { state: 'blocked-check', type: 'capacity', target: 'Outils' },
+    { type: 'capacity', target: 'Outils' },
+    { state: 'tight', bottleneck: 'Outils' },
+  );
+  assert.equal(capacityBlocker.type, 'capacity');
+  assert.equal(capacityBlocker.blocker, 'capacité locale');
+  assert.match(capacityBlocker.summary, /capacité locale sur Outils/);
+
+  assert.equal(buildPreservedBufferGrowthBlockerCue(
+    null,
+    null,
+    { state: 'safe-spend', type: 'clear', target: 'Hill Spur' },
+    { type: 'none', target: null },
+    { state: 'comfortable', bottleneck: null },
   ), null);
 });
 
