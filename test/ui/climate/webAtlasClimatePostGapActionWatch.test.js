@@ -60,6 +60,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /climateMandatoryReinforcementTrigger/);
   assert.match(webAppSource, /mandatoryReinforcementTimingCue/);
   assert.match(webAppSource, /timelyReinforcementCostCue/);
+  assert.match(webAppSource, /delayedReinforcementFallbackCue/);
   assert.match(webAppSource, /Si insuffisant/);
   assert.match(webAppSource, /Portée du secours/);
   assert.match(webAppSource, /Ensuite surveiller/);
@@ -67,6 +68,7 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /Déclencheur de renfort/);
   assert.match(webAppSource, /Encore à temps \?/);
   assert.match(webAppSource, /Coût du renfort/);
+  assert.match(webAppSource, /Fallback si retard/);
   assert.match(webAppSource, /protège la prochaine fenêtre/);
   assert.match(webAppSource, /protège seulement l’urgence actuelle/);
   assert.match(webAppSource, /portée incertaine/);
@@ -98,6 +100,11 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(webAppSource, /pourquoi maintenant/);
   assert.match(webAppSource, /renfort maintenant repousse la surveillance/);
   assert.match(webAppSource, /renfort maintenant retarde le réarmement de review/);
+  assert.match(webAppSource, /fallback: veille protégée/);
+  assert.match(webAppSource, /fallback: mitigation seulement/);
+  assert.match(webAppSource, /fallback: surveiller/);
+  assert.match(webAppSource, /si le renfort est différé/);
+  assert.match(webAppSource, /prochaine watch:/);
   assert.match(webAppSource, /nextClimateWindow/);
   assert.match(webAppSource, /basculer la veille courte sur/);
   assert.match(webAppSource, /secours neutre/);
@@ -255,6 +262,10 @@ test('atlas shows one remaining climate watch item after the smallest gap action
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__cost--delays-upkeep/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__cost--delays-secondary-watch/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__cost--delays-review/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__delay-fallback/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__delay-fallback--protected-watch/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__delay-fallback--mitigation-only/);
+  assert.match(stylesSource, /\.map-world-climate-post-gap-watch__delay-fallback--watch-next/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--primary-first/);
   assert.match(stylesSource, /\.map-world-climate-post-gap-watch__ladder--upkeep-secondary/);
