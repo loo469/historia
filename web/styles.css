@@ -15039,7 +15039,8 @@ button { font: inherit; }
 .atlas-military-neighbor-blocked-follow-up-ladder__advance-commitment-cost,
 .atlas-military-neighbor-blocked-follow-up-ladder__safe-hold-fallback,
 .atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition,
-.atlas-military-neighbor-blocked-follow-up-ladder__hold-watch {
+.atlas-military-neighbor-blocked-follow-up-ladder__hold-watch,
+.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness {
   fill: #ddd6fe;
   font-size: 0.42px;
 }
@@ -15101,6 +15102,9 @@ button { font: inherit; }
 .atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition--watch { fill: #fde68a; }
 .atlas-military-neighbor-blocked-follow-up-ladder__hold-watch--watch { fill: #fdba74; }
 .atlas-military-neighbor-blocked-follow-up-ladder__hold-watch--stable { fill: #bbf7d0; }
+.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--reinforce { fill: #fca5a5; }
+.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--advance { fill: #fde68a; }
+.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--hold { fill: #bfdbfe; }
 .atlas-military-neighbor-blocked-follow-up-alt__delay--acceptable { fill: #bbf7d0; }
 .atlas-military-neighbor-blocked-follow-up-alt__delay--risky { fill: #fecdd3; }
 .atlas-military-neighbor-review-priority__label,
