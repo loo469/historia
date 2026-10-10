@@ -156,6 +156,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /risque laissé: non évalué/);
   assert.match(webAppSource, /trajectoire résiduelle: inconnue/);
   assert.match(webAppSource, /confinement minimal: non requis/);
+  assert.match(webAppSource, /payoff confinement: non évalué/);
   assert.match(webAppSource, /clear résiduel: non évalué/);
   assert.match(webAppSource, /pendant attente: non requis/);
   assert.match(webAppSource, /afterSafeActionLabel/);
@@ -166,6 +167,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /redeploymentLeftoverRiskLabel/);
   assert.match(webAppSource, /residualRiskTrajectoryLabel/);
   assert.match(webAppSource, /containmentCueLabel/);
+  assert.match(webAppSource, /containmentPayoffLabel/);
   assert.match(webAppSource, /leftoverClearConditionLabel/);
   assert.match(webAppSource, /leftoverInterimActionLabel/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
@@ -199,6 +201,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__redeployment-leftover-risk/);
   assert.match(webAppSource, /atlas-military-fallback-order__residual-risk-trajectory/);
   assert.match(webAppSource, /atlas-military-fallback-order__containment-cue/);
+  assert.match(webAppSource, /atlas-military-fallback-order__containment-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__leftover-clear-condition/);
   assert.match(webAppSource, /atlas-military-fallback-order__leftover-interim-action/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
@@ -265,6 +268,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__redeployment-leftover-risk/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__residual-risk-trajectory/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__containment-cue/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__containment-payoff/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__leftover-clear-condition/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__leftover-interim-action/);
 });
