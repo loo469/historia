@@ -21944,6 +21944,7 @@ function renderCultureNextReviewPressureCue(cue) {
       <small>Déclencheur: ${cue.trigger}</small>
       <small>Timing: ${cue.likelyTiming}</small>
       <small>Effet lié: ${cue.expectedEffect}</small>
+      ${cue.tradeoff ? `<small class="culture-next-review-pressure-cue__tradeoff">Tradeoff: ${cue.tradeoff}</small>` : ''}
       <small>Étape suivante: ${cue.nextStep} · restantes ${cue.remainingDependencyCount}</small>
     </article>
   `;

@@ -12618,6 +12618,7 @@ button { font: inherit; }
 }
 .culture-next-review-pressure-cue__header strong { color: #f8fafc; font-size: 13px; }
 .culture-next-review-pressure-cue small { color: #cbd5e1; font-size: 11px; line-height: 1.35; }
+.culture-next-review-pressure-cue__tradeoff { color: #ede9fe; }
 .culture-next-review-pressure-cue--remaining-dependency { border-color: rgba(248, 113, 113, 0.4); }
 .culture-next-review-pressure-cue--review-timing { border-color: rgba(251, 191, 36, 0.34); }
 .culture-next-review-pressure-cue--fragile-unlock { border-color: rgba(45, 212, 191, 0.34); }
