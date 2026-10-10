@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildAfterSecondStabilizerDebtForConsumers,
   buildNextDeliveryDebtImpact,
+  buildNextRouteDebtPayoffCue,
   buildProvinceLogisticsChoicePreview,
 } from '../../../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
 
@@ -177,6 +178,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextStabilizerRecommendation.afterSecondStabilizerDebt.summary, /Après second stabilisateur: prochaine route critique protégée par Hill Spur/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextStabilizerRecommendation.nextDeliveryDebtImpact.state, 'covered');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextStabilizerRecommendation.nextDeliveryDebtImpact.summary, /Impact prochaine livraison: déjà couverte/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextRouteDebtPayoffCue.state, 'recommended');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextRouteDebtPayoffCue.target, 'Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextRouteDebtPayoffCue.summary, /Dette à solder ensuite: Hill Spur recommandé après livraison, sans blocage immédiat/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -300,6 +304,9 @@ test('buildProvinceLogisticsChoicePreview marks multi-guard spillover as chainab
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextStabilizerRecommendation.afterSecondStabilizerDebt.summary, /donnée insuffisante/);
   assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextStabilizerRecommendation.nextDeliveryDebtImpact.state, 'unknown');
   assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextStabilizerRecommendation.nextDeliveryDebtImpact.summary, /Impact prochaine livraison: inconnu/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextRouteDebtPayoffCue.state, 'blocked');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextRouteDebtPayoffCue.target, 'Safe Road');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardOpportunityCost.fallbackAction.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextRouteDebtPayoffCue.summary, /blocage dur sur Safe Road avant livraison/);
 });
 
 test('buildAfterSecondStabilizerDebtForConsumers separates the second stabilizer from remaining route debt', () => {
@@ -334,6 +341,38 @@ test('buildNextDeliveryDebtImpact labels remaining debt as blocking, watchable, 
   assert.equal(buildNextDeliveryDebtImpact({ state: 'protected', target: 'Ford Link', reason: 'aucune dette restante' }, 'Hill Spur').state, 'covered');
   assert.match(buildNextDeliveryDebtImpact({ state: 'protected', target: 'Ford Link', reason: 'aucune dette restante' }, 'Hill Spur').summary, /déjà couverte/);
   assert.equal(buildNextDeliveryDebtImpact({ state: 'unknown', target: null, reason: 'signal incomplet' }, 'Hill Spur').state, 'unknown');
+});
+
+test('buildNextRouteDebtPayoffCue distinguishes hard blockers from recommended route debt payoff', () => {
+  const recommendedCue = buildNextRouteDebtPayoffCue(
+    { state: 'recoverable', recovery: 'Outils', routeConstraint: 'Outils garde assez de slack', afterDeliveryFragility: { target: 'Hill Spur' } },
+    { state: 'watch', target: 'Hill Spur', reason: 'reste exposée après livraison' },
+    { state: 'covered', target: 'Hill Spur', reason: 'prochaine livraison déjà couverte' },
+  );
+
+  assert.equal(recommendedCue.state, 'recommended');
+  assert.equal(recommendedCue.target, 'Hill Spur');
+  assert.match(recommendedCue.summary, /recommandé après livraison, sans blocage immédiat/);
+  assert.match(recommendedCue.benefit, /reste exposée/);
+
+  const blockedCue = buildNextRouteDebtPayoffCue(
+    { state: 'insufficient', recovery: 'Safe Road', routeConstraint: 'Safe Road reste sous le seuil de slack' },
+    { state: 'urgent', target: 'Safe Road', reason: 'marge manquante' },
+    { state: 'unknown', target: 'Safe Road', reason: 'signal incomplet' },
+  );
+
+  assert.equal(blockedCue.state, 'blocked');
+  assert.equal(blockedCue.target, 'Safe Road');
+  assert.match(blockedCue.summary, /blocage dur/);
+
+  const clearCue = buildNextRouteDebtPayoffCue(
+    { state: 'safe', routeConstraint: 'aucun coût immédiat' },
+    { state: 'stable' },
+    null,
+  );
+
+  assert.equal(clearCue.state, 'clear');
+  assert.match(clearCue.summary, /livraison peut continuer sans action immédiate/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
