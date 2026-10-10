@@ -46,6 +46,15 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /buildAtlasPairedSupportRiskRelief/);
 });
 
+test('culture side panel renders the next cultural dependency retirement cue', () => {
+  assert.match(webAppSource, /function renderCultureDependencyRetirementCue/);
+  assert.match(webAppSource, /Prochaine dépendance à retirer/);
+  assert.match(webAppSource, /nextCulturalDependencyRetirementCue/);
+  assert.match(webAppSource, /focus\?\.cultureStabilizationSummary\?\.stabilizationDebtSummary\?\.nextCulturalDependencyRetirementCue/);
+  assert.match(stylesSource, /\.culture-dependency-retirement-cue/);
+  assert.match(stylesSource, /\.culture-dependency-retirement-cue--ready-after-recovery/);
+});
+
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
   assert.match(webAppSource, /regionalDiscoveryLinks\.slice\(0, densityMode === 'dense' \? 1 : 2\)/);
   assert.match(webAppSource, /atlas-discovery-site/);

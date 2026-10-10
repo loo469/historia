@@ -828,6 +828,41 @@ function buildResidualRiskAfterNextRetirement(dependencyRetirementRanking, nextD
   };
 }
 
+function buildNextCulturalDependencyRetirementCue(
+  dependencyRetirementRanking,
+  topRetirementRecoveryPreview,
+  nextDependencyRetirementPath,
+  residualCultureFollowUpWindow,
+) {
+  const nextRetirement = nextDependencyRetirementPath.nextRetirement;
+  const remainingDependencyCount = Math.max(0, dependencyRetirementRanking.length - 1);
+  const reviewWindow = residualCultureFollowUpWindow.windowSummary;
+
+  if (!nextRetirement) {
+    return {
+      state: 'review-can-wait',
+      target: null,
+      expectedEffect: topRetirementRecoveryPreview.expectedRecovery,
+      reason: nextDependencyRetirementPath.reason,
+      reviewWindow,
+      remainingDependencyCount,
+      guidance: 'confirmer la récupération prioritaire avant de rouvrir une nouvelle dépendance',
+    };
+  }
+
+  return {
+    state: nextDependencyRetirementPath.status,
+    target: nextRetirement.cause,
+    targetType: nextRetirement.type,
+    targetRank: nextRetirement.rank,
+    expectedEffect: nextRetirement.expectedGain,
+    reason: nextDependencyRetirementPath.reason,
+    reviewWindow,
+    remainingDependencyCount,
+    guidance: `${topRetirementRecoveryPreview.expectedRecovery} → ${nextRetirement.expectedGain}`,
+  };
+}
+
 function buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement) {
   const fragility = residualRiskAfterNextRetirement.principalResidualFragility;
 
@@ -1361,6 +1396,12 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
   const residualCultureReliabilityUpgradeCondition = buildResidualCultureReliabilityUpgradeCondition(residualCultureMinimalDelayedSupport);
   const residualCultureStabilityWatchWindow = buildResidualCultureStabilityWatchWindow(residualCultureReliabilityUpgradeCondition);
   const residualCultureSupportRedeploymentCue = buildResidualCultureSupportRedeploymentCue(residualCultureStabilityWatchWindow);
+  const nextCulturalDependencyRetirementCue = buildNextCulturalDependencyRetirementCue(
+    dependencyRetirementRanking,
+    topRetirementRecoveryPreview,
+    nextDependencyRetirementPath,
+    residualCultureFollowUpWindow,
+  );
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1384,6 +1425,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureReliabilityUpgradeCondition,
     residualCultureStabilityWatchWindow,
     residualCultureSupportRedeploymentCue,
+    nextCulturalDependencyRetirementCue,
     residualCulturePrematureRedeploymentRisk: buildResidualCulturePrematureRedeploymentRisk(residualCultureSupportRedeploymentCue),
   };
 }
