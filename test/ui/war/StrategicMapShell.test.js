@@ -1556,6 +1556,15 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
           next: 'surveillance libre pour redéploiement',
           secondary: true,
         },
+        postContainmentWatchCue: {
+          state: 'closed-release-attention',
+          label: 'Après confinement: attention libérée',
+          cue: 'après confinement: attention libérée',
+          watch: 'aucun suivi requis',
+          condition: 'redéploiement libre',
+          reason: 'Dissiper attention résiduelle laisse la zone assez claire',
+          secondary: true,
+        },
         secondary: true,
       },
       secondary: true,
@@ -1659,6 +1668,40 @@ test('StrategicMapShell shows containment payoff after cheapest containment', ()
       payoff: 'propagation freinée par la veille légère',
       remainingRisk: 'Dissiper attention résiduelle reste à stabiliser',
       next: 'maintenir surveillance avant redéploiement libre',
+      secondary: true,
+    },
+  );
+});
+
+test('StrategicMapShell shows what remains to watch after containment', () => {
+  const shell = buildStrategicMapShell([
+    createProvince({ id: 'front-a', name: 'Front A' }),
+    createProvince({ id: 'front-b', name: 'Front B' }),
+  ], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-b', label: 'rumeur front B' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 50 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue
+      .leftoverRiskCue.postContainmentWatchCue,
+    {
+      state: 'stable-watch',
+      label: 'Après confinement: stable sous veille',
+      cue: 'après confinement: stable sous veille',
+      watch: 'Dissiper attention résiduelle reste à stabiliser',
+      condition: 'Dissiper attention résiduelle',
+      reason: 'le risque est contenu, mais pas assez clair pour libérer toute l’attention',
       secondary: true,
     },
   );
