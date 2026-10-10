@@ -746,3 +746,19 @@ test('atlas military shows when a held safe front is becoming stale', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--advance/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--hold/);
 });
+
+// MAP-A62: once stale hold is visible, name the concrete signal that would make
+// the next advance safe again, or keep the message conservative when unknown.
+test('atlas military shows the next safe advance trigger after a stale hold', () => {
+  assert.match(webAppSource, /const lightFollowUpStaleAdvanceTrigger = lightFollowUpHoldStaleness/);
+  assert.match(webAppSource, /label: 'Déclencheur avance sûre'/);
+  assert.match(webAppSource, /menace réduite sur \$\{residualRisk\.provinceLabel/);
+  assert.match(webAppSource, /buffer récupéré: \$\{remainingWatch\.replace/);
+  assert.match(webAppSource, /label: 'Déclencheur avance sûre: préparer'/);
+  assert.match(webAppSource, /pas de signal fiable, renforcer le bord puis relire le front/);
+  assert.match(webAppSource, /lightFollowUpStaleAdvanceTrigger,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpStaleAdvanceTrigger \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpStaleAdvanceTrigger \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 36\.25 : 34\.9/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger--trigger/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger--prepare/);
+});
