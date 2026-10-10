@@ -21873,6 +21873,26 @@ function renderCultureReviewStabilizationCue(cue) {
   `;
 }
 
+function renderCultureNextReviewPressureCue(cue) {
+  if (!cue) {
+    return '';
+  }
+
+  return `
+    <article class="culture-next-review-pressure-cue culture-next-review-pressure-cue--${cue.state}" aria-label="Pression culturelle après stabilisation">
+      <div class="culture-next-review-pressure-cue__header">
+        <span>Pression suivante</span>
+        <strong>${cue.pressure}</strong>
+      </div>
+      <small>Revue actuelle: ${cue.currentReviewState}</small>
+      <small>Déclencheur: ${cue.trigger}</small>
+      <small>Timing: ${cue.likelyTiming}</small>
+      <small>Effet lié: ${cue.expectedEffect}</small>
+      <small>Étape suivante: ${cue.nextStep} · restantes ${cue.remainingDependencyCount}</small>
+    </article>
+  `;
+}
+
 function renderCultureSidePanel(cultureView) {
   if (state.activeOverlaySlot !== 'culture-overlay') {
     return null;
@@ -21906,6 +21926,7 @@ function renderCultureSidePanel(cultureView) {
   const mediationWarnings = buildAtlasMediationSignalWarnings(cultureView, state.selectedProvinceId);
   const dependencyRetirementCue = focus?.cultureStabilizationSummary?.stabilizationDebtSummary?.nextCulturalDependencyRetirementCue ?? null;
   const reviewStabilizationCue = focus?.cultureStabilizationSummary?.stabilizationDebtSummary?.culturalReviewStabilizationCue ?? null;
+  const nextReviewPressureCue = focus?.cultureStabilizationSummary?.stabilizationDebtSummary?.nextReviewPressureCue ?? null;
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -21932,6 +21953,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureMediationSignalWarnings(mediationWarnings)}
       ${renderCultureDependencyRetirementCue(dependencyRetirementCue)}
       ${renderCultureReviewStabilizationCue(reviewStabilizationCue)}
+      ${renderCultureNextReviewPressureCue(nextReviewPressureCue)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">

@@ -914,6 +914,86 @@ function buildCulturalReviewStabilizationCue(
   };
 }
 
+function buildNextReviewPressureCue(
+  culturalReviewStabilizationCue,
+  nextCulturalDependencyRetirementCue,
+  dependencyRetirementRanking,
+  residualRiskAfterNextRetirement,
+  residualCultureFollowUpWindow,
+) {
+  const remainingFragility = residualRiskAfterNextRetirement.principalResidualFragility;
+  const laterDebt = dependencyRetirementRanking.find((debt) => debt.rank > (nextCulturalDependencyRetirementCue.targetRank ?? 1)) ?? null;
+  const reviewWindow = residualCultureFollowUpWindow.windowSummary;
+
+  if (remainingFragility?.urgency === 'high') {
+    return {
+      state: 'remaining-dependency',
+      pressure: remainingFragility.cause,
+      currentReviewState: culturalReviewStabilizationCue.reviewStability,
+      trigger: 'dépendance restante prioritaire',
+      likelyTiming: 'avant la revue suivante si elle n’est pas traitée',
+      expectedEffect: nextCulturalDependencyRetirementCue.expectedEffect,
+      reviewWindow,
+      remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
+      nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
+    };
+  }
+
+  if (culturalReviewStabilizationCue.state === 'no-reliable-proof') {
+    return {
+      state: 'no-reliable-pressure',
+      pressure: 'aucune pression fiable isolée',
+      currentReviewState: culturalReviewStabilizationCue.reviewStability,
+      trigger: culturalReviewStabilizationCue.openCulturalDebt,
+      likelyTiming: 'attendre une preuve avant la revue d’après',
+      expectedEffect: culturalReviewStabilizationCue.retirementBenefit,
+      reviewWindow,
+      remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
+      nextStep: culturalReviewStabilizationCue.nextReviewDecision,
+    };
+  }
+
+  if (residualCultureFollowUpWindow.status !== 'stable') {
+    return {
+      state: 'review-timing',
+      pressure: residualCultureFollowUpWindow.limitingConstraint,
+      currentReviewState: culturalReviewStabilizationCue.reviewStability,
+      trigger: 'fenêtre de revue encore fragile',
+      likelyTiming: reviewWindow,
+      expectedEffect: culturalReviewStabilizationCue.retirementBenefit,
+      reviewWindow,
+      remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
+      nextStep: residualCultureFollowUpWindow.nextDecision,
+    };
+  }
+
+  if (laterDebt) {
+    return {
+      state: laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+      pressure: laterDebt.cause,
+      currentReviewState: culturalReviewStabilizationCue.reviewStability,
+      trigger: laterDebt.type === 'bundle-dependency' ? 'unlock culturel encore fragile' : 'dette culturelle faible restante',
+      likelyTiming: 'revue d’après si la dette revient dans le focus',
+      expectedEffect: laterDebt.expectedGain,
+      reviewWindow,
+      remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
+      nextStep: laterDebt.nextAction,
+    };
+  }
+
+  return {
+    state: 'no-reliable-pressure',
+    pressure: 'aucune pression fiable après stabilisation',
+    currentReviewState: culturalReviewStabilizationCue.reviewStability,
+    trigger: 'aucune dette culturelle restante à projeter',
+    likelyTiming: 'pas de pression visible avant la revue d’après',
+    expectedEffect: culturalReviewStabilizationCue.retirementBenefit,
+    reviewWindow,
+    remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
+    nextStep: 'surveillance passive suffisante',
+  };
+}
+
 function buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement) {
   const fragility = residualRiskAfterNextRetirement.principalResidualFragility;
 
@@ -1458,6 +1538,13 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualRiskAfterNextRetirement,
     topRetirementRecoveryPreview,
   );
+  const nextReviewPressureCue = buildNextReviewPressureCue(
+    culturalReviewStabilizationCue,
+    nextCulturalDependencyRetirementCue,
+    dependencyRetirementRanking,
+    residualRiskAfterNextRetirement,
+    residualCultureFollowUpWindow,
+  );
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1483,6 +1570,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureSupportRedeploymentCue,
     nextCulturalDependencyRetirementCue,
     culturalReviewStabilizationCue,
+    nextReviewPressureCue,
     residualCulturePrematureRedeploymentRisk: buildResidualCulturePrematureRedeploymentRisk(residualCultureSupportRedeploymentCue),
   };
 }

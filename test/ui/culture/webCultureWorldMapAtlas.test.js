@@ -46,7 +46,7 @@ test('world map atlas renders culture influence zones from existing culture over
   assert.match(webAppSource, /buildAtlasPairedSupportRiskRelief/);
 });
 
-test('culture side panel renders the next cultural dependency retirement and review stabilization cues', () => {
+test('culture side panel renders the next cultural dependency, stabilization, and pressure cues', () => {
   assert.match(webAppSource, /function renderCultureDependencyRetirementCue/);
   assert.match(webAppSource, /Prochaine dépendance à retirer/);
   assert.match(webAppSource, /nextCulturalDependencyRetirementCue/);
@@ -55,10 +55,16 @@ test('culture side panel renders the next cultural dependency retirement and rev
   assert.match(webAppSource, /Revue stabilisée \?/);
   assert.match(webAppSource, /culturalReviewStabilizationCue/);
   assert.match(webAppSource, /focus\?\.cultureStabilizationSummary\?\.stabilizationDebtSummary\?\.culturalReviewStabilizationCue/);
+  assert.match(webAppSource, /function renderCultureNextReviewPressureCue/);
+  assert.match(webAppSource, /Pression suivante/);
+  assert.match(webAppSource, /nextReviewPressureCue/);
+  assert.match(webAppSource, /focus\?\.cultureStabilizationSummary\?\.stabilizationDebtSummary\?\.nextReviewPressureCue/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue--ready-after-recovery/);
   assert.match(stylesSource, /\.culture-review-stabilization-cue/);
   assert.match(stylesSource, /\.culture-review-stabilization-cue--critical-dependency-remaining/);
+  assert.match(stylesSource, /\.culture-next-review-pressure-cue/);
+  assert.match(stylesSource, /\.culture-next-review-pressure-cue--review-timing/);
 });
 
 test('world map atlas exposes discovery sites without adding a new culture source of truth', () => {
