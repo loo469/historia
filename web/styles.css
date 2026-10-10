@@ -12099,6 +12099,11 @@ button { font: inherit; }
 .atlas-military-fallback-order__redeployment-leftover-risk--watch-lightly { fill: #fde68a; }
 .atlas-military-fallback-order__redeployment-leftover-risk--recheck-soon { fill: #fdba74; }
 .atlas-military-fallback-order__redeployment-leftover-risk--unknown-fog-safe { fill: #bfdbfe; }
+.atlas-military-fallback-order__leftover-clear-condition { fill: #ccfbf1; font-size: 0.36px; font-weight: 900; }
+.atlas-military-fallback-order__leftover-clear-condition--completed-cleanup { fill: #bbf7d0; }
+.atlas-military-fallback-order__leftover-clear-condition--stable-follow-up { fill: #fde68a; }
+.atlas-military-fallback-order__leftover-clear-condition--elapsed-safe-window { fill: #fdba74; }
+.atlas-military-fallback-order__leftover-clear-condition--fog-limited { fill: #bfdbfe; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

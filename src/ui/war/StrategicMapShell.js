@@ -1431,6 +1431,56 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 
 
 
+
+function buildRedeploymentClearConditionCue(leftoverState, nextChoice = null, fallbackSafetyCutoff = null) {
+  const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
+  const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
+
+  if (leftoverState === 'unknown-fog-safe') {
+    return {
+      state: 'fog-limited',
+      label: 'Clear résiduel: impossible à confirmer',
+      cue: 'clear résiduel: impossible à confirmer',
+      signal: 'relecture fog-safe requise',
+      reason: 'ne révèle pas de cause cachée',
+      secondary: true,
+    };
+  }
+
+  if (leftoverState === 'recheck-soon') {
+    return {
+      state: 'elapsed-safe-window',
+      label: 'Clear résiduel: fenêtre sûre écoulée',
+      cue: 'clear résiduel: fenêtre sûre écoulée',
+      signal: cutoff ? `fenêtre tenue ${cutoff}` : 'fenêtre sûre tenue au prochain tour/action',
+      reason: 'attendre la fenêtre sûre avant de déclarer la zone claire',
+      secondary: true,
+    };
+  }
+
+  if (leftoverState === 'watch-lightly') {
+    return {
+      state: 'stable-follow-up',
+      label: 'Clear résiduel: suivi stable',
+      cue: 'clear résiduel: suivi stable',
+      signal: 'aucun nouveau signal sabotage visible',
+      reason: cleanupLabel
+        ? `${cleanupLabel} doit rester stable après redéploiement`
+        : 'surveillance légère jusqu’à stabilisation visible',
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'completed-cleanup',
+    label: 'Clear résiduel: cleanup complété',
+    cue: 'clear résiduel: cleanup complété',
+    signal: cleanupLabel || 'cleanup sûr complété',
+    reason: 'la zone nettoyée reste stable sans signal neuf',
+    secondary: true,
+  };
+}
+
 function buildRedeploymentLeftoverRiskCue(
   redeploymentState,
   recurrenceState,
@@ -1452,6 +1502,7 @@ function buildRedeploymentLeftoverRiskCue(
       residualRiskKey: cleanedRiskKey || null,
       reason: 'la cause cachée reste masquée après redéploiement',
       exposureBudget,
+      clearConditionCue: buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
   }
@@ -1467,6 +1518,7 @@ function buildRedeploymentLeftoverRiskCue(
         ? `recontrôler ${fallbackSafetyCutoff.cutoff}`
         : 'recontrôler avant nouvelle action',
       exposureBudget,
+      clearConditionCue: buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
   }
@@ -1480,6 +1532,7 @@ function buildRedeploymentLeftoverRiskCue(
       residualRiskKey: cleanedRiskKey || null,
       reason: `${nextChoice.cleanupOrderLabel} réduit le risque, mais garde une vérification légère`,
       exposureBudget,
+      clearConditionCue: buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
   }
@@ -1492,6 +1545,7 @@ function buildRedeploymentLeftoverRiskCue(
     residualRiskKey: cleanedRiskKey || null,
     reason: `${nextChoice.cleanupOrderLabel} stabilise la zone nettoyée`,
     exposureBudget,
+    clearConditionCue: buildRedeploymentClearConditionCue('stable', nextChoice, fallbackSafetyCutoff),
     secondary: true,
   };
 }
