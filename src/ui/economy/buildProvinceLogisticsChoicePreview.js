@@ -176,6 +176,84 @@ export function buildFreedDeliveryMarginCue(nextRouteDebtPayoffCue, safeDelivery
   };
 }
 
+
+export function buildNextDeliveryBottleneckCue(freedDeliveryMarginCue, routeSlack, nextStabilizerRecommendation, nextRouteDebtPayoffCue, afterSecondStabilizerDebt) {
+  if (!freedDeliveryMarginCue || freedDeliveryMarginCue.state === 'unknown') {
+    return {
+      state: 'unknown',
+      type: 'unknown',
+      label: 'Prochain goulot',
+      target: null,
+      summary: 'Prochain goulot: aucun signal fiable après marge libérée.',
+      reason: freedDeliveryMarginCue?.reason ?? 'La marge libérée ne peut pas encore être reliée à une livraison prioritaire.',
+    };
+  }
+
+  if (freedDeliveryMarginCue.state === 'blocked') {
+    return {
+      state: 'blocked',
+      type: 'debt',
+      label: 'Prochain goulot',
+      target: freedDeliveryMarginCue.target ?? nextRouteDebtPayoffCue?.target ?? null,
+      summary: `Prochain goulot: dette restante sur ${freedDeliveryMarginCue.target ?? nextRouteDebtPayoffCue?.target ?? 'la route prioritaire'}.`,
+      reason: freedDeliveryMarginCue.reason ?? nextRouteDebtPayoffCue?.benefit ?? 'La livraison reste bloquée par la dette de route.',
+    };
+  }
+
+  if (afterSecondStabilizerDebt?.state === 'debt') {
+    return {
+      state: 'debt',
+      type: 'debt',
+      label: 'Prochain goulot',
+      target: afterSecondStabilizerDebt.target,
+      summary: `Prochain goulot: dette restante sur ${afterSecondStabilizerDebt.target}.`,
+      reason: afterSecondStabilizerDebt.reason,
+    };
+  }
+
+  if (nextStabilizerRecommendation?.target && nextStabilizerRecommendation.state !== 'stable') {
+    return {
+      state: nextStabilizerRecommendation.state === 'urgent' ? 'urgent' : 'watch',
+      type: 'stabilizer',
+      label: 'Prochain goulot',
+      target: nextStabilizerRecommendation.target,
+      summary: `Prochain goulot: stabilisateur ${nextStabilizerRecommendation.target}.`,
+      reason: nextStabilizerRecommendation.reason ?? 'Stabilisateur prioritaire après marge libérée.',
+    };
+  }
+
+  if (freedDeliveryMarginCue.state === 'local-only') {
+    return {
+      state: 'local-only',
+      type: 'route',
+      label: 'Prochain goulot',
+      target: freedDeliveryMarginCue.target ?? nextRouteDebtPayoffCue?.target ?? routeSlack?.bottleneck ?? null,
+      summary: `Prochain goulot: route ${freedDeliveryMarginCue.target ?? nextRouteDebtPayoffCue?.target ?? routeSlack?.bottleneck ?? 'locale'} encore locale.`,
+      reason: freedDeliveryMarginCue.reason ?? 'Le remboursement réduit surtout le risque local sans sécuriser la livraison suivante.',
+    };
+  }
+
+  if (routeSlack?.state === 'tight' && routeSlack.bottleneck) {
+    return {
+      state: 'watch',
+      type: /capacité|outil|ressource/i.test(routeSlack.bottleneck) ? 'capacity' : 'route',
+      label: 'Prochain goulot',
+      target: routeSlack.bottleneck,
+      summary: `Prochain goulot: ${routeSlack.bottleneck}.`,
+      reason: routeSlack.summary,
+    };
+  }
+
+  return {
+    state: 'clear',
+    type: 'none',
+    label: 'Prochain goulot',
+    target: null,
+    summary: 'Prochain goulot: aucun goulot fiable détecté après marge libérée.',
+    reason: freedDeliveryMarginCue.reason ?? 'La prochaine livraison reste couverte par les signaux actuels.',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -1499,6 +1577,29 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               },
               null,
             ),
+            nextDeliveryBottleneckCue: buildNextDeliveryBottleneckCue(
+              buildFreedDeliveryMarginCue(
+                buildNextRouteDebtPayoffCue({
+                  state: 'safe',
+                  nextSafeDelivery: 'prochaine livraison sûre',
+                  routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+                }, { state: 'stable' }, null),
+                {
+                  state: 'safe',
+                  nextSafeDelivery: 'prochaine livraison sûre',
+                  routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+                },
+                null,
+              ),
+              { state: 'comfortable', bottleneck: null },
+              { state: 'stable', target: null },
+              buildNextRouteDebtPayoffCue({
+                state: 'safe',
+                nextSafeDelivery: 'prochaine livraison sûre',
+                routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+              }, { state: 'stable' }, null),
+              null,
+            ),
           },
         };
       }
@@ -1697,6 +1798,99 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
               : primaryConsumer.tone === 'blocked'
                 ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
                 : null,
+          ),
+          nextDeliveryBottleneckCue: buildNextDeliveryBottleneckCue(
+            buildFreedDeliveryMarginCue(
+              buildNextRouteDebtPayoffCue({
+                state: primaryConsumer.tone === 'blocked' ? 'insufficient' : 'recoverable',
+                recovery: primaryConsumer.label,
+                nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+                routeConstraint: primaryConsumer.tone === 'blocked'
+                  ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+                  : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+                afterDeliveryFragility: {
+                  target: nextConsumer?.label ?? (primaryConsumer.tone === 'blocked' ? primaryConsumer.label : null),
+                },
+              }, nextConsumer
+                ? {
+                  state: nextConsumer.tone === 'blocked' ? 'urgent' : 'watch',
+                  target: nextConsumer.label,
+                  reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+                }
+                : primaryConsumer.tone === 'blocked'
+                  ? {
+                    state: 'urgent',
+                    target: primaryConsumer.label,
+                    reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+                  }
+                  : { state: 'stable', target: null },
+              nextConsumer
+                ? buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label)
+                : primaryConsumer.tone === 'blocked'
+                  ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
+                  : null),
+              {
+                state: primaryConsumer.tone === 'blocked' ? 'insufficient' : 'recoverable',
+                nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+                routeConstraint: primaryConsumer.tone === 'blocked'
+                  ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+                  : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+              },
+              nextConsumer
+                ? buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label)
+                : primaryConsumer.tone === 'blocked'
+                  ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
+                  : null,
+            ),
+            {
+              state: primaryConsumer.tone === 'blocked' ? 'tight' : 'comfortable',
+              bottleneck: primaryConsumer.label,
+              summary: primaryConsumer.tone === 'blocked'
+                ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+                : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+            },
+            nextConsumer
+              ? {
+                state: nextConsumer.tone === 'blocked' ? 'urgent' : 'watch',
+                target: nextConsumer.label,
+                reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+              }
+              : primaryConsumer.tone === 'blocked'
+                ? {
+                  state: 'urgent',
+                  target: primaryConsumer.label,
+                  reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+                }
+                : { state: 'stable', target: null },
+            buildNextRouteDebtPayoffCue({
+              state: primaryConsumer.tone === 'blocked' ? 'insufficient' : 'recoverable',
+              recovery: primaryConsumer.label,
+              nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+              routeConstraint: primaryConsumer.tone === 'blocked'
+                ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+                : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+              afterDeliveryFragility: {
+                target: nextConsumer?.label ?? (primaryConsumer.tone === 'blocked' ? primaryConsumer.label : null),
+              },
+            }, nextConsumer
+              ? {
+                state: nextConsumer.tone === 'blocked' ? 'urgent' : 'watch',
+                target: nextConsumer.label,
+                reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+              }
+              : primaryConsumer.tone === 'blocked'
+                ? {
+                  state: 'urgent',
+                  target: primaryConsumer.label,
+                  reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+                }
+                : { state: 'stable', target: null },
+            nextConsumer
+              ? buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label)
+              : primaryConsumer.tone === 'blocked'
+                ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
+                : null),
+            afterSecondStabilizerDebt,
           ),
         },
       };
