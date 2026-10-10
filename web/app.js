@@ -15302,6 +15302,31 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
           detail: `renfort encore à temps: garder ${nextWatchAfterBackupCandidate.label} sous surveillance jusqu’à ${nextClimateWindow}`,
           signal: climateMandatoryReinforcementTrigger.signal,
         };
+  const timelyReinforcementCostCue = mandatoryReinforcementTimingCue.state === 'still-timely'
+    || mandatoryReinforcementTimingCue.state === 'tight-window'
+    ? secondaryUpkeep.state === 'available'
+      ? {
+        state: 'delays-upkeep',
+        label: 'coût principal: upkeep différé',
+        detail: `agir maintenant reporte ${secondaryUpkeep.action}; ${secondaryUpkeep.reason}`,
+        whyNow: mandatoryReinforcementTimingCue.detail,
+      }
+      : nextSecondaryRisk
+        ? {
+          state: 'delays-secondary-watch',
+          label: `coût principal: retarde ${nextSecondaryRisk.label}`,
+          detail: `renfort maintenant repousse la surveillance de ${nextSecondaryRisk.label}; ${nextSecondaryRisk.reason}`,
+          whyNow: mandatoryReinforcementTimingCue.detail,
+        }
+        : marginRearmReview
+          ? {
+            state: 'delays-review',
+            label: 'coût principal: review différée',
+            detail: `renfort maintenant retarde le réarmement de review; ${marginRearmReview.detail}`,
+            whyNow: mandatoryReinforcementTimingCue.detail,
+          }
+          : null
+    : null;
 
   return {
     state: 'watch',
@@ -15334,6 +15359,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       nextClimateWatchReinforcementCue,
       climateMandatoryReinforcementTrigger,
       mandatoryReinforcementTimingCue,
+      timelyReinforcementCostCue,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15392,6 +15418,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__reinforcement map-world-climate-post-gap-watch__reinforcement--${view.watchItem.nextClimateWatchReinforcementCue.state}"><b>Renfort ou surveillance</b> · ${view.watchItem.nextClimateWatchReinforcementCue.label}: ${view.watchItem.nextClimateWatchReinforcementCue.detail}; ${view.watchItem.nextClimateWatchReinforcementCue.reason}</small>
       <small class="map-world-climate-post-gap-watch__trigger map-world-climate-post-gap-watch__trigger--${view.watchItem.climateMandatoryReinforcementTrigger.state}"><b>Déclencheur de renfort</b> · ${view.watchItem.climateMandatoryReinforcementTrigger.label}: ${view.watchItem.climateMandatoryReinforcementTrigger.detail}; ${view.watchItem.climateMandatoryReinforcementTrigger.signal}</small>
       <small class="map-world-climate-post-gap-watch__timing map-world-climate-post-gap-watch__timing--${view.watchItem.mandatoryReinforcementTimingCue.state}"><b>Encore à temps ?</b> · ${view.watchItem.mandatoryReinforcementTimingCue.label}: ${view.watchItem.mandatoryReinforcementTimingCue.detail}; signal prioritaire: ${view.watchItem.mandatoryReinforcementTimingCue.signal}</small>
+      ${view.watchItem.timelyReinforcementCostCue ? `<small class="map-world-climate-post-gap-watch__cost map-world-climate-post-gap-watch__cost--${view.watchItem.timelyReinforcementCostCue.state}"><b>Coût du renfort</b> · ${view.watchItem.timelyReinforcementCostCue.label}: ${view.watchItem.timelyReinforcementCostCue.detail}; pourquoi maintenant: ${view.watchItem.timelyReinforcementCostCue.whyNow}</small>` : ''}
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
