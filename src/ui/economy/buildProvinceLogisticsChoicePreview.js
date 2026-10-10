@@ -467,6 +467,47 @@ export function buildFreedMarginSpendableWhenCue(freedMarginBufferWarningCue, fr
   };
 }
 
+
+export function buildFreedMarginPreSpendCheckCue(freedMarginBufferWarningCue, freedMarginSpendableWhenCue, freedMarginReinvestmentCue, nextDeliveryBottleneckCue, routeSlack, safeDeliveryUnlock) {
+  if (freedMarginBufferWarningCue && freedMarginSpendableWhenCue) {
+    const target = freedMarginSpendableWhenCue.target
+      ?? freedMarginBufferWarningCue.target
+      ?? nextDeliveryBottleneckCue?.target
+      ?? routeSlack?.bottleneck
+      ?? safeDeliveryUnlock?.nextSafeDelivery
+      ?? null;
+    const checkByType = {
+      debt: 'dette soldée',
+      stabilizer: 'stabilisateur couvert',
+      capacity: 'capacité disponible',
+      route: 'route stabilisée',
+      'next-bottleneck': 'goulot levé',
+    };
+    return {
+      state: 'blocked-check',
+      type: freedMarginSpendableWhenCue.type ?? freedMarginBufferWarningCue.type ?? 'next-bottleneck',
+      label: 'Check avant dépense',
+      target,
+      summary: `Check avant dépense: ${checkByType[freedMarginSpendableWhenCue.type] ?? 'goulot levé'}${target ? ` sur ${target}` : ''}.`,
+      reason: freedMarginSpendableWhenCue.summary ?? freedMarginBufferWarningCue.reason ?? 'Conserver le buffer tant que ce contrôle reste faux.',
+    };
+  }
+
+  if (freedMarginReinvestmentCue?.state === 'reinvest-now' && (!nextDeliveryBottleneckCue || nextDeliveryBottleneckCue.type === 'none' || nextDeliveryBottleneckCue.state === 'clear')) {
+    const target = freedMarginReinvestmentCue.target ?? safeDeliveryUnlock?.nextSafeDelivery ?? routeSlack?.bottleneck ?? null;
+    return {
+      state: 'safe-spend',
+      type: 'clear',
+      label: 'Check avant dépense',
+      target,
+      summary: `Check avant dépense: aucun bloqueur restant${target ? ` sur ${target}` : ''}.`,
+      reason: freedMarginReinvestmentCue.reason ?? safeDeliveryUnlock?.routeConstraint ?? 'La marge peut être dépensée sans retirer une protection visible.',
+    };
+  }
+
+  return null;
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -2136,6 +2177,16 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
       if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue) {
         routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue = buildFreedMarginSpendableWhenCue(
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue = buildFreedMarginPreSpendCheckCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
           routeSlack,
