@@ -777,3 +777,17 @@ test('atlas military shows tradeoff before committing reopened advance', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff--balanced/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff--risky/);
 });
+
+// MAP-A64: after a reopened advance is committed, keep the map readable by
+// confirming the resulting front state and the remaining margin or risk.
+test('atlas military confirms front state after committing reopened advance', () => {
+  assert.match(webAppSource, /const lightFollowUpReopenedAdvanceConfirmation = lightFollowUpReopenedAdvanceTradeoff/);
+  assert.match(webAppSource, /label: 'Après avance: front confirmé'/);
+  assert.match(webAppSource, /\$\{securedProvince\} sécurisé · coût consommé: \$\{committedAction\} · \$\{margin\}/);
+  assert.match(webAppSource, /marge: \$\{residualRisk\.label\} · prochain risque:/);
+  assert.match(webAppSource, /lightFollowUpReopenedAdvanceConfirmation,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpReopenedAdvanceConfirmation \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpReopenedAdvanceConfirmation \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 38\.95 : 37\.6/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation--secured/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation--watch/);
+});

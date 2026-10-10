@@ -15099,7 +15099,8 @@ button { font: inherit; }
 .atlas-military-neighbor-blocked-follow-up-ladder__hold-watch,
 .atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness,
 .atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger,
-.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff {
+.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff,
+.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation {
   fill: #ddd6fe;
   font-size: 0.42px;
 }
@@ -15168,6 +15169,8 @@ button { font: inherit; }
 .atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger--prepare { fill: #fde68a; }
 .atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff--balanced { fill: #bfdbfe; }
 .atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff--risky { fill: #fdba74; }
+.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation--secured { fill: #86efac; }
+.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation--watch { fill: #fde68a; }
 .atlas-military-neighbor-blocked-follow-up-alt__delay--acceptable { fill: #bbf7d0; }
 .atlas-military-neighbor-blocked-follow-up-alt__delay--risky { fill: #fecdd3; }
 .atlas-military-neighbor-review-priority__label,
