@@ -21674,6 +21674,25 @@ function renderCultureMediationSignalWarnings(warnings) {
   `;
 }
 
+function renderCultureDependencyRetirementCue(cue) {
+  if (!cue) {
+    return '';
+  }
+
+  return `
+    <article class="culture-dependency-retirement-cue culture-dependency-retirement-cue--${cue.state}" aria-label="Prochaine dépendance culturelle à retirer">
+      <div class="culture-dependency-retirement-cue__header">
+        <span>Prochaine dépendance à retirer</span>
+        <strong>${cue.target ?? 'Revue peut attendre'}</strong>
+      </div>
+      <small>Effet attendu: ${cue.expectedEffect}</small>
+      <small>Pourquoi: ${cue.reason}</small>
+      <small>Fenêtre: ${cue.reviewWindow}</small>
+      ${cue.targetType ? `<small>Type ${cue.targetType} · rang #${cue.targetRank} · restantes ${cue.remainingDependencyCount}</small>` : `<small>${cue.guidance}</small>`}
+    </article>
+  `;
+}
+
 function renderCultureSidePanel(cultureView) {
   if (state.activeOverlaySlot !== 'culture-overlay') {
     return null;
@@ -21705,6 +21724,7 @@ function renderCultureSidePanel(cultureView) {
     selectedCluster,
   });
   const mediationWarnings = buildAtlasMediationSignalWarnings(cultureView, state.selectedProvinceId);
+  const dependencyRetirementCue = focus?.cultureStabilizationSummary?.stabilizationDebtSummary?.nextCulturalDependencyRetirementCue ?? null;
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -21729,6 +21749,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureInterventionPriorities(interventionPriorities)}
       ${renderCultureBlockerResolutionHistory(blockerHistory)}
       ${renderCultureMediationSignalWarnings(mediationWarnings)}
+      ${renderCultureDependencyRetirementCue(dependencyRetirementCue)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">
