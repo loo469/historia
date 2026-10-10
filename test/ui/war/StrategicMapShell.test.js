@@ -1565,6 +1565,15 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
           reason: 'Dissiper attention résiduelle laisse la zone assez claire',
           secondary: true,
         },
+        deprioritizationCue: {
+          state: 'deprioritize-now',
+          label: 'Dépriorisation intrigue: possible',
+          cue: 'dépriorisation intrigue: possible',
+          decision: 'baisser la priorité intrigue maintenant',
+          condition: 'redéploiement libre',
+          reason: 'aucun suivi résiduel requis après containment',
+          secondary: true,
+        },
         secondary: true,
       },
       secondary: true,
@@ -1702,6 +1711,40 @@ test('StrategicMapShell shows what remains to watch after containment', () => {
       watch: 'Dissiper attention résiduelle reste à stabiliser',
       condition: 'Dissiper attention résiduelle',
       reason: 'le risque est contenu, mais pas assez clair pour libérer toute l’attention',
+      secondary: true,
+    },
+  );
+});
+
+test('StrategicMapShell shows when contained intrigue can be deprioritized', () => {
+  const shell = buildStrategicMapShell([
+    createProvince({ id: 'front-a', name: 'Front A' }),
+    createProvince({ id: 'front-b', name: 'Front B' }),
+  ], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-b', label: 'rumeur front B' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 50 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue
+      .leftoverRiskCue.deprioritizationCue,
+    {
+      state: 'light-watch-sufficient',
+      label: 'Dépriorisation intrigue: veille légère suffit',
+      cue: 'dépriorisation intrigue: veille légère suffit',
+      decision: 'baisser la priorité, garder une veille légère',
+      condition: 'Dissiper attention résiduelle',
+      reason: 'Dissiper attention résiduelle reste à stabiliser',
       secondary: true,
     },
   );

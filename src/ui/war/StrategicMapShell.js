@@ -1700,6 +1700,65 @@ function buildPostContainmentWatchCue(
   };
 }
 
+
+function buildContainedIntrigueDeprioritizationCue(
+  postContainmentWatchCue = null,
+  containmentPayoffCue = null,
+  clearConditionCue = null,
+) {
+  const watchState = String(postContainmentWatchCue?.state ?? '').trim();
+
+  if (watchState === 'closed-release-attention') {
+    return {
+      state: 'deprioritize-now',
+      label: 'Dépriorisation intrigue: possible',
+      cue: 'dépriorisation intrigue: possible',
+      decision: 'baisser la priorité intrigue maintenant',
+      condition: postContainmentWatchCue?.condition ?? 'redéploiement libre',
+      reason: 'aucun suivi résiduel requis après containment',
+      secondary: true,
+    };
+  }
+
+  if (watchState === 'stable-watch') {
+    return {
+      state: 'light-watch-sufficient',
+      label: 'Dépriorisation intrigue: veille légère suffit',
+      cue: 'dépriorisation intrigue: veille légère suffit',
+      decision: 'baisser la priorité, garder une veille légère',
+      condition: clearConditionCue?.signal ?? postContainmentWatchCue?.condition ?? 'suivi stable sans nouveau sabotage visible',
+      reason: containmentPayoffCue?.remainingRisk ?? 'risque contenu mais encore surveillé',
+      secondary: true,
+    };
+  }
+
+  if (watchState === 'slowed-recheck') {
+    return {
+      state: 'blocked-active-slowed',
+      label: 'Dépriorisation intrigue: attendre recheck',
+      cue: 'dépriorisation intrigue: attendre recheck',
+      decision: 'ne pas baisser la priorité avant recheck',
+      condition: postContainmentWatchCue?.condition ?? 'recheck avant nouvelle action',
+      reason: 'risque encore actif mais ralenti',
+      secondary: true,
+    };
+  }
+
+  if (watchState === 'fog-safe-watch') {
+    return {
+      state: 'blocked-fog-safe',
+      label: 'Dépriorisation intrigue: bloquée fog-safe',
+      cue: 'dépriorisation intrigue: bloquée fog-safe',
+      decision: 'garder la priorité tant que la lecture fog-safe reste incomplète',
+      condition: postContainmentWatchCue?.condition ?? 'relecture fog-safe avant libération',
+      reason: 'le risque caché ne doit pas être masqué par une baisse de priorité',
+      secondary: true,
+    };
+  }
+
+  return null;
+}
+
 function buildRedeploymentInterimActionCue(leftoverState, nextChoice = null, fallbackSafetyCutoff = null) {
   const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
   const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
@@ -1816,6 +1875,7 @@ function buildRedeploymentLeftoverRiskCue(
       containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
       containmentPayoffCue: buildContainmentPayoffCue('unknown-fog-safe', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
       postContainmentWatchCue: buildPostContainmentWatchCue('unknown-fog-safe', buildContainmentPayoffCue('unknown-fog-safe', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff),
+      deprioritizationCue: buildContainedIntrigueDeprioritizationCue(buildPostContainmentWatchCue('unknown-fog-safe', buildContainmentPayoffCue('unknown-fog-safe', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff), buildContainmentPayoffCue('unknown-fog-safe', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff)),
       interimActionCue: buildRedeploymentInterimActionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1837,6 +1897,7 @@ function buildRedeploymentLeftoverRiskCue(
       containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
       containmentPayoffCue: buildContainmentPayoffCue('recheck-soon', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
       postContainmentWatchCue: buildPostContainmentWatchCue('recheck-soon', buildContainmentPayoffCue('recheck-soon', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff),
+      deprioritizationCue: buildContainedIntrigueDeprioritizationCue(buildPostContainmentWatchCue('recheck-soon', buildContainmentPayoffCue('recheck-soon', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff), buildContainmentPayoffCue('recheck-soon', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff)),
       interimActionCue: buildRedeploymentInterimActionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1856,6 +1917,7 @@ function buildRedeploymentLeftoverRiskCue(
       containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
       containmentPayoffCue: buildContainmentPayoffCue('watch-lightly', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
       postContainmentWatchCue: buildPostContainmentWatchCue('watch-lightly', buildContainmentPayoffCue('watch-lightly', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff),
+      deprioritizationCue: buildContainedIntrigueDeprioritizationCue(buildPostContainmentWatchCue('watch-lightly', buildContainmentPayoffCue('watch-lightly', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff), buildContainmentPayoffCue('watch-lightly', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff)),
       interimActionCue: buildRedeploymentInterimActionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1874,6 +1936,7 @@ function buildRedeploymentLeftoverRiskCue(
     containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
     containmentPayoffCue: buildContainmentPayoffCue('stable', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
     postContainmentWatchCue: buildPostContainmentWatchCue('stable', buildContainmentPayoffCue('stable', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('stable', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff),
+    deprioritizationCue: buildContainedIntrigueDeprioritizationCue(buildPostContainmentWatchCue('stable', buildContainmentPayoffCue('stable', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('stable', nextChoice, fallbackSafetyCutoff), fallbackSafetyCutoff), buildContainmentPayoffCue('stable', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff), buildRedeploymentClearConditionCue('stable', nextChoice, fallbackSafetyCutoff)),
     secondary: true,
   };
 }
