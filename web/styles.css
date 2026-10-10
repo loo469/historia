@@ -14104,6 +14104,17 @@ button { font: inherit; }
 .map-world-climate-post-gap-watch__resume-ready--backup-restored { border: 1px solid rgba(45, 212, 191, 0.34); }
 .map-world-climate-post-gap-watch__resume-ready--pressure-lowered { border: 1px solid rgba(251, 146, 60, 0.36); }
 .map-world-climate-post-gap-watch__resume-ready--warning-cleared { border: 1px solid rgba(125, 211, 252, 0.34); }
+.map-world-climate-post-gap-watch__safety-confirmation {
+  display: block;
+  padding: 0.38rem 0.48rem;
+  border-radius: 0.55rem;
+  background: rgba(15, 23, 42, 0.42);
+}
+.map-world-climate-post-gap-watch__safety-confirmation--fallback-light-watch { border: 1px solid rgba(74, 222, 128, 0.34); }
+.map-world-climate-post-gap-watch__safety-confirmation--fallback-ended { border: 1px solid rgba(45, 212, 191, 0.36); }
+.map-world-climate-post-gap-watch__safety-confirmation--backup-covered-watch { border: 1px solid rgba(34, 211, 238, 0.34); }
+.map-world-climate-post-gap-watch__safety-confirmation--new-priority-separated { border: 1px solid rgba(251, 146, 60, 0.36); }
+.map-world-climate-post-gap-watch__safety-confirmation--warning-watch-light { border: 1px solid rgba(125, 211, 252, 0.34); }
 .map-world-climate-post-gap-watch__ladder {
   padding: 4px 8px;
   border-radius: 11px;
