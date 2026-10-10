@@ -1006,6 +1006,16 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         remainingDependencyCount: 2,
         guidance: 'stabilité récupérée: le tradeoff culturel cesse de nourrir la dette prioritaire → simplifie la séquence de soutien et clarifie la prochaine action culturelle',
       },
+      culturalReviewStabilizationCue: {
+        state: 'partial-effect',
+        reviewStability: 'effet partiel',
+        retirementBenefit: 'simplifie la séquence de soutien et clarifie la prochaine action culturelle',
+        openCulturalDebt: 'risque restant: isolement du support reste medium',
+        reviewWindow: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
+        nextReviewDecision: 'surveiller les relais savants et le rythme d’ouverture',
+        remainingDependencyCount: 2,
+        unlockEvidence: 'stability',
+      },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
         culturalCost: 'coût possible: tension locale peut réduire la stabilité culturelle',
@@ -1168,6 +1178,16 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         reviewWindow: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
         remainingDependencyCount: 0,
         guidance: 'confirmer la récupération prioritaire avant de rouvrir une nouvelle dépendance',
+      },
+      culturalReviewStabilizationCue: {
+        state: 'stabilized',
+        reviewStability: 'revue stabilisée',
+        retirementBenefit: 'aucune récupération culturelle prioritaire',
+        openCulturalDebt: 'aucune dépendance critique restante après ce retrait',
+        reviewWindow: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
+        nextReviewDecision: 'confirmer la prochaine revue sans rouvrir de dette culturelle',
+        remainingDependencyCount: 0,
+        unlockEvidence: 'none',
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'safe',
