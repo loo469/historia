@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildAfterSecondStabilizerDebtForConsumers,
+  buildBufferPostSpendConfirmationCue,
   buildFreedDeliveryMarginCue,
   buildFirstSpendableBufferUseCue,
   buildFirstSpendBufferConsequenceCue,
@@ -217,6 +218,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue.target, 'Hill Spur');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue.summary, /Dépense du buffer: consomme réserve de stabilisation sur Hill Spur/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue.state, 'tradeoff-left');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue.summary, /Après dépense: stabilisateur renforcé sur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -689,6 +693,38 @@ test('buildFirstSpendBufferConsequenceCue explains what first buffer spend consu
   assert.equal(spendNow.saferAlternative, 'garder la marge de route en réserve');
 
   assert.equal(buildFirstSpendBufferConsequenceCue(null, null, null, null, null), null);
+});
+
+test('buildBufferPostSpendConfirmationCue separates benefit from remaining buffer', () => {
+  const riskyConfirmation = buildBufferPostSpendConfirmationCue(
+    { state: 'spend-after-unblock', type: 'debt', target: 'Safe Road', saferAlternative: 'garder le buffer jusqu’à dette soldée' },
+    { state: 'after-unblock', type: 'debt', target: 'Safe Road', reason: 'Dépensable après dette soldée sur Safe Road.' },
+    { state: 'blocked-check', type: 'debt', target: 'Safe Road', summary: 'Check avant dépense: dette restante sur Safe Road.' },
+    { type: 'debt', target: 'Safe Road', summary: 'Prochain goulot: dette route sur Safe Road.' },
+    { state: 'tight', bottleneck: 'Safe Road' },
+    { nextSafeDelivery: 'Safe Road' },
+  );
+  assert.equal(riskyConfirmation.state, 'tradeoff-left');
+  assert.equal(riskyConfirmation.type, 'debt');
+  assert.match(riskyConfirmation.summary, /Après dépense: dette route soldée sur Safe Road/);
+  assert.match(riskyConfirmation.remaining, /surveiller la dette suivante/);
+  assert.equal(riskyConfirmation.tradeoff, 'Tradeoff restant: garder le buffer jusqu’à dette soldée.');
+
+  const safeConfirmation = buildBufferPostSpendConfirmationCue(
+    { state: 'spend-now', type: 'route', target: 'Hill Spur', saferAlternative: 'garder la marge de route en réserve' },
+    { state: 'spendable-now', type: 'route', target: 'Hill Spur', reason: 'route sûre' },
+    { state: 'safe-spend', type: 'clear', target: 'Hill Spur', summary: 'Check avant dépense: aucun bloqueur restant sur Hill Spur.' },
+    { type: 'none', target: null, summary: 'Prochain goulot: aucun.' },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur' },
+  );
+  assert.equal(safeConfirmation.state, 'confirmed');
+  assert.equal(safeConfirmation.type, 'route');
+  assert.match(safeConfirmation.summary, /Après dépense: route sécurisée sur Hill Spur/);
+  assert.match(safeConfirmation.remaining, /marge de route restante/);
+  assert.equal(safeConfirmation.tradeoff, null);
+
+  assert.equal(buildBufferPostSpendConfirmationCue(null, null, null, null, null, null), null);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
