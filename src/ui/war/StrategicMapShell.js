@@ -1430,6 +1430,49 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 
 
 
+
+function buildSurveillanceRedeploymentCue(state, postCleanupRisks, safeAction = null, cutoff = null) {
+  const nextRisk = postCleanupRisks.find((risk) => String(risk.key ?? '').trim()) ?? null;
+  const riskLabel = String(nextRisk?.label ?? '').trim();
+  const targetId = getRiskLocationId(nextRisk?.key ?? '');
+
+  if (state === 'surveillance-extended' && nextRisk) {
+    return {
+      state: 'redeploy-next-target',
+      label: `Redéploiement surveillance: ${riskLabel || 'trace résiduelle'}`,
+      cue: `redéploiement surveillance: ${riskLabel || 'trace résiduelle'}`,
+      targetId,
+      residualRiskKey: String(nextRisk.key ?? '').trim(),
+      reason: 'surveiller la prochaine trace visible après cleanup sûr',
+      secondary: true,
+    };
+  }
+
+  if (state === 'condition-met') {
+    return {
+      state: 'stand-down',
+      label: 'Redéploiement surveillance: repos discret',
+      cue: 'redéploiement surveillance: repos discret',
+      targetId: null,
+      residualRiskKey: null,
+      reason: safeAction
+        ? `${safeAction} libère la surveillance sans cible visible`
+        : 'aucune cible visible ne justifie un redéploiement',
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'hold-position',
+    label: 'Redéploiement surveillance: attendre',
+    cue: 'redéploiement surveillance: attendre',
+    targetId: null,
+    residualRiskKey: null,
+    reason: cutoff ? `attendre ${cutoff}` : 'attendre une confirmation fog-safe',
+    secondary: true,
+  };
+}
+
 function buildSurveillanceEndCue(
   recurrenceState,
   nextChoice,
@@ -1449,6 +1492,7 @@ function buildSurveillanceEndCue(
       reason: 'la cause cachée reste masquée',
       cutoff,
       exposureBudget,
+      redeploymentCue: buildSurveillanceRedeploymentCue('unknown-fog-safe', postCleanupRisks, safeAction, cutoff),
       secondary: true,
     };
   }
@@ -1462,6 +1506,7 @@ function buildSurveillanceEndCue(
       reason: 'l’arrêt dépend d’une nouvelle lecture sûre',
       cutoff,
       exposureBudget,
+      redeploymentCue: buildSurveillanceRedeploymentCue('wait-for-window', postCleanupRisks, safeAction, cutoff),
       secondary: true,
     };
   }
@@ -1476,6 +1521,7 @@ function buildSurveillanceEndCue(
       reason: 'un risque visible reste déplacé après le cleanup',
       cutoff,
       exposureBudget,
+      redeploymentCue: buildSurveillanceRedeploymentCue('surveillance-extended', postCleanupRisks, safeAction, cutoff),
       secondary: true,
     };
   }
@@ -1491,6 +1537,7 @@ function buildSurveillanceEndCue(
         : 'baisse de réapparition à confirmer',
       cutoff,
       exposureBudget,
+      redeploymentCue: buildSurveillanceRedeploymentCue('surveillance-extended', postCleanupRisks, safeAction, cutoff),
       secondary: true,
     };
   }
@@ -1505,6 +1552,7 @@ function buildSurveillanceEndCue(
     reason: 'la réapparition visible est réduite sans révéler de cause cachée',
     cutoff,
     exposureBudget,
+    redeploymentCue: buildSurveillanceRedeploymentCue('condition-met', postCleanupRisks, safeAction, cutoff),
     secondary: true,
   };
 }
