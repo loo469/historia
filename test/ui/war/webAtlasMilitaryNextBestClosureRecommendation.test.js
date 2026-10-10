@@ -762,3 +762,18 @@ test('atlas military shows the next safe advance trigger after a stale hold', ()
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger--trigger/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__stale-advance-trigger--prepare/);
 });
+
+// MAP-A63: before committing a reopened advance, show the compact benefit/cost
+// tradeoff only when the advance is available after stale hold recovery.
+test('atlas military shows tradeoff before committing reopened advance', () => {
+  assert.match(webAppSource, /const lightFollowUpReopenedAdvanceTradeoff = lightFollowUpStaleAdvanceTrigger\?\.tone === 'trigger' && lightFollowUpAdvanceWindow\?\.tone === 'advance'/);
+  assert.match(webAppSource, /label: 'Tradeoff avance rouverte'/);
+  assert.match(webAppSource, /gain: \$\{benefit\} · coût: \$\{cost\}/);
+  assert.match(webAppSource, /expose \$\{residualRisk\.provinceLabel/);
+  assert.match(webAppSource, /consomme le buffer de hold/);
+  assert.match(webAppSource, /lightFollowUpReopenedAdvanceTradeoff,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpReopenedAdvanceTradeoff \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpReopenedAdvanceTradeoff \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 37\.6 : 36\.25/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff--balanced/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-tradeoff--risky/);
+});
