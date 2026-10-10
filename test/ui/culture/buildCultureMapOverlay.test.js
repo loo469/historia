@@ -1040,6 +1040,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           condition: 'réévaluer la médiation ou le support local au prochain tour',
           retiresPressure: 'montre que médiation ne referme plus la fenêtre',
         },
+        nextUsefulCultureStepCue: {
+          state: 'confirm-review-window',
+          step: 'réévaluer la médiation ou le support local au prochain tour',
+          reason: 'fenêtre clarifiée: vérifier que médiation reste bornée',
+          urgency: 'next',
+        },
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
@@ -1236,6 +1242,12 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           evidence: 'aucune preuve fiable',
           condition: 'attendre un signal culturel plus net',
           retiresPressure: 'ne retire pas la pression sans dépendance, unlock ou revue confirmée',
+        },
+        nextUsefulCultureStepCue: {
+          state: 'no-immediate-follow-up',
+          step: 'aucun suivi culturel immédiat requis',
+          reason: 'aucune pression culturelle fiable ne demande une action dédiée',
+          urgency: 'none',
         },
       },
       residualCulturePrematureRedeploymentRisk: {
