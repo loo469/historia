@@ -12104,6 +12104,11 @@ button { font: inherit; }
 .atlas-military-fallback-order__leftover-clear-condition--stable-follow-up { fill: #fde68a; }
 .atlas-military-fallback-order__leftover-clear-condition--elapsed-safe-window { fill: #fdba74; }
 .atlas-military-fallback-order__leftover-clear-condition--fog-limited { fill: #bfdbfe; }
+.atlas-military-fallback-order__leftover-interim-action { fill: #fef3c7; font-size: 0.36px; font-weight: 900; }
+.atlas-military-fallback-order__leftover-interim-action--continue-light-watch { fill: #fde68a; }
+.atlas-military-fallback-order__leftover-interim-action--recheck-before-window { fill: #fdba74; }
+.atlas-military-fallback-order__leftover-interim-action--fog-safe-recheck { fill: #bfdbfe; }
+.atlas-military-fallback-order__leftover-interim-action--none { fill: #bbf7d0; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);

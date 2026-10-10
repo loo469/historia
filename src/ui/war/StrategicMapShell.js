@@ -1432,6 +1432,47 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 
 
 
+
+function buildRedeploymentInterimActionCue(leftoverState, nextChoice = null, fallbackSafetyCutoff = null) {
+  const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
+  const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
+
+  if (leftoverState === 'stable') return null;
+
+  if (leftoverState === 'unknown-fog-safe') {
+    return {
+      state: 'fog-safe-recheck',
+      label: 'Pendant attente: recheck fog-safe',
+      cue: 'pendant attente: recheck fog-safe',
+      action: 'recontrôler sans révéler la cause cachée',
+      reason: 'l’état clair ne peut pas être confirmé avec les signaux visibles',
+      secondary: true,
+    };
+  }
+
+  if (leftoverState === 'recheck-soon') {
+    return {
+      state: 'recheck-before-window',
+      label: 'Pendant attente: recheck avant fenêtre',
+      cue: 'pendant attente: recheck avant fenêtre',
+      action: cutoff ? `recontrôler ${cutoff}` : 'recontrôler avant nouvelle action',
+      reason: 'éviter de traiter la zone nettoyée comme claire trop tôt',
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'continue-light-watch',
+    label: 'Pendant attente: veille légère',
+    cue: 'pendant attente: veille légère',
+    action: cleanupLabel
+      ? `garder une veille légère après ${cleanupLabel}`
+      : 'garder une veille légère jusqu’au signal stable',
+    reason: 'option la plus sûre tant que le clear résiduel reste incomplet',
+    secondary: true,
+  };
+}
+
 function buildRedeploymentClearConditionCue(leftoverState, nextChoice = null, fallbackSafetyCutoff = null) {
   const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
   const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
@@ -1503,6 +1544,7 @@ function buildRedeploymentLeftoverRiskCue(
       reason: 'la cause cachée reste masquée après redéploiement',
       exposureBudget,
       clearConditionCue: buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
+      interimActionCue: buildRedeploymentInterimActionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
   }
@@ -1519,6 +1561,7 @@ function buildRedeploymentLeftoverRiskCue(
         : 'recontrôler avant nouvelle action',
       exposureBudget,
       clearConditionCue: buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
+      interimActionCue: buildRedeploymentInterimActionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
   }
@@ -1533,6 +1576,7 @@ function buildRedeploymentLeftoverRiskCue(
       reason: `${nextChoice.cleanupOrderLabel} réduit le risque, mais garde une vérification légère`,
       exposureBudget,
       clearConditionCue: buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
+      interimActionCue: buildRedeploymentInterimActionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
   }
