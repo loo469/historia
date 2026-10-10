@@ -1538,8 +1538,49 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
           reason: 'la zone nettoyée reste stable sans signal neuf',
           secondary: true,
         },
+        trajectoryCue: {
+          state: 'contained',
+          label: 'Trajectoire résiduelle: contenue',
+          cue: 'trajectoire résiduelle: contenue',
+          action: null,
+          reason: 'la zone nettoyée reste stable et aucune propagation visible n’est signalée',
+          secondary: true,
+        },
         secondary: true,
       },
+      secondary: true,
+    },
+  );
+});
+
+test('StrategicMapShell classifies redeployed residual trajectory as spreading across targets', () => {
+  const shell = buildStrategicMapShell([
+    createProvince({ id: 'front-a', name: 'Front A' }),
+    createProvince({ id: 'front-b', name: 'Front B' }),
+  ], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-b', label: 'rumeur front B' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 50 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue
+      .leftoverRiskCue.trajectoryCue,
+    {
+      state: 'spreading',
+      label: 'Trajectoire résiduelle: propagation',
+      cue: 'trajectoire résiduelle: propagation',
+      action: 'rediriger la veille légère vers rumeur front B',
+      reason: 'une trace résiduelle visible apparaît hors de la zone nettoyée',
       secondary: true,
     },
   );
