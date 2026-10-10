@@ -22217,6 +22217,7 @@ function renderCultureNextReviewPressureCue(cue) {
       ${cue.tradeoffDeadlineCue ? `<small class="culture-next-review-pressure-cue__deadline culture-next-review-pressure-cue__deadline--${cue.tradeoffDeadlineCue.state}">Deadline: ${cue.tradeoffDeadlineCue.latestSafeMoment} · ${cue.tradeoffDeadlineCue.actionPosture}</small>` : ''}
       ${cue.pressureRetirementEvidenceCue ? `<small class="culture-next-review-pressure-cue__evidence culture-next-review-pressure-cue__evidence--${cue.pressureRetirementEvidenceCue.state}">Preuve de retrait: ${cue.pressureRetirementEvidenceCue.evidence} · ${cue.pressureRetirementEvidenceCue.condition}</small>` : ''}
       ${cue.nextUsefulCultureStepCue ? `<small class="culture-next-review-pressure-cue__next-step culture-next-review-pressure-cue__next-step--${cue.nextUsefulCultureStepCue.state}">Suite utile: ${cue.nextUsefulCultureStepCue.step} · ${cue.nextUsefulCultureStepCue.reason}</small>` : ''}
+      ${cue.nextCultureStepWhyNowCue ? `<small class="culture-next-review-pressure-cue__why-now culture-next-review-pressure-cue__why-now--${cue.nextCultureStepWhyNowCue.state}">Pourquoi maintenant: ${cue.nextCultureStepWhyNowCue.value} · ${cue.nextCultureStepWhyNowCue.observableEffect}</small>` : ''}
       <small>Étape suivante: ${cue.nextStep} · restantes ${cue.remainingDependencyCount}</small>
     </article>
   `;

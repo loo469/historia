@@ -12652,6 +12652,9 @@ button { font: inherit; }
 .culture-next-review-pressure-cue__next-step { color: #bfdbfe; }
 .culture-next-review-pressure-cue__next-step--no-immediate-follow-up { color: #d1fae5; }
 .culture-next-review-pressure-cue__next-step--wait-for-evidence { color: #cbd5e1; }
+.culture-next-review-pressure-cue__why-now { color: #fef08a; }
+.culture-next-review-pressure-cue__why-now--useful-not-urgent { color: #fde68a; }
+.culture-next-review-pressure-cue__why-now--unlock-readiness-value { color: #99f6e4; }
 .culture-next-review-pressure-cue--remaining-dependency { border-color: rgba(248, 113, 113, 0.4); }
 .culture-next-review-pressure-cue--review-timing { border-color: rgba(251, 191, 36, 0.34); }
 .culture-next-review-pressure-cue--fragile-unlock { border-color: rgba(45, 212, 191, 0.34); }
