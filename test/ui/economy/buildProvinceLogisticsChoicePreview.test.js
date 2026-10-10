@@ -14,6 +14,7 @@ import {
   buildNextDeliveryBottleneckCue,
   buildNextDeliveryDebtImpact,
   buildNextRouteDebtPayoffCue,
+  buildPostSpendBufferRebuildCue,
   buildPreservedBufferGrowthBlockerCue,
   buildProvinceLogisticsChoicePreview,
 } from '../../../src/ui/economy/buildProvinceLogisticsChoicePreview.js';
@@ -221,6 +222,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue.state, 'tradeoff-left');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue.summary, /Après dépense: stabilisateur renforcé sur Hill Spur/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.postSpendBufferRebuildCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.postSpendBufferRebuildCue.state, 'rebuild-needed');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.postSpendBufferRebuildCue.summary, /Buffer trop bas pour un nouveau coût: reconstruire après stabilisateur revenu en garde sur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -725,6 +729,35 @@ test('buildBufferPostSpendConfirmationCue separates benefit from remaining buffe
   assert.equal(safeConfirmation.tradeoff, null);
 
   assert.equal(buildBufferPostSpendConfirmationCue(null, null, null, null, null, null), null);
+});
+
+test('buildPostSpendBufferRebuildCue explains when buffer can be rebuilt', () => {
+  const rebuildNeeded = buildPostSpendBufferRebuildCue(
+    { state: 'tradeoff-left', type: 'debt', target: 'Safe Road', nextThreshold: 'Prochain goulot: dette route sur Safe Road.' },
+    { state: 'spend-after-unblock', type: 'debt', target: 'Safe Road', saferAlternative: 'garder le buffer jusqu’à dette soldée' },
+    { reason: 'Dépensable après dette soldée sur Safe Road.' },
+    { summary: 'Prochain goulot: dette route sur Safe Road.' },
+    { state: 'tight', bottleneck: 'Safe Road' },
+    { nextSafeDelivery: 'Safe Road' },
+  );
+  assert.equal(rebuildNeeded.state, 'rebuild-needed');
+  assert.equal(rebuildNeeded.type, 'debt');
+  assert.match(rebuildNeeded.summary, /Buffer trop bas pour un nouveau coût: reconstruire après dette route suivante stabilisée sur Safe Road/);
+  assert.match(rebuildNeeded.blocker, /Prochain goulot: dette route sur Safe Road/);
+
+  const stableRebuild = buildPostSpendBufferRebuildCue(
+    { state: 'confirmed', type: 'route', target: 'Hill Spur', nextThreshold: 'Prochain goulot: aucun.' },
+    { state: 'spend-now', type: 'route', target: 'Hill Spur', saferAlternative: 'garder la marge de route en réserve' },
+    { state: 'safe-spend', reason: 'Aucun bloqueur restant.' },
+    { summary: 'Prochain goulot: aucun.' },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur' },
+  );
+  assert.equal(stableRebuild.state, 'stable-rebuild');
+  assert.equal(stableRebuild.type, 'route');
+  assert.match(stableRebuild.summary, /Buffer utilisé mais stable: reconstruire après marge de route reconstruite sur Hill Spur/);
+
+  assert.equal(buildPostSpendBufferRebuildCue(null, null, null, null, null, null), null);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {

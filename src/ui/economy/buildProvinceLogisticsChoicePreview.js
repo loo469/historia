@@ -703,6 +703,48 @@ export function buildBufferPostSpendConfirmationCue(firstSpendBufferConsequenceC
   };
 }
 
+
+export function buildPostSpendBufferRebuildCue(bufferPostSpendConfirmationCue, firstSpendBufferConsequenceCue, freedMarginSpendableWhenCue, nextDeliveryBottleneckCue, routeSlack, safeDeliveryUnlock) {
+  if (!bufferPostSpendConfirmationCue || !firstSpendBufferConsequenceCue) {
+    return null;
+  }
+
+  const target = bufferPostSpendConfirmationCue.target
+    ?? safeDeliveryUnlock?.nextSafeDelivery
+    ?? routeSlack?.bottleneck
+    ?? null;
+  const type = bufferPostSpendConfirmationCue.type ?? firstSpendBufferConsequenceCue.type ?? 'surplus';
+  const canAbsorbAnotherCost = bufferPostSpendConfirmationCue.state === 'confirmed'
+    && firstSpendBufferConsequenceCue.state === 'spend-now';
+  const rebuildByType = {
+    debt: 'après dette route suivante stabilisée',
+    stabilizer: 'après stabilisateur revenu en garde',
+    capacity: 'après capacité locale redevenue confortable',
+    route: 'après marge de route reconstruite',
+    'next-bottleneck': 'après prochain goulot levé',
+    surplus: 'quand le surplus redevient une garde',
+    clear: 'quand le surplus redevient une garde',
+  };
+  const blocker = nextDeliveryBottleneckCue?.summary
+    ?? freedMarginSpendableWhenCue?.reason
+    ?? bufferPostSpendConfirmationCue.nextThreshold
+    ?? firstSpendBufferConsequenceCue.saferAlternative
+    ?? routeSlack?.bottleneck
+    ?? null;
+
+  return {
+    state: canAbsorbAnotherCost ? 'stable-rebuild' : 'rebuild-needed',
+    type,
+    label: 'Reconstitution du buffer',
+    target,
+    summary: canAbsorbAnotherCost
+      ? `Buffer utilisé mais stable: reconstruire ${rebuildByType[type] ?? 'avant la prochaine dépense'}${target ? ` sur ${target}` : ''}.`
+      : `Buffer trop bas pour un nouveau coût: reconstruire ${rebuildByType[type] ?? 'avant la prochaine dépense'}${target ? ` sur ${target}` : ''}.`,
+    blocker: blocker ? `Facteur bloquant: ${blocker}.` : null,
+    nextCondition: rebuildByType[type] ?? 'attendre une marge livraison lisible',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -2421,6 +2463,16 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.postSpendBufferRebuildCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.postSpendBufferRebuildCue = buildPostSpendBufferRebuildCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.bufferPostSpendConfirmationCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
           routeSlack,
           routeSlack.slackConsumerHint.safeDeliveryUnlock,
