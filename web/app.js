@@ -15091,6 +15091,30 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         label: 'information insuffisante',
         detail: `ensuite surveiller: attendre ${progress.deadline} ou un signal mesurable avant de dire quelle watch suit le secours`,
       };
+  const nextClimateWatchReinforcementCue = backupClimateScopeCue.state === 'protects-next-window'
+    && watchMargin?.state === 'comfortable'
+    && priorityRankingChangeCue.state === 'stable-ranking'
+    ? {
+      state: 'monitor-only',
+      label: 'surveillance suffisante',
+      detail: `prochaine watch ${nextWatchAfterBackupCandidate.label}: surveiller ${nextClimateWindow}; le secours aide mais ne remplace pas le recheck de fragilité`,
+      reason: `marge ${watchMargin.label}, ${priorityOrderingRationale.detail}`,
+    }
+    : nextWatchAfterLimitedBackupCue.state === 'fragile-watch'
+      || backupClimateScopeCue.state === 'current-emergency-only'
+      || priorityRankingChangeCue.state !== 'stable-ranking'
+      ? {
+        state: 'reinforce-recommended',
+        label: 'renfort recommandé',
+        detail: `prochaine watch ${nextWatchAfterBackupCandidate.label}: prévoir renfort proactif avant ${nextClimateWindow}; l’action limitée ne couvre pas automatiquement la fenêtre suivante`,
+        reason: priorityRankingChangeCue.detail,
+      }
+      : {
+        state: 'unknown',
+        label: 'surveillance conditionnelle',
+        detail: `prochaine watch ${nextWatchAfterBackupCandidate.label}: attendre ${progress.deadline} ou un signal mesurable avant de choisir renfort ou simple veille`,
+        reason: backupClimateScopeCue.detail,
+      };
 
   return {
     state: 'watch',
@@ -15120,6 +15144,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       backupClimateActionIfInsufficient,
       backupClimateScopeCue,
       nextWatchAfterLimitedBackupCue,
+      nextClimateWatchReinforcementCue,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15175,6 +15200,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__backup-action map-world-climate-post-gap-watch__backup-action--${view.watchItem.backupClimateActionIfInsufficient.state}"><b>Si insuffisant</b> · ${view.watchItem.backupClimateActionIfInsufficient.label}: ${view.watchItem.backupClimateActionIfInsufficient.detail}</small>
       <small class="map-world-climate-post-gap-watch__backup-scope map-world-climate-post-gap-watch__backup-scope--${view.watchItem.backupClimateScopeCue.state}"><b>Portée du secours</b> · ${view.watchItem.backupClimateScopeCue.label}: ${view.watchItem.backupClimateScopeCue.detail}</small>
       <small class="map-world-climate-post-gap-watch__after-backup map-world-climate-post-gap-watch__after-backup--${view.watchItem.nextWatchAfterLimitedBackupCue.state}"><b>Ensuite surveiller</b> · ${view.watchItem.nextWatchAfterLimitedBackupCue.label}: ${view.watchItem.nextWatchAfterLimitedBackupCue.detail}</small>
+      <small class="map-world-climate-post-gap-watch__reinforcement map-world-climate-post-gap-watch__reinforcement--${view.watchItem.nextClimateWatchReinforcementCue.state}"><b>Renfort ou surveillance</b> · ${view.watchItem.nextClimateWatchReinforcementCue.label}: ${view.watchItem.nextClimateWatchReinforcementCue.detail}; ${view.watchItem.nextClimateWatchReinforcementCue.reason}</small>
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
