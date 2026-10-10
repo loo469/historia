@@ -53,6 +53,63 @@ export function buildAfterSecondStabilizerDebtForConsumers(rankedConsumers) {
   return buildAfterSecondStabilizerDebt(followUpConsumer ?? nextConsumer, remainingAfterSecondConsumer);
 }
 
+
+export function buildNextRouteDebtPayoffCue(safeDeliveryUnlock, nextStabilizerRecommendation, nextDeliveryDebtImpact) {
+  if (!safeDeliveryUnlock) {
+    return {
+      state: 'unknown',
+      label: 'Dette à solder ensuite',
+      target: null,
+      summary: 'Dette à solder ensuite: signal indisponible tant que la livraison sûre n’est pas qualifiée.',
+      benefit: 'Attendre un signal de livraison et de dette de route comparable.',
+    };
+  }
+
+  if (safeDeliveryUnlock.state === 'insufficient') {
+    const target = safeDeliveryUnlock.recovery ?? nextStabilizerRecommendation?.target ?? safeDeliveryUnlock.nextSafeDelivery ?? 'la route bloquante';
+    return {
+      state: 'blocked',
+      label: 'Dette à solder ensuite',
+      target,
+      summary: `Dette à solder ensuite: blocage dur sur ${target} avant livraison.`,
+      benefit: safeDeliveryUnlock.routeConstraint ?? 'Lever le blocage avant de relancer la livraison sûre.',
+    };
+  }
+
+  const target = nextDeliveryDebtImpact?.target
+    ?? nextStabilizerRecommendation?.target
+    ?? safeDeliveryUnlock.afterDeliveryFragility?.target
+    ?? null;
+
+  if (nextDeliveryDebtImpact?.state === 'blocking') {
+    return {
+      state: 'blocked',
+      label: 'Dette à solder ensuite',
+      target,
+      summary: `Dette à solder ensuite: ${target} bloque encore la livraison suivante.`,
+      benefit: nextDeliveryDebtImpact.reason ?? safeDeliveryUnlock.routeConstraint,
+    };
+  }
+
+  if (target && nextStabilizerRecommendation && nextStabilizerRecommendation.state !== 'stable') {
+    return {
+      state: nextDeliveryDebtImpact?.state === 'covered' ? 'recommended' : 'watch',
+      label: 'Dette à solder ensuite',
+      target,
+      summary: `Dette à solder ensuite: ${target} recommandé après livraison, sans blocage immédiat.`,
+      benefit: nextStabilizerRecommendation.reason ?? nextDeliveryDebtImpact?.reason ?? 'Stabilise la route avant que la marge suivante ne soit consommée.',
+    };
+  }
+
+  return {
+    state: 'clear',
+    label: 'Dette à solder ensuite',
+    target: null,
+    summary: 'Dette à solder ensuite: livraison peut continuer sans action immédiate.',
+    benefit: safeDeliveryUnlock.routeConstraint ?? 'Aucune dette de route prioritaire ne consomme la marge restante.',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -1358,6 +1415,10 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                 reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
               },
             },
+            nextRouteDebtPayoffCue: buildNextRouteDebtPayoffCue({
+              state: 'safe',
+              routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+            }, { state: 'stable' }, null),
           },
         };
       }
@@ -1487,6 +1548,34 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
                   reason: 'Aucune contrainte suivante fiable dans les signaux classés.',
                 },
               },
+          nextRouteDebtPayoffCue: buildNextRouteDebtPayoffCue({
+            state: primaryConsumer.tone === 'blocked' ? 'insufficient' : 'recoverable',
+            recovery: primaryConsumer.label,
+            nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+            routeConstraint: primaryConsumer.tone === 'blocked'
+              ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+              : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+            afterDeliveryFragility: {
+              target: nextConsumer?.label ?? (primaryConsumer.tone === 'blocked' ? primaryConsumer.label : null),
+            },
+          }, nextConsumer
+            ? {
+              state: nextConsumer.tone === 'blocked' ? 'urgent' : 'watch',
+              target: nextConsumer.label,
+              reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+            }
+            : primaryConsumer.tone === 'blocked'
+              ? {
+                state: 'urgent',
+                target: primaryConsumer.label,
+                reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+              }
+              : { state: 'stable', target: null },
+          nextConsumer
+            ? buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label)
+            : primaryConsumer.tone === 'blocked'
+              ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
+              : null),
         },
       };
     };
