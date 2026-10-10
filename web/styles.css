@@ -12080,6 +12080,11 @@ button { font: inherit; }
 .atlas-military-fallback-order__next-cleanup-target { fill: #bfdbfe; font-size: 0.39px; font-weight: 900; }
 .atlas-military-fallback-order__next-cleanup-target--watch-next-target { fill: #fde68a; }
 .atlas-military-fallback-order__next-cleanup-target--no-immediate-cleanup { fill: #bbf7d0; }
+.atlas-military-fallback-order__after-cleanup-recurrence { fill: #bfdbfe; font-size: 0.39px; font-weight: 900; }
+.atlas-military-fallback-order__after-cleanup-recurrence--recurrence-reduced { fill: #bbf7d0; }
+.atlas-military-fallback-order__after-cleanup-recurrence--surveillance-required { fill: #fde68a; }
+.atlas-military-fallback-order__after-cleanup-recurrence--risk-shifted { fill: #fecaca; }
+.atlas-military-fallback-order__after-cleanup-recurrence--unknown-fog-safe { fill: #bfdbfe; }
 .atlas-military-commitment-conflicts__panel {
   fill: rgba(69, 10, 10, 0.76);
   stroke: rgba(248, 113, 113, 0.36);
