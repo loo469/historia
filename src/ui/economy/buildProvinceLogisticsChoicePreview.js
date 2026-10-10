@@ -254,6 +254,70 @@ export function buildNextDeliveryBottleneckCue(freedDeliveryMarginCue, routeSlac
   };
 }
 
+
+export function buildFreedMarginReinvestmentCue(freedDeliveryMarginCue, nextDeliveryBottleneckCue, routeSlack, safeDeliveryUnlock) {
+  if (!freedDeliveryMarginCue || freedDeliveryMarginCue.state === 'unknown') {
+    return {
+      state: 'unknown',
+      mode: 'unknown',
+      label: 'Réinvestir la marge',
+      target: null,
+      summary: 'Réinvestir la marge: signal insuffisant pour choisir une cible fiable.',
+      reason: freedDeliveryMarginCue?.reason ?? 'La marge libérée n’est pas assez reliée aux contraintes logistiques actuelles.',
+    };
+  }
+
+  if (freedDeliveryMarginCue.state === 'blocked' || nextDeliveryBottleneckCue?.state === 'blocked') {
+    const target = nextDeliveryBottleneckCue?.target ?? freedDeliveryMarginCue.target ?? safeDeliveryUnlock?.nextSafeDelivery ?? null;
+    return {
+      state: 'reinvest-now',
+      mode: 'debt',
+      label: 'Réinvestir la marge',
+      target,
+      summary: `Réinvestir maintenant: solder la dette restante sur ${target ?? 'la route prioritaire'}.`,
+      reason: nextDeliveryBottleneckCue?.reason ?? freedDeliveryMarginCue.reason ?? safeDeliveryUnlock?.routeConstraint ?? 'La marge libérée reste consommée par une dette de route.',
+    };
+  }
+
+  if (nextDeliveryBottleneckCue?.type && nextDeliveryBottleneckCue.type !== 'none' && nextDeliveryBottleneckCue.type !== 'unknown') {
+    const target = nextDeliveryBottleneckCue.target ?? freedDeliveryMarginCue.target ?? safeDeliveryUnlock?.nextSafeDelivery ?? null;
+    const actionByType = {
+      debt: 'solder la dette restante',
+      stabilizer: 'renforcer le stabilisateur',
+      route: 'sécuriser la route',
+      capacity: 'réserver la capacité',
+    };
+    return {
+      state: nextDeliveryBottleneckCue.state === 'clear' ? 'keep-buffer' : 'reinvest-now',
+      mode: nextDeliveryBottleneckCue.type,
+      label: 'Réinvestir la marge',
+      target,
+      summary: `Réinvestir maintenant: ${actionByType[nextDeliveryBottleneckCue.type] ?? 'traiter'} ${target ?? 'le prochain goulot'}.`,
+      reason: nextDeliveryBottleneckCue.reason ?? freedDeliveryMarginCue.reason ?? 'Le prochain goulot consomme la marge libérée.',
+    };
+  }
+
+  if (routeSlack?.state === 'tight' && routeSlack.bottleneck) {
+    return {
+      state: 'reinvest-now',
+      mode: /capacité|outil|ressource/i.test(routeSlack.bottleneck) ? 'capacity' : 'route',
+      label: 'Réinvestir la marge',
+      target: routeSlack.bottleneck,
+      summary: `Réinvestir maintenant: renforcer ${routeSlack.bottleneck} avant que la marge ne se referme.`,
+      reason: routeSlack.summary ?? freedDeliveryMarginCue.reason,
+    };
+  }
+
+  return {
+    state: 'keep-buffer',
+    mode: 'buffer',
+    label: 'Réinvestir la marge',
+    target: safeDeliveryUnlock?.nextSafeDelivery ?? freedDeliveryMarginCue.target ?? null,
+    summary: `Garder le buffer: ${safeDeliveryUnlock?.nextSafeDelivery ?? freedDeliveryMarginCue.target ?? 'la prochaine livraison'} reste couverte sans réinvestissement immédiat.`,
+    reason: nextDeliveryBottleneckCue?.reason ?? freedDeliveryMarginCue.reason ?? 'Aucun goulot fiable ne consomme la marge libérée.',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -1895,13 +1959,24 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         },
       };
     };
-    const buildRouteSlack = (state, summary, bottleneck, slackConsumerHint) => ({
-      state,
-      label: 'Marge route reprise',
-      summary,
-      bottleneck,
-      slackConsumerHint,
-    });
+    const buildRouteSlack = (state, summary, bottleneck, slackConsumerHint) => {
+      const routeSlack = {
+        state,
+        label: 'Marge route reprise',
+        summary,
+        bottleneck,
+        slackConsumerHint,
+      };
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue = buildFreedMarginReinvestmentCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      return routeSlack;
+    };
 
     if (opportunityCost?.state === 'competing') {
       return {
