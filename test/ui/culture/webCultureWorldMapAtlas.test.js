@@ -62,13 +62,16 @@ test('culture side panel renders the next cultural dependency, stabilization, an
   assert.match(webAppSource, /Preuve de retrait:/);
   assert.match(webAppSource, /Suite utile:/);
   assert.match(webAppSource, /Pourquoi maintenant:/);
+  assert.match(webAppSource, /Preuve du payoff:/);
   assert.match(webAppSource, /cue\.tradeoff/);
   assert.match(webAppSource, /cue\.tradeoffDeadlineCue/);
   assert.match(webAppSource, /cue\.pressureRetirementEvidenceCue/);
   assert.match(webAppSource, /cue\.nextUsefulCultureStepCue/);
   assert.match(webAppSource, /cue\.nextCultureStepWhyNowCue/);
+  assert.match(webAppSource, /cue\.nextCultureStepPayoffProofCue/);
   assert.match(webAppSource, /nextReviewPressureCue/);
   assert.match(webAppSource, /focus\?\.cultureStabilizationSummary\?\.stabilizationDebtSummary\?\.nextReviewPressureCue/);
+  assert.match(stylesSource, /\.culture-next-review-pressure-cue__payoff-proof/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue/);
   assert.match(stylesSource, /\.culture-dependency-retirement-cue--ready-after-recovery/);
   assert.match(stylesSource, /\.culture-review-stabilization-cue/);
