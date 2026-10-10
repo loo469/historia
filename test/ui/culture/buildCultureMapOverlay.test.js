@@ -1027,6 +1027,13 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         remainingDependencyCount: 2,
         nextStep: 'réévaluer la médiation ou le support local au prochain tour',
         tradeoff: 'profiter de simplifie la séquence de soutien et clarifie la prochaine action culturelle maintenant, ou retarder pour éviter que médiation referme la fenêtre',
+        tradeoffDeadlineCue: {
+          state: 'act-now',
+          latestSafeMoment: 'avant fermeture de la fenêtre fragile',
+          actionPosture: 'agir maintenant',
+          reason: 'médiation limite encore le suivi dans fenêtre fragile mais exploitable: médiation limite encore le suivi',
+          fallback: 'réévaluer la médiation ou le support local au prochain tour',
+        },
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
@@ -1211,6 +1218,13 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         reviewWindow: 'fenêtre stable: le payoff permet d’enchaîner sans nouvelle dette visible',
         remainingDependencyCount: 0,
         nextStep: 'surveillance passive suffisante',
+        tradeoffDeadlineCue: {
+          state: 'no-reliable-deadline',
+          latestSafeMoment: 'aucune échéance fiable',
+          actionPosture: 'ne pas promettre de timing',
+          reason: 'les signaux culturels disponibles ne suffisent pas à dater le tradeoff',
+          fallback: 'surveillance passive suffisante',
+        },
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'safe',

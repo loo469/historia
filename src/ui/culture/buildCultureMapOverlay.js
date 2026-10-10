@@ -914,6 +914,50 @@ function buildCulturalReviewStabilizationCue(
   };
 }
 
+function buildCulturalReviewTradeoffDeadlineCue(state, reviewWindow, nextStep, context = {}) {
+  if (state === 'remaining-dependency') {
+    return {
+      state: 'act-now',
+      latestSafeMoment: 'avant la revue suivante',
+      actionPosture: 'agir maintenant',
+      reason: `${context.pressure ?? 'dépendance restante'} reste prioritaire: attendre accepte la pression de revue`,
+      fallback: nextStep,
+    };
+  }
+
+  if (state === 'review-timing') {
+    const tooShort = context.windowStatus === 'too-short';
+
+    return {
+      state: tooShort ? 'already-late' : 'act-now',
+      latestSafeMoment: tooShort ? 'fenêtre déjà trop courte' : 'avant fermeture de la fenêtre fragile',
+      actionPosture: tooShort ? 'accepter la pression ou limiter les dégâts' : 'agir maintenant',
+      reason: tooShort
+        ? `${context.pressure ?? 'contrainte'} bloque déjà l’enchaînement sûr`
+        : `${context.pressure ?? 'contrainte'} limite encore le suivi dans ${reviewWindow}`,
+      fallback: nextStep,
+    };
+  }
+
+  if (state === 'fragile-unlock' || state === 'low-cultural-debt') {
+    return {
+      state: 'can-wait',
+      latestSafeMoment: 'revue d’après si la dette revient dans le focus',
+      actionPosture: 'attendre une fenêtre',
+      reason: `${context.pressure ?? 'dette culturelle'} reste visible mais non prioritaire après stabilisation`,
+      fallback: nextStep,
+    };
+  }
+
+  return {
+    state: 'no-reliable-deadline',
+    latestSafeMoment: 'aucune échéance fiable',
+    actionPosture: 'ne pas promettre de timing',
+    reason: 'les signaux culturels disponibles ne suffisent pas à dater le tradeoff',
+    fallback: nextStep,
+  };
+}
+
 function buildNextReviewPressureCue(
   culturalReviewStabilizationCue,
   nextCulturalDependencyRetirementCue,
@@ -937,6 +981,7 @@ function buildNextReviewPressureCue(
       remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
       nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
       tradeoff: `absorber ${remainingFragility.cause} garde ${nextCulturalDependencyRetirementCue.expectedEffect}, mais retarder le retrait peut rouvrir ${remainingFragility.urgency}`,
+      tradeoffDeadlineCue: buildCulturalReviewTradeoffDeadlineCue('remaining-dependency', reviewWindow, residualRiskAfterNextRetirement.nextActionAfterRetirement, { pressure: remainingFragility.cause }),
     };
   }
 
@@ -951,6 +996,7 @@ function buildNextReviewPressureCue(
       reviewWindow,
       remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
       nextStep: culturalReviewStabilizationCue.nextReviewDecision,
+      tradeoffDeadlineCue: buildCulturalReviewTradeoffDeadlineCue('no-reliable-pressure', reviewWindow, culturalReviewStabilizationCue.nextReviewDecision),
     };
   }
 
@@ -966,6 +1012,10 @@ function buildNextReviewPressureCue(
       remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
       nextStep: residualCultureFollowUpWindow.nextDecision,
       tradeoff: `profiter de ${culturalReviewStabilizationCue.retirementBenefit} maintenant, ou retarder pour éviter que ${residualCultureFollowUpWindow.limitingConstraint} referme la fenêtre`,
+      tradeoffDeadlineCue: buildCulturalReviewTradeoffDeadlineCue('review-timing', reviewWindow, residualCultureFollowUpWindow.nextDecision, {
+        pressure: residualCultureFollowUpWindow.limitingConstraint,
+        windowStatus: residualCultureFollowUpWindow.status,
+      }),
     };
   }
 
@@ -983,6 +1033,12 @@ function buildNextReviewPressureCue(
       tradeoff: laterDebt.type === 'bundle-dependency'
         ? `retirer la pression actuelle accélère ${laterDebt.expectedGain}, mais l’unlock reste fragile si ${laterDebt.cause} attend`
         : `conserver la stabilité protège la revue, mais ${laterDebt.cause} peut redevenir une dette légère`,
+      tradeoffDeadlineCue: buildCulturalReviewTradeoffDeadlineCue(
+        laterDebt.type === 'bundle-dependency' ? 'fragile-unlock' : 'low-cultural-debt',
+        reviewWindow,
+        laterDebt.nextAction,
+        { pressure: laterDebt.cause },
+      ),
     };
   }
 
@@ -996,6 +1052,7 @@ function buildNextReviewPressureCue(
     reviewWindow,
     remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
     nextStep: 'surveillance passive suffisante',
+    tradeoffDeadlineCue: buildCulturalReviewTradeoffDeadlineCue('no-reliable-pressure', reviewWindow, 'surveillance passive suffisante'),
   };
 }
 
