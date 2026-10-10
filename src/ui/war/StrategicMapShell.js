@@ -1433,6 +1433,88 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 
 
 
+
+function buildResidualRiskTrajectoryCue(
+  leftoverState,
+  nextChoice = null,
+  postCleanupRisks = [],
+  fallbackSafetyCutoff = null,
+) {
+  const cleanedTargetId = nextChoice?.targetId ?? getRiskLocationId(nextChoice?.residualRiskKey ?? '');
+  const visibleRisks = Array.isArray(postCleanupRisks)
+    ? postCleanupRisks.filter((risk) => String(risk?.key ?? '').trim())
+    : [];
+  const visibleTargets = new Set(
+    visibleRisks
+      .map((risk) => getRiskLocationId(risk.key))
+      .filter((targetId) => String(targetId ?? '').trim()),
+  );
+  const hasOtherTarget = Boolean(cleanedTargetId)
+    && [...visibleTargets].some((targetId) => targetId !== cleanedTargetId);
+  const firstOtherRisk = visibleRisks.find((risk) => getRiskLocationId(risk.key) !== cleanedTargetId) ?? null;
+  const firstRiskLabel = String((firstOtherRisk ?? visibleRisks[0])?.label ?? '').trim();
+  const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
+
+  if (leftoverState === 'unknown-fog-safe') {
+    return {
+      state: 'unknown',
+      label: 'Trajectoire résiduelle: inconnue',
+      cue: 'trajectoire résiduelle: inconnue',
+      action: 'recheck fog-safe avant de classer la trajectoire',
+      reason: 'les signaux visibles ne confirment pas encore si le risque se contient ou s’étend',
+      secondary: true,
+    };
+  }
+
+  if (hasOtherTarget || visibleTargets.size > 1) {
+    return {
+      state: 'spreading',
+      label: 'Trajectoire résiduelle: propagation',
+      cue: 'trajectoire résiduelle: propagation',
+      action: firstRiskLabel
+        ? `rediriger la veille légère vers ${firstRiskLabel}`
+        : 'rediriger la veille légère vers la nouvelle trace visible',
+      reason: 'une trace résiduelle visible apparaît hors de la zone nettoyée',
+      secondary: true,
+    };
+  }
+
+  if (leftoverState === 'recheck-soon') {
+    return {
+      state: 'worsening',
+      label: 'Trajectoire résiduelle: aggravation possible',
+      cue: 'trajectoire résiduelle: aggravation possible',
+      action: fallbackSafetyCutoff?.cutoff
+        ? `recontrôler ${fallbackSafetyCutoff.cutoff}`
+        : 'recontrôler avant nouvelle action',
+      reason: 'la fenêtre sûre n’est pas encore tenue pour déclarer le risque contenu',
+      secondary: true,
+    };
+  }
+
+  if (leftoverState === 'watch-lightly') {
+    return {
+      state: 'contained',
+      label: 'Trajectoire résiduelle: contenue',
+      cue: 'trajectoire résiduelle: contenue',
+      action: null,
+      reason: cleanupLabel
+        ? `${cleanupLabel} réduit le risque sans nouvelle trace visible ailleurs`
+        : 'la veille légère suffit tant qu’aucune nouvelle trace visible n’apparaît',
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'contained',
+    label: 'Trajectoire résiduelle: contenue',
+    cue: 'trajectoire résiduelle: contenue',
+    action: null,
+    reason: 'la zone nettoyée reste stable et aucune propagation visible n’est signalée',
+    secondary: true,
+  };
+}
+
 function buildRedeploymentInterimActionCue(leftoverState, nextChoice = null, fallbackSafetyCutoff = null) {
   const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
   const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
@@ -1528,6 +1610,7 @@ function buildRedeploymentLeftoverRiskCue(
   nextChoice = null,
   fallbackSafetyCutoff = null,
   exposureBudget = null,
+  postCleanupRisks = [],
 ) {
   if (redeploymentState !== 'redeploy-next-target') return null;
 
@@ -1544,6 +1627,7 @@ function buildRedeploymentLeftoverRiskCue(
       reason: 'la cause cachée reste masquée après redéploiement',
       exposureBudget,
       clearConditionCue: buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
+      trajectoryCue: buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
       interimActionCue: buildRedeploymentInterimActionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1561,6 +1645,7 @@ function buildRedeploymentLeftoverRiskCue(
         : 'recontrôler avant nouvelle action',
       exposureBudget,
       clearConditionCue: buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
+      trajectoryCue: buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
       interimActionCue: buildRedeploymentInterimActionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1576,6 +1661,7 @@ function buildRedeploymentLeftoverRiskCue(
       reason: `${nextChoice.cleanupOrderLabel} réduit le risque, mais garde une vérification légère`,
       exposureBudget,
       clearConditionCue: buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
+      trajectoryCue: buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
       interimActionCue: buildRedeploymentInterimActionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1590,6 +1676,7 @@ function buildRedeploymentLeftoverRiskCue(
     reason: `${nextChoice.cleanupOrderLabel} stabilise la zone nettoyée`,
     exposureBudget,
     clearConditionCue: buildRedeploymentClearConditionCue('stable', nextChoice, fallbackSafetyCutoff),
+    trajectoryCue: buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
     secondary: true,
   };
 }
@@ -1623,6 +1710,7 @@ function buildSurveillanceRedeploymentCue(
         nextChoice,
         fallbackSafetyCutoff,
         exposureBudget,
+        postCleanupRisks,
       ),
       secondary: true,
     };
