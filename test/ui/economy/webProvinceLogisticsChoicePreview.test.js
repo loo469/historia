@@ -168,6 +168,9 @@ test('playable province detail renders compact logistics route causes', () => {
   assert.match(webAppSource, /province-logistics-spillover-preserved-buffer-growth-blocker/);
   assert.match(webAppSource, /preservedBufferGrowthBlockerCue/);
   assert.match(webAppSource, /preservedBufferGrowthBlockerCue\.summary/);
+  assert.match(webAppSource, /province-logistics-spillover-first-spendable-buffer-use/);
+  assert.match(webAppSource, /firstSpendableBufferUseCue/);
+  assert.match(webAppSource, /firstSpendableBufferUseCue\.summary/);
   assert.match(webAppSource, /province-logistics-spillover-next-stabilizer/);
   assert.match(webAppSource, /nextStabilizerRecommendation/);
   assert.match(webAppSource, /nextStabilizerRecommendation\.summary/);

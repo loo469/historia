@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildAfterSecondStabilizerDebtForConsumers,
   buildFreedDeliveryMarginCue,
+  buildFirstSpendableBufferUseCue,
   buildFreedMarginBufferWarningCue,
   buildFreedMarginPreSpendCheckCue,
   buildFreedMarginReinvestmentCue,
@@ -209,6 +210,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue.blocker, 'stabilisateur fragile');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue.summary, /Croissance bloquée: buffer gardé par stabilisateur fragile sur Hill Spur/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue.target, 'Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue.summary, /Premier usage après déblocage: renforcer le stabilisateur sur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -617,6 +621,41 @@ test('buildPreservedBufferGrowthBlockerCue names the blocker behind preserved bu
     { state: 'safe-spend', type: 'clear', target: 'Hill Spur' },
     { type: 'none', target: null },
     { state: 'comfortable', bottleneck: null },
+  ), null);
+});
+
+test('buildFirstSpendableBufferUseCue picks the first use after buffer unblocks', () => {
+  const afterUnblock = buildFirstSpendableBufferUseCue(
+    { type: 'debt', target: 'Safe Road', reason: 'Dépensable après dette soldée sur Safe Road.' },
+    { state: 'blocked-check', type: 'debt', target: 'Safe Road' },
+    { state: 'reinvest-now', mode: 'debt', target: 'Safe Road', reason: 'dette visible' },
+    { type: 'debt', target: 'Safe Road', reason: 'dette visible' },
+    { state: 'tight', bottleneck: 'Safe Road' },
+    { nextSafeDelivery: 'Safe Road' },
+  );
+  assert.equal(afterUnblock.state, 'after-unblock');
+  assert.equal(afterUnblock.type, 'debt');
+  assert.match(afterUnblock.summary, /Premier usage après déblocage: solder la dette de route sur Safe Road/);
+
+  const spendNow = buildFirstSpendableBufferUseCue(
+    null,
+    { state: 'safe-spend', type: 'clear', target: 'Hill Spur', summary: 'Check avant dépense: aucun bloqueur restant sur Hill Spur.' },
+    { state: 'reinvest-now', mode: 'route', target: 'Hill Spur', reason: 'route sûre' },
+    { type: 'none', state: 'clear', target: null },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur' },
+  );
+  assert.equal(spendNow.state, 'spendable-now');
+  assert.equal(spendNow.type, 'route');
+  assert.match(spendNow.summary, /Premier usage maintenant: sécuriser la route sur Hill Spur/);
+
+  assert.equal(buildFirstSpendableBufferUseCue(
+    null,
+    null,
+    { state: 'keep-buffer', mode: 'buffer', target: 'Hill Spur' },
+    { type: 'none', target: null },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur' },
   ), null);
 });
 

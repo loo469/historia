@@ -547,6 +547,68 @@ export function buildPreservedBufferGrowthBlockerCue(freedMarginBufferWarningCue
   };
 }
 
+
+export function buildFirstSpendableBufferUseCue(preservedBufferGrowthBlockerCue, freedMarginPreSpendCheckCue, freedMarginReinvestmentCue, nextDeliveryBottleneckCue, routeSlack, safeDeliveryUnlock) {
+  const target = freedMarginReinvestmentCue?.target
+    ?? nextDeliveryBottleneckCue?.target
+    ?? freedMarginPreSpendCheckCue?.target
+    ?? preservedBufferGrowthBlockerCue?.target
+    ?? safeDeliveryUnlock?.nextSafeDelivery
+    ?? routeSlack?.bottleneck
+    ?? null;
+
+  const type = freedMarginReinvestmentCue?.mode && freedMarginReinvestmentCue.mode !== 'buffer'
+    ? freedMarginReinvestmentCue.mode
+    : nextDeliveryBottleneckCue?.type && nextDeliveryBottleneckCue.type !== 'none' && nextDeliveryBottleneckCue.type !== 'unknown'
+      ? nextDeliveryBottleneckCue.type
+      : preservedBufferGrowthBlockerCue?.type ?? freedMarginPreSpendCheckCue?.type ?? 'surplus';
+
+  const spendByType = {
+    debt: 'solder la dette de route',
+    stabilizer: 'renforcer le stabilisateur',
+    capacity: 'élargir la capacité locale',
+    route: 'sécuriser la route',
+    'next-bottleneck': 'lever le prochain goulot',
+    clear: 'financer le surplus sûr',
+    surplus: 'financer le surplus sûr',
+  };
+
+  if (preservedBufferGrowthBlockerCue) {
+    return {
+      state: 'after-unblock',
+      type,
+      label: 'Premier usage du buffer',
+      target,
+      summary: `Premier usage après déblocage: ${spendByType[type] ?? 'traiter le goulot'}${target ? ` sur ${target}` : ''}.`,
+      reason: preservedBufferGrowthBlockerCue.reason ?? freedMarginPreSpendCheckCue?.summary ?? 'Attendre que le buffer redevienne dépensable avant ce premier usage.',
+    };
+  }
+
+  if (freedMarginPreSpendCheckCue?.state === 'safe-spend') {
+    return {
+      state: 'spendable-now',
+      type: type === 'clear' ? 'surplus' : type,
+      label: 'Premier usage du buffer',
+      target,
+      summary: `Premier usage maintenant: ${spendByType[type] ?? spendByType.surplus}${target ? ` sur ${target}` : ''}.`,
+      reason: freedMarginPreSpendCheckCue.summary ?? freedMarginReinvestmentCue?.reason ?? 'Aucun bloqueur restant ne retient le buffer.',
+    };
+  }
+
+  if (freedMarginReinvestmentCue?.state === 'reinvest-now') {
+    return {
+      state: 'spendable-now',
+      type,
+      label: 'Premier usage du buffer',
+      target,
+      summary: `Premier usage maintenant: ${spendByType[type] ?? 'réinvestir'}${target ? ` sur ${target}` : ''}.`,
+      reason: freedMarginReinvestmentCue.reason ?? nextDeliveryBottleneckCue?.reason ?? 'Le buffer peut être réinvesti selon le goulot visible.',
+    };
+  }
+
+  return null;
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -2239,6 +2301,16 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
           routeSlack,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue = buildFirstSpendableBufferUseCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
         );
       }
       return routeSlack;
