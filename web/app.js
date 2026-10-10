@@ -15120,6 +15120,33 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
         detail: `prochaine watch ${nextWatchAfterBackupCandidate.label}: attendre ${progress.deadline} ou un signal mesurable avant de choisir renfort ou simple veille`,
         reason: backupClimateScopeCue.detail,
       };
+  const climateMandatoryReinforcementTrigger = nextClimateWatchReinforcementCue.state === 'reinforce-recommended'
+    ? {
+      state: 'already-mandatory',
+      label: 'déclencheur actif',
+      detail: `renfort obligatoire maintenant: ${nextClimateWatchReinforcementCue.reason}; fenêtre ${nextClimateWindow}`,
+      signal: priorityRankingChangeCue.label,
+    }
+    : nextClimateWatchReinforcementCue.state === 'monitor-only'
+      ? {
+        state: 'threshold-or-fragility',
+        label: 'déclencheur de renfort',
+        detail: `basculer en renfort obligatoire si ${watchGap.nearestRiskLabel} atteint le seuil primaire ou si ${backupClimateScopeCue.label} casse avant ${nextClimateWindow}`,
+        signal: `surveiller un seul signal: ${watchGap.nearestRiskLabel} + fragilité du secours`,
+      }
+      : Number.isFinite(primaryPromotionMargin)
+        ? {
+          state: 'margin-watch',
+          label: 'marge à confirmer',
+          detail: `renfort obligatoire si la marge restante (${primaryPromotionMargin}) se ferme avant ${progress.deadline}; fenêtre ${nextClimateWindow}`,
+          signal: 'première fermeture mesurable de la marge',
+        }
+        : {
+          state: 'unknown',
+          label: 'aucun déclencheur fiable',
+          detail: `aucun déclencheur prioritaire connu: attendre ${progress.deadline} avant d’imposer un renfort climat`,
+          signal: 'données seuil/protection insuffisantes',
+        };
 
   return {
     state: 'watch',
@@ -15150,6 +15177,7 @@ function buildAtlasClimatePostGapActionWatch(coverageView, gapActionView, thresh
       backupClimateScopeCue,
       nextWatchAfterLimitedBackupCue,
       nextClimateWatchReinforcementCue,
+      climateMandatoryReinforcementTrigger,
       watchLadderSummary,
     },
     nextSecondaryRisk,
@@ -15206,6 +15234,7 @@ function renderAtlasClimatePostGapActionWatch(view) {
       <small class="map-world-climate-post-gap-watch__backup-scope map-world-climate-post-gap-watch__backup-scope--${view.watchItem.backupClimateScopeCue.state}"><b>Portée du secours</b> · ${view.watchItem.backupClimateScopeCue.label}: ${view.watchItem.backupClimateScopeCue.detail}</small>
       <small class="map-world-climate-post-gap-watch__after-backup map-world-climate-post-gap-watch__after-backup--${view.watchItem.nextWatchAfterLimitedBackupCue.state}"><b>Ensuite surveiller</b> · ${view.watchItem.nextWatchAfterLimitedBackupCue.label}: ${view.watchItem.nextWatchAfterLimitedBackupCue.detail}</small>
       <small class="map-world-climate-post-gap-watch__reinforcement map-world-climate-post-gap-watch__reinforcement--${view.watchItem.nextClimateWatchReinforcementCue.state}"><b>Renfort ou surveillance</b> · ${view.watchItem.nextClimateWatchReinforcementCue.label}: ${view.watchItem.nextClimateWatchReinforcementCue.detail}; ${view.watchItem.nextClimateWatchReinforcementCue.reason}</small>
+      <small class="map-world-climate-post-gap-watch__trigger map-world-climate-post-gap-watch__trigger--${view.watchItem.climateMandatoryReinforcementTrigger.state}"><b>Déclencheur de renfort</b> · ${view.watchItem.climateMandatoryReinforcementTrigger.label}: ${view.watchItem.climateMandatoryReinforcementTrigger.detail}; ${view.watchItem.climateMandatoryReinforcementTrigger.signal}</small>
       ${view.watchItem.watchLadderSummary ? `<small class="map-world-climate-post-gap-watch__ladder map-world-climate-post-gap-watch__ladder--${view.watchItem.watchLadderSummary.state}"><b>Synthèse watch</b> · ${view.watchItem.watchLadderSummary.decision}: ${view.watchItem.watchLadderSummary.line} ${view.watchItem.watchLadderSummary.why}</small>` : ''}
       ${view.nextSecondaryRisk ? `<small><b>Secondaire suivant</b> · ${view.nextSecondaryRisk.phrase} ${view.nextSecondaryRisk.reason}</small>` : '<small><b>Secondaire suivant</b> · aucun second risque assez lisible sans créer une file.</small>'}
       <small><b>Pression</b> · ${view.watchItem.thresholdPressure}</small>
