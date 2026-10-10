@@ -6,6 +6,7 @@ import {
   buildFreedDeliveryMarginCue,
   buildFreedMarginBufferWarningCue,
   buildFreedMarginReinvestmentCue,
+  buildFreedMarginSpendableWhenCue,
   buildNextDeliveryBottleneckCue,
   buildNextDeliveryDebtImpact,
   buildNextRouteDebtPayoffCue,
@@ -197,6 +198,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue.target, 'Hill Spur');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue.summary, /Garder le buffer: Hill Spur reste le stabilisateur fragile suivant/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue.type, 'stabilizer');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue.target, 'Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue.summary, /Dépensable quand: Hill Spur est couvert/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -506,6 +510,37 @@ test('buildFreedMarginBufferWarningCue warns only when spending freed margin wou
     { state: 'keep-buffer', mode: 'buffer', target: 'Hill Spur', reason: 'aucun goulot fiable' },
     { state: 'comfortable', bottleneck: null, summary: 'marge confortable' },
     { nextSafeDelivery: 'Hill Spur', routeConstraint: 'slack confortable' },
+  ), null);
+});
+
+test('buildFreedMarginSpendableWhenCue explains when preserved buffer becomes spendable', () => {
+  const stabilizerCue = buildFreedMarginSpendableWhenCue(
+    { type: 'stabilizer', target: 'Hill Spur', reason: 'stabilisateur prioritaire' },
+    { state: 'reinvest-now', mode: 'stabilizer', target: 'Hill Spur', reason: 'stabilisateur prioritaire' },
+    { type: 'stabilizer', target: 'Hill Spur', reason: 'stabilisateur prioritaire' },
+    { state: 'comfortable', bottleneck: 'Hill Spur', summary: 'marge confortable' },
+    { nextSafeDelivery: 'Hill Spur', routeConstraint: 'slack récupérable' },
+  );
+  assert.equal(stabilizerCue.type, 'stabilizer');
+  assert.equal(stabilizerCue.target, 'Hill Spur');
+  assert.match(stabilizerCue.summary, /Dépensable quand: Hill Spur est couvert/);
+
+  const capacityCue = buildFreedMarginSpendableWhenCue(
+    { type: 'capacity', target: 'Outils', reason: 'capacité locale serrée' },
+    { state: 'reinvest-now', mode: 'capacity', target: 'Outils', reason: 'capacité locale serrée' },
+    { type: 'capacity', target: 'Outils', reason: 'capacité locale serrée' },
+    { state: 'tight', bottleneck: 'Outils', summary: 'capacité locale serrée' },
+    { nextSafeDelivery: 'prochaine livraison sûre', routeConstraint: 'slack récupérable' },
+  );
+  assert.equal(capacityCue.type, 'capacity');
+  assert.match(capacityCue.summary, /capacité locale desserrée/);
+
+  assert.equal(buildFreedMarginSpendableWhenCue(
+    null,
+    { state: 'keep-buffer', mode: 'buffer', target: 'Hill Spur' },
+    { type: 'none', target: null },
+    { state: 'comfortable', bottleneck: null },
+    { nextSafeDelivery: 'Hill Spur' },
   ), null);
 });
 

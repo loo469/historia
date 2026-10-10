@@ -393,6 +393,80 @@ export function buildFreedMarginBufferWarningCue(freedDeliveryMarginCue, nextDel
   return null;
 }
 
+
+export function buildFreedMarginSpendableWhenCue(freedMarginBufferWarningCue, freedMarginReinvestmentCue, nextDeliveryBottleneckCue, routeSlack, safeDeliveryUnlock) {
+  if (!freedMarginBufferWarningCue || freedMarginReinvestmentCue?.state === 'keep-buffer') {
+    return null;
+  }
+
+  const target = freedMarginBufferWarningCue.target
+    ?? nextDeliveryBottleneckCue?.target
+    ?? freedMarginReinvestmentCue?.target
+    ?? safeDeliveryUnlock?.nextSafeDelivery
+    ?? routeSlack?.bottleneck
+    ?? null;
+
+  const reason = freedMarginBufferWarningCue.reason
+    ?? nextDeliveryBottleneckCue?.reason
+    ?? freedMarginReinvestmentCue?.reason
+    ?? routeSlack?.summary
+    ?? safeDeliveryUnlock?.routeConstraint
+    ?? 'Le buffer redevient dépensable quand le risque prioritaire est couvert.';
+
+  if (freedMarginBufferWarningCue.type === 'debt') {
+    return {
+      state: 'wait-debt',
+      type: 'debt',
+      label: 'Dépensable quand',
+      target,
+      summary: `Dépensable quand: dette soldée sur ${target ?? 'la route fragile'}.`,
+      reason,
+    };
+  }
+
+  if (freedMarginBufferWarningCue.type === 'stabilizer') {
+    return {
+      state: 'wait-stabilizer',
+      type: 'stabilizer',
+      label: 'Dépensable quand',
+      target,
+      summary: `Dépensable quand: ${target ?? 'le stabilisateur'} est couvert sans consommer ce buffer.`,
+      reason,
+    };
+  }
+
+  if (freedMarginBufferWarningCue.type === 'capacity') {
+    return {
+      state: 'wait-capacity',
+      type: 'capacity',
+      label: 'Dépensable quand',
+      target,
+      summary: `Dépensable quand: capacité locale desserrée sur ${target ?? 'la prochaine livraison'}.`,
+      reason,
+    };
+  }
+
+  if (freedMarginBufferWarningCue.type === 'route') {
+    return {
+      state: 'wait-route',
+      type: 'route',
+      label: 'Dépensable quand',
+      target,
+      summary: `Dépensable quand: route stabilisée sur ${target ?? 'la prochaine livraison'}.`,
+      reason,
+    };
+  }
+
+  return {
+    state: 'wait-bottleneck',
+    type: 'next-bottleneck',
+    label: 'Dépensable quand',
+    target,
+    summary: `Dépensable quand: prochain goulot levé${target ? ` sur ${target}` : ''}.`,
+    reason,
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -2055,6 +2129,15 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue = buildFreedMarginSpendableWhenCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
           routeSlack,
           routeSlack.slackConsumerHint.safeDeliveryUnlock,
         );
