@@ -936,6 +936,7 @@ function buildNextReviewPressureCue(
       reviewWindow,
       remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
       nextStep: residualRiskAfterNextRetirement.nextActionAfterRetirement,
+      tradeoff: `absorber ${remainingFragility.cause} garde ${nextCulturalDependencyRetirementCue.expectedEffect}, mais retarder le retrait peut rouvrir ${remainingFragility.urgency}`,
     };
   }
 
@@ -964,6 +965,7 @@ function buildNextReviewPressureCue(
       reviewWindow,
       remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
       nextStep: residualCultureFollowUpWindow.nextDecision,
+      tradeoff: `profiter de ${culturalReviewStabilizationCue.retirementBenefit} maintenant, ou retarder pour éviter que ${residualCultureFollowUpWindow.limitingConstraint} referme la fenêtre`,
     };
   }
 
@@ -978,6 +980,9 @@ function buildNextReviewPressureCue(
       reviewWindow,
       remainingDependencyCount: nextCulturalDependencyRetirementCue.remainingDependencyCount,
       nextStep: laterDebt.nextAction,
+      tradeoff: laterDebt.type === 'bundle-dependency'
+        ? `retirer la pression actuelle accélère ${laterDebt.expectedGain}, mais l’unlock reste fragile si ${laterDebt.cause} attend`
+        : `conserver la stabilité protège la revue, mais ${laterDebt.cause} peut redevenir une dette légère`,
     };
   }
 

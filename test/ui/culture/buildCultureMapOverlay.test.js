@@ -1026,6 +1026,7 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
         reviewWindow: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
         remainingDependencyCount: 2,
         nextStep: 'réévaluer la médiation ou le support local au prochain tour',
+        tradeoff: 'profiter de simplifie la séquence de soutien et clarifie la prochaine action culturelle maintenant, ou retarder pour éviter que médiation referme la fenêtre',
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
