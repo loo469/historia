@@ -730,3 +730,19 @@ test('atlas military shows what to monitor while holding a safe front', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-watch--watch/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-watch--stable/);
 });
+
+// MAP-A61: once a safe hold risks losing tempo, distinguish that staleness from
+// the normal hold watch and name the next useful action.
+test('atlas military shows when a held safe front is becoming stale', () => {
+  assert.match(webAppSource, /const lightFollowUpHoldStaleness = lightFollowUpSafeHoldFallback && lightFollowUpHoldWatch\?\.tone === 'watch'/);
+  assert.match(webAppSource, /label: 'Hold stale: tempo à revoir'/);
+  assert.match(webAppSource, /récupération ennemie: \$\{residualRisk\.detail/);
+  assert.match(webAppSource, /fenêtre d’avance manquée: \$\{remainingWatch\.replace/);
+  assert.match(webAppSource, /suite: \$\{nextAction\}/);
+  assert.match(webAppSource, /lightFollowUpHoldStaleness,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpHoldStaleness \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpHoldStaleness \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 34\.9 : 33\.55/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--reinforce/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--advance/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-staleness--hold/);
+});
