@@ -158,6 +158,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /confinement minimal: non requis/);
   assert.match(webAppSource, /payoff confinement: non évalué/);
   assert.match(webAppSource, /après confinement: non évalué/);
+  assert.match(webAppSource, /dépriorisation intrigue: non évaluée/);
   assert.match(webAppSource, /clear résiduel: non évalué/);
   assert.match(webAppSource, /pendant attente: non requis/);
   assert.match(webAppSource, /afterSafeActionLabel/);
@@ -170,6 +171,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /containmentCueLabel/);
   assert.match(webAppSource, /containmentPayoffLabel/);
   assert.match(webAppSource, /postContainmentWatchLabel/);
+  assert.match(webAppSource, /deprioritizationCueLabel/);
   assert.match(webAppSource, /leftoverClearConditionLabel/);
   assert.match(webAppSource, /leftoverInterimActionLabel/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
@@ -205,6 +207,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__containment-cue/);
   assert.match(webAppSource, /atlas-military-fallback-order__containment-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__post-containment-watch/);
+  assert.match(webAppSource, /atlas-military-fallback-order__deprioritization-cue/);
   assert.match(webAppSource, /atlas-military-fallback-order__leftover-clear-condition/);
   assert.match(webAppSource, /atlas-military-fallback-order__leftover-interim-action/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
@@ -273,6 +276,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__containment-cue/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__containment-payoff/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__post-containment-watch/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__deprioritization-cue/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__leftover-clear-condition/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__leftover-interim-action/);
 });

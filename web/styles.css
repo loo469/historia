@@ -12119,6 +12119,11 @@ button { font: inherit; }
 .atlas-military-fallback-order__post-containment-watch--stable-watch { fill: #fde68a; }
 .atlas-military-fallback-order__post-containment-watch--slowed-recheck { fill: #fdba74; }
 .atlas-military-fallback-order__post-containment-watch--fog-safe-watch { fill: #bfdbfe; }
+.atlas-military-fallback-order__deprioritization-cue { fill: #e9d5ff; font-size: 0.36px; font-weight: 900; }
+.atlas-military-fallback-order__deprioritization-cue--deprioritize-now { fill: #bbf7d0; }
+.atlas-military-fallback-order__deprioritization-cue--light-watch-sufficient { fill: #fde68a; }
+.atlas-military-fallback-order__deprioritization-cue--blocked-active-slowed { fill: #fdba74; }
+.atlas-military-fallback-order__deprioritization-cue--blocked-fog-safe { fill: #bfdbfe; }
 .atlas-military-fallback-order__leftover-clear-condition { fill: #ccfbf1; font-size: 0.36px; font-weight: 900; }
 .atlas-military-fallback-order__leftover-clear-condition--completed-cleanup { fill: #bbf7d0; }
 .atlas-military-fallback-order__leftover-clear-condition--stable-follow-up { fill: #fde68a; }
