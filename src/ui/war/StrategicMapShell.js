@@ -1429,6 +1429,86 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 
 
 
+
+function buildSurveillanceEndCue(
+  recurrenceState,
+  nextChoice,
+  postCleanupRisks,
+  fallbackSafetyCutoff = null,
+  exposureBudget = null,
+) {
+  const safeAction = String(nextChoice?.cleanupOrderLabel ?? fallbackSafetyCutoff?.primaryAction ?? '').trim();
+  const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
+
+  if (recurrenceState === 'unknown-fog-safe' || (!nextChoice && postCleanupRisks.length > 0)) {
+    return {
+      state: 'unknown-fog-safe',
+      label: 'Fin de surveillance: inconnu fog-safe',
+      cue: 'fin de surveillance: inconnu fog-safe',
+      condition: 'relecture fog-safe avant arrêt',
+      reason: 'la cause cachée reste masquée',
+      cutoff,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (fallbackSafetyCutoff?.state === 'recheck-before-wait') {
+    return {
+      state: 'wait-for-window',
+      label: 'Fin de surveillance: attendre une fenêtre',
+      cue: 'fin de surveillance: attendre une fenêtre',
+      condition: cutoff ? `recheck dans ${cutoff}` : 'recheck avant prochaine action',
+      reason: 'l’arrêt dépend d’une nouvelle lecture sûre',
+      cutoff,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (postCleanupRisks.length > 0 || recurrenceState === 'risk-shifted') {
+    const shiftedRisk = String(postCleanupRisks[0]?.label ?? 'trace résiduelle').trim() || 'trace résiduelle';
+    return {
+      state: 'surveillance-extended',
+      label: `Fin de surveillance: prolongée sur ${shiftedRisk}`,
+      cue: `fin de surveillance: prolongée sur ${shiftedRisk}`,
+      condition: `${shiftedRisk} stabilisé sans nouvelle exposition`,
+      reason: 'un risque visible reste déplacé après le cleanup',
+      cutoff,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (recurrenceState === 'surveillance-required') {
+    return {
+      state: 'surveillance-extended',
+      label: 'Fin de surveillance: prolongée',
+      cue: 'fin de surveillance: prolongée',
+      condition: cutoff ? `tenir jusqu’à ${cutoff}` : 'stabiliser au prochain tour/action',
+      reason: safeAction
+        ? `${safeAction} réduit le risque mais demande confirmation`
+        : 'baisse de réapparition à confirmer',
+      cutoff,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'condition-met',
+    label: 'Fin de surveillance: condition atteinte',
+    cue: 'fin de surveillance: condition atteinte',
+    condition: safeAction
+      ? `${safeAction} terminé sans dette visible`
+      : 'aucune trace résiduelle visible',
+    reason: 'la réapparition visible est réduite sans révéler de cause cachée',
+    cutoff,
+    exposureBudget,
+    secondary: true,
+  };
+}
+
 function buildAfterNextCleanupRecurrenceCue(
   nextChoice,
   remainingRisks,
@@ -1457,6 +1537,13 @@ function buildAfterNextCleanupRecurrenceCue(
       watchRequired: remainingRisks.length > 0,
       shiftedRisk: null,
       exposureBudget,
+      surveillanceEndCue: buildSurveillanceEndCue(
+        remainingRisks.length === 0 ? 'recurrence-reduced' : 'unknown-fog-safe',
+        null,
+        remainingRisks,
+        fallbackSafetyCutoff,
+        exposureBudget,
+      ),
       secondary: true,
     };
   }
@@ -1470,6 +1557,13 @@ function buildAfterNextCleanupRecurrenceCue(
       watchRequired: true,
       shiftedRisk: postCleanupRisks[0]?.label ?? null,
       exposureBudget,
+      surveillanceEndCue: buildSurveillanceEndCue(
+        'surveillance-required',
+        nextChoice,
+        postCleanupRisks,
+        fallbackSafetyCutoff,
+        exposureBudget,
+      ),
       secondary: true,
     };
   }
@@ -1484,6 +1578,13 @@ function buildAfterNextCleanupRecurrenceCue(
       watchRequired: true,
       shiftedRisk,
       exposureBudget,
+      surveillanceEndCue: buildSurveillanceEndCue(
+        'risk-shifted',
+        nextChoice,
+        postCleanupRisks,
+        fallbackSafetyCutoff,
+        exposureBudget,
+      ),
       secondary: true,
     };
   }
@@ -1505,6 +1606,13 @@ function buildAfterNextCleanupRecurrenceCue(
     watchRequired: !recurrenceReduced,
     shiftedRisk: null,
     exposureBudget,
+    surveillanceEndCue: buildSurveillanceEndCue(
+      recurrenceReduced ? 'recurrence-reduced' : 'surveillance-required',
+      nextChoice,
+      postCleanupRisks,
+      fallbackSafetyCutoff,
+      exposureBudget,
+    ),
     secondary: true,
   };
 }
