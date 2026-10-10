@@ -12663,6 +12663,9 @@ button { font: inherit; }
 .culture-next-review-pressure-cue__payoff-proof { color: #c4b5fd; }
 .culture-next-review-pressure-cue__payoff-proof--accepted-pressure-proof { color: #fed7aa; }
 .culture-next-review-pressure-cue__payoff-proof--debt-contained-proof { color: #d1fae5; }
+.culture-next-review-pressure-cue__payoff-target { color: #a7f3d0; }
+.culture-next-review-pressure-cue__payoff-target--light-watch-payoff { color: #e5e7eb; }
+.culture-next-review-pressure-cue__payoff-target--contained-debt-payoff { color: #d1fae5; }
 .culture-next-review-pressure-cue--remaining-dependency { border-color: rgba(248, 113, 113, 0.4); }
 .culture-next-review-pressure-cue--review-timing { border-color: rgba(251, 191, 36, 0.34); }
 .culture-next-review-pressure-cue--fragile-unlock { border-color: rgba(45, 212, 191, 0.34); }
