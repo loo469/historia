@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildAfterSecondStabilizerDebtForConsumers,
   buildFreedDeliveryMarginCue,
+  buildFreedMarginReinvestmentCue,
   buildNextDeliveryBottleneckCue,
   buildNextDeliveryDebtImpact,
   buildNextRouteDebtPayoffCue,
@@ -189,6 +190,9 @@ test('buildProvinceLogisticsChoicePreview ranks the most constrained route as re
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.type, 'stabilizer');
   assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.target, 'Hill Spur');
   assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue.summary, /Prochain goulot: stabilisateur Hill Spur/);
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue.state, 'reinvest-now');
+  assert.equal(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue.target, 'Hill Spur');
+  assert.match(preview.adjacentRouteSpilloverRisk.guardDecisionSummary.fallbackJustification.primaryReturnSignal.routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue.summary, /Réinvestir maintenant: renforcer le stabilisateur Hill Spur/);
   assert.ok(Array.isArray(preview.adjacentRouteSpilloverRisk.secondaryRoutes));
   assert.equal(preview.primaryLogisticsAction.actionId, preview.priorityActions[0].actionId);
   assert.match(preview.primaryLogisticsAction.label, /Ember Line|Hill Spur|Safe Road/);
@@ -445,6 +449,29 @@ test('buildNextDeliveryBottleneckCue keeps one priority bottleneck after margin 
   );
   assert.equal(clearCue.type, 'none');
   assert.match(clearCue.summary, /aucun goulot fiable détecté/);
+});
+
+test('buildFreedMarginReinvestmentCue distinguishes keep buffer from immediate reinvestment', () => {
+  const reinvestCue = buildFreedMarginReinvestmentCue(
+    { state: 'delivery-secured', target: 'Hill Spur', reason: 'livraison fragile couverte' },
+    { state: 'watch', type: 'stabilizer', target: 'Hill Spur', reason: 'stabilisateur prioritaire' },
+    { state: 'comfortable', bottleneck: 'Outils', summary: 'marge confortable' },
+    { nextSafeDelivery: 'Hill Spur', routeConstraint: 'slack récupérable' },
+  );
+  assert.equal(reinvestCue.state, 'reinvest-now');
+  assert.equal(reinvestCue.mode, 'stabilizer');
+  assert.equal(reinvestCue.target, 'Hill Spur');
+  assert.match(reinvestCue.summary, /Réinvestir maintenant/);
+
+  const keepBufferCue = buildFreedMarginReinvestmentCue(
+    { state: 'delivery-secured', target: 'Hill Spur', reason: 'livraison couverte' },
+    { state: 'clear', type: 'none', target: null, reason: 'aucun goulot fiable' },
+    { state: 'comfortable', bottleneck: null, summary: 'marge confortable' },
+    { nextSafeDelivery: 'Hill Spur', routeConstraint: 'slack confortable' },
+  );
+  assert.equal(keepBufferCue.state, 'keep-buffer');
+  assert.equal(keepBufferCue.mode, 'buffer');
+  assert.match(keepBufferCue.summary, /Garder le buffer/);
 });
 
 test('buildProvinceLogisticsChoicePreview returns an empty state when no route is linked', () => {
