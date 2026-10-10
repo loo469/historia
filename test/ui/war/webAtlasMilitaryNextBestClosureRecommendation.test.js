@@ -688,3 +688,15 @@ test('atlas military shows commitment cost before exploiting an advance window',
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-commitment-cost--cost/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-commitment-cost--risky/);
 });
+
+// MAP-A58: when the advance commitment cost is high, show a compact safe hold
+// fallback instead of forcing the player to inspect a deeper front panel.
+test('atlas military shows safe hold fallback when advance cost is too high', () => {
+  assert.match(webAppSource, /const lightFollowUpSafeHoldFallback = lightFollowUpAdvanceCommitmentCost\?\.tone === 'risky'/);
+  assert.match(webAppSource, /label: 'Repli sûr: tenir consolidation'/);
+  assert.match(webAppSource, /avance différée sans rouvrir le front/);
+  assert.match(webAppSource, /lightFollowUpSafeHoldFallback,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpSafeHoldFallback \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__safe-hold-fallback/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpSafeHoldFallback \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 30\.85 : 29\.5/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-hold-fallback--hold/);
+});
