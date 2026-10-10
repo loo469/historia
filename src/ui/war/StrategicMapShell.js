@@ -1428,7 +1428,88 @@ function buildResidualFallbackSafetyCutoff(fallbackWaitCost, missedTimingFallbac
 }
 
 
-function buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices = [], fallbackSafetyCutoff = null) {
+
+function buildAfterNextCleanupRecurrenceCue(
+  nextChoice,
+  remainingRisks,
+  cleanedRiskKey,
+  fallbackSafetyCutoff = null,
+  exposureBudget = null,
+) {
+  const nextRiskKey = String(nextChoice?.residualRiskKey ?? '').trim();
+  const postCleanupRisks = remainingRisks.filter((risk) => {
+    const riskKey = String(risk.key ?? '').trim();
+    return riskKey && riskKey !== cleanedRiskKey && riskKey !== nextRiskKey;
+  });
+
+  if (!nextChoice) {
+    return {
+      state: remainingRisks.length === 0 ? 'recurrence-reduced' : 'unknown-fog-safe',
+      label: remainingRisks.length === 0
+        ? 'Après nettoyage: réapparition réduite'
+        : 'Après nettoyage: inconnu fog-safe',
+      cue: remainingRisks.length === 0
+        ? 'après nettoyage: réapparition réduite'
+        : 'après nettoyage: inconnu fog-safe',
+      reason: remainingRisks.length === 0
+        ? 'aucune cible résiduelle visible à relancer'
+        : 'cible suivante visible sans ordre fog-safe classé',
+      watchRequired: remainingRisks.length > 0,
+      shiftedRisk: null,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (fallbackSafetyCutoff?.state === 'recheck-before-wait') {
+    return {
+      state: 'surveillance-required',
+      label: 'Après nettoyage: surveillance requise',
+      cue: 'après nettoyage: surveillance requise',
+      reason: 'recheck requis avant de confirmer la baisse de réapparition',
+      watchRequired: true,
+      shiftedRisk: postCleanupRisks[0]?.label ?? null,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  if (postCleanupRisks.length > 0) {
+    const shiftedRisk = String(postCleanupRisks[0].label ?? 'trace résiduelle').trim() || 'trace résiduelle';
+    return {
+      state: 'risk-shifted',
+      label: `Après nettoyage: risque déplacé vers ${shiftedRisk}`,
+      cue: `après nettoyage: risque déplacé vers ${shiftedRisk}`,
+      reason: `${shiftedRisk} reste à surveiller après ${nextChoice.cleanupOrderLabel}`,
+      watchRequired: true,
+      shiftedRisk,
+      exposureBudget,
+      secondary: true,
+    };
+  }
+
+  const safetyScore = Number.isFinite(nextChoice.safetyScore) ? nextChoice.safetyScore : null;
+  const recurrenceReduced = safetyScore === null || !Number.isFinite(exposureBudget) || safetyScore >= exposureBudget;
+
+  return {
+    state: recurrenceReduced ? 'recurrence-reduced' : 'surveillance-required',
+    label: recurrenceReduced
+      ? 'Après nettoyage: réapparition réduite'
+      : 'Après nettoyage: surveillance requise',
+    cue: recurrenceReduced
+      ? 'après nettoyage: réapparition réduite'
+      : 'après nettoyage: surveillance requise',
+    reason: recurrenceReduced
+      ? `${nextChoice.cleanupOrderLabel} réduit la cible sans dette visible`
+      : `${nextChoice.cleanupOrderLabel} réduit la cible, mais le score sûr baisse`,
+    watchRequired: !recurrenceReduced,
+    shiftedRisk: null,
+    exposureBudget,
+    secondary: true,
+  };
+}
+
+function buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices = [], fallbackSafetyCutoff = null, exposureBudget = null) {
   if (!topChoice || !firstCleanupPayoff) return null;
 
   const cleanedRiskKey = String(topChoice.residualRiskKey ?? '').trim();
@@ -1448,6 +1529,7 @@ function buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices
       urgency: 'low',
       delay: 'surveiller sans nettoyage immédiat',
       reason: 'aucune trace résiduelle visible après action sûre',
+      afterCleanupRecurrenceCue: buildAfterNextCleanupRecurrenceCue(null, [], cleanedRiskKey, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1481,6 +1563,13 @@ function buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices
     reason: nextChoice?.cleanupOrderLabel
       ? `${nextChoice.cleanupOrderLabel} avant que ${riskLabel} redevienne risqué`
       : `surveiller ${riskLabel} avant nouvelle escalade`,
+    afterCleanupRecurrenceCue: buildAfterNextCleanupRecurrenceCue(
+      nextChoice,
+      remainingRisks,
+      cleanedRiskKey,
+      fallbackSafetyCutoff,
+      exposureBudget,
+    ),
     secondary: true,
   };
 }
@@ -1515,7 +1604,7 @@ function buildResidualAfterSafeActionCue(
       remainingTraces,
       exposureBudget,
       cutoff: fallbackSafetyCutoff.cutoff ?? null,
-      nextCleanupTargetCue: buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices, fallbackSafetyCutoff),
+      nextCleanupTargetCue: buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1530,7 +1619,7 @@ function buildResidualAfterSafeActionCue(
       remainingTraces,
       exposureBudget,
       cutoff: fallbackSafetyCutoff?.cutoff ?? null,
-      nextCleanupTargetCue: buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices, fallbackSafetyCutoff),
+      nextCleanupTargetCue: buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
@@ -1545,7 +1634,7 @@ function buildResidualAfterSafeActionCue(
       remainingTraces,
       exposureBudget,
       cutoff: fallbackSafetyCutoff?.cutoff ?? null,
-      nextCleanupTargetCue: buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices, fallbackSafetyCutoff),
+      nextCleanupTargetCue: buildNextCleanupTargetCue(topChoice, firstCleanupPayoff, cleanupChoices, fallbackSafetyCutoff, exposureBudget),
       secondary: true,
     };
   }
