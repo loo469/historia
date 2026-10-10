@@ -700,3 +700,18 @@ test('atlas military shows safe hold fallback when advance cost is too high', ()
   assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpSafeHoldFallback \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 30\.85 : 29\.5/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-hold-fallback--hold/);
 });
+
+// MAP-A59: after a safe hold fallback, explain which existing front signal would
+// reopen a safe advance instead of making the hold feel like a dead end.
+test('atlas military shows what reopens a safe advance after holding', () => {
+  assert.match(webAppSource, /const lightFollowUpAdvanceReopenCondition = lightFollowUpSafeHoldFallback/);
+  assert.match(webAppSource, /label: 'Réouverture avance: attendre signal sûr'/);
+  assert.match(webAppSource, /buffer récupéré après \$\{remainingWatch\.replace/);
+  assert.match(webAppSource, /label: 'Réouverture avance: veille conservatrice'/);
+  assert.match(webAppSource, /aucun signal fiable, garder hold jusqu’au prochain recheck front/);
+  assert.match(webAppSource, /lightFollowUpAdvanceReopenCondition,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpAdvanceReopenCondition \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpAdvanceReopenCondition \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 32\.2 : 30\.85/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition--reopen/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition--watch/);
+});
