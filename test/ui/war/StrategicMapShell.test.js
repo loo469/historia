@@ -1547,6 +1547,15 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
           secondary: true,
         },
         containmentCue: null,
+        containmentPayoffCue: {
+          state: 'cleared-redeploy-ready',
+          label: 'Payoff confinement: redéploiement possible',
+          cue: 'payoff confinement: redéploiement possible',
+          payoff: 'Dissiper attention résiduelle laisse la zone assez claire',
+          remainingRisk: 'aucune trace visible à retenir',
+          next: 'surveillance libre pour redéploiement',
+          secondary: true,
+        },
         secondary: true,
       },
       secondary: true,
@@ -1616,6 +1625,40 @@ test('StrategicMapShell shows cheapest containment action for spreading residual
       action: 'tenir la surveillance sur rumeur front B',
       cost: 'veille légère',
       reason: 'Dissiper attention résiduelle reste disponible sans engager une réponse plus large',
+      secondary: true,
+    },
+  );
+});
+
+test('StrategicMapShell shows containment payoff after cheapest containment', () => {
+  const shell = buildStrategicMapShell([
+    createProvince({ id: 'front-a', name: 'Front A' }),
+    createProvince({ id: 'front-b', name: 'Front B' }),
+  ], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-b', label: 'rumeur front B' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 50 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue
+      .leftoverRiskCue.containmentPayoffCue,
+    {
+      state: 'contained-still-watched',
+      label: 'Payoff confinement: contenu sous veille',
+      cue: 'payoff confinement: contenu sous veille',
+      payoff: 'propagation freinée par la veille légère',
+      remainingRisk: 'Dissiper attention résiduelle reste à stabiliser',
+      next: 'maintenir surveillance avant redéploiement libre',
       secondary: true,
     },
   );

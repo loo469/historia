@@ -1578,6 +1578,71 @@ function buildCheapestContainmentCue(
   return null;
 }
 
+
+function buildContainmentPayoffCue(
+  leftoverState,
+  containmentCue = null,
+  trajectoryCue = null,
+  nextChoice = null,
+  fallbackSafetyCutoff = null,
+) {
+  const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
+  const containmentState = String(containmentCue?.state ?? '').trim();
+  const trajectoryState = String(trajectoryCue?.state ?? '').trim();
+
+  if (containmentState === 'accept-fog-safe-uncertainty' || trajectoryState === 'unknown') {
+    return {
+      state: 'unknown-fog-safe',
+      label: 'Payoff confinement: incertain fog-safe',
+      cue: 'payoff confinement: incertain fog-safe',
+      payoff: 'risque masqué accepté sans escalade',
+      remainingRisk: 'cause cachée non confirmée',
+      next: 'garder la lecture fog-safe',
+      secondary: true,
+    };
+  }
+
+  if (containmentState === 'recheck-soon' || trajectoryState === 'worsening') {
+    return {
+      state: 'remaining-risk',
+      label: 'Payoff confinement: risque encore présent',
+      cue: 'payoff confinement: risque encore présent',
+      payoff: fallbackSafetyCutoff?.cutoff
+        ? `recheck attendu ${fallbackSafetyCutoff.cutoff}`
+        : 'recheck attendu avant nouvelle action',
+      remainingRisk: 'fenêtre sûre pas encore tenue',
+      next: 'attendre le recheck avant redéploiement complet',
+      secondary: true,
+    };
+  }
+
+  if (containmentState === 'keep-surveillance' || trajectoryState === 'spreading' || leftoverState === 'watch-lightly') {
+    return {
+      state: 'contained-still-watched',
+      label: 'Payoff confinement: contenu sous veille',
+      cue: 'payoff confinement: contenu sous veille',
+      payoff: 'propagation freinée par la veille légère',
+      remainingRisk: cleanupLabel
+        ? `${cleanupLabel} reste à stabiliser`
+        : 'trace visible encore surveillée',
+      next: 'maintenir surveillance avant redéploiement libre',
+      secondary: true,
+    };
+  }
+
+  return {
+    state: 'cleared-redeploy-ready',
+    label: 'Payoff confinement: redéploiement possible',
+    cue: 'payoff confinement: redéploiement possible',
+    payoff: cleanupLabel
+      ? `${cleanupLabel} laisse la zone assez claire`
+      : 'zone assez claire après confinement',
+    remainingRisk: 'aucune trace visible à retenir',
+    next: 'surveillance libre pour redéploiement',
+    secondary: true,
+  };
+}
+
 function buildRedeploymentInterimActionCue(leftoverState, nextChoice = null, fallbackSafetyCutoff = null) {
   const cleanupLabel = String(nextChoice?.cleanupOrderLabel ?? '').trim();
   const cutoff = fallbackSafetyCutoff?.cutoff ?? null;
@@ -1692,6 +1757,7 @@ function buildRedeploymentLeftoverRiskCue(
       clearConditionCue: buildRedeploymentClearConditionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
       trajectoryCue: buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
       containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
+      containmentPayoffCue: buildContainmentPayoffCue('unknown-fog-safe', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('unknown-fog-safe', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
       interimActionCue: buildRedeploymentInterimActionCue('unknown-fog-safe', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1711,6 +1777,7 @@ function buildRedeploymentLeftoverRiskCue(
       clearConditionCue: buildRedeploymentClearConditionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
       trajectoryCue: buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
       containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
+      containmentPayoffCue: buildContainmentPayoffCue('recheck-soon', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('recheck-soon', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
       interimActionCue: buildRedeploymentInterimActionCue('recheck-soon', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1728,6 +1795,7 @@ function buildRedeploymentLeftoverRiskCue(
       clearConditionCue: buildRedeploymentClearConditionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
       trajectoryCue: buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
       containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
+      containmentPayoffCue: buildContainmentPayoffCue('watch-lightly', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('watch-lightly', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
       interimActionCue: buildRedeploymentInterimActionCue('watch-lightly', nextChoice, fallbackSafetyCutoff),
       secondary: true,
     };
@@ -1744,6 +1812,7 @@ function buildRedeploymentLeftoverRiskCue(
     clearConditionCue: buildRedeploymentClearConditionCue('stable', nextChoice, fallbackSafetyCutoff),
     trajectoryCue: buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff),
     containmentCue: buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks),
+    containmentPayoffCue: buildContainmentPayoffCue('stable', buildCheapestContainmentCue(buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff, postCleanupRisks), buildResidualRiskTrajectoryCue('stable', nextChoice, postCleanupRisks, fallbackSafetyCutoff), nextChoice, fallbackSafetyCutoff),
     secondary: true,
   };
 }
