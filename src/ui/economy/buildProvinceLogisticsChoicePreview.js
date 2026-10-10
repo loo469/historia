@@ -609,6 +609,50 @@ export function buildFirstSpendableBufferUseCue(preservedBufferGrowthBlockerCue,
   return null;
 }
 
+
+export function buildFirstSpendBufferConsequenceCue(firstSpendableBufferUseCue, freedMarginReinvestmentCue, freedMarginPreSpendCheckCue, routeSlack, safeDeliveryUnlock) {
+  if (!firstSpendableBufferUseCue) {
+    return null;
+  }
+
+  const target = firstSpendableBufferUseCue.target
+    ?? freedMarginReinvestmentCue?.target
+    ?? safeDeliveryUnlock?.nextSafeDelivery
+    ?? routeSlack?.bottleneck
+    ?? null;
+  const type = firstSpendableBufferUseCue.type ?? freedMarginReinvestmentCue?.mode ?? 'surplus';
+  const consumedByType = {
+    debt: 'réserve de dette route',
+    stabilizer: 'réserve de stabilisation',
+    capacity: 'capacité locale disponible',
+    route: 'marge de route',
+    'next-bottleneck': 'réserve du prochain goulot',
+    surplus: 'surplus sûr',
+    clear: 'surplus sûr',
+  };
+  const deferredByType = {
+    debt: 'garder le buffer jusqu’à dette soldée',
+    stabilizer: 'différer jusqu’à stabilisateur couvert',
+    capacity: 'différer jusqu’à capacité desserrée',
+    route: 'garder la marge de route en réserve',
+    'next-bottleneck': 'attendre le prochain check livraison',
+    surplus: 'conserver le surplus comme garde livraison',
+    clear: 'conserver le surplus comme garde livraison',
+  };
+
+  return {
+    state: firstSpendableBufferUseCue.state === 'spendable-now' ? 'spend-now' : 'spend-after-unblock',
+    type,
+    label: 'Conséquence dépense buffer',
+    target,
+    summary: `Dépense du buffer: consomme ${consumedByType[type] ?? 'réserve livraison'}${target ? ` sur ${target}` : ''}.`,
+    reason: firstSpendableBufferUseCue.state === 'spendable-now'
+      ? (freedMarginPreSpendCheckCue?.summary ?? firstSpendableBufferUseCue.reason ?? 'Aucun bloqueur restant ne retient ce premier usage.')
+      : (firstSpendableBufferUseCue.reason ?? 'Attendre le déblocage avant de consommer ce buffer.'),
+    saferAlternative: deferredByType[type] ?? 'différer tant que la livraison reste fragile',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -2309,6 +2353,15 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendBufferConsequenceCue = buildFirstSpendBufferConsequenceCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.firstSpendableBufferUseCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue,
           routeSlack,
           routeSlack.slackConsumerHint.safeDeliveryUnlock,
         );
