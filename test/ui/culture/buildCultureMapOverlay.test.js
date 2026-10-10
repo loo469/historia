@@ -1052,6 +1052,13 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           observableEffect: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
           reason: 'médiation peut encore refermer le suivi si l’action attend',
         },
+        nextCultureStepPayoffProofCue: {
+          state: 'review-window-proof',
+          proofSignal: 'fenêtre de revue confirmée',
+          payoffWhen: 'réévaluer la médiation ou le support local au prochain tour',
+          observedPayoff: 'médiation ne referme plus la fenêtre',
+          followUpCheck: 'fenêtre fragile mais exploitable: médiation limite encore le suivi',
+        },
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'watch-before-redeploy',
@@ -1256,6 +1263,7 @@ test('buildCultureMapOverlay bundles compatible supports for fragile cultural re
           urgency: 'none',
         },
         nextCultureStepWhyNowCue: null,
+        nextCultureStepPayoffProofCue: null,
       },
       residualCulturePrematureRedeploymentRisk: {
         status: 'safe',
