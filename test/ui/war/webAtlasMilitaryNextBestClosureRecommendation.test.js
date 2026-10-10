@@ -622,3 +622,19 @@ test('atlas military shows whether minimal light front recovery restores buffer'
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome--late/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__countermeasure-recovery-outcome--quiet/);
 });
+
+// MAP-A54: after a light-front recovery restores the buffer, point at the next
+// contested edge instead of forcing the player to reread every nearby marker.
+test('atlas military shows the next contested edge after light front buffer recovery', () => {
+  assert.match(webAppSource, /const lightFollowUpNextContestedEdge = lightFollowUpCountermeasureRecoveryOutcome/);
+  assert.match(webAppSource, /label: `Prochain bord contesté: \$\{nextEdge\.label\}`/);
+  assert.match(webAppSource, /label: 'Prochain bord contesté: aucun immédiat'/);
+  assert.match(webAppSource, /buffer restauré · aucun bord local ne réclame d’action/);
+  assert.match(webAppSource, /lightFollowUpNextContestedEdge,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpNextContestedEdge \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpNextContestedEdge \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 25\.45 : 24\.1/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge--urgent/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge--clear/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge--quiet/);
+});
