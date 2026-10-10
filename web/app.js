@@ -22065,6 +22065,7 @@ function renderCultureNextReviewPressureCue(cue) {
       <small>Effet lié: ${cue.expectedEffect}</small>
       ${cue.tradeoff ? `<small class="culture-next-review-pressure-cue__tradeoff">Tradeoff: ${cue.tradeoff}</small>` : ''}
       ${cue.tradeoffDeadlineCue ? `<small class="culture-next-review-pressure-cue__deadline culture-next-review-pressure-cue__deadline--${cue.tradeoffDeadlineCue.state}">Deadline: ${cue.tradeoffDeadlineCue.latestSafeMoment} · ${cue.tradeoffDeadlineCue.actionPosture}</small>` : ''}
+      ${cue.pressureRetirementEvidenceCue ? `<small class="culture-next-review-pressure-cue__evidence culture-next-review-pressure-cue__evidence--${cue.pressureRetirementEvidenceCue.state}">Preuve de retrait: ${cue.pressureRetirementEvidenceCue.evidence} · ${cue.pressureRetirementEvidenceCue.condition}</small>` : ''}
       <small>Étape suivante: ${cue.nextStep} · restantes ${cue.remainingDependencyCount}</small>
     </article>
   `;
