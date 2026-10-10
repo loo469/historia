@@ -791,3 +791,18 @@ test('atlas military confirms front state after committing reopened advance', ()
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation--secured/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__reopened-advance-confirmation--watch/);
 });
+
+// MAP-A65: once the secured advance is confirmed, show that it is now the
+// decision baseline and name the next concrete choice from that state.
+test('atlas military shows when secured advance becomes the new baseline', () => {
+  assert.match(webAppSource, /const lightFollowUpSecuredAdvanceBaseline = lightFollowUpReopenedAdvanceConfirmation/);
+  assert.match(webAppSource, /label: 'Nouveau baseline front'/);
+  assert.match(webAppSource, /\$\{baselineProvince\} devient référence · prochain choix: \$\{nextChoice\}/);
+  assert.match(webAppSource, /surveiller contre-attaque: \$\{residualRisk\.action/);
+  assert.match(webAppSource, /tenir baseline et relire le front/);
+  assert.match(webAppSource, /lightFollowUpSecuredAdvanceBaseline,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpSecuredAdvanceBaseline \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__secured-advance-baseline/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpSecuredAdvanceBaseline \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 40\.3 : 38\.95/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__secured-advance-baseline--baseline/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__secured-advance-baseline--watch/);
+});
