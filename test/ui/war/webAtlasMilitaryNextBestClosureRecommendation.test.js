@@ -715,3 +715,18 @@ test('atlas military shows what reopens a safe advance after holding', () => {
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition--reopen/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__advance-reopen-condition--watch/);
 });
+
+// MAP-A60: while holding the safe front, keep the player oriented on the
+// highest-risk signal that could make the hold unsafe again.
+test('atlas military shows what to monitor while holding a safe front', () => {
+  assert.match(webAppSource, /const lightFollowUpHoldWatch = lightFollowUpSafeHoldFallback/);
+  assert.match(webAppSource, /label: 'Veille hold: risque prioritaire'/);
+  assert.match(webAppSource, /surveiller \$\{residualRisk\.provinceLabel/);
+  assert.match(webAppSource, /label: 'Veille hold: front stable'/);
+  assert.match(webAppSource, /aucun risque fiable, conserver la consolidation jusqu’au signal de réouverture/);
+  assert.match(webAppSource, /lightFollowUpHoldWatch,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpHoldWatch \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__hold-watch/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpHoldWatch \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 33\.55 : 32\.2/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-watch--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__hold-watch--stable/);
+});
