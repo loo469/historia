@@ -155,6 +155,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /redéploiement surveillance: inconnu/);
   assert.match(webAppSource, /risque laissé: non évalué/);
   assert.match(webAppSource, /clear résiduel: non évalué/);
+  assert.match(webAppSource, /pendant attente: non requis/);
   assert.match(webAppSource, /afterSafeActionLabel/);
   assert.match(webAppSource, /nextCleanupTargetLabel/);
   assert.match(webAppSource, /afterCleanupRecurrenceLabel/);
@@ -162,6 +163,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /surveillanceRedeploymentLabel/);
   assert.match(webAppSource, /redeploymentLeftoverRiskLabel/);
   assert.match(webAppSource, /leftoverClearConditionLabel/);
+  assert.match(webAppSource, /leftoverInterimActionLabel/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-payoff/);
   assert.match(webAppSource, /atlas-military-fallback-order__cleanup-followups/);
   assert.match(webAppSource, /atlas-military-fallback-order__followup-readiness/);
@@ -192,6 +194,7 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(webAppSource, /atlas-military-fallback-order__surveillance-redeployment/);
   assert.match(webAppSource, /atlas-military-fallback-order__redeployment-leftover-risk/);
   assert.match(webAppSource, /atlas-military-fallback-order__leftover-clear-condition/);
+  assert.match(webAppSource, /atlas-military-fallback-order__leftover-interim-action/);
   assert.match(webAppSource, /payoff: \$\{fallback\.firstCleanupPayoff\.riskReduced\} ↓ · reste \$\{fallback\.firstCleanupPayoff\.remainingRiskCount\}/);
   assert.match(webAppSource, /suivi: \$\{fallback\.followUpCleanupChoices\.map\(\(choice\) => `\$\{choice\.rank\}\. \$\{choice\.cleanupOrderLabel\} \(\$\{choice\.riskCovered\}\)`\)\.join\(' · '\)\}/);
   assert.match(webAppSource, /readiness: \$\{fallback\.topFollowUpReadiness\.label\} · \$\{fallback\.topFollowUpReadiness\.blocker\}/);
@@ -255,4 +258,5 @@ test('atlas military fallback order hint stays secondary and hides no-safe fallb
   assert.match(stylesSource, /\.atlas-military-fallback-order__surveillance-redeployment/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__redeployment-leftover-risk/);
   assert.match(stylesSource, /\.atlas-military-fallback-order__leftover-clear-condition/);
+  assert.match(stylesSource, /\.atlas-military-fallback-order__leftover-interim-action/);
 });

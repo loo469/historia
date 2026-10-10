@@ -1545,6 +1545,36 @@ test('StrategicMapShell shows surveillance redeployment after cleanup safely shi
   );
 });
 
+test('StrategicMapShell shows safest interim action while redeployed residual risk remains', () => {
+  const shell = buildStrategicMapShell([createProvince({ id: 'front-a', name: 'Front A' })], {
+    residualRisks: [
+      { key: 'supply-pressure:front-a', label: 'pression ravitaillement' },
+      { key: 'watch:front-a', label: 'attention résiduelle' },
+      { key: 'low-loyalty:front-a', label: 'loyauté basse' },
+      { key: 'rumor:front-a', label: 'rumeur active' },
+    ],
+    cleanupOrders: [
+      { id: 'cleanup:first', label: 'Nettoyer convoi initial', residualRiskKey: 'supply-pressure:front-a' },
+      { id: 'cleanup:watch', label: 'Dissiper attention résiduelle', residualRiskKey: 'watch:front-a', safetyScore: 50 },
+      { id: 'cleanup:liaison', label: 'Liaison locale de secours', residualRiskKey: 'low-loyalty:front-a', safetyScore: 44 },
+    ],
+  });
+
+  assert.deepEqual(
+    shell.residualIntrigueCleanupTiming.lastSafeWindowCue.atLastSafeTurn.afterSafeActionCue
+      .nextCleanupTargetCue.afterCleanupRecurrenceCue.surveillanceEndCue.redeploymentCue
+      .leftoverRiskCue.interimActionCue,
+    {
+      state: 'continue-light-watch',
+      label: 'Pendant attente: veille légère',
+      cue: 'pendant attente: veille légère',
+      action: 'garder une veille légère après Liaison locale de secours',
+      reason: 'option la plus sûre tant que le clear résiduel reste incomplet',
+      secondary: true,
+    },
+  );
+});
+
 test('StrategicMapShell marks residual intrigue cleanup as premature until the blocker clears', () => {
   assert.deepEqual(buildResidualIntrigueCleanupTiming(
     {
