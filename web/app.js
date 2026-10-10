@@ -22355,6 +22355,7 @@ function renderCultureNextReviewPressureCue(cue) {
       ${cue.nextUsefulCultureStepCue ? `<small class="culture-next-review-pressure-cue__next-step culture-next-review-pressure-cue__next-step--${cue.nextUsefulCultureStepCue.state}">Suite utile: ${cue.nextUsefulCultureStepCue.step} · ${cue.nextUsefulCultureStepCue.reason}</small>` : ''}
       ${cue.nextCultureStepWhyNowCue ? `<small class="culture-next-review-pressure-cue__why-now culture-next-review-pressure-cue__why-now--${cue.nextCultureStepWhyNowCue.state}">Pourquoi maintenant: ${cue.nextCultureStepWhyNowCue.value} · ${cue.nextCultureStepWhyNowCue.observableEffect}</small>` : ''}
       ${cue.nextCultureStepPayoffProofCue ? `<small class="culture-next-review-pressure-cue__payoff-proof culture-next-review-pressure-cue__payoff-proof--${cue.nextCultureStepPayoffProofCue.state}">Preuve du payoff: ${cue.nextCultureStepPayoffProofCue.proofSignal} · ${cue.nextCultureStepPayoffProofCue.observedPayoff}</small>` : ''}
+      ${cue.nextCulturePayoffTargetCue ? `<small class="culture-next-review-pressure-cue__payoff-target culture-next-review-pressure-cue__payoff-target--${cue.nextCulturePayoffTargetCue.state}">Cible payoff: ${cue.nextCulturePayoffTargetCue.target} · ${cue.nextCulturePayoffTargetCue.whyMatters}</small>` : ''}
       <small>Étape suivante: ${cue.nextStep} · restantes ${cue.remainingDependencyCount}</small>
     </article>
   `;
