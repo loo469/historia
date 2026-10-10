@@ -638,3 +638,21 @@ test('atlas military shows the next contested edge after light front buffer reco
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge--clear/);
   assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__next-contested-edge--quiet/);
 });
+
+// MAP-A55: after the next contested edge is known, show the safe consolidation
+// move that protects it without reopening a more fragile front elsewhere.
+test('atlas military shows safe consolidation after the next contested edge', () => {
+  assert.match(webAppSource, /const lightFollowUpSafeConsolidation = lightFollowUpNextContestedEdge/);
+  assert.match(webAppSource, /label: 'Consolidation sûre: geste recommandé'/);
+  assert.match(webAppSource, /label: 'Consolidation sûre: surveiller le bord'/);
+  assert.match(webAppSource, /label: 'Consolidation sûre: aucune immédiate'/);
+  assert.match(webAppSource, /ne pas rouvrir un front plus fragile/);
+  assert.match(webAppSource, /risque déplacé: \$\{residualRisk\?\.detail/);
+  assert.match(webAppSource, /lightFollowUpSafeConsolidation,/);
+  assert.match(webAppSource, /ladder\.lightFollowUpSafeConsolidation \? `<text class="atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation/);
+  assert.match(webAppSource, /preview\.blockedFollowUpLadder\?\.lightFollowUpSafeConsolidation \? preview\.blockedFollowUpLadder\?\.remainingWatch \? 26\.8 : 25\.45/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation--safe/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation--watch/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation--clear/);
+  assert.match(stylesSource, /\.atlas-military-neighbor-blocked-follow-up-ladder__safe-consolidation--quiet/);
+});
