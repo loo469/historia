@@ -110,6 +110,72 @@ export function buildNextRouteDebtPayoffCue(safeDeliveryUnlock, nextStabilizerRe
   };
 }
 
+
+export function buildFreedDeliveryMarginCue(nextRouteDebtPayoffCue, safeDeliveryUnlock, nextDeliveryDebtImpact) {
+  if (!nextRouteDebtPayoffCue || !safeDeliveryUnlock) {
+    return {
+      state: 'unknown',
+      label: 'Marge libérée',
+      target: null,
+      summary: 'Marge libérée: information insuffisante pour relier le remboursement à une livraison fragile.',
+      reason: 'La dette de route ou la livraison sûre prioritaire n’est pas qualifiée.',
+    };
+  }
+
+  const target = nextRouteDebtPayoffCue.target
+    ?? nextDeliveryDebtImpact?.target
+    ?? safeDeliveryUnlock.nextSafeDelivery
+    ?? null;
+
+  if (nextRouteDebtPayoffCue.state === 'blocked' || safeDeliveryUnlock.state === 'insufficient' || nextDeliveryDebtImpact?.state === 'blocking') {
+    return {
+      state: 'blocked',
+      label: 'Marge libérée',
+      target,
+      summary: `Marge libérée: dette encore bloquante sur ${target ?? 'la route prioritaire'}.`,
+      reason: nextRouteDebtPayoffCue.benefit ?? nextDeliveryDebtImpact?.reason ?? safeDeliveryUnlock.routeConstraint ?? 'Lever le blocage avant de compter cette marge pour la livraison.',
+    };
+  }
+
+  if (nextRouteDebtPayoffCue.state === 'recommended' && nextDeliveryDebtImpact?.state === 'covered') {
+    return {
+      state: 'delivery-secured',
+      label: 'Marge libérée',
+      target,
+      summary: `Marge libérée: ${target} sécurise la prochaine livraison fragile.`,
+      reason: nextDeliveryDebtImpact.reason ?? nextRouteDebtPayoffCue.benefit ?? safeDeliveryUnlock.routeConstraint,
+    };
+  }
+
+  if (nextRouteDebtPayoffCue.state === 'clear') {
+    return {
+      state: 'delivery-secured',
+      label: 'Marge libérée',
+      target: safeDeliveryUnlock.nextSafeDelivery ?? target,
+      summary: 'Marge libérée: livraison sécurisée, aucune dette prioritaire à solder.',
+      reason: nextRouteDebtPayoffCue.benefit ?? safeDeliveryUnlock.routeConstraint,
+    };
+  }
+
+  if (nextRouteDebtPayoffCue.state === 'watch' || nextDeliveryDebtImpact?.state === 'watch') {
+    return {
+      state: 'local-only',
+      label: 'Marge libérée',
+      target,
+      summary: `Marge libérée: ${target ?? 'la route'} réduit surtout le risque local.`,
+      reason: nextRouteDebtPayoffCue.benefit ?? nextDeliveryDebtImpact?.reason ?? 'La prochaine livraison reste à confirmer par les signaux de slack.',
+    };
+  }
+
+  return {
+    state: 'unknown',
+    label: 'Marge libérée',
+    target,
+    summary: 'Marge libérée: information insuffisante pour garantir la prochaine livraison fragile.',
+    reason: nextRouteDebtPayoffCue.benefit ?? 'Le remboursement réduit une dette, mais son effet livraison reste incomplet.',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -1417,8 +1483,22 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             },
             nextRouteDebtPayoffCue: buildNextRouteDebtPayoffCue({
               state: 'safe',
+              nextSafeDelivery: 'prochaine livraison sûre',
               routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
             }, { state: 'stable' }, null),
+            freedDeliveryMarginCue: buildFreedDeliveryMarginCue(
+              buildNextRouteDebtPayoffCue({
+                state: 'safe',
+                nextSafeDelivery: 'prochaine livraison sûre',
+                routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+              }, { state: 'stable' }, null),
+              {
+                state: 'safe',
+                nextSafeDelivery: 'prochaine livraison sûre',
+                routeConstraint: 'aucun coût immédiat ne consomme la marge de route',
+              },
+              null,
+            ),
           },
         };
       }
@@ -1576,6 +1656,48 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
             : primaryConsumer.tone === 'blocked'
               ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
               : null),
+          freedDeliveryMarginCue: buildFreedDeliveryMarginCue(
+            buildNextRouteDebtPayoffCue({
+              state: primaryConsumer.tone === 'blocked' ? 'insufficient' : 'recoverable',
+              recovery: primaryConsumer.label,
+              nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+              routeConstraint: primaryConsumer.tone === 'blocked'
+                ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+                : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+              afterDeliveryFragility: {
+                target: nextConsumer?.label ?? (primaryConsumer.tone === 'blocked' ? primaryConsumer.label : null),
+              },
+            }, nextConsumer
+              ? {
+                state: nextConsumer.tone === 'blocked' ? 'urgent' : 'watch',
+                target: nextConsumer.label,
+                reason: nextConsumer.blockerReason ?? nextConsumer.reason,
+              }
+              : primaryConsumer.tone === 'blocked'
+                ? {
+                  state: 'urgent',
+                  target: primaryConsumer.label,
+                  reason: primaryConsumer.blockerReason ?? primaryConsumer.reason,
+                }
+                : { state: 'stable', target: null },
+            nextConsumer
+              ? buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label)
+              : primaryConsumer.tone === 'blocked'
+                ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
+                : null),
+            {
+              state: primaryConsumer.tone === 'blocked' ? 'insufficient' : 'recoverable',
+              nextSafeDelivery: nextConsumer?.label ?? 'prochaine livraison sûre',
+              routeConstraint: primaryConsumer.tone === 'blocked'
+                ? `${primaryConsumer.label} reste sous le seuil de slack: ${primaryConsumer.blockerReason ?? primaryConsumer.reason}`
+                : `${primaryConsumer.label} garde assez de slack avant ${nextConsumer?.label ?? 'la prochaine contrainte'}`,
+            },
+            nextConsumer
+              ? buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextConsumer.label)
+              : primaryConsumer.tone === 'blocked'
+                ? buildNextDeliveryDebtImpact(buildAfterSecondStabilizerDebt(null, null), primaryConsumer.label)
+                : null,
+          ),
         },
       };
     };
