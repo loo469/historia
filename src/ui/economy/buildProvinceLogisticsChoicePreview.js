@@ -318,6 +318,81 @@ export function buildFreedMarginReinvestmentCue(freedDeliveryMarginCue, nextDeli
   };
 }
 
+
+export function buildFreedMarginBufferWarningCue(freedDeliveryMarginCue, nextDeliveryBottleneckCue, freedMarginReinvestmentCue, routeSlack, safeDeliveryUnlock) {
+  if (!freedDeliveryMarginCue || freedDeliveryMarginCue.state === 'unknown' || !freedMarginReinvestmentCue) {
+    return null;
+  }
+
+  if (freedMarginReinvestmentCue.state === 'keep-buffer') {
+    return null;
+  }
+
+  const target = nextDeliveryBottleneckCue?.target
+    ?? freedMarginReinvestmentCue.target
+    ?? freedDeliveryMarginCue.target
+    ?? safeDeliveryUnlock?.nextSafeDelivery
+    ?? routeSlack?.bottleneck
+    ?? null;
+
+  if (freedDeliveryMarginCue.state === 'blocked' || nextDeliveryBottleneckCue?.type === 'debt') {
+    return {
+      state: 'preserve-buffer',
+      type: 'debt',
+      label: 'Buffer à garder',
+      target,
+      summary: `Garder le buffer: dette de route encore prioritaire sur ${target ?? 'la route fragile'}.`,
+      reason: nextDeliveryBottleneckCue?.reason ?? freedDeliveryMarginCue.reason ?? safeDeliveryUnlock?.routeConstraint ?? 'Dépenser cette marge laisserait une dette bloquante sans couverture.',
+    };
+  }
+
+  if (nextDeliveryBottleneckCue?.type === 'stabilizer') {
+    return {
+      state: 'preserve-buffer',
+      type: 'stabilizer',
+      label: 'Buffer à garder',
+      target,
+      summary: `Garder le buffer: ${target ?? 'le stabilisateur'} reste le stabilisateur fragile suivant.`,
+      reason: nextDeliveryBottleneckCue.reason ?? freedDeliveryMarginCue.reason ?? 'La marge doit rester disponible pour absorber la stabilisation suivante.',
+    };
+  }
+
+  if (nextDeliveryBottleneckCue?.type === 'capacity' || freedMarginReinvestmentCue.mode === 'capacity') {
+    return {
+      state: 'preserve-buffer',
+      type: 'capacity',
+      label: 'Buffer à garder',
+      target,
+      summary: `Garder le buffer: capacité locale encore serrée sur ${target ?? 'la prochaine livraison'}.`,
+      reason: nextDeliveryBottleneckCue?.reason ?? routeSlack?.summary ?? freedMarginReinvestmentCue.reason ?? 'La marge libérée absorbe d’abord le risque de capacité locale.',
+    };
+  }
+
+  if (freedDeliveryMarginCue.state === 'local-only' || nextDeliveryBottleneckCue?.type === 'route' || freedMarginReinvestmentCue.mode === 'route') {
+    return {
+      state: 'preserve-buffer',
+      type: 'route',
+      label: 'Buffer à garder',
+      target,
+      summary: `Garder le buffer: route encore fragile sur ${target ?? 'la prochaine livraison'}.`,
+      reason: nextDeliveryBottleneckCue?.reason ?? routeSlack?.summary ?? freedDeliveryMarginCue.reason ?? 'La marge libérée protège encore le risque local.',
+    };
+  }
+
+  if (nextDeliveryBottleneckCue?.type && nextDeliveryBottleneckCue.type !== 'none' && nextDeliveryBottleneckCue.type !== 'unknown') {
+    return {
+      state: 'preserve-buffer',
+      type: 'next-bottleneck',
+      label: 'Buffer à garder',
+      target,
+      summary: `Garder le buffer: prochain goulot encore actif${target ? ` sur ${target}` : ''}.`,
+      reason: nextDeliveryBottleneckCue.reason ?? freedMarginReinvestmentCue.reason ?? 'La marge libérée serait consommée par le prochain goulot visible.',
+    };
+  }
+
+  return null;
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -1971,6 +2046,15 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
         routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue = buildFreedMarginReinvestmentCue(
           routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue,
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue = buildFreedMarginBufferWarningCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedDeliveryMarginCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginReinvestmentCue,
           routeSlack,
           routeSlack.slackConsumerHint.safeDeliveryUnlock,
         );
