@@ -863,6 +863,57 @@ function buildNextCulturalDependencyRetirementCue(
   };
 }
 
+function buildCulturalReviewStabilizationCue(
+  nextCulturalDependencyRetirementCue,
+  residualRiskAfterNextRetirement,
+  topRetirementRecoveryPreview,
+) {
+  const remainingFragility = residualRiskAfterNextRetirement.principalResidualFragility;
+  const target = nextCulturalDependencyRetirementCue.target;
+  const remainingDependencyCount = nextCulturalDependencyRetirementCue.remainingDependencyCount;
+
+  if (!target && residualRiskAfterNextRetirement.status !== 'complete') {
+    return {
+      state: 'no-reliable-proof',
+      reviewStability: 'preuve insuffisante',
+      retirementBenefit: nextCulturalDependencyRetirementCue.expectedEffect,
+      openCulturalDebt: residualRiskAfterNextRetirement.reason,
+      reviewWindow: nextCulturalDependencyRetirementCue.reviewWindow,
+      nextReviewDecision: 'attendre une preuve fiable avant de promettre la stabilisation',
+      remainingDependencyCount,
+      unlockEvidence: topRetirementRecoveryPreview.recoveryType,
+    };
+  }
+
+  if (!remainingFragility) {
+    return {
+      state: 'stabilized',
+      reviewStability: 'revue stabilisée',
+      retirementBenefit: target
+        ? nextCulturalDependencyRetirementCue.expectedEffect
+        : topRetirementRecoveryPreview.expectedRecovery,
+      openCulturalDebt: 'aucune dépendance critique restante après ce retrait',
+      reviewWindow: nextCulturalDependencyRetirementCue.reviewWindow,
+      nextReviewDecision: 'confirmer la prochaine revue sans rouvrir de dette culturelle',
+      remainingDependencyCount,
+      unlockEvidence: topRetirementRecoveryPreview.recoveryType,
+    };
+  }
+
+  const critical = remainingFragility.urgency === 'high';
+
+  return {
+    state: critical ? 'critical-dependency-remaining' : 'partial-effect',
+    reviewStability: critical ? 'dépendance critique restante' : 'effet partiel',
+    retirementBenefit: nextCulturalDependencyRetirementCue.expectedEffect,
+    openCulturalDebt: `${remainingFragility.cause} reste ${remainingFragility.urgency}`,
+    reviewWindow: nextCulturalDependencyRetirementCue.reviewWindow,
+    nextReviewDecision: residualRiskAfterNextRetirement.nextActionAfterRetirement,
+    remainingDependencyCount,
+    unlockEvidence: topRetirementRecoveryPreview.recoveryType,
+  };
+}
+
 function buildResidualCultureRiskNextAction(residualRiskAfterNextRetirement) {
   const fragility = residualRiskAfterNextRetirement.principalResidualFragility;
 
@@ -1402,6 +1453,11 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     nextDependencyRetirementPath,
     residualCultureFollowUpWindow,
   );
+  const culturalReviewStabilizationCue = buildCulturalReviewStabilizationCue(
+    nextCulturalDependencyRetirementCue,
+    residualRiskAfterNextRetirement,
+    topRetirementRecoveryPreview,
+  );
 
   return {
     status: uniqueDebts.length > 0 ? 'open' : 'neutral',
@@ -1426,6 +1482,7 @@ function buildStabilizationDebtSummary(status, regionId, dependencies, incompati
     residualCultureStabilityWatchWindow,
     residualCultureSupportRedeploymentCue,
     nextCulturalDependencyRetirementCue,
+    culturalReviewStabilizationCue,
     residualCulturePrematureRedeploymentRisk: buildResidualCulturePrematureRedeploymentRisk(residualCultureSupportRedeploymentCue),
   };
 }

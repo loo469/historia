@@ -21798,6 +21798,25 @@ function renderCultureDependencyRetirementCue(cue) {
   `;
 }
 
+function renderCultureReviewStabilizationCue(cue) {
+  if (!cue) {
+    return '';
+  }
+
+  return `
+    <article class="culture-review-stabilization-cue culture-review-stabilization-cue--${cue.state}" aria-label="Revue culturelle stabilisée après retrait">
+      <div class="culture-review-stabilization-cue__header">
+        <span>Revue stabilisée ?</span>
+        <strong>${cue.reviewStability}</strong>
+      </div>
+      <small>Bénéfice du retrait: ${cue.retirementBenefit}</small>
+      <small>Dette ouverte: ${cue.openCulturalDebt}</small>
+      <small>Fenêtre: ${cue.reviewWindow}</small>
+      <small>Prochaine décision: ${cue.nextReviewDecision} · restantes ${cue.remainingDependencyCount} · preuve ${cue.unlockEvidence}</small>
+    </article>
+  `;
+}
+
 function renderCultureSidePanel(cultureView) {
   if (state.activeOverlaySlot !== 'culture-overlay') {
     return null;
@@ -21830,6 +21849,7 @@ function renderCultureSidePanel(cultureView) {
   });
   const mediationWarnings = buildAtlasMediationSignalWarnings(cultureView, state.selectedProvinceId);
   const dependencyRetirementCue = focus?.cultureStabilizationSummary?.stabilizationDebtSummary?.nextCulturalDependencyRetirementCue ?? null;
+  const reviewStabilizationCue = focus?.cultureStabilizationSummary?.stabilizationDebtSummary?.culturalReviewStabilizationCue ?? null;
 
   return `
     <section class="panel overlay-panel overlay-panel--culture">
@@ -21855,6 +21875,7 @@ function renderCultureSidePanel(cultureView) {
       ${renderCultureBlockerResolutionHistory(blockerHistory)}
       ${renderCultureMediationSignalWarnings(mediationWarnings)}
       ${renderCultureDependencyRetirementCue(dependencyRetirementCue)}
+      ${renderCultureReviewStabilizationCue(reviewStabilizationCue)}
       ${renderCultureClusterPinList(selectedCluster)}
       ${focus ? `
         <article class="culture-focus-card culture-focus-card--${getCultureTone(focus)}">

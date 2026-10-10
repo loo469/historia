@@ -12570,6 +12570,27 @@ button { font: inherit; }
 .culture-dependency-retirement-cue--review-can-wait { border-color: rgba(148, 163, 184, 0.22); background: rgba(15, 23, 42, 0.42); }
 .culture-dependency-retirement-cue--ready-after-recovery { border-color: rgba(45, 212, 191, 0.34); }
 .culture-dependency-retirement-cue--conditional { border-color: rgba(251, 191, 36, 0.32); }
+.culture-review-stabilization-cue {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0.52));
+}
+.culture-review-stabilization-cue__header { display: grid; gap: 3px; }
+.culture-review-stabilization-cue__header span {
+  color: #bae6fd;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.culture-review-stabilization-cue__header strong { color: #f8fafc; font-size: 13px; }
+.culture-review-stabilization-cue small { color: #cbd5e1; font-size: 11px; line-height: 1.35; }
+.culture-review-stabilization-cue--stabilized { border-color: rgba(74, 222, 128, 0.32); }
+.culture-review-stabilization-cue--partial-effect { border-color: rgba(251, 191, 36, 0.32); }
+.culture-review-stabilization-cue--critical-dependency-remaining { border-color: rgba(248, 113, 113, 0.38); }
+.culture-review-stabilization-cue--no-reliable-proof { border-color: rgba(148, 163, 184, 0.28); background: rgba(15, 23, 42, 0.44); }
 .atlas-committed-funding-gap rect {
   fill: rgba(30, 41, 59, 0.6);
   stroke: rgba(125, 211, 252, 0.34);
