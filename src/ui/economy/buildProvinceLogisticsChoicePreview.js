@@ -508,6 +508,45 @@ export function buildFreedMarginPreSpendCheckCue(freedMarginBufferWarningCue, fr
   return null;
 }
 
+
+export function buildPreservedBufferGrowthBlockerCue(freedMarginBufferWarningCue, freedMarginSpendableWhenCue, freedMarginPreSpendCheckCue, nextDeliveryBottleneckCue, routeSlack) {
+  if (!freedMarginBufferWarningCue || !freedMarginSpendableWhenCue || freedMarginPreSpendCheckCue?.state === 'safe-spend') {
+    return null;
+  }
+
+  const target = freedMarginBufferWarningCue.target
+    ?? freedMarginSpendableWhenCue.target
+    ?? freedMarginPreSpendCheckCue?.target
+    ?? nextDeliveryBottleneckCue?.target
+    ?? routeSlack?.bottleneck
+    ?? null;
+  const type = freedMarginBufferWarningCue.type ?? freedMarginSpendableWhenCue.type ?? freedMarginPreSpendCheckCue?.type ?? 'next-bottleneck';
+  const blockerByType = {
+    debt: 'dette de route',
+    stabilizer: 'stabilisateur fragile',
+    capacity: 'capacité locale',
+    route: 'marge fragile',
+    'next-bottleneck': 'check livraison',
+  };
+  const unlockByType = {
+    debt: 'dette soldée',
+    stabilizer: 'stabilisateur couvert',
+    capacity: 'capacité desserrée',
+    route: 'route stabilisée',
+    'next-bottleneck': 'check validé',
+  };
+
+  return {
+    state: 'growth-blocked',
+    type,
+    label: 'Croissance bloquée',
+    target,
+    summary: `Croissance bloquée: buffer gardé par ${blockerByType[type] ?? 'goulot'}${target ? ` sur ${target}` : ''}.`,
+    reason: `Dépensable après ${unlockByType[type] ?? 'goulot levé'}${target ? ` sur ${target}` : ''}.`,
+    blocker: blockerByType[type] ?? 'goulot',
+  };
+}
+
 export function buildNextDeliveryDebtImpact(afterSecondStabilizerDebt, nextDelivery) {
   if (!afterSecondStabilizerDebt || afterSecondStabilizerDebt.state === 'unknown') {
     return {
@@ -2191,6 +2230,15 @@ function buildAdjacentRouteSpilloverRisk(priorityAction, routeChoices) {
           routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
           routeSlack,
           routeSlack.slackConsumerHint.safeDeliveryUnlock,
+        );
+      }
+      if (routeSlack.slackConsumerHint?.safeDeliveryUnlock && !routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue) {
+        routeSlack.slackConsumerHint.safeDeliveryUnlock.preservedBufferGrowthBlockerCue = buildPreservedBufferGrowthBlockerCue(
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginBufferWarningCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginSpendableWhenCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.freedMarginPreSpendCheckCue,
+          routeSlack.slackConsumerHint.safeDeliveryUnlock.nextDeliveryBottleneckCue,
+          routeSlack,
         );
       }
       return routeSlack;
